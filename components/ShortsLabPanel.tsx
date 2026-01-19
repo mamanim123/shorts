@@ -809,9 +809,9 @@ export const ShortsLabPanel: React.FC = () => {
                 const updated = [...prev];
                 updated[sceneIndex] = {
                     ...scene,
-                        videoPrompt: data.refinedPrompt,
-                        dialogue: scene.dialogue || data.refinedPrompt,
-                        isVideoPromptGenerating: false
+                    videoPrompt: data.refinedPrompt,
+                    dialogue: scene.dialogue || data.refinedPrompt,
+                    isVideoPromptGenerating: false
                 };
                 return updated;
             });
@@ -855,23 +855,23 @@ export const ShortsLabPanel: React.FC = () => {
         });
 
         try {
-                const dialogue = scene.dialogue?.trim();
-                const refinedPrompt = dialogue
-                    ? `${scene.videoPrompt} The character says: "${dialogue}".`
-                    : scene.videoPrompt;
+            const dialogue = scene.dialogue?.trim();
+            const refinedPrompt = dialogue
+                ? `${scene.videoPrompt} The character says: "${dialogue}".`
+                : scene.videoPrompt;
 
-                const response = await fetch('http://localhost:3002/api/video/generate-smart', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        refinedPrompt,
-                        storyId: currentFolderName || 'shorts-lab',
-                        storyTitle: aiTopic?.trim() || 'ShortsLab',
-                        imageUrl: scene.imageUrl,
-                        sceneNumber: scene.number
-                    }),
-                    signal: controller.signal
-                });
+            const response = await fetch('http://localhost:3002/api/video/generate-smart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    refinedPrompt,
+                    storyId: currentFolderName || 'shorts-lab',
+                    storyTitle: aiTopic?.trim() || 'ShortsLab',
+                    imageUrl: scene.imageUrl,
+                    sceneNumber: scene.number
+                }),
+                signal: controller.signal
+            });
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -1087,63 +1087,91 @@ export const ShortsLabPanel: React.FC = () => {
             let loadedScenes: Scene[] = [];
 
             // 1. 대본 로드 및 scenes 추출
-            const scriptResponse = await fetch(`http://localhost:3002/api/scripts/by-folder/${folderName}`);
+            const scriptResponse = await fetch(`http://localhost:3002/api/scripts/by-folder/${encodeURIComponent(folderName)}`);
             if (scriptResponse.ok) {
                 const scriptData = await scriptResponse.json();
                 const content = scriptData.content || '';
 
+                // ✅ [개선] 서버에서 이미 파싱한 scenes가 있으면 우선 사용
+                if (scriptData.parsedScenes && Array.isArray(scriptData.parsedScenes) && scriptData.parsedScenes.length > 0) {
+                    console.log(`[ShortsLab] Using ${scriptData.parsedScenes.length} scenes parsed by server.`);
+                    loadedScenes = scriptData.parsedScenes.map((scene: any, idx: number) => ({
+                        number: scene.sceneNumber || idx + 1,
+                        text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
+                        prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
+                        imageUrl: undefined,
+                        shortPromptKo: scene.shortPromptKo || '',
+                        longPromptKo: scene.longPromptKo || '',
+                        summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
+                        camera: scene.camera || '',
+                        shotType: scene.shotType || '',
+                        age: scene.age || '',
+                        outfit: scene.outfit || '',
+                        videoPrompt: scene.videoPrompt || '',
+                        isSelected: true
+                    }));
+                } else {
+                    // 서버 파싱 실패 시 클라이언트 폴백 (기존 로직 유지하되 안전하게)
+                    try {
+                        let jsonClean = content.trim();
+                        jsonClean = jsonClean.replace(/^(JSON|json)\s+/, "").trim();
+                        if (jsonClean.startsWith("```")) {
+                            jsonClean = jsonClean.replace(/^```(json|txt)?/, "").replace(/```$/, "").trim();
+                        }
+
+                        // 직접 파싱 시도 (간단한 경우만 성공할 것)
+                        const parsed = JSON.parse(jsonClean);
+                        const scriptObj = parsed.scripts?.[0] || parsed;
+                        const scenesSource = scriptObj.scenes || parsed.scenes;
+
+                        if (scenesSource && Array.isArray(scenesSource)) {
+                            loadedScenes = scenesSource.map((scene: any, idx: number) => ({
+                                number: scene.sceneNumber || idx + 1,
+                                text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
+                                prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
+                                imageUrl: undefined,
+                                shortPromptKo: scene.shortPromptKo || '',
+                                longPromptKo: scene.longPromptKo || '',
+                                summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
+                                camera: scene.camera || '',
+                                shotType: scene.shotType || '',
+                                isSelected: true
+                            }));
+                        }
+                    } catch (e) {
+                        console.warn("[ShortsLab] Client-side JSON parse failed during fallback.");
+                    }
+                }
+
+                // 대본 텍스트 설정 (UI 입력창용)
                 try {
-                    // JSON 클리닝 및 파싱
+                    // JSON 데이터 내에서 대본 본문 추출 시도
                     let jsonClean = content.trim();
-                    jsonClean = jsonClean.replace(/^(JSON|json)\s+/, "").trim();
-                    if (jsonClean.startsWith("```")) {
-                        jsonClean = jsonClean.replace(/^```(json)?/, "").replace(/```$/, "").trim();
-                    }
-                    const parsed = JSON.parse(jsonClean);
-                    const scriptObj = parsed.scripts?.[0] || parsed;
-
-                    // scenes 추출 + 후처리 적용
-                    const scenesSource = scriptObj.scenes || parsed.scenes;
-                    if (scenesSource && Array.isArray(scenesSource)) {
-                        const processedScenes = postProcessAiScenes(scenesSource, {
-                            femaleOutfit: settings.selectedOutfit || undefined,
-                            targetAgeLabel: aiTargetAge
-                        });
-
-                        loadedScenes = processedScenes.map((scene: any, idx: number) => ({
-                            number: scene.sceneNumber || idx + 1,
-                            text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
-                            prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || '',
-                            imageUrl: undefined,
-                            shortPromptKo: scene.shortPromptKo || '',
-                            longPromptKo: scene.longPromptKo || '',
-                            summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
-                            camera: scene.camera || '',
-                            shotType: scene.shotType || '',
-                            age: scene.age || '',
-                            outfit: scene.outfit || '',
-                            isSelected: true
-                        }));
-                    }
-
-                    // 대본 텍스트 설정
-                    const rawScript = scriptObj.scriptBody || scriptObj.script || '';
-                    if (rawScript) {
-                        const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
-                        setScriptInput(scriptMatch ? scriptMatch[1].trim() : rawScript.trim());
-                    } else if (!scenesSource) {
-                        // JSON 형태가 전혀 아닌 경우의 폴백
-                        throw new Error('Fallback to plain text');
+                    if (jsonClean.includes('{')) {
+                        const firstOpen = jsonClean.indexOf('{');
+                        const lastClose = jsonClean.lastIndexOf('}');
+                        if (firstOpen !== -1 && lastClose !== -1) {
+                            const candidate = jsonClean.substring(firstOpen, lastClose + 1);
+                            const parsed = JSON.parse(candidate);
+                            const scriptObj = parsed.scripts?.[0] || parsed;
+                            const rawScript = scriptObj.scriptBody || scriptObj.script || '';
+                            if (rawScript) {
+                                const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
+                                setScriptInput(scriptMatch ? scriptMatch[1].trim() : rawScript.trim());
+                            } else {
+                                setScriptInput(content); // 실패 시 전체 내용
+                            }
+                        }
+                    } else {
+                        setScriptInput(content);
                     }
                 } catch (e) {
-                    // JSON 파싱 실패 시 정규식/순수 텍스트 폴백
-                    const scriptMatch = content.match(/---\s*([\s\S]*?)\s*---/);
-                    setScriptInput(scriptMatch ? scriptMatch[1].trim() : content);
+                    setScriptInput(content);
                 }
             }
 
             // 2. 이미지 로드
-            const imagesResponse = await fetch(`http://localhost:3002/api/images/by-story/${folderName}`);
+            const imagesResponse = await fetch(`http://localhost:3002/api/images/by-story/${encodeURIComponent(folderName)}`);
             let imagesByScene = new Map<number, string>();
             if (imagesResponse.ok) {
                 const images = await imagesResponse.json();
@@ -1158,23 +1186,29 @@ export const ShortsLabPanel: React.FC = () => {
                 });
             }
 
-            // 3. scenes에 이미지 URL 매핑
+            // 3. 통합 및 상항 업데이트
             if (loadedScenes.length > 0) {
                 loadedScenes = loadedScenes.map(scene => ({
                     ...scene,
                     imageUrl: imagesByScene.get(scene.number) || undefined
                 }));
                 setScenes(loadedScenes);
+                console.log(`[ShortsLab] Successfully loaded ${loadedScenes.length} scenes with images.`);
             } else if (imagesByScene.size > 0) {
-                // scenes가 없으면 이미지만으로 씬 생성
-                const imageScenes: Scene[] = Array.from(imagesByScene.entries()).map(([num, url]) => ({
-                    number: num,
-                    text: `Scene ${num}`,
-                    prompt: '',
-                    imageUrl: url,
-                    isSelected: true
-                }));
+                // 대본 파싱은 실패했지만 이미지는 있는 경우 (이미지 기반 씬 복구)
+                const imageScenes: Scene[] = Array.from(imagesByScene.entries())
+                    .sort((a, b) => a[0] - b[0])
+                    .map(([num, url]) => ({
+                        number: num,
+                        text: `Scene ${num} (Restored from Image)`,
+                        prompt: '',
+                        imageUrl: url,
+                        isSelected: true
+                    }));
                 setScenes(imageScenes);
+                console.log(`[ShortsLab] Restored ${imageScenes.length} scenes from images.`);
+            } else {
+                showToast('대본 또는 이미지 데이터를 찾을 수 없습니다.', 'warning');
             }
 
             setCurrentFolderName(folderName);
@@ -1182,8 +1216,8 @@ export const ShortsLabPanel: React.FC = () => {
             setActiveTab('preview');
             showToast(`"${folderName}" 폴더를 불러왔습니다.`, 'success');
         } catch (error) {
-            console.error('Failed to load folder data:', error);
-            showToast('폴더 데이터를 불러오는데 실패했습니다.', 'error');
+            console.error('[ShortsLab] Failed to select folder:', error);
+            showToast('데이터를 불러오는 중 오류가 발생했습니다.', 'error');
         } finally {
             setIsLoadingFolder(false);
         }

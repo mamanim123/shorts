@@ -65,7 +65,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ input, onChange, onOpe
       <div>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Settings2 className="w-4 h-4 text-purple-400" />
-          쇼츠 생성 설정 <span className="text-sm font-semibold text-purple-400">-v3.5.0</span>
+          쇼츠 생성 설정 <span className="text-sm font-semibold text-purple-400">-v3.5.1</span>
         </h2>
       </div>
 

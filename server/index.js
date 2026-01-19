@@ -1124,6 +1124,7 @@ app.get('/api/scripts/story-folders', (req, res) => {
 
 // NEW: Get script file from a specific folder
 app.get('/api/scripts/by-folder/:folderName', (req, res) => {
+    let parsedScenes = null;
     try {
         const { folderName } = req.params;
         if (!folderName || typeof folderName !== 'string') {
@@ -1141,20 +1142,89 @@ app.get('/api/scripts/by-folder/:folderName', (req, res) => {
         let files = fs.readdirSync(scriptDir)
             .filter(f => f.endsWith('.txt') && !f.includes('.temp'));
 
-        let scriptFile = null;
-        let scriptPath = null;
+        let bestResult = {
+            scriptFile: null,
+            scriptPath: null,
+            content: '',
+            parsedScenes: [],
+            stats: null
+        };
+
+        const tryFile = (fPath, fName) => {
+            try {
+                const fContent = fs.readFileSync(fPath, 'utf8');
+                const fStats = fs.statSync(fPath);
+                let fParsedScenes = null;
+                let fRawParsedData = null;
+
+                // Try JSON parsing
+                const jsonMatch = fContent.match(/===\s*RESULT JSON\s*===\s*([\s\S]*)/i);
+                const jsonToParse = jsonMatch && jsonMatch[1] ? jsonMatch[1].trim() : fContent;
+                fRawParsedData = tryParse(jsonToParse);
+
+                if (fRawParsedData) {
+                    const scriptObj = fRawParsedData.scripts?.[0] || fRawParsedData;
+                    const scenesSource = scriptObj.scenes || fRawParsedData.scenes || (Array.isArray(fRawParsedData) ? fRawParsedData : null);
+
+                    if (Array.isArray(scenesSource)) {
+                        fParsedScenes = scenesSource.map((scene, idx) => ({
+                            sceneNumber: scene.sceneNumber || idx + 1,
+                            summary: scene.summary || scene.scriptLine || scene.text || `Scene ${idx + 1}`,
+                            scriptLine: scene.scriptLine || scene.summary || scene.text || '',
+                            camera: scene.camera || '',
+                            shotType: scene.shotType || '',
+                            shortPrompt: scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
+                            longPrompt: scene.longPrompt || scene.prompt || scene.imagePrompt || '',
+                            shortPromptKo: scene.shortPromptKo || '',
+                            longPromptKo: scene.longPromptKo || '',
+                            videoPrompt: scene.videoPrompt || '',
+                            age: scene.age || '',
+                            outfit: scene.outfit || ''
+                        }));
+                    }
+                }
+
+                // Try fallback text parsing if JSON failed or returned nothing
+                if (!fParsedScenes || fParsedScenes.length === 0) {
+                    const fallback = parseScenePromptsFromScript(fContent);
+                    if (fallback.length > 0) {
+                        fParsedScenes = fallback;
+                    }
+                }
+
+                return {
+                    scriptFile: fName,
+                    scriptPath: fPath,
+                    content: fContent,
+                    parsedScenes: fParsedScenes || [],
+                    stats: fStats
+                };
+            } catch (e) {
+                console.warn(`[Server] Failed to try file ${fName}:`, e.message);
+                return null;
+            }
+        };
 
         if (files.length > 0) {
-            // ✅ [수정] 폴더 내부에 여러 대본이 있을 경우 최신 대본을 우선적으로 로드 (알파벳 순서에 의한 구버전 로드 방지)
+            // Sort by time descending to try newest first
             files.sort((a, b) => {
                 const statA = fs.statSync(path.join(scriptDir, a));
                 const statB = fs.statSync(path.join(scriptDir, b));
                 return statB.mtimeMs - statA.mtimeMs;
             });
-            scriptFile = files[0];
-            scriptPath = path.join(scriptDir, scriptFile);
-        } else {
-            // ✅ [NEW] 폴더 내부에 대본이 없는 경우 Fallback: generated_scripts 및 images 폴더에서 검색
+
+            for (const f of files) {
+                const res = tryFile(path.join(scriptDir, f), f);
+                if (res && res.parsedScenes.length > (bestResult.parsedScenes?.length || 0)) {
+                    bestResult = res;
+                    // If we found a good JSON/Text script with multiple scenes, we can stop
+                    if (bestResult.parsedScenes.length > 3) break;
+                }
+            }
+        }
+
+        // If not found in current folder, try fallback search
+        if (!bestResult.scriptPath) {
             console.log(`[Server] ⚠️ No script in folder ${folderName}, searching in generated_scripts and images...`);
             const allScriptsRoot = fs.readdirSync(GENERATED_DIR)
                 .filter(f => f.endsWith('.txt') && !f.includes('.temp'));
@@ -1174,7 +1244,6 @@ app.get('/api/scripts/by-folder/:folderName', (req, res) => {
                 return withoutTimestamp || base;
             };
 
-            // 폴더명(제목)이 포함된 파일 찾기 (더 유연한 매칭)
             const matchedFiles = allScripts.filter(f => {
                 const title = extractTitleFromFile(f);
                 const normalizedTitle = normalize(stripSuffix(title));
@@ -1185,149 +1254,45 @@ app.get('/api/scripts/by-folder/:folderName', (req, res) => {
                     || targetName.includes(normalizedFile);
             });
 
-            // ✅ [NEW] 일치하는 파일이 없을 경우 자동 복구 로직
-            if (matchedFiles.length === 0) {
-                console.log(`[Server] ⚠️ No matching script found for ${folderName}, attempting auto-recovery...`);
-
-                // 1. 폴더명과 완전히 일치하는 파일명 생성
-                const possibleScriptName = `[GEMINI] 2026-01-14T11-38-48-812Z_${folderName}.txt`;
-                const possiblePath = path.join(GENERATED_DIR, possibleScriptName);
-
-                // 2. 서비스 프리픽스 없이 제목만으로 검색
-                const titleOnlyFiles = allScripts.filter(f => {
-                    const title = extractTitleFromFile(f);
-                    const normalizedTitle = normalize(stripSuffix(title));
-                    return normalizedTitle === targetName;
-                });
-
-                if (titleOnlyFiles.length > 0) {
-                    matchedFiles.push(...titleOnlyFiles);
-                    console.log(`[Server] ✅ Found title-only matches: ${titleOnlyFiles.join(', ')}`);
-                }
-
-                // 3. 퍼지 매칭 (부분 일치)
-                if (matchedFiles.length === 0) {
-                    const fuzzyMatches = allScripts.filter(f => {
-                        const title = extractTitleFromFile(f);
-                        const normalizedTitle = normalize(stripSuffix(title));
-                        const normalizedFile = normalize(f.replace(/\.txt$/i, ''));
-
-                        // 폴더명의 핵심 키워드 추출
-                        const folderKeywords = targetName.split(/\s+/).filter(k => k.length > 1);
-                        return folderKeywords.some(keyword =>
-                            normalizedTitle.includes(keyword) ||
-                            normalizedFile.includes(keyword)
-                        );
-                    });
-
-                    if (fuzzyMatches.length > 0) {
-                        matchedFiles.push(...fuzzyMatches);
-                        console.log(`[Server] ✅ Found fuzzy matches: ${fuzzyMatches.join(', ')}`);
+            if (matchedFiles.length > 0) {
+                // Try each matched file and pick the best one
+                for (const f of matchedFiles) {
+                    const fPath = allScriptsRoot.includes(f) ? path.join(GENERATED_DIR, f) : path.join(IMAGES_DIR, f);
+                    const res = tryFile(fPath, f);
+                    if (res && res.parsedScenes.length > (bestResult.parsedScenes?.length || 0)) {
+                        bestResult = res;
                     }
                 }
 
-                // 4. 찾은 파일이 있다면 해당 폴더에 복사
-                if (matchedFiles.length > 0) {
-                    console.log(`[Server] 🔧 Auto-recovering script for folder: ${folderName}`);
-                    // 복구된 파일을 해당 폴더에 복사
-                    const sourceFile = matchedFiles[0];
-                    const sourcePath = allScriptsRoot.includes(sourceFile)
-                        ? path.join(GENERATED_DIR, sourceFile)
-                        : path.join(IMAGES_DIR, sourceFile);
-
-                    if (fs.existsSync(sourcePath)) {
-                        const targetPath = path.join(scriptDir, sourceFile);
+                if (bestResult.scriptPath) {
+                    console.log(`[Server] 💡 Found fallback script: ${bestResult.scriptFile}`);
+                    // Copy to source folder if missing
+                    const scriptInFolderPath = path.join(scriptDir, bestResult.scriptFile);
+                    if (!fs.existsSync(scriptInFolderPath)) {
                         try {
-                            fs.copyFileSync(sourcePath, targetPath);
-                            console.log(`[Server] ✅ Recovered script copied to: ${targetPath}`);
-                        } catch (copyErr) {
-                            console.warn(`[Server] ⚠️ Failed to copy recovered script:`, copyErr.message);
+                            fs.copyFileSync(bestResult.scriptPath, scriptInFolderPath);
+                            bestResult.scriptPath = scriptInFolderPath;
+                        } catch (e) {
+                            console.warn(`[Server] Failed to copy fallback script:`, e.message);
                         }
                     }
                 }
             }
-
-            if (matchedFiles.length > 0) {
-                // 가장 최근 파일 사용
-                matchedFiles.sort((a, b) => {
-                    const pathA = allScriptsRoot.includes(a) ? path.join(GENERATED_DIR, a) : path.join(IMAGES_DIR, a);
-                    const pathB = allScriptsRoot.includes(b) ? path.join(GENERATED_DIR, b) : path.join(IMAGES_DIR, b);
-                    return fs.statSync(pathB).mtimeMs - fs.statSync(pathA).mtimeMs;
-                });
-                scriptFile = matchedFiles[0];
-                scriptPath = allScriptsRoot.includes(scriptFile)
-                    ? path.join(GENERATED_DIR, scriptFile)
-                    : path.join(IMAGES_DIR, scriptFile);
-                console.log(`[Server] 💡 Found fallback script: ${scriptFile}`);
-
-                // ✅ [NEW] 폴더 내부에 스크립트가 없다면 복사
-                const scriptInFolderPath = path.join(scriptDir, scriptFile);
-                if (!fs.existsSync(scriptInFolderPath)) {
-                    try {
-                        fs.copyFileSync(scriptPath, scriptInFolderPath);
-                        console.log(`[Server] ✅ Script copied to folder: ${scriptInFolderPath}`);
-                        scriptPath = scriptInFolderPath; // 폴더 내부 파일 경로로 업데이트
-                    } catch (copyErr) {
-                        console.warn(`[Server] ⚠️ Failed to copy script to folder:`, copyErr.message);
-                        // 원본 경로 유지
-                    }
-                }
-            }
         }
 
-        if (!scriptPath || !fs.existsSync(scriptPath)) {
+        if (!bestResult.scriptPath) {
             return res.status(404).json({ error: 'No script file found for this folder' });
         }
 
-        const content = fs.readFileSync(scriptPath, 'utf8');
-        const stats = fs.statSync(scriptPath);
-
-        let parsedScenes = null;
-        try {
-            // 1. Check for RESULT JSON marker
-            const jsonMatch = content.match(/=== RESULT JSON ===\s*([\s\S]*)/);
-            if (jsonMatch && jsonMatch[1]) {
-                const jsonStr = jsonMatch[1].trim();
-                const parsed = tryParse(jsonStr);
-                if (parsed?.scripts?.[0]?.scenes) {
-                    parsedScenes = parsed.scripts[0].scenes;
-                } else if (parsed?.scenes) {
-                    parsedScenes = parsed.scenes;
-                }
-            } else {
-                // 2. Fallback: Try parsing the entire content as JSON
-                const parsed = tryParse(content);
-                if (parsed) {
-                    if (parsed.scripts?.[0]?.scenes) {
-                        parsedScenes = parsed.scripts[0].scenes;
-                    } else if (parsed.scenes) {
-                        parsedScenes = parsed.scenes;
-                    } else if (Array.isArray(parsed)) {
-                        // If it's a direct array of scenes
-                        parsedScenes = parsed;
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn(`[Server] ⚠️ Failed to parse JSON for ${scriptFile}:`, e.message);
-        }
-
-        if (!parsedScenes || parsedScenes.length === 0) {
-            const fallbackScenes = parseScenePromptsFromScript(content);
-            if (fallbackScenes.length > 0) {
-                parsedScenes = fallbackScenes;
-            }
-        }
-
-        console.log(`[Server] ✅ Loaded script: ${scriptFile}`);
+        console.log(`[Server] ✅ Best script picked: ${bestResult.scriptFile} (Scenes: ${bestResult.parsedScenes.length})`);
 
         res.json({
             folderName,
-            scriptFile,
-            content,
-            parsedScenes,
-            createdAt: stats.mtime,
-            size: stats.size
+            scriptFile: bestResult.scriptFile,
+            content: bestResult.content,
+            parsedScenes: bestResult.parsedScenes,
+            createdAt: bestResult.stats?.mtime,
+            size: bestResult.stats?.size
         });
     } catch (e) {
         console.error(`Failed to load script from folder ${req.params.folderName}:`, e);
@@ -1817,50 +1782,74 @@ app.delete('/api/style-templates/:id', (req, res) => {
  * Extracts the first valid JSON object from AI response text.
  * Handles cases where AI adds explanatory text after the JSON.
  */
+/**
+ * Extracts the first valid JSON object or array from AI response text.
+ * Robustly handles cases where AI adds explanatory text around the JSON.
+ * Improvement: Properly handles double-quoted strings to ignore braces inside them.
+ */
 const extractValidJson = (text = "") => {
     if (!text || typeof text !== 'string') return null;
 
     let depth = 0;
     let startIndex = -1;
-    let endIndex = -1;
+    let inString = false;
+    let escaped = false;
     let startChar = '';
     let endChar = '';
 
     for (let i = 0; i < text.length; i++) {
         const char = text[i];
 
-        if (startIndex === -1 && (char === '{' || char === '[')) {
-            startIndex = i;
-            startChar = char;
-            endChar = char === '{' ? '}' : ']';
-            depth = 1;
-        } else if (startIndex !== -1) {
+        // 1. Handle string literal boundaries
+        if (char === '"' && !escaped) {
+            inString = !inString;
+            continue;
+        }
+
+        // 2. Handle escape characters within strings
+        if (inString) {
+            if (char === '\\' && !escaped) {
+                escaped = true;
+            } else {
+                escaped = false;
+            }
+            continue;
+        }
+
+        // 3. Handle structure outside of strings
+        if (startIndex === -1) {
+            if (char === '{' || char === '[') {
+                startIndex = i;
+                startChar = char;
+                endChar = char === '{' ? '}' : ']';
+                depth = 1;
+            }
+        } else {
             if (char === startChar) {
                 depth++;
             } else if (char === endChar) {
                 depth--;
                 if (depth === 0) {
-                    endIndex = i + 1;
-                    break;
+                    return text.substring(startIndex, i + 1);
                 }
             }
         }
-    }
-
-    if (startIndex !== -1 && endIndex !== -1) {
-        return text.substring(startIndex, endIndex);
     }
 
     return null;
 };
 
 const stripCodeWrappers = (text = "") => {
+    if (!text) return "";
     let cleaned = text.trim();
+    // Remove common AI markers and markdown blocks
     cleaned = cleaned.replace(/^json\s*copy\s*code[:\-\s]*/i, '');
     cleaned = cleaned.replace(/^copy\s*code[:\-\s]*/i, '');
-    cleaned = cleaned.replace(/```(?:json)?/gi, '');
+    cleaned = cleaned.replace(/```(?:json|txt|javascript|js)?/gi, '');
     cleaned = cleaned.replace(/```/g, '');
     cleaned = cleaned.replace(/^\s*Copy code.*$/gim, '');
+    // Remove invisible characters or accidental prefixes like "Result:"
+    cleaned = cleaned.replace(/^(Result|Output|JSON|Data):\s*/i, '');
     return cleaned.trim();
 };
 
@@ -1972,6 +1961,8 @@ const escapeInlineQuotesForKeys = (text = "", keys = []) => {
 };
 
 const tryParse = (str) => {
+    if (!str) return null;
+
     const attempt = (value) => {
         if (!value) return null;
         try {
@@ -1981,56 +1972,37 @@ const tryParse = (str) => {
         }
     };
 
-    let sanitized = preprocessJsonLikeString(str);
+    // Pre-clean common issues
+    let sanitized = stripCodeWrappers(str);
 
-    // Step 0: [NEW] 만약 문자열에 JSON 외의 텍스트(#, 설명 등)가 섞여 있다면 추출 시도
-    const potentialJson = extractValidJson(sanitized);
-    if (potentialJson && potentialJson.length < sanitized.length) {
-        const extractedParsed = attempt(potentialJson);
-        if (extractedParsed) return extractedParsed;
-        // 추출된 것에 대해서도 아래의 정교화 로직을 이어가기 위해 sanitized 업데이트
-        sanitized = potentialJson;
+    // Step 0: Extract the actual JSON block (ignoring surrounding text/markdown)
+    const extracted = extractValidJson(sanitized);
+    if (extracted) {
+        sanitized = extracted;
     }
 
-    sanitized = escapeInlineQuotesForKeys(sanitized, [
-        "script",
-        "scriptBody",
-        "scriptLine",
-        "shortPrompt",
-        "shortPromptKo",
-        "longPrompt",
-        "longPromptKo",
-        "imagePrompt",
-        "hook",
-        "punchline",
-        "context",
-        "twist",
-        "title"
-    ]);
+    // Direct attempt
+    const firstTry = attempt(sanitized);
+    if (firstTry) return firstTry;
 
-    // Step 1: Try standard JSON parse
-    const direct = attempt(sanitized);
-    if (direct) return direct;
+    console.log("[tryParse] Standard parse failed, applying complex sanitization...");
 
-    console.log("[tryParse] Standard parse failed, trying smart preprocessing...");
-
-    // Step 2: Smart preprocessing
     try {
-        let processed = sanitized;
+        // Fix common JSON formatting issues in AI responses
+        let processed = sanitized
+            .replace(/([가-힣\w\s])"([가-힣\w\s])/g, '$1\\"$2') // Unescaped quotes between words
+            .replace(/([가-힣])"(\s*")/g, '$1\\"$2')              // Unescaped quote before closing quote
+            .replace(/\n/g, '\\n')                                // Raw newlines
+            .replace(/\r/g, '\\r');
 
-        // Fix 1: Unescaped double quotes inside Korean text
-        processed = processed.replace(/([가-힣]\s*)"([가-힣])/g, '$1\\"$2');
+        // Re-extract since balance might have changed (unlikely but safe)
+        const reExtracted = extractValidJson(processed);
+        const secondTry = attempt(reExtracted || processed);
+        if (secondTry) return secondTry;
 
-        // Fix 2: Unescaped closing double quote before the actual closing quote
-        processed = processed.replace(/([가-힣])"(\s*")/g, '$1\\"$2');
-
-        // Fix 3: Unescaped quotes around Korean words inside a string
-        processed = processed.replace(/([가-힣])"([가-힣])/g, '$1\\"$2');
-
-        // Fix 4: Single quotes for JSON structure
-        if (/{\s*'/.test(processed) || /'\s*:\s*'/.test(processed)) {
-            console.log("[tryParse] Detected single-quoted JSON structure");
-            processed = processed
+        // Step 1: Handle single quotes to double quotes mapping if needed
+        if (processed.includes("'")) {
+            const singleQuoteFixed = processed
                 .replace(/{\s*'/g, '{ "')
                 .replace(/'\s*:/g, '":')
                 .replace(/:\s*'/g, ': "')
@@ -2039,68 +2011,62 @@ const tryParse = (str) => {
                 .replace(/'\s*}/g, '"}')
                 .replace(/\[\s*'/g, '["')
                 .replace(/'\s*\]/g, '"]');
+            const thirdTry = attempt(singleQuoteFixed);
+            if (thirdTry) return thirdTry;
         }
-
-        const smartParsed = attempt(processed);
-        if (smartParsed) return smartParsed;
-    }
-    catch (e2) {
-        console.log("[tryParse] Smart preprocessing threw an error:", e2.message);
+    } catch (e) {
+        console.warn("[tryParse] Preprocessing error:", e.message);
     }
 
-    console.log("[tryParse] Smart preprocessing failed, trying jsonrepair...");
-
-    // Step 3: Last resort - use jsonrepair
+    // Final resort: jsonrepair
     try {
+        console.log("[tryParse] Attempting jsonrepair...");
         const repaired = jsonrepair(sanitized);
         return JSON.parse(repaired);
-    }
-    catch (e3) {
-        // Step 4: Try jsonrepair on the preprocessed string
-        try {
-            let preprocessed = sanitized
-                .replace(/([가-힣]\s*)"([가-힣])/g, '$1\\"$2')
-                .replace(/([가-힣])"(\s*")/g, '$1\\"$2')
-                .replace(/([가-힣])"([가-힣])/g, '$1\\"$2');
-
-            const repaired = jsonrepair(preprocessed);
-            return JSON.parse(repaired);
-        } catch (e4) {
-            console.error("[tryParse] All parsing attempts failed:", e3.message);
-            return null;
-        }
+    } catch (e) {
+        console.error("[tryParse] All parsing strategies failed.");
+        return null;
     }
 };
 
 const parseScenePromptsFromScript = (content) => {
     if (!content) return [];
-    const sectionMatch = content.match(/===\s*SCENES.*?===\s*([\s\S]*)/i);
-    const section = sectionMatch ? sectionMatch[1] : '';
+    // Improve regex for section matching
+    const sectionMatch = content.match(/===\s*(?:SCENES|IMAGE PROMPTS).*?===\s*([\s\S]*)/i);
+    const section = sectionMatch ? sectionMatch[1] : content; // Try content directly if no section marker
     if (!section) return [];
 
-    const parts = section.split(/\[Scene\s+(\d+)\]/gi);
-    const scenes = [];
-
-    for (let i = 1; i < parts.length; i += 2) {
-        const sceneNumber = parseInt(parts[i], 10);
-        if (!Number.isFinite(sceneNumber)) continue;
-        const block = parts[i + 1] || '';
-        const kr = (block.match(/^\s*KR:\s*(.+)$/m) || [])[1];
-        const en = (block.match(/^\s*EN:\s*(.+)$/m) || [])[1];
-        const long = (block.match(/^\s*Long:\s*(.+)$/m) || [])[1];
-
-        scenes.push({
-            sceneNumber,
-            summary: `Scene ${sceneNumber}`,
-            camera: '',
-            shortPrompt: en ? en.trim() : '',
-            shortPromptKo: kr ? kr.trim() : '',
-            longPrompt: (long || en || '').trim(),
-            longPromptKo: kr ? kr.trim() : ''
-        });
+    const fallbackParts = section.split(/\[Scene\s+(\d+)\]/gi);
+    if (fallbackParts.length < 3) {
+        // Try another split format if [Scene X] fails
+        const alternativeParts = section.split(/Scene\s+(\d+)[:\.]/gi);
+        if (alternativeParts.length >= 3) return parseParts(alternativeParts);
+        return [];
     }
+    return parseParts(fallbackParts);
 
-    return scenes;
+    function parseParts(parts) {
+        const scenes = [];
+        for (let i = 1; i < parts.length; i += 2) {
+            const sceneNumber = parseInt(parts[i], 10);
+            if (!Number.isFinite(sceneNumber)) continue;
+            const block = parts[i + 1] || '';
+            const kr = (block.match(/^\s*(?:KR|Korean|국문|내용):\s*(.+)$/im) || [])[1];
+            const en = (block.match(/^\s*(?:EN|English|영문|Prompt):\s*(.+)$/im) || [])[1];
+            const long = (block.match(/^\s*(?:Long|Detail|상세):\s*(.+)$/im) || [])[1];
+
+            scenes.push({
+                sceneNumber,
+                summary: `Scene ${sceneNumber}`,
+                camera: '',
+                shortPrompt: en ? en.trim() : '',
+                shortPromptKo: kr ? kr.trim() : '',
+                longPrompt: (long || en || '').trim(),
+                longPromptKo: kr ? kr.trim() : ''
+            });
+        }
+        return scenes;
+    }
 };
 
 const isValidStory = (obj) => {

@@ -1,0 +1,33 @@
+
+[TASK: CHARACTER ANALYSIS]
+Analyze the following script and extract key characters with their detailed visual profiles and personalities.
+Output ONLY a JSON array of character objects.
+
+[SCRIPT]
+아니 준호 씨가 필드에서 갑자기 무릎을 꿇길래 청혼이라도 하는 줄 알았어.
+지영이는 옆에서 입을 틀어막고 눈이 커졌지 뭐야.
+어떻게 된 거냐면 준호 씨가 티샷을 했는데 공이 저 멀리 숲으로 사라졌거든.
+분명 백돌이인데 걸음걸이만큼은 타이거 우즈 저리가라야.
+기품 있게 숲속으로 걸어가더니 한참을 안 나오더라고.
+지영이가 걱정돼서 다가갔는데 준호 씨가 엉덩이를 뒤로 쭉 빼고 끙끙대고 있어.
+손을 벌벌 떨면서 풀숲을 헤치는데 숨소리가 거칠더라고.
+지영이가 떨리는 목소리로 물었지. (준호 씨, 거기서 뭐 하는 거야?)
+준호 씨가 식은땀을 흘리며 고개를 돌리더니 비장하게 말하더라고.
+(지영 씨, 내 기품이... 내 기품이 땅에 떨어졌어!)
+알고 보니 공 찾다가 바지 엉덩이가 터져서 가리느라 못 일어나고 있었대.
+
+[OUTPUT FORMAT]
+[
+  {
+    "name": "Character Name",
+    "role": "Role in the story",
+    "personality": "Psychological traits, vibes, tone of voice",
+    "visualProfile": {
+      "hair": "Detailed hairstyle and color (English)",
+      "eyes": "Eye shape and mood (English)",
+      "bodyType": "Body shape, height, posture (English)",
+      "distinctFeatures": "Scars, beauty marks, tattoos, unique accessories (English)",
+      "visualVibe": "Overall visual atmosphere (English)"
+    }
+  }
+]

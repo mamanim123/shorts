@@ -1,0 +1,2610 @@
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import readline from 'readline';
+import crypto from 'crypto';
+import sharp from 'sharp';
+import multer from 'multer';
+
+
+dotenv.config();
+import { jsonrepair } from 'jsonrepair';
+import {
+    initBrowser,
+    launchBrowser,
+    launchScriptBrowser,
+    launchImageBrowser,
+    generateContent,
+    switchService,
+    switchScriptService,
+    switchImageService,
+    submitPromptOnly,
+    submitPromptAndCaptureImage,
+    closeAllBrowsers
+} from './puppeteerHandler.js';
+import { searchYouTube } from './youtubeSearchHandler.js';
+import {
+    buildCharacterMap,
+    injectCharacterDetails,
+    isFemaleFromCharacters,
+    assignCharacterIdsIfMissing,
+    applyFullEnhancement,
+    getSettings,
+    saveSettings,
+    previewSlotSentence,
+    getProfileStore,
+    saveProfileStore
+} from './promptEnhancer.js';
+
+// 새로운 유틸리티 import
+import logger from './logger.js';
+import { ApiError, ErrorHandler, createSuccessResponse, createErrorResponse } from './errorHandler.js';
+
+const execAsync = promisify(exec);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = 3002;
+const HISTORY_FILE = path.join(__dirname, '../history.json');
+const GENERATED_DIR = path.join(__dirname, '../generated_scripts');
+const SCRIPTS_BASE_DIR = path.join(GENERATED_DIR, '대본폴더'); // 대본들을 모아둘 폴더
+const LONGFORM_DIR = path.join(__dirname, '../longform_sessions');
+const TEMPLATE_DIR = path.join(__dirname, '../style_templates');
+const IMAGES_DIR = path.join(GENERATED_DIR, 'images');
+const ENGINE_CONFIG_FILE = path.join(__dirname, '../engine_config.json');
+const PROMPT_PRESETS_FILE = path.join(__dirname, './prompt_presets.json');
+const GENRE_GUIDELINES_FILE = path.join(GENERATED_DIR, 'genre_guidelines.json');
+const FAVORITES_FILE = path.join(__dirname, './cineboard_favorites.json');
+const IMAGE_CAPTURE_MAX_ATTEMPTS = Number(process.env.IMAGE_CAPTURE_MAX_ATTEMPTS || 2);
+const lastImageFingerprintsByStory = new Map();
+
+const AUTO_LAUNCH_DELAY_MS = Number(process.env.PUPPETEER_AUTO_LAUNCH_DELAY_MS || 5000);
+const AUTO_LAUNCH_MAX_ATTEMPTS = Number(process.env.PUPPETEER_AUTO_LAUNCH_MAX_ATTEMPTS || 3);
+let autoLaunchAttempts = 0;
+let browserLaunchPromise = null;
+let lastBrowserLaunchError = null;
+let lastBrowserLaunchSuccessAt = 0;
+
+// Ensure directories exist
+if (!fs.existsSync(GENERATED_DIR)) fs.mkdirSync(GENERATED_DIR);
+if (!fs.existsSync(SCRIPTS_BASE_DIR)) fs.mkdirSync(SCRIPTS_BASE_DIR, { recursive: true }); // 대본폴더 생성
+if (!fs.existsSync(LONGFORM_DIR)) fs.mkdirSync(LONGFORM_DIR);
+if (!fs.existsSync(TEMPLATE_DIR)) fs.mkdirSync(TEMPLATE_DIR);
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+if (!fs.existsSync(ENGINE_CONFIG_FILE)) {
+    fs.writeFileSync(ENGINE_CONFIG_FILE, JSON.stringify({ prompts: {}, options: [] }, null, 2));
+}
+if (!fs.existsSync(PROMPT_PRESETS_FILE)) {
+    fs.writeFileSync(PROMPT_PRESETS_FILE, JSON.stringify({ presets: [] }, null, 2));
+}
+if (!fs.existsSync(FAVORITES_FILE)) {
+    fs.writeFileSync(FAVORITES_FILE, JSON.stringify({ favorites: [] }, null, 2));
+}
+
+const readEngineConfig = () => {
+    try {
+        const raw = fs.readFileSync(ENGINE_CONFIG_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        return {
+            prompts: parsed.prompts || {},
+            options: Array.isArray(parsed.options) ? parsed.options : []
+        };
+    } catch (e) {
+        console.error("Failed to read engine config:", e);
+        return { prompts: {}, options: [] };
+    }
+};
+
+const writeEngineConfig = (config) => {
+    try {
+        fs.writeFileSync(ENGINE_CONFIG_FILE, JSON.stringify(config, null, 2));
+        return true;
+    } catch (e) {
+        console.error("Failed to write engine config:", e);
+        return false;
+    }
+};
+
+const readPromptPresets = () => {
+    try {
+        const raw = fs.readFileSync(PROMPT_PRESETS_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed?.presets) ? parsed.presets : [];
+    } catch (e) {
+        console.error("Failed to read prompt presets:", e);
+        return [];
+    }
+};
+
+const writePromptPresets = (presets = []) => {
+    try {
+        const sanitized = presets.map((preset) => ({
+            id: String(preset.id || '').trim(),
+            name: String(preset.name || '이름 없는 프리셋').trim(),
+            description: preset.description ? String(preset.description) : '',
+            content: preset.content ? String(preset.content) : ''
+        })).filter((preset) => preset.id && preset.content);
+        fs.writeFileSync(PROMPT_PRESETS_FILE, JSON.stringify({ presets: sanitized }, null, 2));
+        return sanitized;
+    } catch (error) {
+        console.error("Failed to write prompt presets:", error);
+        return null;
+    }
+};
+
+const ensurePromptPresetId = (requestedId) => {
+    if (requestedId && requestedId.trim()) return requestedId.trim();
+    return `preset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const sanitizeFolderName = (value = '') => {
+    if (!value || typeof value !== 'string') return '';
+    return value
+        .trim()
+        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/_{2,}/g, '_')
+        .slice(0, 120);
+};
+
+const ensureUniqueFolderName = (baseName) => {
+    // [FIX] 타임스탬프 기반으로 고유성을 확보하므로 번호(-2, -3) 체계 대신 타임스탬프만 활용
+    const now = new Date();
+    const timestamp = now.getFullYear().toString().slice(-2) +
+        (now.getMonth() + 1).toString().padStart(2, '0') +
+        now.getDate().toString().padStart(2, '0') + '_' +
+        now.getHours().toString().padStart(2, '0') +
+        now.getMinutes().toString().padStart(2, '0');
+
+    let candidate = `${timestamp}_${baseName || 'story'}`;
+
+    // 만약 1분 이내에 동일 제목으로 또 생성되는 경우를 위해 밀리초 추가 fallback
+    if (fs.existsSync(path.join(SCRIPTS_BASE_DIR, candidate))) {
+        candidate = `${timestamp}${now.getSeconds().toString().padStart(2, '0')}_${baseName || 'story'}`;
+    }
+
+    return candidate;
+};
+
+const createStoryFolderFromTitle = (title) => {
+    const sanitized = sanitizeFolderName(title) || 'Untitled';
+    const uniqueName = ensureUniqueFolderName(sanitized);
+    return ensureStoryImageDirectory(uniqueName);
+};
+
+const ensureStoryImageDirectory = (storyId, title = null) => {
+    let folderName = '';
+
+    if (storyId && typeof storyId === 'string' && storyId.trim()) {
+        folderName = sanitizeFolderName(storyId);
+    }
+
+    if (!folderName && title && typeof title === 'string') {
+        folderName = sanitizeFolderName(title);
+    }
+
+    if (!folderName) {
+        folderName = 'orphaned';
+    }
+
+    const storyDir = path.join(SCRIPTS_BASE_DIR, folderName);
+    const unifiedImagesDir = path.join(storyDir, 'images');
+    const legacyImagesDir = path.join(IMAGES_DIR, folderName);
+
+    // ✅ [하이브리드 로직]
+    // 1. 기존 레거시 폴더에 이미 이미지가 있는 경우 -> 레거시 경로 유지
+    // 2. 그 외의 경우 (새 프로젝트 포함) -> 통일된 새 경로 사용
+    let targetImagesDir = unifiedImagesDir;
+    let isLegacy = false;
+
+    if (fs.existsSync(legacyImagesDir)) {
+        const files = fs.readdirSync(legacyImagesDir).filter(f => /\.(png|jpg|jpeg)$/i.test(f));
+        if (files.length > 0) {
+            targetImagesDir = legacyImagesDir;
+            isLegacy = true;
+            console.log(`[Server] 📂 Legacy project detected for ${folderName}, using legacy path.`);
+        }
+    }
+
+    if (!fs.existsSync(storyDir)) fs.mkdirSync(storyDir, { recursive: true });
+    if (!fs.existsSync(targetImagesDir)) fs.mkdirSync(targetImagesDir, { recursive: true });
+
+    console.log(`📁 Story folder ready: ${folderName} (images: ${path.relative(process.cwd(), targetImagesDir)})`);
+    return { storyDir, imagesDir: targetImagesDir, legacyImagesDir, safeId: folderName, isLegacy };
+};
+
+
+
+const ensureStoryMediaDirectories = (storyId, title = null) => {
+    const base = ensureStoryImageDirectory(storyId, title);
+    const audioDir = path.join(base.storyDir, 'audio');
+    const videoDir = path.join(base.storyDir, 'video');
+    if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+    if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
+    return { ...base, audioDir, videoDir };
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const synthesizeSpeechToWav = (text, { speed = 1, pitch = 0 } = {}) => {
+    const sampleRate = 24000;
+    const normalizedSpeed = clamp(speed, 0.5, 2);
+    const normalizedPitch = clamp(pitch, -20, 20);
+    const chars = [...text.normalize('NFKD')];
+    const chunkDuration = Math.max(0.08, 0.12 / normalizedSpeed);
+    const chunkSamples = Math.floor(sampleRate * chunkDuration);
+    const silenceSamples = Math.floor(sampleRate * 0.015);
+    const totalSamples = Math.max(1, chars.length) * (chunkSamples + silenceSamples);
+    const pcmBuffer = Buffer.alloc(totalSamples * 2);
+
+    let offset = 0;
+    chars.forEach((char, charIndex) => {
+        const code = char.codePointAt(0) || 32;
+        const isVowel = /[aeiouAEIOU]/.test(char);
+        const baseFreq = 180 + (code % 60) * 6 + normalizedPitch * 4 + (isVowel ? 60 : 0);
+        const vibratoRate = 5 + (charIndex % 3);
+        const vibratoDepth = 8 + normalizedPitch * 0.3;
+        for (let i = 0; i < chunkSamples; i++) {
+            const env = Math.sin(Math.PI * (i / chunkSamples));
+            const t = i / sampleRate;
+            const vibrato = Math.sin(2 * Math.PI * vibratoRate * t) * vibratoDepth;
+            const freq = baseFreq + vibrato;
+            const vowelBoost = isVowel ? Math.sin(Math.PI * t * normalizedSpeed) * 0.2 : 0;
+            const consonantNoise = isVowel ? 0 : (Math.random() * 2 - 1) * 0.05;
+            const sampleValue = (Math.sin(2 * Math.PI * freq * t) + vowelBoost + consonantNoise) * env * 0.45;
+            const clamped = Math.max(-1, Math.min(1, sampleValue));
+            pcmBuffer.writeInt16LE(Math.round(clamped * 0x7fff), offset);
+            offset += 2;
+        }
+        for (let i = 0; i < silenceSamples; i++) {
+            pcmBuffer.writeInt16LE(0, offset);
+            offset += 2;
+        }
+    });
+
+    const pcmData = pcmBuffer.subarray(0, offset);
+    const wavHeader = Buffer.alloc(44);
+    wavHeader.write('RIFF', 0);
+    wavHeader.writeUInt32LE(36 + pcmData.length, 4);
+    wavHeader.write('WAVE', 8);
+    wavHeader.write('fmt ', 12);
+    wavHeader.writeUInt32LE(16, 16);
+    wavHeader.writeUInt16LE(1, 20);
+    wavHeader.writeUInt16LE(1, 22);
+    wavHeader.writeUInt32LE(sampleRate, 24);
+    wavHeader.writeUInt32LE(sampleRate * 2, 28);
+    wavHeader.writeUInt16LE(2, 32);
+    wavHeader.writeUInt16LE(16, 34);
+    wavHeader.write('data', 36);
+    wavHeader.writeUInt32LE(pcmData.length, 40);
+
+    return Buffer.concat([wavHeader, pcmData]);
+};
+
+const resolveStoryAssetPath = (relativePath) => {
+    if (!relativePath || typeof relativePath !== 'string') {
+        throw new Error('잘못된 파일 경로입니다.');
+    }
+    const clean = relativePath.replace(/\\/g, '/').replace(/^\/+/, '');
+    const targetPath = path.join(SCRIPTS_BASE_DIR, clean);
+    if (!targetPath.startsWith(SCRIPTS_BASE_DIR)) {
+        throw new Error('허용되지 않은 경로입니다.');
+    }
+    if (!fs.existsSync(targetPath)) {
+        throw new Error('파일을 찾지 못했습니다.');
+    }
+    return targetPath;
+};
+
+const listImageStoryFolders = () => {
+    if (!fs.existsSync(IMAGES_DIR)) {
+        return [];
+    }
+    return fs.readdirSync(IMAGES_DIR)
+        .map((entry) => {
+            try {
+                const fullPath = path.join(IMAGES_DIR, entry);
+                const stat = fs.statSync(fullPath);
+                return {
+                    folderName: entry,
+                    isDirectory: stat.isDirectory(),
+                    mtimeMs: stat.mtimeMs
+                };
+            } catch {
+                return null;
+            }
+        })
+        .filter((item) => item && item.isDirectory)
+        .sort((a, b) => b.mtimeMs - a.mtimeMs) // 최신순 정렬
+        .map((item) => ({
+            folderName: item.folderName,
+            mtimeMs: item.mtimeMs,
+            imageCount: (() => {
+                try {
+                    return fs.readdirSync(path.join(IMAGES_DIR, item.folderName))
+                        .filter(file => /(png|jpg|jpeg)$/i.test(file))
+                        .length;
+                } catch {
+                    return 0;
+                }
+            })()
+        }));
+};
+const listScriptStoryFolders = () => {
+    if (!fs.existsSync(SCRIPTS_BASE_DIR)) {
+        return [];
+    }
+    return fs.readdirSync(SCRIPTS_BASE_DIR)
+        .map((entry) => {
+            try {
+                const fullPath = path.join(SCRIPTS_BASE_DIR, entry);
+                const stat = fs.statSync(fullPath);
+                return {
+                    folderName: entry,
+                    isDirectory: stat.isDirectory(),
+                    mtimeMs: stat.mtimeMs
+                };
+            } catch {
+                return null;
+            }
+        })
+        .filter((item) => item && item.isDirectory)
+        .sort((a, b) => b.mtimeMs - a.mtimeMs) // 최신순 정렬
+        .map((item) => {
+            const folderName = item.folderName;
+            // ✅ 하이브리드 카운팅: 기존 경로 + 새 경로 이미지 모두 합산
+            const unifiedImagesPath = path.join(SCRIPTS_BASE_DIR, folderName, 'images');
+            const legacyImagesPath = path.join(IMAGES_DIR, folderName);
+
+            let count = 0;
+
+            // 1. 새 구조 (대본폴더/{제목}/images/) 확인
+            try {
+                if (fs.existsSync(unifiedImagesPath)) {
+                    count += fs.readdirSync(unifiedImagesPath)
+                        .filter(file => /(png|jpg|jpeg)$/i.test(file))
+                        .length;
+                }
+            } catch (e) { }
+
+            // 2. 기존 구조 (images/{제목}/) 확인 (있을 경우에만 합산)
+            try {
+                if (fs.existsSync(legacyImagesPath)) {
+                    count += fs.readdirSync(legacyImagesPath)
+                        .filter(file => /(png|jpg|jpeg)$/i.test(file))
+                        .length;
+                }
+            } catch (e) { }
+
+            return {
+                folderName,
+                mtimeMs: item.mtimeMs,
+                imageCount: count,
+                scriptCount: (() => {
+                    try {
+                        return fs.readdirSync(path.join(SCRIPTS_BASE_DIR, folderName))
+                            .filter(file => file.endsWith('.txt'))
+                            .length;
+                    } catch { return 0; }
+                })()
+            };
+        });
+};
+
+const findPromptPreset = (id) => {
+    if (!id) return null;
+    return readPromptPresets().find(preset => preset.id === id) || null;
+};
+
+const mergePromptWithPreset = (prompt = "", presetId) => {
+    if (!presetId) {
+        return { finalPrompt: prompt, appliedPreset: null, error: null };
+    }
+    const preset = findPromptPreset(presetId);
+    if (!preset) {
+        return { finalPrompt: prompt, appliedPreset: null, error: `Prompt preset "${presetId}" not found.` };
+    }
+    const presetBlock = (preset.content || "").trim();
+    if (!presetBlock) {
+        return { finalPrompt: prompt, appliedPreset: preset, error: null };
+    }
+    const combined = [presetBlock, prompt || ""].filter(Boolean).join('\n\n').trim();
+    return { finalPrompt: combined, appliedPreset: preset, error: null };
+};
+
+app.use(cors());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+app.use('/generated_scripts', express.static(GENERATED_DIR));
+app.use('/generated_scripts/images', express.static(IMAGES_DIR));
+
+const ensureBrowserReady = async (service) => {
+    if (!browserLaunchPromise) {
+        browserLaunchPromise = (async () => {
+            try {
+                if (service) {
+                    await switchService(service);
+                } else {
+                    await launchBrowser();
+                }
+                lastBrowserLaunchError = null;
+                lastBrowserLaunchSuccessAt = Date.now();
+                return true;
+            } catch (err) {
+                lastBrowserLaunchError = err;
+                throw err;
+            } finally {
+                browserLaunchPromise = null;
+            }
+        })();
+    }
+    return browserLaunchPromise;
+};
+
+const scheduleAutoLaunch = () => {
+    if (process.env.PUPPETEER_AUTO_LAUNCH === 'false') {
+        console.log("[Server] Puppeteer auto-launch disabled via env.");
+        return;
+    }
+    if (autoLaunchAttempts >= AUTO_LAUNCH_MAX_ATTEMPTS) {
+        console.warn("[Server] Puppeteer auto-launch attempt limit reached. Use /api/launch to start manually.");
+        return;
+    }
+    setTimeout(async () => {
+        autoLaunchAttempts += 1;
+        console.log(`[Server] Auto-launching Puppeteer (attempt ${autoLaunchAttempts}/${AUTO_LAUNCH_MAX_ATTEMPTS})...`);
+        try {
+            await ensureBrowserReady();
+            console.log("[Server] Puppeteer ready.");
+            autoLaunchAttempts = AUTO_LAUNCH_MAX_ATTEMPTS; // Stop further retries
+        } catch (err) {
+            console.error(`[Server] Puppeteer auto-launch failed: ${err?.message || err}`);
+            if (autoLaunchAttempts < AUTO_LAUNCH_MAX_ATTEMPTS) {
+                scheduleAutoLaunch();
+            } else {
+                console.error("[Server] Auto-launch failed repeatedly. Launch manually from UI.");
+            }
+        }
+    }, AUTO_LAUNCH_DELAY_MS);
+};
+
+scheduleAutoLaunch();
+
+// Shutdown API
+app.post('/api/shutdown', async (req, res) => {
+    console.log("[Server] Shutdown requested. Cleaning up...");
+    try {
+        await closeAllBrowsers();
+    } catch (e) {
+        console.error("[Server] Cleanup failed during shutdown:", e);
+    }
+    res.json({ success: true, message: "Server shutting down, browsers closed." });
+    setTimeout(() => process.exit(0), 1000);
+});
+
+// Browser Close API (Manual)
+app.post('/api/browser/close', async (req, res) => {
+    console.log("[Server] Manual browser close requested.");
+    const success = await closeAllBrowsers();
+    if (success) {
+        res.json({ success: true, message: "All browsers closed successfully" });
+    } else {
+        res.status(500).json({ success: false, error: "Failed to close some browsers" });
+    }
+});
+
+// 프로세스 종료 시 클린업 (예: Ctrl+C)
+const cleanupAndExit = async (signal) => {
+    console.log(`\n[Server] Received ${signal}. Cleaning up...`);
+    await closeAllBrowsers();
+    process.exit(0);
+};
+
+process.on('SIGINT', () => cleanupAndExit('SIGINT'));
+process.on('SIGTERM', () => cleanupAndExit('SIGTERM'));
+
+// --- System API ---
+app.get('/api/auth/gemini-key', (req, res) => {
+    const key = process.env.GEMINI_API_KEY || process.env.API_KEY || "";
+    res.json({ key });
+});
+
+app.post('/api/launch', async (req, res) => {
+    const { service } = req.body;
+    try {
+        await ensureBrowserReady(service);
+        res.json({ success: true, message: "Browser ready" });
+    } catch (e) {
+        console.error("Failed to launch browser:", e);
+        res.status(500).json({
+            error: "Failed to launch browser",
+            details: e?.message || String(e)
+        });
+    }
+});
+
+// --- Script Generation API ---
+app.post('/api/generate/raw', async (req, res) => {
+    const { service, prompt } = req.body;
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    const requestedService = typeof service === 'string' && SUPPORTED_PUPPETEER_SERVICES.has(service)
+        ? service
+        : 'GEMINI';
+
+    try {
+        console.log(`[Server] Generating content via ${requestedService}...`);
+        await ensureBrowserReady(requestedService);
+
+        const rawResponse = await generateContent(requestedService, prompt);
+        console.log(`[Server] ✅ Content generated (${rawResponse?.length || 0} chars)`);
+
+        // [NEW] 폴더 생성 로직 추가 - 고출력/씨네보드 불러오기 호환 및 오류 복구력 강화
+        let folderName = null;
+        let parsedData = null;
+        let title = null;
+
+        try {
+            // [전략 1] extractValidJson 사용 (가장 안정적)
+            const extracted = extractValidJson(rawResponse);
+            if (extracted) {
+                parsedData = tryParse(extracted);
+            }
+
+            // [전략 2] 코드 블록 추출
+            if (!parsedData) {
+                const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/g;
+                let match;
+                while ((match = codeBlockRegex.exec(rawResponse)) !== null) {
+                    const candidate = tryParse(match[1]);
+                    if (isValidStory(candidate)) {
+                        parsedData = candidate;
+                        break;
+                    }
+                }
+            }
+
+            // [전략 3] 전체 텍스트 수리 시도
+            if (!parsedData) {
+                parsedData = tryParse(rawResponse);
+            }
+
+            if (!parsedData || !isValidStory(parsedData)) {
+                throw new Error('Valid story object could not be parsed');
+            }
+
+            // title 추출
+            title = parsedData.title ||
+                (parsedData.scripts && parsedData.scripts[0]?.title) ||
+                (parsedData.scripts && Array.isArray(parsedData.scripts) ? parsedData.scripts[0]?.title : null);
+
+            if (!title) throw new Error('Title not found in parsed data');
+
+        } catch (parseErr) {
+            console.warn(`[Server] ⚠️ Could not parse JSON for folder creation: ${parseErr.message}`);
+
+            // [FALLBACK] 파싱 실패시 텍스트에서 정규식으로 제목이라도 추출 시도
+            const titleRegex = /"title"\s*:\s*"([^"]+)"/i;
+            const match = rawResponse.match(titleRegex);
+            if (match && match[1]) {
+                title = match[1];
+                console.log(`[Server] 💡 Recovered title via regex from malformed JSON: ${title}`);
+            } else {
+                title = `무제대본_${new Date().getTime()}`;
+            }
+        }
+
+        // 폴더 생성 (어떤 경우에도 title은 최소한 무제로 확보됨)
+        try {
+            const { safeId } = createStoryFolderFromTitle(title);
+            folderName = safeId;
+            console.log(`[Server] 📁 Story folder ensured: ${folderName}`);
+
+            // 대본 파일 저장
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const safeTitleForFile = sanitizeFolderName(title).substring(0, 50) || 'untitled';
+            const filename = `[${requestedService}] ${timestamp}_${safeTitleForFile}.txt`;
+
+            const storyScriptPath = path.join(SCRIPTS_BASE_DIR, folderName, filename);
+            fs.writeFileSync(storyScriptPath, rawResponse);
+            console.log(`[Server] ✅ Script saved to folder: ${storyScriptPath}`);
+        } catch (folderErr) {
+            console.error(`[Server] ❌ Critical failure in folder/file creation:`, folderErr);
+            // 최후의 수단으로 UUID 기반이라도 시도할 수 있으나, 위에서 createStoryFolderFromTitle이 실패할 확률은 낮음
+        }
+
+        res.json({
+            success: true,
+            rawResponse,
+            service: requestedService,
+            _folderName: folderName  // 씨네보드 불러오기 호환
+        });
+    } catch (e) {
+        console.error("Failed to generate content:", e);
+        res.status(500).json({
+            error: "Failed to generate content",
+            details: e?.message || String(e)
+        });
+    }
+});
+
+app.get('/api/browser-status', (req, res) => {
+    res.json({
+        launching: Boolean(browserLaunchPromise),
+        lastError: lastBrowserLaunchError ? (lastBrowserLaunchError.message || String(lastBrowserLaunchError)) : null,
+        lastSuccessAt: lastBrowserLaunchSuccessAt || null,
+        autoLaunchAttempts,
+        autoLaunchMaxAttempts: AUTO_LAUNCH_MAX_ATTEMPTS
+    });
+});
+
+// --- History API ---
+app.get('/api/history', (req, res) => {
+    if (!fs.existsSync(HISTORY_FILE)) return res.json([]);
+    try {
+        const data = fs.readFileSync(HISTORY_FILE, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (e) {
+        console.error("Failed to read history:", e);
+        res.json([]);
+    }
+});
+
+app.post('/api/history', (req, res) => {
+    try {
+        const newHistory = req.body;
+        fs.writeFileSync(HISTORY_FILE, JSON.stringify(newHistory, null, 2));
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Failed to save history:", e);
+        res.status(500).json({ error: "Failed to save history" });
+    }
+});
+
+// --- Genre Guidelines API ---
+app.get('/api/genre-guidelines', (req, res) => {
+    try {
+        if (!fs.existsSync(GENRE_GUIDELINES_FILE)) {
+            return res.json({ genres: [] });
+        }
+        const data = fs.readFileSync(GENRE_GUIDELINES_FILE, 'utf8');
+        const parsed = JSON.parse(data);
+        res.json({ genres: Array.isArray(parsed.genres) ? parsed.genres : [] });
+    } catch (e) {
+        console.error("Failed to read genre guidelines:", e);
+        res.json({ genres: [] });
+    }
+});
+
+app.post('/api/genre-guidelines', (req, res) => {
+    try {
+        const { genres } = req.body;
+        if (!Array.isArray(genres)) {
+            return res.status(400).json({ error: "Invalid genres data" });
+        }
+        // 유효한 장르만 필터링 (빈 이름 제거)
+        const validGenres = genres.filter(g => g && g.id && (g.name || '').trim());
+        fs.writeFileSync(GENRE_GUIDELINES_FILE, JSON.stringify({ genres: validGenres }, null, 2));
+        res.json({ success: true, count: validGenres.length });
+    } catch (e) {
+        console.error("Failed to save genre guidelines:", e);
+        res.status(500).json({ error: "Failed to save genre guidelines" });
+    }
+});
+
+// --- Prompt Preset API ---
+app.get('/api/prompt-presets', (req, res) => {
+    try {
+        const presets = readPromptPresets().map(({ id, name, description }) => ({
+            id,
+            name,
+            description
+        }));
+        res.json(presets);
+    } catch (e) {
+        console.error("Failed to list prompt presets:", e);
+        res.status(500).json({ error: "Failed to load prompt presets" });
+    }
+});
+
+app.get('/api/prompt-presets/:id', (req, res) => {
+    try {
+        const preset = findPromptPreset(req.params.id);
+        if (!preset) {
+            return res.status(404).json({ error: "Prompt preset not found" });
+        }
+        res.json(preset);
+    } catch (e) {
+        console.error("Failed to load prompt preset:", e);
+        res.status(500).json({ error: "Failed to load prompt preset" });
+    }
+});
+
+app.post('/api/prompt-presets', (req, res) => {
+    try {
+        const { id, name, description, content } = req.body || {};
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: "Preset content is required" });
+        }
+        const presets = readPromptPresets();
+        const presetId = ensurePromptPresetId(id);
+        if (presets.some((p) => p.id === presetId)) {
+            return res.status(400).json({ error: "Preset ID already exists" });
+        }
+        const newPreset = {
+            id: presetId,
+            name: (name || '새 프리셋').trim(),
+            description: description ? String(description) : '',
+            content: content
+        };
+        const updatedList = [...presets, newPreset];
+        const saved = writePromptPresets(updatedList);
+        if (!saved) return res.status(500).json({ error: "Failed to save preset" });
+        res.json(newPreset);
+    } catch (error) {
+        console.error("Failed to create preset:", error);
+        res.status(500).json({ error: "Failed to create preset" });
+    }
+});
+
+app.put('/api/prompt-presets/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description, content } = req.body || {};
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: "Preset content is required" });
+        }
+        const presets = readPromptPresets();
+        const index = presets.findIndex((preset) => preset.id === id);
+        if (index === -1) {
+            return res.status(404).json({ error: "Preset not found" });
+        }
+        presets[index] = {
+            ...presets[index],
+            name: (name || presets[index].name || '이름 없는 프리셋').trim(),
+            description: description !== undefined ? String(description) : presets[index].description,
+            content
+        };
+        const saved = writePromptPresets(presets);
+        if (!saved) return res.status(500).json({ error: "Failed to update preset" });
+        res.json(presets[index]);
+    } catch (error) {
+        console.error("Failed to update preset:", error);
+        res.status(500).json({ error: "Failed to update preset" });
+    }
+});
+
+app.delete('/api/prompt-presets/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const presets = readPromptPresets();
+        const filtered = presets.filter((preset) => preset.id !== id);
+        if (filtered.length === presets.length) {
+            return res.status(404).json({ error: "Preset not found" });
+        }
+        const saved = writePromptPresets(filtered);
+        if (!saved) return res.status(500).json({ error: "Failed to delete preset" });
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Failed to delete preset:", error);
+        res.status(500).json({ error: "Failed to delete preset" });
+    }
+});
+
+// --- File Saving API ---
+app.post('/api/create-story-folder', (req, res) => {
+    try {
+        const { title } = req.body;
+        if (!title) return res.status(400).json({ error: "Title is required" });
+
+        const { safeId } = createStoryFolderFromTitle(title);
+        console.log(`[Server] 📁 Explicit folder creation requested for: ${title} -> ${safeId}`);
+
+        res.json({
+            success: true,
+            folderName: safeId
+        });
+    } catch (e) {
+        console.error("Failed to create story folder:", e);
+        res.status(500).json({ error: "Failed to create story folder" });
+    }
+});
+
+app.post('/api/save-story', (req, res) => {
+    try {
+        const { title, content, service } = req.body;
+        const safeTitle = (title || 'Untitled').replace(/[^a-z0-9가-힣\s]/gi, '').trim().substring(0, 50) || 'Untitled';
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const servicePrefix = service ? `[${service}] ` : '';
+        const filename = `${servicePrefix}${timestamp}_${safeTitle}.txt`;
+        // ✅ [수정] 루트 폴더 저장은 제거하고 스토리 폴더에만 저장
+        let folderName = req.body.folderName || null;
+        if (!folderName) {
+            try {
+                // JSON 파싱 시도하여 _folderName 확인
+                const jsonMatch = content.match(/=== RESULT JSON ===\s*([\s\S]*)/);
+                if (jsonMatch && jsonMatch[1]) {
+                    const jsonStr = jsonMatch[1].trim();
+                    const parsed = tryParse(jsonStr); // tryParse 사용 (안전함)
+                    folderName = parsed?.scripts?.[0]?._folderName || parsed?._folderName;
+                }
+            } catch (e) {
+                console.warn("[Server] ⚠️ Failed to parse folderName from content:", e.message);
+            }
+        }
+
+        // 폴더명이 없으면 제목 기반으로 생성
+        if (!folderName) {
+            const { safeId } = createStoryFolderFromTitle(title || 'Untitled');
+            folderName = safeId;
+        }
+
+        const storyDir = path.join(SCRIPTS_BASE_DIR, folderName);
+        if (!fs.existsSync(storyDir)) {
+            fs.mkdirSync(storyDir, { recursive: true });
+        }
+
+        const filePath = path.join(storyDir, filename);
+        fs.writeFileSync(filePath, content);
+        console.log(`[Server] ✅ Script saved to story folder: ${filePath}`);
+
+        res.json({ success: true, filename, folderName });
+    } catch (e) {
+        console.error("Failed to save file:", e);
+        res.status(500).json({ error: "Failed to save file" });
+    }
+});
+
+// --- Image Saving API ---
+app.post('/api/save-image', async (req, res) => {
+    try {
+        const { imageData, prompt, storyId, sceneNumber, storyTitle } = req.body;
+        if (!imageData) return res.status(400).json({ error: "Image data is required" });
+
+        const { imagesDir, safeId, isLegacy } = ensureStoryImageDirectory(storyId, storyTitle);
+        const safePrompt = (prompt || 'generated_image').replace(/[^a-z0-9가-힣\s]/gi, '').trim().substring(0, 30);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const sceneLabel = typeof sceneNumber === 'number'
+            ? `scene-${String(sceneNumber).padStart(2, '0')}`
+            : 'scene';
+        const filename = `${sceneLabel}_${timestamp}_${safePrompt || 'image'}.png`;
+        const filePath = path.join(imagesDir, filename);
+        const tempPath = filePath + '.temp.png';
+
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // ⭐ PNG 메타데이터 임베드 (AI Studio 이미지도 프롬프트 저장)
+        await sharp(imageBuffer)
+            .png({
+                compressionLevel: 6,
+                text: {
+                    'Prompt': prompt || '',
+                    'SceneNumber': String(sceneNumber || ''),
+                    'StoryId': safeId || '',
+                    'Source': 'ai-studio',
+                    'CreatedAt': new Date().toISOString(),
+                    'Filename': filename || ''
+                }
+            })
+            .toFile(tempPath);
+
+        // 안전하게 임시 파일 → 최종 파일로 이동
+        fs.renameSync(tempPath, filePath);
+
+        // ✅ [NEW] prompts.json에 프롬프트 저장 (PNG 메타데이터 백업)
+        try {
+            const promptsJsonPath = path.join(imagesDir, 'prompts.json');
+            let promptsData = {};
+            if (fs.existsSync(promptsJsonPath)) {
+                try {
+                    promptsData = JSON.parse(fs.readFileSync(promptsJsonPath, 'utf-8'));
+                } catch { promptsData = {}; }
+            }
+            promptsData[filename] = {
+                prompt: prompt || '',
+                sceneNumber: sceneNumber || null,
+                service: 'ai-studio',
+                createdAt: new Date().toISOString(),
+                storyId: safeId || ''
+            };
+            fs.writeFileSync(promptsJsonPath, JSON.stringify(promptsData, null, 2));
+            console.log(`[Server] ✅ Prompt saved to prompts.json: ${filename}`);
+        } catch (jsonError) {
+            console.warn(`[Server] ⚠️ Failed to save prompt to JSON:`, jsonError);
+        }
+
+        const url = isLegacy
+            ? `/generated_scripts/images/${safeId}/${filename}`
+            : `/generated_scripts/대본폴더/${safeId}/images/${filename}`;
+
+        console.log(`[Server] Saved image with metadata for story ${safeId} -> ${filePath}`);
+        res.json({
+            success: true,
+            filename: `${safeId}/${filename}`,
+            url,
+            path: filePath,
+            storyId: safeId,
+            sceneNumber,
+            isLegacy
+        });
+    } catch (e) {
+        console.error("Failed to save image:", e);
+        res.status(500).json({ error: "Failed to save image" });
+    }
+});
+
+app.get('/api/images/list', (req, res) => {
+    try {
+        if (!fs.existsSync(IMAGES_DIR)) return res.json([]);
+        const files = fs.readdirSync(IMAGES_DIR)
+            .filter(f => /\.(png|jpg|jpeg)$/i.test(f))
+            .sort((a, b) => fs.statSync(path.join(IMAGES_DIR, b)).mtimeMs - fs.statSync(path.join(IMAGES_DIR, a)).mtimeMs);
+        res.json(files);
+    } catch (e) {
+        console.error("Failed to list images:", e);
+        res.status(500).json([]);
+    }
+});
+
+// ✅ NEW: Get images for a specific story
+app.get('/api/images/by-story/:storyId', async (req, res) => {
+    try {
+        const { storyId } = req.params;
+        if (!storyId) return res.status(400).json({ error: "Story ID is required" });
+
+        // 이미지 파일이 있는지 확인하는 헬퍼 함수
+        const hasImages = (dir) => {
+            if (!fs.existsSync(dir)) return false;
+            const files = fs.readdirSync(dir).filter(f => /\.(png|jpg|jpeg)$/i.test(f));
+            return files.length > 0;
+        };
+
+        // ✅ [통일] 1순위: 새 경로 (대본폴더/{제목}/images/) - 이미지가 있을 때만
+        const unifiedDir = path.join(SCRIPTS_BASE_DIR, storyId, 'images');
+        const legacyDir = path.join(IMAGES_DIR, storyId);
+
+        let storyDir;
+        let isUnifiedPath;
+
+        // 통일 경로에 이미지가 있으면 통일 경로 사용
+        if (hasImages(unifiedDir)) {
+            storyDir = unifiedDir;
+            isUnifiedPath = true;
+            console.log(`[Server] 📂 Using unified path for ${storyId}: ${storyDir}`);
+        }
+        // 기존 경로에 이미지가 있으면 기존 경로 사용 (하위 호환성)
+        else if (hasImages(legacyDir)) {
+            storyDir = legacyDir;
+            isUnifiedPath = false;
+            console.log(`[Server] 📂 Using legacy path for ${storyId}: ${storyDir}`);
+        }
+        // 둘 다 이미지 없으면 빈 배열 반환
+        else {
+            return res.json([]);
+        }
+
+        // ✅ [NEW] prompts.json에서 프롬프트 로드 (우선순위 1)
+        let promptsFromJson = {};
+        const promptsJsonPath = path.join(storyDir, 'prompts.json');
+        if (fs.existsSync(promptsJsonPath)) {
+            try {
+                promptsFromJson = JSON.parse(fs.readFileSync(promptsJsonPath, 'utf-8'));
+                console.log(`[Server] ✅ Loaded prompts.json for story ${storyId}`);
+            } catch (e) {
+                console.warn(`[Server] ⚠️ Failed to parse prompts.json:`, e.message);
+            }
+        }
+
+        // Read and sort images by modification time (newest first)
+        const imageFiles = fs.readdirSync(storyDir)
+            .filter(f => /\.(png|jpg|jpeg)$/i.test(f) && !f.includes('.temp.'))
+            .sort((a, b) => {
+                const aPath = path.join(storyDir, a);
+                const bPath = path.join(storyDir, b);
+                return fs.statSync(bPath).mtimeMs - fs.statSync(aPath).mtimeMs;
+            });
+
+        // Read metadata from PNG files (with prompts.json fallback)
+        const filesWithMetadata = await Promise.all(imageFiles.map(async filename => {
+            const imagePath = path.join(storyDir, filename);
+            let metadata = null;
+
+            // ✅ 우선순위 1: prompts.json에서 읽기
+            if (promptsFromJson[filename]) {
+                const jsonData = promptsFromJson[filename];
+                metadata = {
+                    prompt: jsonData.prompt || null,
+                    sceneNumber: jsonData.sceneNumber || null,
+                    createdAt: jsonData.createdAt || null,
+                    service: jsonData.service || null,
+                    storyId: jsonData.storyId || null
+                };
+                console.log(`[Server] ✅ Prompt from JSON for ${filename}: ${metadata.prompt?.substring(0, 30)}...`);
+            }
+
+            // ✅ 우선순위 2: PNG 메타데이터에서 읽기 (prompts.json에 없을 때만)
+            if (!metadata?.prompt) {
+                try {
+                    const imageMetadata = await sharp(imagePath).metadata();
+                    const comments = imageMetadata.comments || [];
+                    const textData = imageMetadata.text || {};
+
+                    const findMetaValue = (key) => {
+                        const comment = comments.find(c => c.keyword === key);
+                        if (comment?.text) return comment.text;
+                        return textData[key] || null;
+                    };
+
+                    const promptValue = findMetaValue('Prompt');
+                    if (promptValue) {
+                        metadata = {
+                            prompt: promptValue,
+                            sceneNumber: findMetaValue('SceneNumber') ? parseInt(findMetaValue('SceneNumber')) : null,
+                            createdAt: findMetaValue('CreatedAt'),
+                            service: findMetaValue('Service'),
+                            storyId: findMetaValue('StoryId')
+                        };
+                        console.log(`[Server] ✅ Prompt from PNG for ${filename}: ${promptValue.substring(0, 30)}...`);
+                    }
+                } catch (err) {
+                    console.warn(`[Server] ⚠️ Failed to read PNG metadata for ${filename}:`, err.message);
+                }
+            }
+
+            // ✅ [수정] 경로에 따라 올바른 상대 경로 반환
+            // 통일 경로: 대본폴더/{storyId}/images/{filename}
+            // 기존 경로: images/{storyId}/{filename}  (클라이언트가 /generated_scripts/images/ prefix 붙임)
+            const relativePath = isUnifiedPath
+                ? `대본폴더/${storyId}/images/${filename}`
+                : `${storyId}/${filename}`;  // 기존 호환성 유지
+
+            const result = {
+                filename: relativePath,
+                prompt: metadata?.prompt || filename,
+                sceneNumber: metadata?.sceneNumber || null,
+                createdAt: metadata?.createdAt || null,
+                service: metadata?.service || null,
+                isUnifiedPath: isUnifiedPath  // 클라이언트가 URL 구성 시 참조
+            };
+
+            // ✅ [NEW] sceneNumber가 없는 경우 파일명에서 추출 시도 (예: scene-01_...)
+            if (result.sceneNumber === null) {
+                const sceneMatch = filename.match(/scene-(\d+)/i);
+                if (sceneMatch) {
+                    result.sceneNumber = parseInt(sceneMatch[1]);
+                    console.log(`[Server] 💡 Extracted sceneNumber ${result.sceneNumber} from filename: ${filename}`);
+                }
+            }
+
+            if (result.prompt === filename) {
+                console.log(`[Server] ⚠️ No prompt found for ${filename}, using filename as fallback`);
+            }
+            return result;
+        }));
+
+        console.log(`[Server] ✅ Found ${filesWithMetadata.length} images for story ${storyId}`);
+        res.json(filesWithMetadata);
+    } catch (e) {
+        console.error(`Failed to list images for story ${req.params.storyId}:`, e);
+        res.status(500).json({ error: "Failed to list images" });
+    }
+});
+
+app.get('/api/images/story-folders', (req, res) => {
+    try {
+        const folders = listImageStoryFolders();
+        res.json(folders);
+    } catch (e) {
+        console.error("Failed to list story folders:", e);
+        res.status(500).json({ error: "Failed to list story folders" });
+    }
+});
+
+app.get('/api/scripts/story-folders', (req, res) => {
+    try {
+        const folders = listScriptStoryFolders();
+        // ✅ [수정] 최신 폴더가 위로 오도록 확실하게 정렬
+        res.json(folders.sort((a, b) => b.mtimeMs - a.mtimeMs));
+    } catch (e) {
+        console.error("Failed to list script story folders:", e);
+        res.status(500).json({ error: "Failed to list script story folders" });
+    }
+});
+
+// NEW: Get script file from a specific folder
+app.get('/api/scripts/by-folder/:folderName', (req, res) => {
+    try {
+        const { folderName } = req.params;
+        if (!folderName || typeof folderName !== 'string') {
+            return res.status(400).json({ error: 'Folder name is required' });
+        }
+
+        const scriptDir = path.join(SCRIPTS_BASE_DIR, folderName);
+
+        // Check if folder exists
+        if (!fs.existsSync(scriptDir)) {
+            return res.status(404).json({ error: 'Folder not found' });
+        }
+
+        // Find script files (*.txt)
+        let files = fs.readdirSync(scriptDir)
+            .filter(f => f.endsWith('.txt') && !f.includes('.temp'));
+
+        let scriptFile = null;
+        let scriptPath = null;
+
+        if (files.length > 0) {
+            // ✅ [수정] 폴더 내부에 여러 대본이 있을 경우 최신 대본을 우선적으로 로드 (알파벳 순서에 의한 구버전 로드 방지)
+            files.sort((a, b) => {
+                const statA = fs.statSync(path.join(scriptDir, a));
+                const statB = fs.statSync(path.join(scriptDir, b));
+                return statB.mtimeMs - statA.mtimeMs;
+            });
+            scriptFile = files[0];
+            scriptPath = path.join(scriptDir, scriptFile);
+        } else {
+            // ✅ [NEW] 폴더 내부에 대본이 없는 경우 Fallback: generated_scripts 및 images 폴더에서 검색
+            console.log(`[Server] ⚠️ No script in folder ${folderName}, searching in generated_scripts and images...`);
+            const allScriptsRoot = fs.readdirSync(GENERATED_DIR)
+                .filter(f => f.endsWith('.txt') && !f.includes('.temp'));
+            const allScriptsImages = fs.existsSync(IMAGES_DIR)
+                ? fs.readdirSync(IMAGES_DIR).filter(f => f.endsWith('.txt') && !f.includes('.temp'))
+                : [];
+            const allScripts = [...allScriptsRoot, ...allScriptsImages];
+
+            // 정규화 및 비교를 위한 유틸리티
+            const normalize = (s) => s.normalize('NFC').replace(/_/g, ' ').trim();
+            const stripSuffix = (s) => s.replace(/-\d+$/, '');
+            const targetName = normalize(stripSuffix(folderName));
+            const extractTitleFromFile = (filename) => {
+                const base = filename.replace(/\.txt$/i, '');
+                const withoutService = base.replace(/^\[[^\]]+\]\s*/i, '');
+                const withoutTimestamp = withoutService.replace(/^\d{4}-\d{2}-\d{2}T[0-9\-:]+Z?_?/, '');
+                return withoutTimestamp || base;
+            };
+
+            // 폴더명(제목)이 포함된 파일 찾기 (더 유연한 매칭)
+            const matchedFiles = allScripts.filter(f => {
+                const title = extractTitleFromFile(f);
+                const normalizedTitle = normalize(stripSuffix(title));
+                const normalizedFile = normalize(f.replace(/\.txt$/i, ''));
+                return normalizedTitle.includes(targetName)
+                    || targetName.includes(normalizedTitle)
+                    || normalizedFile.includes(targetName)
+                    || targetName.includes(normalizedFile);
+            });
+
+            // ✅ [NEW] 일치하는 파일이 없을 경우 자동 복구 로직
+            if (matchedFiles.length === 0) {
+                console.log(`[Server] ⚠️ No matching script found for ${folderName}, attempting auto-recovery...`);
+
+                // 1. 폴더명과 완전히 일치하는 파일명 생성
+                const possibleScriptName = `[GEMINI] 2026-01-14T11-38-48-812Z_${folderName}.txt`;
+                const possiblePath = path.join(GENERATED_DIR, possibleScriptName);
+
+                // 2. 서비스 프리픽스 없이 제목만으로 검색
+                const titleOnlyFiles = allScripts.filter(f => {
+                    const title = extractTitleFromFile(f);
+                    const normalizedTitle = normalize(stripSuffix(title));
+                    return normalizedTitle === targetName;
+                });
+
+                if (titleOnlyFiles.length > 0) {
+                    matchedFiles.push(...titleOnlyFiles);
+                    console.log(`[Server] ✅ Found title-only matches: ${titleOnlyFiles.join(', ')}`);
+                }
+
+                // 3. 퍼지 매칭 (부분 일치)
+                if (matchedFiles.length === 0) {
+                    const fuzzyMatches = allScripts.filter(f => {
+                        const title = extractTitleFromFile(f);
+                        const normalizedTitle = normalize(stripSuffix(title));
+                        const normalizedFile = normalize(f.replace(/\.txt$/i, ''));
+
+                        // 폴더명의 핵심 키워드 추출
+                        const folderKeywords = targetName.split(/\s+/).filter(k => k.length > 1);
+                        return folderKeywords.some(keyword =>
+                            normalizedTitle.includes(keyword) ||
+                            normalizedFile.includes(keyword)
+                        );
+                    });
+
+                    if (fuzzyMatches.length > 0) {
+                        matchedFiles.push(...fuzzyMatches);
+                        console.log(`[Server] ✅ Found fuzzy matches: ${fuzzyMatches.join(', ')}`);
+                    }
+                }
+
+                // 4. 찾은 파일이 있다면 해당 폴더에 복사
+                if (matchedFiles.length > 0) {
+                    console.log(`[Server] 🔧 Auto-recovering script for folder: ${folderName}`);
+                    // 복구된 파일을 해당 폴더에 복사
+                    const sourceFile = matchedFiles[0];
+                    const sourcePath = allScriptsRoot.includes(sourceFile)
+                        ? path.join(GENERATED_DIR, sourceFile)
+                        : path.join(IMAGES_DIR, sourceFile);
+
+                    if (fs.existsSync(sourcePath)) {
+                        const targetPath = path.join(scriptDir, sourceFile);
+                        try {
+                            fs.copyFileSync(sourcePath, targetPath);
+                            console.log(`[Server] ✅ Recovered script copied to: ${targetPath}`);
+                        } catch (copyErr) {
+                            console.warn(`[Server] ⚠️ Failed to copy recovered script:`, copyErr.message);
+                        }
+                    }
+                }
+            }
+
+            if (matchedFiles.length > 0) {
+                // 가장 최근 파일 사용
+                matchedFiles.sort((a, b) => {
+                    const pathA = allScriptsRoot.includes(a) ? path.join(GENERATED_DIR, a) : path.join(IMAGES_DIR, a);
+                    const pathB = allScriptsRoot.includes(b) ? path.join(GENERATED_DIR, b) : path.join(IMAGES_DIR, b);
+                    return fs.statSync(pathB).mtimeMs - fs.statSync(pathA).mtimeMs;
+                });
+                scriptFile = matchedFiles[0];
+                scriptPath = allScriptsRoot.includes(scriptFile)
+                    ? path.join(GENERATED_DIR, scriptFile)
+                    : path.join(IMAGES_DIR, scriptFile);
+                console.log(`[Server] 💡 Found fallback script: ${scriptFile}`);
+
+                // ✅ [NEW] 폴더 내부에 스크립트가 없다면 복사
+                const scriptInFolderPath = path.join(scriptDir, scriptFile);
+                if (!fs.existsSync(scriptInFolderPath)) {
+                    try {
+                        fs.copyFileSync(scriptPath, scriptInFolderPath);
+                        console.log(`[Server] ✅ Script copied to folder: ${scriptInFolderPath}`);
+                        scriptPath = scriptInFolderPath; // 폴더 내부 파일 경로로 업데이트
+                    } catch (copyErr) {
+                        console.warn(`[Server] ⚠️ Failed to copy script to folder:`, copyErr.message);
+                        // 원본 경로 유지
+                    }
+                }
+            }
+        }
+
+        if (!scriptPath || !fs.existsSync(scriptPath)) {
+            return res.status(404).json({ error: 'No script file found for this folder' });
+        }
+
+        const content = fs.readFileSync(scriptPath, 'utf8');
+        const stats = fs.statSync(scriptPath);
+
+        let parsedScenes = null;
+        try {
+            // 1. Check for RESULT JSON marker
+            const jsonMatch = content.match(/=== RESULT JSON ===\s*([\s\S]*)/);
+            if (jsonMatch && jsonMatch[1]) {
+                const jsonStr = jsonMatch[1].trim();
+                const parsed = tryParse(jsonStr);
+                if (parsed?.scripts?.[0]?.scenes) {
+                    parsedScenes = parsed.scripts[0].scenes;
+                } else if (parsed?.scenes) {
+                    parsedScenes = parsed.scenes;
+                }
+            } else {
+                // 2. Fallback: Try parsing the entire content as JSON
+                const parsed = tryParse(content);
+                if (parsed) {
+                    if (parsed.scripts?.[0]?.scenes) {
+                        parsedScenes = parsed.scripts[0].scenes;
+                    } else if (parsed.scenes) {
+                        parsedScenes = parsed.scenes;
+                    } else if (Array.isArray(parsed)) {
+                        // If it's a direct array of scenes
+                        parsedScenes = parsed;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn(`[Server] ⚠️ Failed to parse JSON for ${scriptFile}:`, e.message);
+        }
+
+        if (!parsedScenes || parsedScenes.length === 0) {
+            const fallbackScenes = parseScenePromptsFromScript(content);
+            if (fallbackScenes.length > 0) {
+                parsedScenes = fallbackScenes;
+            }
+        }
+
+        console.log(`[Server] ✅ Loaded script: ${scriptFile}`);
+
+        res.json({
+            folderName,
+            scriptFile,
+            content,
+            parsedScenes,
+            createdAt: stats.mtime,
+            size: stats.size
+        });
+    } catch (e) {
+        console.error(`Failed to load script from folder ${req.params.folderName}:`, e);
+        res.status(500).json({ error: 'Failed to load script file' });
+    }
+});
+
+const SUPPORTED_PUPPETEER_SERVICES = new Set(['GEMINI', 'CHATGPT', 'CLAUDE', 'GENSPARK', 'VIDEOFX']);
+
+app.post('/api/video/refine-prompt', async (req, res) => {
+    const { script, visualPrompt, scriptLine, action, emotion, targetAge, characterSlot } = req.body || {};
+    try {
+        console.log(`[SmartVideo] Refining prompt based on script context...`);
+
+        // Visual Base 정제: 불필요한 이미지 세부 정보 제거
+        let cleanVisualPrompt = visualPrompt || '';
+
+        // 이미지 품질/스타일 키워드 제거
+        cleanVisualPrompt = cleanVisualPrompt
+            .replace(/unfiltered raw photograph,?\s*8k ultra photorealism/gi, '')
+            .replace(/ultra detailed skin texture[^,]*,?/gi, '')
+            .replace(/realistic soft skin,?\s*8k ultra-hd/gi, '')
+            .replace(/no text,?\s*no captions,?\s*no typography/gi, '')
+            .replace(/--ar\s*9:16/gi, '');
+
+        // 금지 키워드 제거
+        cleanVisualPrompt = cleanVisualPrompt
+            .replace(/NOT cartoon,?\s*NOT anime,?\s*NOT 3D render,?\s*NOT CGI,?\s*NOT plastic skin,?\s*NOT mannequin,?\s*NOT doll-like,?\s*NOT airbrushed,?\s*NOT overly smooth skin,?\s*NOT uncanny valley,?\s*NOT artificial looking,?\s*NOT illustration,?\s*NOT painting,?\s*NOT drawing/gi, '')
+            .trim();
+
+        const analysisPrompt = `
+[TASK: SCENE-ACCURATE VIDEO PROMPT GENERATION]
+You are a professional cinematographer for AI video generation. Your task is to create a SINGLE, precise video prompt (2-4 sentences) that describes movement and visual details for a short clip.
+
+[SCENE CONTEXT]
+${scriptLine ? `* Script Line: "${scriptLine}"` : ''}
+${action ? `* Core Action (MUST FOLLOW): ${action}` : ''}
+${emotion ? `* Emotion/Vibe: ${emotion}` : ''}
+${targetAge ? `* Target Age: ${targetAge}` : ''}
+${characterSlot ? `* Character Slot: ${characterSlot}` : ''}
+
+[VISUAL BASE (Character/Setting consistency) - CLEANED]
+${cleanVisualPrompt}
+
+⚠️ CRITICAL INSTRUCTION (STRICT ENFORCEMENT):
+1. Use ONLY actions described in Script Line and Core Action. Do NOT invent new behaviors (e.g., if it says 'looking', don't add 'walking').
+2. Maintain strict visual consistency with Visual Base (outfit, hair, environment).
+3. **ALWAYS include Korean identity and age**: "[Target Age]의 멋진 한국인 여성/남성"으로 시작. (Target Age 값을 그대로 사용)
+4. OUTPUT FORMAT: Output ONLY final Korean video prompt text.
+5. DO NOT include any conversational filler, preambles, or explanations (e.g., NO "Sure!", NO "Here is your prompt:").
+6. Starting directly with prompt text is mandatory.
+7. DO NOT generate or describe images, drawings, or prompts for image generation. Output ONLY a video prompt.
+
+Example Format:
+"[Target Age]의 멋진 한국인 여성이 [정확한 동작]. 표정은 [시작 감정]에서 [끝 감정]으로 변화한다. 카메라: [구체적 움직임]."
+`;
+        // ✅ [FIX] generateSimpleText 사용 (JSON 검증 없이 일반 텍스트 응답 처리)
+        const { generateSimpleText } = await import('./puppeteerHandler.js');
+        const refinedPromptText = await Promise.race([
+            generateSimpleText('GEMINI', analysisPrompt),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('비디오 프롬프트 생성 시간 초과')), 120000))
+        ]);
+
+        // Remove code blocks and conversational preambles
+        let refinedPrompt = refinedPromptText.replace(/```(json)?/g, '').replace(/```/g, '').trim();
+
+        // Remove common conversational filler if Gemini ignored instructions
+        refinedPrompt = refinedPrompt
+            .replace(/^(Sure!|Okay|Here's?|Here is|Definitely!|I can help with that|Certainly!|I've created|I have created)[^.!?:\n]*[:!\n]\s*/i, '')
+            .replace(/^[^.!?:\n]*(video prompt|refined prompt|final prompt)[^.!?:\n]*[:!\n]\s*/i, '')
+            .trim();
+
+        res.json({ success: true, refinedPrompt });
+    } catch (error) {
+        console.error("[RefinePrompt] Failed:", error);
+        res.status(500).json({ error: error instanceof Error ? error.message : "Failed to refine prompt" });
+    }
+});
+
+app.post('/api/video/generate-smart', async (req, res) => {
+    const { refinedPrompt, storyId, storyTitle, sceneNumber, imageUrl } = req.body || {};
+
+    if (!refinedPrompt) {
+        return res.status(400).json({ error: "Refined prompt is required" });
+    }
+
+    try {
+        console.log(`[SmartVideo] Generating video for scene ${sceneNumber ?? '?'} using prompt: ${refinedPrompt}`);
+
+        // 2. VideoFX(Veo) 연동하여 비디오 생성
+        const { generateVideoFX } = await import('./puppeteerHandler.js');
+        const videoData = await generateVideoFX(refinedPrompt, imageUrl);
+
+        // 3. 비디오 저장 로직
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `scene-${String(sceneNumber || 0).padStart(2, '0')}_${timestamp}.mp4`;
+
+        const mediaDirs = ensureStoryMediaDirectories(storyId, storyTitle);
+        const targetDir = mediaDirs.videoDir;
+        const filePath = path.join(targetDir, filename);
+
+        const base64Data = videoData.replace(/^data:video\/\w+;base64,/, "");
+        fs.writeFileSync(filePath, base64Data, 'base64');
+
+        const relativePath = `${mediaDirs.safeId}/video/${filename}`;
+        console.log(`[SmartVideo] ✅ Video saved: ${filePath}`);
+
+        res.json({
+            success: true,
+            url: `/generated_scripts/${relativePath}`,
+            filename: relativePath
+        });
+
+    } catch (error) {
+        console.error("[SmartVideo] Failed:", error);
+        res.status(500).json({ error: error instanceof Error ? error.message : "Failed to generate smart video" });
+    }
+});
+
+app.post('/api/image/ai-generate', async (req, res) => {
+    const { prompt, service, storyId, sceneNumber, autoCapture, title } = req.body || {};
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    const requestedService = typeof service === 'string' && SUPPORTED_PUPPETEER_SERVICES.has(service)
+        ? service
+        : 'GEMINI';
+
+    try {
+        console.log(`[ImageAI] Forwarding scene ${sceneNumber ?? '?'} from story ${storyId ?? 'unknown'} (title: ${title ?? 'N/A'}) to ${requestedService}`);
+        await switchService(requestedService);
+
+        if (autoCapture) {
+            await switchImageService(requestedService);
+
+            const { imagesDir, safeId, isLegacy } = ensureStoryImageDirectory(storyId, title);
+            const sceneLabel = typeof sceneNumber === 'number'
+                ? `scene-${String(sceneNumber).padStart(2, '0')}`
+                : 'scene';
+
+            let captureSummary = null;
+            let captureError = null;
+
+            for (let attempt = 1; attempt <= IMAGE_CAPTURE_MAX_ATTEMPTS; attempt++) {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const filename = `${sceneLabel}_${timestamp}.png`;
+                const targetPath = path.join(imagesDir, filename);
+                const requestToken = `#${sceneLabel}-${crypto.randomUUID()}`;
+
+                try {
+                    const captureResult = await submitPromptAndCaptureImage(
+                        requestedService,
+                        prompt,
+                        targetPath,
+                        {
+                            requestToken,
+                            storyId: safeId,
+                            sceneNumber,
+                            attempt
+                        }
+                    );
+
+                    const fingerprintKey = `${safeId}`;
+                    const previousFingerprint = lastImageFingerprintsByStory.get(fingerprintKey);
+                    if (previousFingerprint && previousFingerprint.hash === captureResult.hash) {
+                        console.warn(`[ImageAI] Duplicate fingerprint detected for story ${safeId}.`);
+                        if (fs.existsSync(targetPath)) {
+                            try { fs.unlinkSync(targetPath); } catch (cleanupErr) {
+                                console.warn(`[ImageAI] Failed to cleanup duplicate file ${targetPath}:`, cleanupErr);
+                            }
+                        }
+
+                        if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) {
+                            throw new Error("다운로드된 이미지가 이전 씬과 동일합니다. 다시 시도해주세요.");
+                        }
+                        continue;
+                    }
+
+                    lastImageFingerprintsByStory.set(fingerprintKey, {
+                        hash: captureResult.hash,
+                        bytes: captureResult.bytes
+                    });
+
+                    captureSummary = { filename, targetPath, safeId, captureResult, isLegacy };
+                    break;
+                } catch (err) {
+                    captureError = err;
+                    if (fs.existsSync(targetPath)) {
+                        try { fs.unlinkSync(targetPath); } catch (cleanupErr) {
+                            console.warn(`[ImageAI] Cleanup after failure failed for ${targetPath}:`, cleanupErr);
+                        }
+                    }
+
+                    if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) {
+                        throw err;
+                    }
+                    console.warn(`[ImageAI] Attempt ${attempt} failed. Retrying...`, err?.message || err);
+                }
+            }
+
+            if (!captureSummary) {
+                throw captureError || new Error("이미지 자동 캡처에 실패했습니다.");
+            }
+
+            const { filename, targetPath, safeId: normalizedId, captureResult, isLegacy: legacyFlag } = captureSummary;
+
+            // ✅ Save metadata to PNG file using sharp
+            try {
+                const tempPath = `${targetPath}.temp.png`;
+                await sharp(targetPath)
+                    .png({
+                        compressionLevel: 6,
+                        text: {
+                            'Prompt': prompt || '',
+                            'SceneNumber': String(sceneNumber || ''),
+                            'Service': requestedService || 'gemini',
+                            'CreatedAt': new Date().toISOString(),
+                            'StoryId': normalizedId || '',
+                            'Filename': filename || ''
+                        }
+                    })
+                    .toFile(tempPath);
+
+                // Replace original with metadata-embedded version
+                fs.unlinkSync(targetPath);
+                fs.renameSync(tempPath, targetPath);
+                console.log(`[ImageAI] ✅ PNG metadata embedded: ${filename}`);
+            } catch (metaError) {
+                console.warn(`[ImageAI] ⚠️ Failed to embed PNG metadata for ${filename}:`, metaError);
+                // Continue even if metadata embedding fails
+            }
+
+            // ✅ [NEW] prompts.json에 프롬프트 저장 (PNG 메타데이터 백업)
+            try {
+                const promptsJsonPath = path.join(imagesDir, 'prompts.json');
+                let promptsData = {};
+                if (fs.existsSync(promptsJsonPath)) {
+                    try {
+                        promptsData = JSON.parse(fs.readFileSync(promptsJsonPath, 'utf-8'));
+                    } catch { promptsData = {}; }
+                }
+                promptsData[filename] = {
+                    prompt: prompt || '',
+                    sceneNumber: sceneNumber || null,
+                    service: requestedService || 'gemini',
+                    createdAt: new Date().toISOString(),
+                    storyId: normalizedId || ''
+                };
+                fs.writeFileSync(promptsJsonPath, JSON.stringify(promptsData, null, 2));
+                console.log(`[ImageAI] ✅ Prompt saved to prompts.json: ${filename}`);
+            } catch (jsonError) {
+                console.warn(`[ImageAI] ⚠️ Failed to save prompt to JSON for ${filename}:`, jsonError);
+            }
+
+            const url = legacyFlag
+                ? `/generated_scripts/images/${normalizedId}/${filename}`
+                : `/generated_scripts/대본폴더/${normalizedId}/images/${filename}`;
+
+            res.json({
+                success: true,
+                service: requestedService,
+                storyId: normalizedId,
+                imagePath: path.relative(process.cwd(), targetPath),
+                url,
+                filename,
+                isLegacy: legacyFlag,
+                bytes: captureResult.bytes,
+                hash: captureResult.hash,
+                responseId: captureResult.responseId,
+                tokenMatched: captureResult.tokenMatched
+            });
+        } else {
+            await submitPromptOnly(requestedService, prompt);
+            res.json({
+                success: true,
+                service: requestedService,
+                message: 'Prompt submitted to AI service'
+            });
+        }
+    } catch (error) {
+        console.error("[ImageAI] Failed to run AI image generation workflow:", error);
+        res.status(500).json({ error: error instanceof Error ? error.message : "Failed to run AI generation" });
+    }
+});
+
+// --- Video Saving API ---
+app.post('/api/save-video', (req, res) => {
+    try {
+        const { videoData, prompt, storyId, storyTitle } = req.body || {};
+        if (!videoData) return res.status(400).json({ error: "Video data is required" });
+
+        const safePrompt = (prompt || 'generated_video').replace(/[^a-z0-9가-힣\s]/gi, '').trim().substring(0, 30) || 'video';
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${timestamp}_${safePrompt}.mp4`;
+
+        let targetDir = path.join(GENERATED_DIR, 'videos');
+        let relativePrefix = 'videos';
+        let resolvedStoryId = null;
+
+        if (storyId || storyTitle) {
+            const mediaDirs = ensureStoryMediaDirectories(storyId, storyTitle);
+            targetDir = mediaDirs.videoDir;
+            relativePrefix = `${mediaDirs.safeId}/video`;
+            resolvedStoryId = mediaDirs.safeId;
+        } else if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        const filePath = path.join(targetDir, filename);
+        const base64Data = videoData.replace(/^data:video\/\w+;base64,/, "");
+        fs.writeFileSync(filePath, base64Data, 'base64');
+
+        const relativePath = `${relativePrefix}/${filename}`;
+        console.log(`[Server] Saved video to ${filePath}`);
+        res.json({
+            success: true,
+            filename: relativePath,
+            path: filePath,
+            storyId: resolvedStoryId,
+            url: `/generated_scripts/${relativePath}`
+        });
+    } catch (e) {
+        console.error("Failed to save video:", e);
+        res.status(500).json({ error: "Failed to save video" });
+    }
+});
+
+// --- Generic File Deletion API ---
+app.post('/api/delete-file', (req, res) => {
+    try {
+        const { filename, fileType } = req.body;
+        if (!filename || typeof filename !== 'string') {
+            return res.status(400).json({ error: "Filename is required" });
+        }
+
+        const baseDir = fileType === 'video' ? path.join(GENERATED_DIR, 'videos') : IMAGES_DIR;
+        const normalizedPath = path.normalize(filename).replace(/^(\.\.[/\\])+/g, '');
+        const filePath = path.resolve(baseDir, normalizedPath);
+
+        if (!filePath.startsWith(path.resolve(baseDir))) {
+            return res.status(400).json({ error: "Invalid filename path" });
+        }
+
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log(`[Server] Deleted file: ${filePath}`);
+
+            if (fileType !== 'video') {
+                const parentDir = path.dirname(filePath);
+                if (parentDir.startsWith(path.resolve(IMAGES_DIR))) {
+                    try {
+                        const remaining = fs.readdirSync(parentDir).filter(name => !name.startsWith('.'));
+                        if (remaining.length === 0) {
+                            fs.rmdirSync(parentDir);
+                            console.log(`[Server] Removed empty folder: ${parentDir}`);
+                        }
+                    } catch (cleanupError) {
+                        console.warn(`Failed to cleanup folder ${parentDir}:`, cleanupError);
+                    }
+                }
+            }
+
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: "File not found" });
+        }
+    } catch (e) {
+        console.error("Failed to delete file:", e);
+        res.status(500).json({ error: "Failed to delete file" });
+    }
+});
+
+// --- Longform Session Saving API ---
+app.post('/api/longform/save-session', (req, res) => {
+    try {
+        const { sessionId, data } = req.body;
+        if (!sessionId || !data) return res.status(400).json({ error: "sessionId and data are required" });
+
+        const sessionDir = path.join(LONGFORM_DIR, sessionId);
+        if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
+        const filePath = path.join(sessionDir, 'chapters.json');
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+        res.json({ success: true, path: filePath });
+    } catch (e) {
+        console.error("Failed to save longform session:", e);
+        res.status(500).json({ error: "Failed to save longform session" });
+    }
+});
+
+app.get('/api/longform/sessions', (req, res) => {
+    try {
+        if (!fs.existsSync(LONGFORM_DIR)) return res.json([]);
+        const sessions = fs.readdirSync(LONGFORM_DIR)
+            .filter(name => fs.existsSync(path.join(LONGFORM_DIR, name, 'chapters.json')))
+            .map(name => {
+                const file = path.join(LONGFORM_DIR, name, 'chapters.json');
+                try {
+                    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+                    return {
+                        sessionId: name,
+                        topic: data.topic || '제목 없음',
+                        updatedAt: data.updatedAt || fs.statSync(file).mtimeMs
+                    };
+                } catch {
+                    return { sessionId: name, topic: 'Unknown', updatedAt: fs.statSync(file).mtimeMs };
+                }
+            });
+        res.json(sessions);
+    } catch (e) {
+        console.error("Failed to list sessions:", e);
+        res.status(500).json({ error: "Failed to list sessions" });
+    }
+});
+
+app.get('/api/longform/sessions/:sessionId', (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const filePath = path.join(LONGFORM_DIR, sessionId, 'chapters.json');
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Session not found" });
+        const data = fs.readFileSync(filePath, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (e) {
+        console.error("Failed to load session:", e);
+        res.status(500).json({ error: "Failed to load session" });
+    }
+});
+
+// --- Style Templates API ---
+app.get('/api/style-templates', (req, res) => {
+    try {
+        const files = fs.readdirSync(TEMPLATE_DIR).filter(f => f.endsWith('.json'));
+        const templates = files.map(file => {
+            const content = fs.readFileSync(path.join(TEMPLATE_DIR, file), 'utf8');
+            return JSON.parse(content);
+        });
+        res.json(templates);
+    } catch (e) {
+        console.error("Failed to load templates:", e);
+        res.status(500).json({ error: "Failed to load templates" });
+    }
+});
+
+app.post('/api/style-templates', (req, res) => {
+    try {
+        const template = req.body;
+        if (!template || !template.id) return res.status(400).json({ error: "Template must include id" });
+        const filePath = path.join(TEMPLATE_DIR, `${template.id}.json`);
+        fs.writeFileSync(filePath, JSON.stringify(template, null, 2));
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Failed to save template:", e);
+        res.status(500).json({ error: "Failed to save template" });
+    }
+});
+
+app.post('/api/style-templates/delete', (req, res) => {
+    try {
+        const { id } = req.body || {};
+        if (!id) return res.status(400).json({ error: 'Template id required' });
+        const filePath = path.join(TEMPLATE_DIR, `${id}.json`);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Template not found' });
+        fs.unlinkSync(filePath);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Failed to delete template (POST):', e);
+        res.status(500).json({ error: 'Failed to delete template' });
+    }
+});
+
+app.delete('/api/style-templates/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Template id required' });
+        const filePath = path.join(TEMPLATE_DIR, `${id}.json`);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Template not found' });
+        fs.unlinkSync(filePath);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Failed to delete template:', e);
+        res.status(500).json({ error: 'Failed to delete template' });
+    }
+});
+
+/**
+ * Extracts the first valid JSON object from AI response text.
+ * Handles cases where AI adds explanatory text after the JSON.
+ */
+const extractValidJson = (text = "") => {
+    if (!text || typeof text !== 'string') return null;
+
+    let depth = 0;
+    let startIndex = -1;
+    let endIndex = -1;
+    let startChar = '';
+    let endChar = '';
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (startIndex === -1 && (char === '{' || char === '[')) {
+            startIndex = i;
+            startChar = char;
+            endChar = char === '{' ? '}' : ']';
+            depth = 1;
+        } else if (startIndex !== -1) {
+            if (char === startChar) {
+                depth++;
+            } else if (char === endChar) {
+                depth--;
+                if (depth === 0) {
+                    endIndex = i + 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (startIndex !== -1 && endIndex !== -1) {
+        return text.substring(startIndex, endIndex);
+    }
+
+    return null;
+};
+
+const stripCodeWrappers = (text = "") => {
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^json\s*copy\s*code[:\-\s]*/i, '');
+    cleaned = cleaned.replace(/^copy\s*code[:\-\s]*/i, '');
+    cleaned = cleaned.replace(/```(?:json)?/gi, '');
+    cleaned = cleaned.replace(/```/g, '');
+    cleaned = cleaned.replace(/^\s*Copy code.*$/gim, '');
+    return cleaned.trim();
+};
+
+const escapeUnescapedNewlinesInStrings = (text = "") => {
+    let result = '';
+    let inString = false;
+    let backslashCount = 0;
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if ((char === '\n' || char === '\r') && inString) {
+            if (char === '\r' && text[i + 1] === '\n') {
+                result += '\\n';
+                i++;
+            } else {
+                result += '\\n';
+            }
+            backslashCount = 0;
+            continue;
+        }
+
+        result += char;
+
+        if (char === '"') {
+            if (backslashCount % 2 === 0) {
+                inString = !inString;
+            }
+            backslashCount = 0;
+            continue;
+        }
+
+        if (char === '\\') {
+            backslashCount++;
+        } else {
+            backslashCount = 0;
+        }
+    }
+
+    return result;
+};
+
+const preprocessJsonLikeString = (text = "") => {
+    if (!text) return "";
+    let cleaned = stripCodeWrappers(text);
+    cleaned = escapeUnescapedNewlinesInStrings(cleaned);
+    return cleaned;
+};
+
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const escapeInlineQuotesForKeys = (text = "", keys = []) => {
+    if (!text || keys.length === 0) return text;
+
+    const keyPattern = keys.map(escapeRegex).join('|');
+    const regex = new RegExp(`"(${keyPattern})"\\s*:\\s*"`, 'g');
+    let result = '';
+    let lastIndex = 0;
+
+    while (true) {
+        const match = regex.exec(text);
+        if (!match) break;
+
+        const valueStart = regex.lastIndex;
+        result += text.slice(lastIndex, valueStart);
+
+        let j = valueStart;
+        let escaped = false;
+        let chunk = '';
+
+        while (j < text.length) {
+            const ch = text[j];
+
+            if (ch === '\\' && !escaped) {
+                escaped = true;
+                chunk += ch;
+                j += 1;
+                continue;
+            }
+
+            if (ch === '"' && !escaped) {
+                let k = j + 1;
+                while (k < text.length && /\s/.test(text[k])) k += 1;
+                if (k >= text.length || /[,\]}]/.test(text[k])) {
+                    break;
+                }
+                chunk += '\\"';
+                j += 1;
+                continue;
+            }
+
+            escaped = false;
+            chunk += ch;
+            j += 1;
+        }
+
+        result += chunk;
+        if (j < text.length && text[j] === '"') {
+            result += '"';
+            j += 1;
+        }
+
+        lastIndex = j;
+        regex.lastIndex = j;
+    }
+
+    result += text.slice(lastIndex);
+    return result;
+};
+
+const tryParse = (str) => {
+    const attempt = (value) => {
+        if (!value) return null;
+        try {
+            return JSON.parse(value);
+        } catch {
+            return null;
+        }
+    };
+
+    let sanitized = preprocessJsonLikeString(str);
+
+    // Step 0: [NEW] 만약 문자열에 JSON 외의 텍스트(#, 설명 등)가 섞여 있다면 추출 시도
+    const potentialJson = extractValidJson(sanitized);
+    if (potentialJson && potentialJson.length < sanitized.length) {
+        const extractedParsed = attempt(potentialJson);
+        if (extractedParsed) return extractedParsed;
+        // 추출된 것에 대해서도 아래의 정교화 로직을 이어가기 위해 sanitized 업데이트
+        sanitized = potentialJson;
+    }
+
+    sanitized = escapeInlineQuotesForKeys(sanitized, [
+        "script",
+        "scriptBody",
+        "scriptLine",
+        "shortPrompt",
+        "shortPromptKo",
+        "longPrompt",
+        "longPromptKo",
+        "imagePrompt",
+        "hook",
+        "punchline",
+        "context",
+        "twist",
+        "title"
+    ]);
+
+    // Step 1: Try standard JSON parse
+    const direct = attempt(sanitized);
+    if (direct) return direct;
+
+    console.log("[tryParse] Standard parse failed, trying smart preprocessing...");
+
+    // Step 2: Smart preprocessing
+    try {
+        let processed = sanitized;
+
+        // Fix 1: Unescaped double quotes inside Korean text
+        processed = processed.replace(/([가-힣]\s*)"([가-힣])/g, '$1\\"$2');
+
+        // Fix 2: Unescaped closing double quote before the actual closing quote
+        processed = processed.replace(/([가-힣])"(\s*")/g, '$1\\"$2');
+
+        // Fix 3: Unescaped quotes around Korean words inside a string
+        processed = processed.replace(/([가-힣])"([가-힣])/g, '$1\\"$2');
+
+        // Fix 4: Single quotes for JSON structure
+        if (/{\s*'/.test(processed) || /'\s*:\s*'/.test(processed)) {
+            console.log("[tryParse] Detected single-quoted JSON structure");
+            processed = processed
+                .replace(/{\s*'/g, '{ "')
+                .replace(/'\s*:/g, '":')
+                .replace(/:\s*'/g, ': "')
+                .replace(/,\s*'/g, ', "')
+                .replace(/'\s*,/g, '",')
+                .replace(/'\s*}/g, '"}')
+                .replace(/\[\s*'/g, '["')
+                .replace(/'\s*\]/g, '"]');
+        }
+
+        const smartParsed = attempt(processed);
+        if (smartParsed) return smartParsed;
+    }
+    catch (e2) {
+        console.log("[tryParse] Smart preprocessing threw an error:", e2.message);
+    }
+
+    console.log("[tryParse] Smart preprocessing failed, trying jsonrepair...");
+
+    // Step 3: Last resort - use jsonrepair
+    try {
+        const repaired = jsonrepair(sanitized);
+        return JSON.parse(repaired);
+    }
+    catch (e3) {
+        // Step 4: Try jsonrepair on the preprocessed string
+        try {
+            let preprocessed = sanitized
+                .replace(/([가-힣]\s*)"([가-힣])/g, '$1\\"$2')
+                .replace(/([가-힣])"(\s*")/g, '$1\\"$2')
+                .replace(/([가-힣])"([가-힣])/g, '$1\\"$2');
+
+            const repaired = jsonrepair(preprocessed);
+            return JSON.parse(repaired);
+        } catch (e4) {
+            console.error("[tryParse] All parsing attempts failed:", e3.message);
+            return null;
+        }
+    }
+};
+
+const parseScenePromptsFromScript = (content) => {
+    if (!content) return [];
+    const sectionMatch = content.match(/===\s*SCENES.*?===\s*([\s\S]*)/i);
+    const section = sectionMatch ? sectionMatch[1] : '';
+    if (!section) return [];
+
+    const parts = section.split(/\[Scene\s+(\d+)\]/gi);
+    const scenes = [];
+
+    for (let i = 1; i < parts.length; i += 2) {
+        const sceneNumber = parseInt(parts[i], 10);
+        if (!Number.isFinite(sceneNumber)) continue;
+        const block = parts[i + 1] || '';
+        const kr = (block.match(/^\s*KR:\s*(.+)$/m) || [])[1];
+        const en = (block.match(/^\s*EN:\s*(.+)$/m) || [])[1];
+        const long = (block.match(/^\s*Long:\s*(.+)$/m) || [])[1];
+
+        scenes.push({
+            sceneNumber,
+            summary: `Scene ${sceneNumber}`,
+            camera: '',
+            shortPrompt: en ? en.trim() : '',
+            shortPromptKo: kr ? kr.trim() : '',
+            longPrompt: (long || en || '').trim(),
+            longPromptKo: kr ? kr.trim() : ''
+        });
+    }
+
+    return scenes;
+};
+
+const isValidStory = (obj) => {
+    if (!obj || typeof obj !== 'object') return false;
+
+    // Support simple arrays (e.g., character lists)
+    if (Array.isArray(obj)) {
+        return obj.length > 0;
+    }
+
+    // Check if it's an object acting like an array (e.g., { '0': {...}, '1': {...} })
+    const keys = Object.keys(obj);
+    if (keys.length > 0 && keys.every(key => !isNaN(parseInt(key)))) {
+        return true;
+    }
+
+    // Support scripts array format
+    if (obj.scripts && Array.isArray(obj.scripts)) {
+        return obj.scripts.length > 0 && obj.scripts[0].title;
+    }
+
+    // Single story format
+    if (obj.title || obj.scriptBody || (obj.scenes && Array.isArray(obj.scenes))) return true;
+
+    // Analysis/Character result format
+    if (obj.characters && Array.isArray(obj.characters)) return true;
+    if (obj.scores && (obj.totalScore !== undefined || obj.improvements)) return true;
+
+    // Template format
+    if (obj.templateName && obj.structure) return true;
+
+    // For character notes enhancement mapping
+    if (Object.keys(obj).length > 0 && !obj.title && !obj.scenes) return true;
+
+    return false;
+};
+
+const pickDefaultMaleOutfit = (scriptText = "") => {
+    const normalized = (scriptText || "").toLowerCase();
+    const golfKeywords = /(골프|golf|라운딩|티박스)/;
+    const officeKeywords = /(사무실|office|회사|미팅|거래|회의)/;
+    if (golfKeywords.test(normalized)) return "White Performance Polo + Beige Chino Golf Pants";
+    if (officeKeywords.test(normalized)) return "White Shirt + Navy Blazer + Grey Slacks";
+    return "White Performance Polo + Beige Chino Golf Pants"; // 기본값
+};
+
+const ensureMaleConsistencyInScenes = (scenes = [], characterMap = {}, scriptText = "") => {
+    if (!Array.isArray(scenes)) return scenes;
+    const hasMaleCharacter = Object.values(characterMap).some((ch) => ch && String(ch.gender).toUpperCase() === 'MALE');
+    const maleMentionInScript = /남자|남성|\bman\b|\bmen\b|male/iu.test(scriptText || "");
+    const malePresent = hasMaleCharacter || maleMentionInScript;
+    const defaultMaleOutfit = pickDefaultMaleOutfit(scriptText);
+
+    return scenes.map((scene) => {
+        if (!scene) return scene;
+        let shortPrompt = scene.shortPrompt || "";
+        let longPrompt = scene.longPrompt || "";
+
+        if (malePresent) {
+            // 남성이 있어야 하는 경우: No male 문구 제거
+            shortPrompt = shortPrompt.replace(/No male characters appear[^\.]*\./gi, '').trim();
+            longPrompt = longPrompt.replace(/No male characters appear[^\.]*\./gi, '').trim();
+
+            const hasMaleInPrompt = /\bman\b|\bmen\b|male|남자|남성/iu.test(longPrompt);
+            if (!hasMaleInPrompt) {
+                longPrompt = longPrompt
+                    ? `${longPrompt.replace(/\s+/g, ' ').trim()}, Korean man wearing ${defaultMaleOutfit} is present in this scene.`
+                    : `Korean man wearing ${defaultMaleOutfit} is present in this scene.`;
+            }
+        } else {
+            // 남성이 없어야 하는 경우: 명시적으로 제외
+            if (longPrompt && !/No male characters appear/i.test(longPrompt)) {
+                longPrompt = `${longPrompt.replace(/\s+/g, ' ').trim()}, No male characters appear in this scene.`;
+            }
+            if (shortPrompt && /No male characters appear/i.test(longPrompt) && !/No male characters appear/i.test(shortPrompt)) {
+                shortPrompt = `${shortPrompt.replace(/\s+/g, ' ').trim()}, No male characters appear in this scene.`;
+            }
+        }
+
+        return { ...scene, shortPrompt, longPrompt };
+    });
+};
+
+// --- Chat API (Puppeteer Automation) ---
+app.post('/api/generate', async (req, res) => {
+    const { service, prompt, promptPresetId, files } = req.body;
+    if (!service || !prompt) return res.status(400).json({ error: "Service and prompt are required" });
+
+    // Handle temporary files for upload
+    const tempFiles = [];
+    if (files && Array.isArray(files)) {
+        for (const fileData of files) {
+            if (fileData.base64) {
+                try {
+                    const base64Str = fileData.base64.includes(',') ? fileData.base64.split(',')[1] : fileData.base64;
+                    const buffer = Buffer.from(base64Str, 'base64');
+                    const tempPath = path.join(process.cwd(), `temp_upload_${Date.now()}_${Math.random().toString(36).slice(2)}.png`);
+                    fs.writeFileSync(tempPath, buffer);
+                    tempFiles.push(tempPath);
+                } catch (e) {
+                    console.error("Failed to process base64 file:", e.message);
+                }
+            } else if (fileData.path) {
+                tempFiles.push(fileData.path);
+            }
+        }
+    }
+
+    try {
+        console.log(`[Server] Switching to ${service}...`);
+        await switchService(service);
+
+        console.log(`[Server] Sending prompt to ${service}...`);
+        const { finalPrompt, appliedPreset, error: presetError } = mergePromptWithPreset(prompt, promptPresetId);
+        if (presetError) {
+            return res.status(400).json({ error: presetError });
+        }
+        if (appliedPreset) {
+            console.log(`[Server] Applied prompt preset "${appliedPreset.name}" (${appliedPreset.id})`);
+        }
+
+        // [AUTO-SAVE] Save sent prompt to file
+        try {
+            fs.writeFileSync(path.join(process.cwd(), '보낸대본.txt'), finalPrompt, 'utf-8');
+            console.log('[Server] ✅ Saved sent prompt to 보낸대본.txt');
+        } catch (err) {
+            console.error('[Server] ⚠️ Failed to save sent prompt:', err.message);
+        }
+
+        const responseText = await generateContent(service, finalPrompt, tempFiles);
+        console.log("[Server] Raw Response:", responseText.substring(0, 100) + "...");
+
+        // [AUTO-SAVE] Save received response to file
+        try {
+            fs.writeFileSync(path.join(process.cwd(), '받은대본.txt'), responseText, 'utf-8');
+            console.log('[Server] ✅ Saved received response to 받은대본.txt');
+        } catch (err) {
+            console.error('[Server] ⚠️ Failed to save received response:', err.message);
+        }
+
+        let parsedData = null;
+
+        // Strategy 0: Extract first valid JSON (handles AI adding text after JSON)
+        if (!parsedData) {
+            const extracted = extractValidJson(responseText);
+            if (extracted) {
+                const candidate = tryParse(extracted);
+                if (isValidStory(candidate)) parsedData = candidate;
+            }
+        }
+
+        // Strategy 1: Markdown code blocks
+        if (!parsedData) {
+            const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/g;
+            let match;
+            while ((match = codeBlockRegex.exec(responseText)) !== null) {
+                const candidate = tryParse(match[1]);
+                if (isValidStory(candidate)) {
+                    parsedData = candidate;
+                    break;
+                }
+            }
+        }
+
+        // Strategy 2: Brace balancing
+        if (!parsedData) {
+            let braceStack = 0;
+            let startIndex = -1;
+            for (let i = 0; i < responseText.length; i++) {
+                const char = responseText[i];
+                if (char === '{') {
+                    if (braceStack === 0) startIndex = i;
+                    braceStack++;
+                } else if (char === '}') {
+                    braceStack--;
+                    if (braceStack === 0 && startIndex !== -1) {
+                        const jsonStr = responseText.substring(startIndex, i + 1);
+                        const candidate = tryParse(jsonStr);
+                        if (isValidStory(candidate)) {
+                            parsedData = candidate;
+                            break;
+                        }
+                        startIndex = -1;
+                    }
+                }
+            }
+        }
+
+        // Strategy 3: Largest outer block
+        if (!parsedData) {
+            const firstOpen = responseText.indexOf('{');
+            const lastClose = responseText.lastIndexOf('}');
+            if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+                const candidate = tryParse(responseText.substring(firstOpen, lastClose + 1));
+                if (isValidStory(candidate)) parsedData = candidate;
+            }
+        }
+
+        // Strategy 4: Whole text repair
+        if (!parsedData) {
+            const candidate = tryParse(responseText);
+            if (isValidStory(candidate)) parsedData = candidate;
+        }
+
+        if (!parsedData) {
+            console.error("JSON Parse Error. Raw Response:", responseText);
+            throw new Error("AI output is not valid JSON. Raw: " + responseText.substring(0, 100));
+        }
+
+        // [POST-PROCESSING]
+        // Normalize scriptBody if AI returned an array
+        if (parsedData.scriptBody && Array.isArray(parsedData.scriptBody)) {
+            parsedData.scriptBody = parsedData.scriptBody.filter(Boolean).join('\n');
+        } else if (parsedData.scriptBody && typeof parsedData.scriptBody !== 'string') {
+            parsedData.scriptBody = String(parsedData.scriptBody);
+        }
+
+        // Normalize character IDs to strings to avoid type mismatch ("1" vs 1)
+        if (Array.isArray(parsedData.characters)) {
+            parsedData.characters = parsedData.characters.map((character, idx) => {
+                if (!character) return character;
+                const normalizedId = character.id !== undefined ? String(character.id) : String(idx + 1);
+                return { ...character, id: normalizedId };
+            });
+        }
+
+        const characterMap = buildCharacterMap(parsedData.characters || []);
+        if (parsedData.scenes && Array.isArray(parsedData.scenes)) {
+            parsedData.scenes = assignCharacterIdsIfMissing(parsedData.scenes, characterMap);
+
+            parsedData.scenes = parsedData.scenes.map(scene => {
+                if (!scene) return scene;
+                if (Array.isArray(scene.characterIds)) {
+                    scene = {
+                        ...scene,
+                        characterIds: scene.characterIds.map(id => String(id))
+                    };
+                }
+                return scene;
+            });
+
+            // Check settings for automatic enhancement
+            const settings = getSettings();
+
+            parsedData.scenes = parsedData.scenes.map(scene => {
+                // If auto-enhance is OFF, return original prompts
+                if (!settings.autoEnhanceOnGeneration) {
+                    return scene;
+                }
+
+                // Enhance prompts
+                return {
+                    ...scene,
+                    shortPrompt: applyFullEnhancement(scene.shortPrompt, scene.characterIds, characterMap),
+                    longPrompt: applyFullEnhancement(scene.longPrompt, scene.characterIds, characterMap),
+                    imagePrompt: applyFullEnhancement(scene.imagePrompt, scene.characterIds, characterMap)
+                };
+            });
+
+            // Align male presence with script/characters
+            parsedData.scenes = ensureMaleConsistencyInScenes(parsedData.scenes, characterMap, parsedData.scriptBody || '');
+        }
+
+        if (hasScriptPayload(parsedData)) {
+            const scriptsArray = (Array.isArray(parsedData.scripts) && parsedData.scripts.length > 0)
+                ? parsedData.scripts
+                : [(() => {
+                    const { scripts, ...rest } = parsedData;
+                    return rest;
+                })()];
+
+            const normalizedScripts = scriptsArray.map((script, idx) => {
+                const baseTitle = script.title || parsedData.title || `대본 ${Date.now()}_${idx + 1}`;
+                let folderName = script._folderName;
+                if (!folderName) {
+                    const { safeId } = createStoryFolderFromTitle(baseTitle);
+                    console.log(`✅ Story folder created: ${safeId}`);
+                    folderName = safeId;
+                }
+                return {
+                    ...script,
+                    title: script.title || baseTitle,
+                    _folderName: folderName
+                };
+            });
+
+            // Cleanup temp files
+            for (const f of tempFiles) {
+                try { fs.unlinkSync(f); } catch (e) { }
+            }
+
+            res.json({
+                ...parsedData,
+                scripts: normalizedScripts
+            });
+        } else {
+            // Cleanup temp files
+            for (const f of tempFiles) {
+                try { fs.unlinkSync(f); } catch (e) { }
+            }
+            res.json(parsedData);
+        }
+    } catch (error) {
+        console.error("[Server] Generation failed:", error);
+        // Cleanup temp files
+        for (const f of tempFiles) {
+            try { fs.unlinkSync(f); } catch (e) { }
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+function hasScriptPayload(obj) {
+    return (
+        (obj.scripts && Array.isArray(obj.scripts) && obj.scripts.length > 0) ||
+        obj.title ||
+        obj.scriptBody ||
+        (obj.scenes && Array.isArray(obj.scenes))
+    );
+}
+
+// [NEW] Manual Prompt Enhancement API
+app.post('/api/enhance-prompt', (req, res) => {
+    try {
+        const { prompt, characterIds } = req.body;
+        if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+        const enhancedPrompt = applyFullEnhancement(prompt, characterIds || [], {});
+        res.json({ enhancedPrompt });
+    } catch (e) {
+        console.error("Enhancement failed:", e);
+        res.status(500).json({ error: "Enhancement failed" });
+    }
+});
+
+app.post('/api/prompt-enhancement-sentence', (req, res) => {
+    try {
+        const sentence = previewSlotSentence(req.body || {});
+        res.json({ sentence });
+    } catch (e) {
+        console.error("Failed to preview sentence:", e);
+        res.status(500).json({ error: "Failed to build sentence" });
+    }
+});
+
+// [NEW] Get Prompt Enhancement Settings
+app.get('/api/prompt-enhancement-settings', (req, res) => {
+    try {
+        const store = getProfileStore();
+        const activeProfile = store.profiles.find(profile => profile.id === store.activeProfileId) || store.profiles[0];
+        res.json({
+            activeProfileId: store.activeProfileId,
+            profiles: store.profiles,
+            ...(activeProfile ? activeProfile.settings : {})
+        });
+    } catch (e) {
+        console.error("Failed to get settings:", e);
+        res.status(500).json({ error: "Failed to get settings" });
+    }
+});
+
+// [NEW] Update Prompt Enhancement Settings
+app.post('/api/prompt-enhancement-settings', (req, res) => {
+    try {
+        const newSettings = req.body || {};
+        const success = Array.isArray(newSettings.profiles)
+            ? saveProfileStore(newSettings)
+            : saveSettings(newSettings);
+        if (success) {
+            res.json({ success: true });
+        } else {
+            res.status(500).json({ error: "Failed to save settings" });
+        }
+    } catch (e) {
+        console.error("Failed to save settings:", e);
+        res.status(500).json({ error: "Failed to save settings" });
+    }
+});
+
+// --- Search API ---
+app.post('/api/search-youtube', async (req, res) => {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: "Query is required" });
+
+    try {
+        const results = await searchYouTube(query);
+        res.json(results);
+    } catch (e) {
+        console.error("YouTube search failed:", e);
+        res.status(500).json({ error: "YouTube search failed" });
+    }
+});
+
+// --- Genre Guidelines API ---
+app.get('/api/genre-guidelines', (req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'style_templates', 'genre_tone_config.json');
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8');
+            res.json(JSON.parse(data));
+        } else {
+            res.json({ genres: [] });
+        }
+    } catch (e) {
+        console.error("Failed to get genre guidelines:", e);
+        res.status(500).json({ error: "Failed to get genre guidelines" });
+    }
+});
+// --- TTS API ---
+app.post('/api/tts', async (req, res) => {
+    try {
+        const { text, options } = req.body;
+        if (!text) return res.status(400).json({ error: "Text is required" });
+
+        const buffer = synthesizeSpeechToWav(text, options);
+        res.set('Content-Type', 'audio/wav');
+        res.send(buffer);
+    } catch (e) {
+        console.error("TTS failed:", e);
+        res.status(500).json({ error: "TTS failed" });
+    }
+});
+
+// Use the error handler as the last middleware
+app.use(ErrorHandler.expressErrorHandler());
+
+// --- Cineboard Favorites API ---
+app.get('/api/cineboard/favorites', (req, res) => {
+    try {
+        if (!fs.existsSync(FAVORITES_FILE)) {
+            return res.json({ favorites: [] });
+        }
+        const data = fs.readFileSync(FAVORITES_FILE, 'utf8');
+        const parsed = JSON.parse(data);
+        res.json({ favorites: Array.isArray(parsed.favorites) ? parsed.favorites : [] });
+    } catch (e) {
+        console.error("Failed to read favorites:", e);
+        res.json({ favorites: [] });
+    }
+});
+
+app.post('/api/cineboard/favorites', (req, res) => {
+    try {
+        const { folderName } = req.body;
+        if (!folderName || typeof folderName !== 'string') {
+            return res.status(400).json({ error: "Folder name is required" });
+        }
+
+        let favorites = [];
+        if (fs.existsSync(FAVORITES_FILE)) {
+            try {
+                const data = fs.readFileSync(FAVORITES_FILE, 'utf8');
+                const parsed = JSON.parse(data);
+                favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
+            } catch { /* ignore */ }
+        }
+
+        // Check if already exists
+        if (favorites.includes(folderName)) {
+            return res.json({ success: true, message: "Already in favorites", favorites });
+        }
+
+        // Add new favorite
+        favorites.push(folderName);
+        fs.writeFileSync(FAVORITES_FILE, JSON.stringify({ favorites }, null, 2));
+        console.log(`[Server] ⭐ Added to favorites: ${folderName}`);
+        res.json({ success: true, favorites });
+    } catch (e) {
+        console.error("Failed to add favorite:", e);
+        res.status(500).json({ error: "Failed to add favorite" });
+    }
+});
+
+app.delete('/api/cineboard/favorites/:folderName', (req, res) => {
+    try {
+        const { folderName } = req.params;
+        if (!folderName) {
+            return res.status(400).json({ error: "Folder name is required" });
+        }
+
+        if (!fs.existsSync(FAVORITES_FILE)) {
+            return res.status(404).json({ error: "Favorites file not found" });
+        }
+
+        const data = fs.readFileSync(FAVORITES_FILE, 'utf8');
+        const parsed = JSON.parse(data);
+        let favorites = Array.isArray(parsed.favorites) ? parsed.favorites : [];
+
+        // Remove favorite
+        const filteredFavorites = favorites.filter(f => f !== folderName);
+
+        if (filteredFavorites.length === favorites.length) {
+            return res.status(404).json({ error: "Folder not in favorites" });
+        }
+
+        fs.writeFileSync(FAVORITES_FILE, JSON.stringify({ favorites: filteredFavorites }, null, 2));
+        console.log(`[Server] 🗑️ Removed from favorites: ${folderName}`);
+        res.json({ success: true, favorites: filteredFavorites });
+    } catch (e) {
+        console.error("Failed to remove favorite:", e);
+        res.status(500).json({ error: "Failed to remove favorite" });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`[Server] 🚀 Script generator server running at http://localhost:${PORT}`);
+});

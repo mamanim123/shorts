@@ -1,0 +1,38 @@
+{
+  "id": "1765767248492-b43p12",
+  "name": "성적 오해 유발 급반전 드라마 (Sexual Misunderstanding Twist Drama)",
+  "createdAt": 1765767248492,
+  "service": "GEMINI",
+  "type": "shortform",
+  "structure": [
+    "Step 1: Setup - 평범하고 촉박한 일상 상황 (바쁜 출근 시간)",
+    "Step 2: Trigger - 실수로 인한 신체 접촉 발생 (오해를 일으키는 접촉: 여자의 가슴)",
+    "Step 3: Accusation - 피해자가 상황을 성적으로 해석하며 크게 반응 ('어머, 지금 제 거기를 만드셨어요?')",
+    "Step 4: Desperate Excuse - 가해자가 필사적으로 정중하게 사과 및 상황 해명 (신뢰를 범했다고 사과)",
+    "Step 5: Ambiguous Test - 가해자가 상황을 반전시키기 위해 정중하지만 이중적인 발언 시도 ('당신의 마음이 거기만큼 부드럽다면... 용서해 주시겠습니까?')",
+    "Step 6: Status Reversal - 피해자가 예상치 못한 호의/도발적 제안으로 관계의 우위를 점함 (특정 호실로 방문하라는 조건부 초대)"
+  ],
+  "tone": "점층적 긴장감, 성적 긴장, 코미디 반전 (Escalating Tension, Sexual Tension, Comedic Twist)",
+  "hookStrategy": "돌발적인 성적 오해 유발 및 충격적인 첫 대사 ('어머, 지금 제 거기를 만드셨어요?')",
+  "twistStyle": "성적 수치심을 느끼는 '피해자'가 사실은 적극적인 '유혹자'로 밝혀지며 관계가 역전되는 반전 (The 'victim' is revealed to be an active 'seducer' by offering a physical condition for forgiveness)",
+  "characterNotes": "Innocent Provoker(가해자): 정중하고 필사적으로 해명하는 평범한 직장인. Over-reactor/Active Seducer(피해자): 초반엔 격앙되나, 후반에 주도권을 잡고 과감하게 유혹하는 여성.",
+  "imageNotes": "빠른 템포의 편집, 클로즈업을 통한 인물의 심리 묘사, 마지막 '단단함' 대사에서 여자의 자신감 있는 전신 샷 강조",
+  "rawAnalysis": "",
+  "hookTiming": "1~3초, 첫 문장의 도발적인 질문",
+  "lengthGuidance": "6~8문장, 25~40초 (대사 중심)",
+  "dialogueRatio": "대사 70%, 나레이션 30%",
+  "visualBeats": [
+    "컷1: 촉박한 출근 시간 묘사, 남자의 허겁지겁 움직임",
+    "컷2: 슬로우모션으로 오해를 유발하는 신체 접촉 장면 (가슴을 짚는 순간)",
+    "컷3: 격앙된 여자와 당황한 남자의 클로즈업 대치 샷 (얼굴 빨개짐 강조)",
+    "컷4: 반전 대사 직후, 여자의 도발적인 미소와 남자의 충격받은 표정 교차 편집"
+  ],
+  "gagPattern": "이중 의미 단어/상황을 활용한 성적 오해 → 가해자(수세)의 필사적 사과 → 피해자(공세)의 노골적인 '신체적 조건' 제안으로 마무리 (Sexual misunderstanding using double entendre → Perpetrator's desperate apology → Conclusion with the victim's explicit 'physical condition' offer)",
+  "ctaStyle": "댓글 유도: '남자분은 3515호로 갔을까요?' 또는 '저 상황에서 남자분이 할 수 있는 최고의 대처는?'",
+  "mustHaveObjects": [
+    "좁은/폐쇄된 공간 (엘리베이터, 복도 등)",
+    "촉박한 시간/외부 요인 (출근 시간)",
+    "오해를 유발하는 접촉 가능한 신체 부위 (가슴)",
+    "특정 호실 번호 (구체적인 장소 제시)"
+  ]
+}

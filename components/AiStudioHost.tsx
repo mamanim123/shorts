@@ -1,0 +1,586 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AiStudioApp from '../ai_studio_bundle/App';
+import Lightbox from './master-studio/Lightbox';
+import { getBlob, deleteBlob, setBlob } from './master-studio/services/dbService';
+import { fetchDiskImageList, fetchImageStoryFolders, StoryFolderInfo } from './master-studio/services/diskImageList';
+
+import { saveImageToDisk, deleteFileFromDisk } from './master-studio/services/serverService';
+import { Star, X, Copy, Loader2, RefreshCw, History as HistoryIcon } from 'lucide-react';
+
+const MAX_HISTORY = 100; // localStorage 용량 보호를 위해 히스토리 제한 (IndexedDB 사용으로 100개로 상향)
+const STORY_FILTER_ALL = 'all';
+const STORY_FILTER_ORPHANED = '__legacy__';
+
+const AiStudioHost: React.FC = () => {
+  const [imageHistory, setImageHistory] = useState<any[]>([]);
+  const [historyUrls, setHistoryUrls] = useState<Record<string, string>>({});
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [showImageHistory, setShowImageHistory] = useState(true);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+  const [lightboxItem, setLightboxItem] = useState<any | null>(null);
+  const historyUrlsRef = useRef<Record<string, string>>({});
+  const [storyFilter, setStoryFilter] = useState<string>(STORY_FILTER_ALL);
+  const [storyFolders, setStoryFolders] = useState<StoryFolderInfo[]>([]);
+  const [isStoryFolderLoading, setIsStoryFolderLoading] = useState(false);
+  const [remoteFolderImages, setRemoteFolderImages] = useState<any[]>([]);
+  const [isRemoteFolderLoading, setIsRemoteFolderLoading] = useState(false);
+
+  // 초기 로드 및 스토리지 동기화
+  useEffect(() => {
+    const saved = localStorage.getItem('imageHistory');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setImageHistory(parsed);
+      } catch (e) {
+        console.error('Failed to parse imageHistory', e);
+      }
+    }
+    const handleStorageSync = (event: StorageEvent) => {
+      if (event.key === 'imageHistory' && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          if (Array.isArray(parsed)) setImageHistory(parsed);
+        } catch (err) {
+          console.error('Failed to sync image history', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, []);
+
+  const refreshStoryFolderList = useCallback(async () => {
+    setIsStoryFolderLoading(true);
+    try {
+      const folders = await fetchImageStoryFolders();
+      if (Array.isArray(folders)) {
+        setStoryFolders(folders);
+      }
+    } catch (err) {
+      console.error('Failed to load story folders', err);
+    } finally {
+      setIsStoryFolderLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshStoryFolderList();
+  }, [refreshStoryFolderList]);
+
+  const fetchRemoteImagesForStory = useCallback(async (targetStoryId: string) => {
+    if (!targetStoryId || targetStoryId === STORY_FILTER_ALL || targetStoryId === STORY_FILTER_ORPHANED) {
+      setRemoteFolderImages([]);
+      return;
+    }
+    setIsRemoteFolderLoading(true);
+    try {
+      const endpoints = [
+        `http://localhost:3002/api/images/by-story/${encodeURIComponent(targetStoryId)}`,
+        `http://127.0.0.1:3002/api/images/by-story/${encodeURIComponent(targetStoryId)}`
+      ];
+      for (const url of endpoints) {
+        try {
+          const resp = await fetch(`${url}?t=${Date.now()}`);
+          if (!resp.ok) continue;
+          const files = await resp.json();
+          console.log(`[AiStudioHost] Received ${files?.length || 0} files from server:`, files);
+          if (Array.isArray(files)) {
+            const syntheticItems = files.map((item: any, idx: number) => {
+              // Support both old format (string) and new format (object with metadata)
+              const filename = typeof item === 'string' ? item : item.filename;
+              const prompt = typeof item === 'string' ? item : (item.prompt || filename);
+
+              console.log(`[AiStudioHost] Processing item ${idx}: filename=${filename}, prompt=${prompt?.substring(0, 50)}...`);
+
+              return {
+                id: `remote-${targetStoryId}-${filename}-${idx}`,
+                prompt: prompt,
+                generatedImageId: '',
+                storyId: targetStoryId,
+                favorite: false,
+                createdAt: typeof item === 'object' && item.createdAt
+                  ? new Date(item.createdAt).getTime()
+                  : Date.now() - idx,
+                localFilename: filename,
+                settings: {
+                  mode: 'Generate',
+                  aspectRatio: '9:16',
+                  activeCheatKeys: [],
+                  noGuard: false,
+                  enhanceBackground: false,
+                  removeBackground: false,
+                  creativity: 0.8
+                }
+              };
+            });
+            console.log(`[AiStudioHost] Created ${syntheticItems.length} synthetic items`);
+            setRemoteFolderImages(syntheticItems);
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to fetch remote folder images', err);
+        }
+      }
+      setRemoteFolderImages([]);
+    } finally {
+      setIsRemoteFolderLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRemoteImagesForStory(storyFilter);
+  }, [storyFilter, fetchRemoteImagesForStory]);
+
+  // blob -> URL 로드 (PERFORMANCE: 디바운스 및 중복 로딩 방지)
+  useEffect(() => {
+    let mounted = true;
+    let debounceTimer: NodeJS.Timeout | null = null;
+    const loadedIds = new Set<string>(); // Track loaded images
+
+    const loadUrls = async () => {
+      // Only load images that haven't been loaded yet
+      const combinedHistory = [...imageHistory, ...remoteFolderImages];
+      const needsLoad = combinedHistory.filter(item =>
+        !historyUrls[item.id] && !loadedIds.has(item.id)
+      );
+
+      if (needsLoad.length === 0) return;
+
+      console.log(`[Performance] AiStudio loading ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
+
+      const fetchFromLocalFile = async (filename: string): Promise<string | null> => {
+        const candidates = [
+          `/generated_scripts/images/${filename}`,
+          `http://localhost:3002/generated_scripts/images/${filename}`,
+          `http://127.0.0.1:3002/generated_scripts/images/${filename}`
+        ];
+        for (const url of candidates) {
+          try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              return URL.createObjectURL(blob);
+            }
+          } catch (e) {
+            // Silently try next candidate
+          }
+        }
+        return null;
+      };
+
+      const urls: Record<string, string> = {};
+      for (const item of needsLoad) {
+        // dataUrl 우선 복원 (하위 호환성)
+        if (item.dataUrl) {
+          urls[item.id] = item.dataUrl;
+          loadedIds.add(item.id);
+          continue;
+        }
+        if (item.generatedImageId) {
+          try {
+            const blob = await getBlob(item.generatedImageId);
+            if (blob && mounted) {
+              urls[item.id] = URL.createObjectURL(blob);
+              loadedIds.add(item.id);
+              continue;
+            }
+          } catch (e) {
+            console.error('Failed to load blob', e);
+          }
+        }
+        if (item.localFilename) {
+          const resolved = await fetchFromLocalFile(item.localFilename);
+          if (resolved) {
+            urls[item.id] = resolved;
+            loadedIds.add(item.id);
+          }
+        }
+      }
+      if (mounted && Object.keys(urls).length > 0) {
+        setHistoryUrls(prev => ({ ...prev, ...urls }));
+        console.log(`[Performance] AiStudio loaded ${Object.keys(urls).length} thumbnails successfully`);
+      }
+    };
+
+    // Debounce: wait 300ms after last change
+    debounceTimer = setTimeout(() => {
+      loadUrls();
+    }, 300);
+
+    return () => {
+      mounted = false;
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [imageHistory, remoteFolderImages]); // Only depend on history arrays, not urls
+
+  useEffect(() => {
+    historyUrlsRef.current = historyUrls;
+  }, [historyUrls]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(historyUrlsRef.current).forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // ignore
+        }
+      });
+      historyUrlsRef.current = {};
+    };
+  }, []);
+
+  // 히스토리 없을 때 디스크 이미지 부트스트랩
+  useEffect(() => {
+    const bootstrapFromDisk = async () => {
+      if (imageHistory.length > 0) return;
+      const files = await fetchDiskImageList();
+      if (files.length === 0) return;
+      const synthetic = files.slice(0, 50).map((filename, idx) => ({
+        id: `disk-${idx}-${filename}`,
+        prompt: filename,
+        generatedImageId: '',
+        favorite: false,
+        localFilename: filename,
+        createdAt: Date.now(),
+        source: 'disk',
+        settings: { mode: 'Generate', aspectRatio: '9:16', activeCheatKeys: [], noGuard: false, enhanceBackground: false, removeBackground: false, creativity: 0.8 }
+      }));
+      setImageHistory(synthetic);
+    };
+    bootstrapFromDisk();
+  }, [imageHistory.length]);
+
+  const toggleFavorite = (id: string, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    setImageHistory(prev => prev.map(item => item.id === id ? { ...item, favorite: !item.favorite } : item));
+    setRemoteFolderImages(prev => prev.map(item => item.id === id ? { ...item, favorite: !item.favorite } : item));
+  };
+
+  const handleCopyPrompt = async (prompt: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(prompt || '');
+    } catch (err) {
+      console.error('Prompt copy failed', err);
+    }
+  };
+
+  const handleDeleteHistoryItem = async (id: string, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    const localItem = imageHistory.find(item => item.id === id);
+    const remoteItem = remoteFolderImages.find(item => item.id === id);
+    const target = localItem || remoteItem;
+    if (!target) return;
+    if (!window.confirm('이 이미지를 삭제하시겠습니까?')) return;
+
+    if (localItem?.generatedImageId) {
+      try {
+        await deleteBlob(localItem.generatedImageId);
+      } catch (err) {
+        console.error('Failed to delete blob', err);
+      }
+    }
+
+    if (target.localFilename) {
+      try {
+        await deleteFileFromDisk(target.localFilename, 'image');
+      } catch (err) {
+        console.error('Failed to delete file from disk', err);
+      }
+    }
+
+    if (localItem) {
+      const nextHistory = imageHistory.filter((item) => item.id !== id);
+      setImageHistory(nextHistory);
+      localStorage.setItem('imageHistory', JSON.stringify(nextHistory));
+    }
+
+    if (remoteItem) {
+      setRemoteFolderImages(prev => prev.filter(item => item.id !== id));
+      fetchRemoteImagesForStory(storyFilter);
+    }
+
+    if (historyUrls[id]) {
+      URL.revokeObjectURL(historyUrls[id]);
+      setHistoryUrls((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    }
+    refreshStoryFolderList();
+  };
+
+  // AI Studio에서 새 이미지를 생성했을 때 history에 추가할 수 있도록 콜백 제공
+  const handleAddHistoryFromDataUrl = async (dataUrl: string, prompt: string) => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const imageId = crypto.randomUUID();
+
+      // 1. IndexedDB에 저장
+      try {
+        await setBlob(imageId, blob);
+      } catch (err) {
+        console.error('Failed to persist blob to IndexedDB', err);
+        // IndexedDB 실패 시 중단하지 않고 진행 (디스크 저장이 있으므로)
+      }
+
+      // 2. 서버 디스크에 저장 (영구 보존)
+      let savedFilename: string | undefined;
+      try {
+        // dataUrl은 base64 포함 전체 문자열
+        const saveResult = await saveImageToDisk(dataUrl, prompt);
+        savedFilename = saveResult?.filename;
+        console.log('Saved to disk:', savedFilename);
+      } catch (err) {
+        console.error('Failed to save image to disk', err);
+      }
+
+      const previewUrl = URL.createObjectURL(blob);
+
+      const activeStoryId = (storyFilter && storyFilter !== STORY_FILTER_ALL && storyFilter !== STORY_FILTER_ORPHANED)
+        ? storyFilter
+        : (lightboxItem?.storyId || undefined);
+
+      const newItem = {
+        id: crypto.randomUUID(),
+        prompt,
+        generatedImageId: imageId,
+        // dataUrl 제거: localStorage 용량 확보를 위해 더 이상 저장하지 않음
+        // dataUrl, 
+        favorite: false,
+        localFilename: savedFilename, // 디스크 파일명 저장
+        createdAt: Date.now(),
+        source: 'ai-studio',
+        storyId: activeStoryId,
+        settings: { mode: 'Generate', aspectRatio: '1:1', activeCheatKeys: [], noGuard: false, enhanceBackground: false, removeBackground: false, creativity: 0.8 }
+      };
+
+      const existingIds = new Set(imageHistory.map((item: any) => item.id));
+      const mergedHistory = existingIds.has(newItem.id) ? imageHistory : [newItem, ...imageHistory];
+      const newHistory = mergedHistory.slice(0, MAX_HISTORY);
+
+      setImageHistory(newHistory);
+      try {
+        localStorage.setItem('imageHistory', JSON.stringify(newHistory));
+      } catch (e) {
+        console.error('Failed to persist imageHistory', e);
+        if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+          alert("브라우저 저장 공간이 부족합니다. (LocalStorage Quota)");
+        }
+      }
+      setHistoryUrls(prev => ({ ...prev, [newItem.id]: previewUrl }));
+    } catch (e) {
+      console.error('Failed to add image to history from AI Studio', e);
+    }
+  };
+
+  const combinedHistory = useMemo(() => [...imageHistory, ...remoteFolderImages], [imageHistory, remoteFolderImages]);
+
+  const orderedHistory = useMemo(() => {
+    if (combinedHistory.length === 0) return [];
+    const filtered = combinedHistory.filter(item => {
+      if (storyFilter === STORY_FILTER_ALL) return true;
+      if (storyFilter === STORY_FILTER_ORPHANED) return !item?.storyId;
+      return item?.storyId === storyFilter;
+    });
+    const sorted = [...filtered].sort((a, b) => {
+      const favDiff = Number(Boolean(b?.favorite)) - Number(Boolean(a?.favorite));
+      if (favDiff !== 0) return favDiff;
+      const timeDiff = (b?.createdAt ?? 0) - (a?.createdAt ?? 0);
+      if (timeDiff !== 0) return timeDiff;
+      return 0;
+    });
+    return favoritesOnly ? sorted.filter(item => item?.favorite) : sorted;
+  }, [combinedHistory, favoritesOnly, storyFilter]);
+
+  const storyFilterOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [{ value: STORY_FILTER_ALL, label: '전체보기' }];
+    const seen = new Set<string>();
+    const folderCountMap = new Map<string, number>();
+    storyFolders.forEach(info => {
+      if (info?.folderName) {
+        folderCountMap.set(info.folderName, info.imageCount || 0);
+      }
+    });
+    const humanize = (folderId: string) => folderId?.replace(/_/g, ' ');
+    const append = (folderId?: string) => {
+      if (!folderId || seen.has(folderId)) return;
+      seen.add(folderId);
+      const count = folderCountMap.get(folderId);
+      const label = count ? `${humanize(folderId)} (${count}장)` : humanize(folderId);
+      options.push({ value: folderId, label });
+    };
+    storyFolders.forEach(info => append(info.folderName));
+    combinedHistory.forEach(item => append(item?.storyId));
+    const hasLegacy = combinedHistory.some(item => !item?.storyId);
+    if (hasLegacy) options.push({ value: STORY_FILTER_ORPHANED, label: '폴더 없음 (기존)' });
+    return options;
+  }, [storyFolders, combinedHistory]);
+
+  const storyFilterMessage = useMemo(() => {
+    if (storyFilter === STORY_FILTER_ALL) return '모든 이미지를 생성 순으로 표시합니다.';
+    if (storyFilter === STORY_FILTER_ORPHANED) return '폴더가 없는 기존 이미지만 표시합니다.';
+    const label = storyFilterOptions.find(opt => opt.value === storyFilter)?.label || storyFilter;
+    return `${label} 이미지만 표시합니다.`;
+  }, [storyFilter, storyFilterOptions]);
+
+  const lightboxActions = useMemo(() => {
+    if (!lightboxItem) return [];
+    return [
+      {
+        label: lightboxItem.favorite ? '즐겨찾기 해제' : '즐겨찾기',
+        icon: <StarIcon filled={!!lightboxItem.favorite} />,
+        onClick: () => toggleFavorite(lightboxItem.id)
+      },
+      {
+        label: '삭제',
+        icon: <DeleteIcon />,
+        tone: 'danger' as const,
+        onClick: () => handleDeleteHistoryItem(lightboxItem.id)
+      }
+    ];
+  }, [lightboxItem]);
+
+  return (
+    <div className="flex w-full h-full bg-slate-950 text-white relative">
+      <Lightbox
+        imageUrl={lightboxImageUrl}
+        actions={lightboxActions}
+        onClose={() => {
+          setLightboxImageUrl(null);
+          setLightboxItem(null);
+        }}
+      />
+      <div className="flex-1 overflow-y-auto">
+        <AiStudioApp onAddHistory={handleAddHistoryFromDataUrl} />
+      </div>
+      <div className={`relative shrink-0 transition-all duration-300 ${showImageHistory ? 'w-28' : 'w-0'}`}>
+        <div className={`sticky top-16 h-[calc(100vh-64px)] bg-gray-950 border-l border-gray-800 shadow-xl flex flex-col z-30 transition-opacity duration-300 ${showImageHistory ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+          <div className="p-2 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
+            <button
+              onClick={() => setFavoritesOnly(!favoritesOnly)}
+              className="text-yellow-400 hover:text-yellow-300 p-1 rounded-full hover:bg-gray-800 transition-colors"
+              title={favoritesOnly ? '즐겨찾기만 보기 해제' : '즐겨찾기만 보기'}
+            >
+              <Star size={16} className={favoritesOnly ? 'fill-yellow-400' : ''} />
+            </button>
+            <button
+              onClick={() => {
+                refreshStoryFolderList();
+                fetchRemoteImagesForStory(storyFilter);
+              }}
+              className="text-cyan-400 hover:text-cyan-300 p-1 rounded-full hover:bg-gray-800 transition-colors"
+              title="폴더/이미지 새로고침"
+            >
+              {isRemoteFolderLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw size={16} />}
+            </button>
+            <button onClick={() => setShowImageHistory(false)} className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800 transition-colors" title="히스토리 닫기">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="p-2 border-b border-gray-900/50 bg-gray-950/60 space-y-1">
+            <div className="flex items-center justify-between w-full text-[9px] text-gray-500 uppercase tracking-wide">
+              <span>스토리 필터</span>
+              <button
+                onClick={() => setStoryFilter(STORY_FILTER_ALL)}
+                className="text-[9px] text-gray-400 hover:text-white transition-colors"
+                title="전체 이미지 보기"
+              >
+                전체
+              </button>
+            </div>
+            <select
+              value={storyFilter}
+              onChange={(e) => setStoryFilter(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-800 rounded-md text-[10px] text-gray-100 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              {storyFilterOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-[9px] text-gray-500 text-center leading-relaxed">{storyFilterMessage}</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-800">
+            {isRemoteFolderLoading && storyFilter !== STORY_FILTER_ALL && storyFilter !== STORY_FILTER_ORPHANED && (
+              <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                폴더 이미지를 불러오는 중...
+              </div>
+            )}
+            {orderedHistory.length === 0 ? (
+              <div className="text-center text-xs text-gray-600 mt-10 px-1">No images yet</div>
+            ) : (
+              orderedHistory.map(item => (
+                <div
+                  key={item.id}
+                  className="relative group w-full h-32 rounded-lg overflow-hidden cursor-pointer border border-gray-800 hover:border-purple-500 transition-all flex-shrink-0 bg-gray-900 shadow-md"
+                  onClick={() => {
+                    const url = historyUrls[item.id];
+                    if (url) {
+                      setLightboxImageUrl(url);
+                      setLightboxItem(item);
+                    }
+                  }}
+                  title={item.prompt}
+                >
+                  {historyUrls[item.id] ? (
+                    <img src={historyUrls[item.id]} alt="History" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800 animate-pulse">
+                      <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-white text-[11px] mb-2 line-clamp-2 leading-tight break-words">
+                      {item.prompt || item.filename || 'No prompt'}
+                    </p>
+                    <div className="flex justify-around items-center">
+                      <button onClick={(e) => toggleFavorite(item.id, e)} title={item.favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'} className="flex items-center gap-1">
+                        <Star size={10} className={item.favorite ? 'fill-yellow-300 text-yellow-300' : 'text-yellow-200'} />
+                      </button>
+                      <button onClick={(e) => handleCopyPrompt(item.prompt || '', e)} title="프롬프트 복사" className="flex items-center gap-1">
+                        <Copy size={10} />
+                      </button>
+                      <button onClick={(e) => handleDeleteHistoryItem(item.id, e)} title="삭제" className="flex items-center gap-1 text-red-300">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+      {!showImageHistory && (
+        <button
+          onClick={() => setShowImageHistory(true)}
+          className="fixed right-0 top-16 p-2 bg-gray-900 text-white rounded-l-lg border border-gray-800 shadow-lg hover:bg-gray-800 transition-colors"
+          title="이미지 히스토리 열기"
+        >
+          <HistoryIcon size={16} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+const StarIcon: React.FC<{ filled: boolean }> = ({ filled }) => (
+  <svg viewBox="0 0 24 24" className={`w-5 h-5 ${filled ? 'text-yellow-300 fill-yellow-300' : 'text-yellow-200'}`}>
+    <path d="M12 2l2.9 6.9L22 10l-5 4.4L18.4 21 12 17.6 5.6 21 7 14.4 2 10l7.1-1.1L12 2z" />
+  </svg>
+);
+
+const DeleteIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5">
+    <path fill="currentColor" d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6v8h2V9h-2zm4 0v8h2V9h-2z" />
+  </svg>
+);
+
+export default AiStudioHost;

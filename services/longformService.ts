@@ -1,0 +1,153 @@
+import { ChapterSummary, UserInput } from '../types';
+
+interface SummaryResponse {
+  chapters: ChapterSummary[];
+}
+
+function buildChapterStructure() {
+  return [
+    { title: 'Hook', guidance: 'Start with an irresistible hook that immediately addresses a relatable senior concern or a shocking line.' },
+    { title: 'Conflict', guidance: 'Escalate the situation with tension or humor. Highlight emotional stakes and relatable frustrations.' },
+    { title: 'Reversal', guidance: 'Introduce a twist or realization that changes the direction of the story.' },
+    { title: 'Climax', guidance: 'Deliver the emotional or comedic peak. Decisions are made or truths are revealed.' },
+    { title: 'Resolution', guidance: 'Wrap up with a satisfying or witty ending that leaves a lingering impression.' },
+  ];
+}
+
+function buildSummaryPrompt(input: UserInput, topic: string, targetChapter?: string) {
+  const structure = buildChapterStructure();
+  const structureText = structure
+    .map((chapter, index) => `${index + 1}. ${chapter.title} - ${chapter.guidance}`)
+    .join('\n');
+
+  const basePrompt = `You are an award-winning senior storytelling director. Create a long-form YouTube script outline for Korean seniors (40~70s).
+Topic: ${topic || input.customContext || '일상적인 갈등'}
+Dialect/Tone preference: ${input.dialect}
+Structure:
+${structureText}
+
+Avoid using double quotes (") inside any string values. Use single quotes or parentheses instead.
+Return JSON that strictly matches the following schema:
+{
+  "chapters": [
+    {
+      "order": number,
+      "title": "string",
+      "summary": "2-3 sentences describing the chapter",
+      "emotions": "Key emotional tone",
+      "twistHint": "Foreshadow or twist for this chapter"
+    }
+  ]
+}
+Make each summary vivid but concise. Emphasize hooks, tension, and twists suitable for seniors.`;
+
+  if (targetChapter) {
+    return `${basePrompt}\n\nIMPORTANT: Only output the chapter titled "${targetChapter}".`;
+  }
+  return basePrompt;
+}
+
+function buildChapterContentPrompt(input: UserInput, topic: string, chapter: ChapterSummary) {
+  return `You are the head writer for a premium Korean senior storytelling channel.
+Write the full script for the chapter "${chapter.title}" in a long-form video geared toward audiences aged 40-70.
+
+Context Topic: ${topic || input.customContext || '일상적인 갈등'}
+Chapter Summary: ${chapter.summary}
+Emotional tone: ${chapter.emotions}
+Twist hint / foreshadow: ${chapter.twistHint}
+
+Requirements:
+1. Write 350~500 Korean words with natural narration and occasional dialogue.
+2. Use vivid descriptions, emotional nuance, and realistic speech patterns for seniors.
+3. Include subtle humor or empathy as appropriate to the summary.
+4. Close the chapter with a mini-cliffhanger or reflective line that motivates viewers to continue to the next chapter.
+5. Do NOT regenerate the entire outline—only provide the script for this chapter.
+6. Avoid using double quotes (") inside the content string; use single quotes or parentheses instead.
+
+Return JSON with this schema only:
+{
+  "content": "chapter script text in Korean"
+}`;
+}
+
+export async function requestLongformSummary(input: UserInput, topic: string, targetChapter?: string, templateGuidance?: string): Promise<ChapterSummary[]> {
+  const prompt = buildSummaryPrompt(input, topic, targetChapter) + (templateGuidance || '');
+
+  const response = await fetch('http://localhost:3002/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service: input.targetService || 'GEMINI',
+      prompt,
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to generate longform summary.');
+  }
+
+  const data: SummaryResponse = await response.json();
+  if (!data.chapters) {
+    throw new Error('Invalid summary response.');
+  }
+
+  return data.chapters.map(ch => ({ ...ch, status: 'pending' }));
+}
+
+export async function requestLongformChapterContent(input: UserInput, topic: string, chapter: ChapterSummary, templateGuidance?: string): Promise<string> {
+  const prompt = buildChapterContentPrompt(input, topic, chapter) + (templateGuidance || '');
+
+  const response = await fetch('http://localhost:3002/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service: input.targetService || 'GEMINI',
+      prompt,
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to generate chapter content.');
+  }
+
+  const data = await response.json();
+  if (data && typeof data === 'object' && data.content) {
+    return data.content as string;
+  }
+  throw new Error('Invalid content response.');
+}
+
+export async function saveLongformSession(sessionId: string, data: any) {
+  const response = await fetch('http://localhost:3002/api/longform/save-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, data })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to save longform session.');
+  }
+
+  return response.json();
+}
+
+export async function listLongformSessions() {
+  const response = await fetch('http://localhost:3002/api/longform/sessions');
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to list sessions');
+  }
+  return response.json();
+}
+
+export async function loadLongformSession(sessionId: string) {
+  const response = await fetch(`http://localhost:3002/api/longform/sessions/${sessionId}`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to load session');
+  }
+  return response.json();
+}

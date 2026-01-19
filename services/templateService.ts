@@ -1,0 +1,328 @@
+import { StyleTemplate, UserInput } from '../types';
+import { jsonrepair } from 'jsonrepair';
+
+interface TemplateAnalysisResponse {
+  templateName: string;
+  structure: string[];
+  tone: string;
+  hookStrategy: string;
+  twistStyle: string;
+  characterNotes?: string;
+  imageNotes?: string;
+  hookTiming?: string;
+  lengthGuidance?: string;
+  dialogueRatio?: string;
+  visualBeats?: string[];
+  gagPattern?: string;
+  ctaStyle?: string;
+  mustHaveObjects?: string[];
+  rawSource?: string;
+}
+
+const TEMPLATE_DIR = 'style_templates';
+
+function buildAnalysisPrompt(scriptText: string, type: 'shortform' | 'longform') {
+  return `You are a "Viral Content Architect". Your goal is to reverse-engineer the provided Korean script to extract its "Viral DNA" so it can be replicated for other topics.
+
+  **CRITICAL OBJECTIVE**:
+  Do NOT just summarize the plot. Extract the **ABSTRACT FORMULA** that drives engagement, and only label tones/patterns that are truly present in the given script.
+  
+  **ANALYSIS STEPS**:
+  1. **Viral Trigger**: Why did the viewer stop scrolling? (e.g., 호기심, 분노, 질투, 반전 기대)
+  2. **Logic Abstraction**: Remove specific nouns (e.g., "Pepper", "Golf") and describe the **Structural Logic**.
+     - Bad: "A woman talks about peppers."
+     - Good: "A character suspects infidelity due to ambiguous late-night behavior."
+  3. **Replication Guide**: How can this be applied to a completely different topic (e.g., Parking, Fishing, Cooking)?
+  4. **Tone Detection Guardrails**:
+     - If there is **clear evidence** of "Double Entendre/Adult Humor/Wordplay", label it. Otherwise, explicitly set tone to "해당 없음" for those categories and describe the dominant tone instead (e.g., 질투/불륜 의심 드라마, 공포, 사이다 복수, 일상 코미디).
+
+  **OUTPUT REQUIREMENTS**:
+  - **CRITICAL**: Respond ONLY with valid JSON. Do not include any conversational text, markdown formatting (like \`\`\`json), or explanations.
+  - All descriptions must be in ** Natural Korean **.
+  - ** structure **: Define the 4 - 7 steps of the logic flow.
+  - ** hookStrategy **: Explain the psychological trigger used in the first 3 seconds.
+  - ** gagPattern **: Define the core mechanism of the humor(e.g., "Ambiguous Wordplay", "Status Reversal").
+  - ** mustHaveObjects **: List objects that are functionally necessary for this logic(e.g., "Object with double meaning", "Concealing item").
+
+  Return JSON with this schema ONLY:
+  {
+    "templateName": "string (Creative Name, e.g., 'Double Entendre Misunderstanding')",
+      "structure": ["Step 1: Setup", "Step 2: Trigger", ...],
+        "tone": "description (e.g., Cheeky, Satirical, Tension-building)",
+          "hookStrategy": "description (The psychological hook)",
+            "twistStyle": "description (How the reversal happens)",
+              "hookTiming": "e.g., 1~3초, 첫 문장에 질문",
+                "lengthGuidance": "e.g., 10~14문장, 25~40초",
+                  "dialogueRatio": "e.g., 대사 40%, 나레이션 60%",
+                    "visualBeats": ["컷1", "컷2", "컷3+"],
+                      "gagPattern": "description (The core humor mechanism)",
+                        "ctaStyle": "description",
+                          "mustHaveObjects": ["Abstract Object 1", "Abstract Object 2"],
+                            "characterNotes": "Roles required for this logic (e.g., 'Innocent Provoker', 'Over-reactor')",
+                              "imageNotes": "Visual mood to support the tone"
+  }
+
+  Script to Analyze:
+  ${scriptText} `;
+}
+
+function tryParseTemplateJson(text: string): TemplateAnalysisResponse | null {
+  const tryParse = (str: string) => {
+    try {
+      return JSON.parse(str);
+    } catch {
+      try {
+        return JSON.parse(jsonrepair(str));
+      } catch {
+        return null;
+      }
+    }
+  };
+
+  // 1. Try parsing the raw text first
+  let parsed = tryParse(text);
+  if (parsed) return parsed;
+
+  // 2. Try extracting from code blocks (flexible regex)
+  // Matches ```json, ``` json, or just ```
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/gi;
+  let match;
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const candidate = tryParse(match[1]);
+    if (candidate) return candidate;
+  }
+
+  // 3. Try finding the first valid JSON object using brace matching
+  let braceStack = 0;
+  let startIndex = -1;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '{') {
+      if (braceStack === 0) startIndex = i;
+      braceStack++;
+    } else if (ch === '}') {
+      braceStack--;
+      if (braceStack === 0 && startIndex !== -1) {
+        const candidateStr = text.substring(startIndex, i + 1);
+        const candidate = tryParse(candidateStr);
+        if (candidate) return candidate;
+        // If failed, reset and continue searching (e.g. nested or multiple objects)
+        startIndex = -1;
+      }
+    }
+  }
+
+  return null;
+}
+
+function normalizeCandidate(text: string) {
+  let t = text || '';
+  if (!t) return '';
+  // common prefixes from LLM copy blocks
+  t = t.replace(/^json\s*copy\s*code\s*/i, '');
+  t = t.replace(/^copy\s*code\s*/i, '');
+  // strip fenced block markers if present
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '');
+  return t.trim();
+}
+
+function collectTextCandidates(payload: any, rawBody: string): string[] {
+  const candidates: string[] = [];
+
+  const pushText = (val: any) => {
+    if (!val) return;
+    if (typeof val === 'string') {
+      candidates.push(val);
+    } else if (Array.isArray(val)) {
+      val.forEach(pushText);
+    } else if (typeof val === 'object') {
+      if (typeof val.text === 'string') candidates.push(val.text);
+      if (val.parts) pushText(val.parts);
+      if (val.content) pushText(val.content);
+    }
+  };
+
+  pushText(payload);
+  if (payload?.content) pushText(payload.content);
+  if (payload?.candidates) payload.candidates.forEach((c: any) => pushText(c.content || c));
+  if (payload?.message) pushText(payload.message);
+
+  // rawBody as last resort
+  if (rawBody) candidates.push(rawBody);
+
+  // de-duplicate while preserving order
+  return Array.from(new Set(candidates)).filter(Boolean);
+}
+
+export function parseFromText(text: string): TemplateAnalysisResponse | null {
+  const normalized = normalizeCandidate(text);
+  if (!normalized) return null;
+
+  let data = tryParseTemplateJson(normalized);
+  if (data?.structure) return data as TemplateAnalysisResponse;
+
+  const firstBrace = normalized.indexOf('{');
+  const lastBrace = normalized.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      const repaired = jsonrepair(normalized.slice(firstBrace, lastBrace + 1));
+      const parsed = JSON.parse(repaired);
+      if (parsed?.structure) return parsed as TemplateAnalysisResponse;
+    } catch {
+      // ignore and return null below
+    }
+  }
+
+  return null;
+}
+
+export async function analyzeScriptTemplate(input: UserInput, scriptText: string, type: 'shortform' | 'longform') {
+  const isUrl = /^https?:\/\//i.test((scriptText || '').trim());
+  let scriptForAnalysis = scriptText;
+  let analysisSource = 'manual';
+
+  if (isUrl) {
+    try {
+      const ytRes = await fetch('http://localhost:3002/api/analyze-youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: scriptText.trim() })
+      });
+
+      if (!ytRes.ok) {
+        const err = await ytRes.json().catch(() => ({}));
+        throw new Error(err.error || '유튜브 분석 실패');
+      }
+
+      const videoData = await ytRes.json();
+      const transcript = (videoData.transcript || '').trim();
+      if (!transcript || transcript.length < 20 || transcript.startsWith('(자막을 찾을 수 없습니다')) {
+        throw new Error('유튜브 자막을 불러오지 못했습니다. yt-dlp 업데이트 또는 Whisper(STT) 설치 후 다시 시도하세요.');
+      }
+
+      // Use transcript as primary analysis text; include title for extra context
+      scriptForAnalysis = `${videoData.title || ''}\n${transcript}`;
+      analysisSource = `youtube:${videoData.transcriptSource || 'subtitle'}`;
+    } catch (e: any) {
+      console.error('[templateService] Failed to fetch YouTube transcript:', e);
+      throw new Error(e?.message || '유튜브 분석 중 오류가 발생했습니다.');
+    }
+  }
+
+  const prompt = buildAnalysisPrompt(scriptForAnalysis, type);
+
+  const response = await fetch('http://localhost:3002/api/generate/raw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service: input.targetService || 'GEMINI',
+      prompt,
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = 'Failed to analyze script.';
+    try {
+      const errorData = JSON.parse(errorText);
+      errorMessage = errorData.error || errorMessage;
+    } catch {
+      errorMessage = errorText.slice(0, 200);
+    }
+    throw new Error(errorMessage);
+  }
+
+  const responseData = await response.json();
+  const rawBody = responseData.rawResponse || '';
+
+  if (!rawBody) {
+    throw new Error('Empty response from server');
+  }
+
+  const candidates = collectTextCandidates({ text: rawBody }, rawBody);
+  let data: TemplateAnalysisResponse | null = null;
+
+  for (const candidate of candidates) {
+    data = parseFromText(candidate);
+    if (data?.structure) break;
+  }
+
+  if (!data || !data.structure) {
+    console.warn('[templateService] template parse failed. raw response:', rawBody.slice(0, 800));
+    throw new Error('Invalid template response. Snippet: ' + rawBody.slice(0, 400));
+  }
+
+  const template: StyleTemplate = {
+    id: `${Date.now()} -${Math.random().toString(36).slice(2, 8)} `,
+    name: data.templateName || `${type.toUpperCase()} Template ${new Date().toLocaleString()} `,
+    createdAt: Date.now(),
+    service: input.targetService || 'GEMINI',
+    type,
+    structure: data.structure,
+    tone: data.tone,
+    hookStrategy: data.hookStrategy,
+    twistStyle: data.twistStyle,
+    characterNotes: data.characterNotes,
+    imageNotes: data.imageNotes,
+    rawAnalysis: scriptForAnalysis,
+    hookTiming: data.hookTiming,
+    lengthGuidance: data.lengthGuidance,
+    dialogueRatio: data.dialogueRatio,
+    visualBeats: data.visualBeats,
+    gagPattern: data.gagPattern,
+    ctaStyle: data.ctaStyle,
+    mustHaveObjects: data.mustHaveObjects,
+    transcriptSource: analysisSource
+  };
+
+  await saveTemplate(template);
+  return template;
+}
+
+export async function saveTemplate(template: StyleTemplate) {
+  const response = await fetch('http://localhost:3002/api/style-templates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(template)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to save template');
+  }
+
+  return response.json();
+}
+
+export async function fetchTemplates(): Promise<StyleTemplate[]> {
+  const response = await fetch('http://localhost:3002/api/style-templates');
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to load templates');
+  }
+
+  return response.json();
+}
+
+export async function deleteTemplate(id: string) {
+  // Try DELETE first; if blocked, fallback to POST /delete
+  try {
+    const response = await fetch(`http://localhost:3002/api/style-templates/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (response.ok) return response.json();
+  } catch {
+    // ignore and fallback
+  }
+  const fb = await fetch('http://localhost:3002/api/style-templates/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+  if (!fb.ok) {
+    const errorData = await fb.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to delete template');
+  }
+  return fb.json();
+}

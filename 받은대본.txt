@@ -1,0 +1,34 @@
+JSON
+[
+  {
+    "name": "준호 (Jun-ho)",
+    "role": "The protagonist who suffers a humorous mishap",
+    "personality": "He values his dignity and elegance (기품), often trying to mimic the aura of a pro-golfer like Tiger Woods. Despite being a beginner ('Baek-dol-i'), he maintains a serious and solemn demeanor, even in embarrassing situations.",
+    "visualProfile": {
+      "hair": "Short, neat, and well-groomed black hair",
+      "eyes": "Sharp yet earnest eyes, currently filled with desperation and solemnity",
+      "bodyType": "Fit and athletic build with an upright, confident gait",
+      "distinctFeatures": "Cold sweat on the forehead, hands trembling while parting the grass, and a torn seam on the seat of his black slacks",
+      "visualVibe": "A sophisticated middle-aged man whose polished appearance is currently compromised by a hidden disaster"
+    }
+  },
+  {
+    "name": "지영 (Ji-young)",
+    "role": "The witness and Jun-ho's companion",
+    "personality": "Observant and easily surprised. She cares about Jun-ho's well-being but is quick to feel the tension or comedy of a situation.",
+    "visualProfile": {
+      "hair": "Elegant and voluminous mid-length dark hair",
+      "eyes": "Wide, expressive eyes filled with concern and shock",
+      "bodyType": "Slender and graceful posture",
+      "distinctFeatures": "Hand covering her mouth in surprise, wearing stylish golf attire",
+      "visualVibe": "Stunning and refined middle-aged woman with a reactive and lively presence"
+    }
+  }
+]
+
+
+요청하신 시나리오의 캐릭터 분석을 JSON 데이터 포맷으로 정리해 드렸습니다. 비즈니스 컨설팅 측면에서 볼 때, 준호라는 캐릭터는 '페르소나 유지'를 중시하는 중장년층의 심리적 특성을 유머러스하게 보여주고 있네요.
+
+자동화 검증 토큰: #scene-01-61045d1c-cd44-4bb5-910f-2770f6e57aef.
+
+다음 단계로 이 캐릭터들의 특정 상황에 대한 추가적인 시각적 묘사나 대화 스크립트 확장이 필요하신가요?

@@ -1,0 +1,17 @@
+Rollup 오류가 다시 나오면, 이전에 했던 것처럼 다음 순서를 CMD에서 실행해 주세요:
+
+  1. 프로젝트 폴더로 이동 (F:\projact\쇼츠대본생성기-v3 (2)\쇼츠대본생성기-v3)
+  2. 다음 명령으로 node_modules와 package-lock.json 삭제:
+
+     rmdir /s /q node_modules
+     del package-lock.json
+     (혹시 “액세스 거부”가 뜨면 관리자 CMD를 열고, VSCode/터미널 등 사용 중인 프로그램을 닫은 상태에서 재시도합니다.)
+  3. 새로 설치:
+
+     npm install
+  4. 빌드:
+
+     npm run build
+
+  이렇게 재설치하면 Rollup optional dependency 패키지가 다시 내려받아지고, 이후 빌드가 정상 완료됩니다. (앞에서 이미 한
+  번 해결했지만, node_modules를 되살리지 않았다면 새로 설치해 줘야 합니다.)

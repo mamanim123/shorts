@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단 템플릿 테스트 - 새로운대본.txt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+        .panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-area {
+            grid-column: 1 / -1;
+        }
+        .output-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #c33;
+            margin-top: 10px;
+        }
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3c3;
+            margin-top: 10px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 간단 템플릿 테스트 도구</h1>
+            <p>새로운대본.txt 프롬프트를 직접 API에 전송하여 응답 확인</p>
+        </div>
+
+        <div class="content">
+            <div class="panel">
+                <h2>📝 입력 설정</h2>
+                <div class="info-box">
+                    <strong>💡 테스트 목적:</strong><br>
+                    복잡한 로직 없이 순수하게 "새로운대본.txt" 템플릿만 사용하여<br>
+                    LLM이 어떤 대본과 이미지 프롬프트를 생성하는지 확인합니다.
+                </div>
+
+                <div class="input-group">
+                    <label>주제 (TOPIC)</label>
+                    <input type="text" id="topic" value="골프장에서 생긴 일" placeholder="예: 골프장에서 생긴 일">
+                </div>
+
+                <div class="input-group">
+                    <label>장르 (GENRE)</label>
+                    <select id="genre">
+                        <option value="일상">일상</option>
+                        <option value="로맨스">로맨스</option>
+                        <option value="코미디">코미디</option>
+                        <option value="반전">반전</option>
+                        <option value="감동">감동</option>
+                        <option value="스릴러">스릴러</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>타겟 연령 (TARGET_AGE)</label>
+                    <input type="text" id="target" value="40대" placeholder="예: 40대">
+                </div>
+
+                <div class="input-group">
+                    <label>여성 의상 1 (선택)</label>
+                    <input type="text" id="outfit1" placeholder="예: White Halter-neck Knit + Red Micro Mini Skirt">
+                </div>
+
+                <div class="input-group">
+                    <label>여성 의상 2 (선택)</label>
+                    <input type="text" id="outfit2" placeholder="예: Navy Sleeveless Polo + White Micro Skirt">
+                </div>
+
+                <div class="input-group">
+                    <label>남성 의상 (선택)</label>
+                    <input type="text" id="outfit3" placeholder="예: Light Grey Linen Shirt + White Pants">
+                </div>
+
+                <div class="input-group">
+                    <label>AI 서비스</label>
+                    <select id="service">
+                        <option value="GEMINI">Gemini</option>
+                        <option value="CLAUDE">Claude</option>
+                    </select>
+                </div>
+
+                <button class="btn" id="generateBtn" onclick="testGeneration()">
+                    🚀 대본 생성 테스트
+                </button>
+            </div>
+
+            <div class="panel">
+                <h2>📊 프롬프트 미리보기</h2>
+                <div class="output-box" id="promptPreview" style="max-height: 400px;">
+                    프롬프트가 여기에 표시됩니다...
+                </div>
+                <button class="btn" style="margin-top: 10px;" onclick="loadPromptPreview()">
+                    🔄 프롬프트 미리보기
+                </button>
+            </div>
+
+            <div class="panel result-area">
+                <h2>✨ 생성 결과</h2>
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('raw')">원본 JSON</button>
+                    <button class="tab" onclick="switchTab('script')">대본</button>
+                    <button class="tab" onclick="switchTab('scenes')">이미지 프롬프트</button>
+                </div>
+
+                <div class="tab-content active" id="raw">
+                    <div class="output-box" id="rawOutput">
+                        결과가 여기에 표시됩니다...
+                    </div>
+                </div>
+
+                <div class="tab-content" id="script">
+                    <div class="output-box" id="scriptOutput">
+                        대본이 여기에 표시됩니다...
+                    </div>
+                </div>
+
+                <div class="tab-content" id="scenes">
+                    <div class="output-box" id="scenesOutput">
+                        씬별 프롬프트가 여기에 표시됩니다...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let templateContent = '';
+
+        // 페이지 로드 시 템플릿 로드
+        async function loadTemplate() {
+            try {
+                const response = await fetch('/새로운대본.txt');
+                if (!response.ok) throw new Error('템플릿 파일을 찾을 수 없습니다.');
+                templateContent = await response.text();
+                console.log('✅ 새로운대본.txt 로드 성공');
+                loadPromptPreview();
+            } catch (error) {
+                console.error('❌ 템플릿 로드 실패:', error);
+                document.getElementById('promptPreview').innerHTML =
+                    `<div class="error">템플릿 로드 실패: ${error.message}</div>`;
+            }
+        }
+
+        // 프롬프트 미리보기 생성
+        function loadPromptPreview() {
+            if (!templateContent) {
+                document.getElementById('promptPreview').textContent = '템플릿이 로드되지 않았습니다.';
+                return;
+            }
+
+            const topic = document.getElementById('topic').value || '(입력 필요)';
+            const genre = document.getElementById('genre').value || '일상';
+            const target = document.getElementById('target').value || '40대';
+            const outfit1 = document.getElementById('outfit1').value || 'AI CHOICE';
+            const outfit2 = document.getElementById('outfit2').value || 'AI CHOICE';
+            const outfit3 = document.getElementById('outfit3').value || 'Light Grey Linen Shirt + White Pants';
+
+            const filled = templateContent
+                .replace(/\{\{TOPIC\}\}/g, topic)
+                .replace(/\{\{GENRE\}\}/g, genre)
+                .replace(/\{\{TARGET_AGE\}\}/g, target)
+                .replace(/\{\{LOCKED_FEMALE_OUTFIT\}\}/g, outfit1)
+                .replace(/\{\{LOCKED_FEMALE_OUTFIT2\}\}/g, outfit2)
+                .replace(/\{\{LOCKED_MALE_OUTFIT\}\}/g, outfit3);
+
+            document.getElementById('promptPreview').textContent = filled.substring(0, 2000) + '\n\n... (총 ' + filled.length + '자)';
+        }
+
+        // 대본 생성 테스트
+        async function testGeneration() {
+            if (!templateContent) {
+                alert('템플릿이 로드되지 않았습니다. 페이지를 새로고침해주세요.');
+                return;
+            }
+
+            const topic = document.getElementById('topic').value.trim();
+            if (!topic) {
+                alert('주제를 입력해주세요.');
+                return;
+            }
+
+            const genre = document.getElementById('genre').value;
+            const target = document.getElementById('target').value;
+            const outfit1 = document.getElementById('outfit1').value || 'AI CHOICE';
+            const outfit2 = document.getElementById('outfit2').value || 'AI CHOICE';
+            const outfit3 = document.getElementById('outfit3').value || 'Light Grey Linen Shirt + White Pants';
+            const service = document.getElementById('service').value;
+
+            // 프롬프트 생성
+            const fullPrompt = templateContent
+                .replace(/\{\{TOPIC\}\}/g, topic)
+                .replace(/\{\{GENRE\}\}/g, genre)
+                .replace(/\{\{TARGET_AGE\}\}/g, target)
+                .replace(/\{\{LOCKED_FEMALE_OUTFIT\}\}/g, outfit1)
+                .replace(/\{\{LOCKED_FEMALE_OUTFIT2\}\}/g, outfit2)
+                .replace(/\{\{LOCKED_MALE_OUTFIT\}\}/g, outfit3);
+
+            console.log('📤 전송 프롬프트:', fullPrompt);
+
+            // UI 업데이트
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 생성 중...';
+            document.getElementById('rawOutput').innerHTML = '<div class="loading">AI가 대본을 생성하고 있습니다</div>';
+
+            try {
+                const response = await fetch('http://localhost:3002/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        service: service,
+                        prompt: fullPrompt
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('📥 API 응답:', result);
+
+                // 원본 JSON 표시
+                document.getElementById('rawOutput').textContent = JSON.stringify(result, null, 2);
+
+                // 대본 추출
+                if (result.scripts && Array.isArray(result.scripts) && result.scripts.length > 0) {
+                    const script = result.scripts[0];
+
+                    // 대본 탭
+                    let scriptText = `제목: ${script.title}\n\n`;
+                    scriptText += `훅: ${script.hook}\n\n`;
+                    scriptText += `대본:\n${script.script}\n\n`;
+                    scriptText += `반전: ${script.twist}\n\n`;
+                    scriptText += `태그: ${script.tags?.join(', ')}\n`;
+                    scriptText += `해시태그: ${script.hashtags?.join(' ')}`;
+                    document.getElementById('scriptOutput').textContent = scriptText;
+
+                    // 씬 탭
+                    if (script.scenes && Array.isArray(script.scenes)) {
+                        let scenesText = '';
+                        script.scenes.forEach((scene, idx) => {
+                            scenesText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                            scenesText += `씬 ${scene.sceneNumber || idx + 1}\n`;
+                            scenesText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                            scenesText += `📝 대본 라인:\n${scene.scriptLine || scene.scriptLineAnchor || '(없음)'}\n\n`;
+                            scenesText += `🖼️ Short Prompt (KR):\n${scene.shortPromptKo || '(없음)'}\n\n`;
+                            scenesText += `🖼️ Short Prompt (EN):\n${scene.shortPrompt || '(없음)'}\n\n`;
+                            scenesText += `🎬 Long Prompt (KR):\n${scene.longPromptKo || '(없음)'}\n\n`;
+                            scenesText += `🎬 Long Prompt (EN):\n${scene.longPrompt || '(없음)'}\n\n\n`;
+                        });
+                        document.getElementById('scenesOutput').textContent = scenesText;
+                    } else {
+                        document.getElementById('scenesOutput').textContent = '씬 데이터가 없습니다.';
+                    }
+
+                    document.getElementById('rawOutput').innerHTML =
+                        `<div class="success">✅ 대본 생성 성공!</div>\n\n` +
+                        document.getElementById('rawOutput').textContent;
+                } else if (result.script || result.title) {
+                    // 단일 대본 형식
+                    let scriptText = `제목: ${result.title || '(없음)'}\n\n`;
+                    scriptText += `대본:\n${result.script || result.scriptBody || '(없음)'}`;
+                    document.getElementById('scriptOutput').textContent = scriptText;
+                    document.getElementById('scenesOutput').textContent = '이미지 프롬프트가 생성되지 않았습니다.';
+
+                    document.getElementById('rawOutput').innerHTML =
+                        `<div class="success">⚠️ 대본만 생성됨 (이미지 없음)</div>\n\n` +
+                        document.getElementById('rawOutput').textContent;
+                } else {
+                    throw new Error('응답 형식이 예상과 다릅니다: ' + JSON.stringify(result).substring(0, 200));
+                }
+
+            } catch (error) {
+                console.error('❌ 생성 실패:', error);
+                document.getElementById('rawOutput').innerHTML =
+                    `<div class="error">생성 실패: ${error.message}</div>\n\n` +
+                    `<pre>${error.stack || ''}</pre>`;
+                document.getElementById('scriptOutput').textContent = '생성 실패';
+                document.getElementById('scenesOutput').textContent = '생성 실패';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 대본 생성 테스트';
+            }
+        }
+
+        // 탭 전환
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // 입력값 변경 시 프롬프트 미리보기 자동 업데이트
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTemplate();
+
+            ['topic', 'genre', 'target', 'outfit1', 'outfit2', 'outfit3'].forEach(id => {
+                const elem = document.getElementById(id);
+                if (elem) {
+                    elem.addEventListener('input', loadPromptPreview);
+                    elem.addEventListener('change', loadPromptPreview);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

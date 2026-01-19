@@ -1,0 +1,11 @@
+#!/bin/bash
+PROMPT_FILE="$(pwd)/.codex/prompts/code-review.txt"
+if [ ! -f "$PROMPT_FILE" ]; then
+  echo "프롬프트 파일을 찾을 수 없습니다: $PROMPT_FILE" >&2
+  exit 1
+fi
+if [ $# -eq 0 ]; then
+  echo "사용법: codex-code-review <파일 또는 diff>" >&2
+  exit 1
+fi
+codex run --prompt-file "$PROMPT_FILE" "$@"

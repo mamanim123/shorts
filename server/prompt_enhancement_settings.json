@@ -1,0 +1,99 @@
+{
+  "activeProfileId": "profile-midromance",
+  "profiles": [
+    {
+      "id": "profile-default",
+      "name": "기본 옵션",
+      "settings": {
+        "autoEnhanceOnGeneration": true,
+        "slots": [
+          {
+            "id": "slot-default-nation",
+            "label": "국적/민족성",
+            "keywords": [
+              "South Korean style",
+              "Cheongdam-dong high society aura"
+            ],
+            "autoSentence": true,
+            "customSentence": "",
+            "enabled": true
+          },
+          {
+            "id": "slot-default-figure",
+            "label": "체형/실루엣",
+            "keywords": [
+              "Sculpted hourglass silhouette",
+              "Graceful S-line curves",
+              "Healthy glow"
+            ],
+            "autoSentence": true,
+            "customSentence": "",
+            "enabled": true
+          },
+          {
+            "id": "slot-default-outfit",
+            "label": "의상 스타일",
+            "keywords": [
+              "Ultra-tight couture golf mini dress",
+              "High-fashion textures"
+            ],
+            "autoSentence": true,
+            "customSentence": "",
+            "enabled": true
+          }
+        ],
+        "useQualityTags": true,
+        "qualityTags": ", photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16"
+      }
+    },
+    {
+      "id": "profile-midromance",
+      "name": "중년로맨스",
+      "settings": {
+        "autoEnhanceOnGeneration": false,
+        "slots": [
+          {
+            "id": "slot-mid-nation",
+            "label": "국적/민족성",
+            "keywords": [
+              "Korean woman",
+              "Cheongdam-dong fashion editorial vibe"
+            ],
+            "autoSentence": true,
+            "customSentence": "",
+            "enabled": true
+          },
+          {
+            "id": "slot-mid-figure",
+            "label": "체형/실루엣",
+            "keywords": [
+              "Graceful S-line curves",
+              "Elegant hourglass line",
+              "Defined waistline with natural proportion",
+              "Long legs with balanced posture",
+              "Toned yet soft feminine contour",
+              "Editorial fit, photo-ready posture",
+              "타이트한 핏으로 여성스러운 곡선과 풍만한 클리비지"
+            ],
+            "autoSentence": true,
+            "customSentence": "",
+            "enabled": true
+          },
+          {
+            "id": "slot-mid-outfit",
+            "label": "의상 스타일",
+            "keywords": [
+              "Accentuating body lines, single bodycon focus",
+              "Skin-tight golf outfit,"
+            ],
+            "autoSentence": true,
+            "customSentence": "",
+            "enabled": true
+          }
+        ],
+        "useQualityTags": true,
+        "qualityTags": ", photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16"
+      }
+    }
+  ]
+}

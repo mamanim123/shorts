@@ -1,0 +1,15 @@
+node_modules/
+dist/
+user_data/
+user_data_debug/
+user_data_fresh/
+user_data_stealth/
+backups/
+generated_scripts/
+longform_sessions/
+.git/
+*.zip
+*.mp4
+*.png
+*.jpg
+*.jpeg

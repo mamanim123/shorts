@@ -22,6 +22,7 @@ export interface LabScriptOptions {
   topic: string;
   genre: string;
   targetAge: string;
+  gender: 'female' | 'male';
   additionalContext?: string;
 }
 
@@ -42,16 +43,16 @@ export interface LabImagePromptOptions {
 
 export const MAMA_CHARACTER_PRESETS = {
   FEMALE: {
-    identity: 'A stunning Korean woman',
-    bodyType: 'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves',
-    style: 'well-managed sophisticated look despite age, elegant and confident presence',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
+    identity: 'A stunningly beautiful and glamorous Korean woman',
+    bodyType: 'perfectly managed slim hourglass figure with toned body, curvy feminine figure, glamorous and sophisticated silhouette, elegant feminine curves',
+    style: 'high-end fashion model aesthetics, well-managed sophisticated look despite age, elegant and confident presence',
+    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally and elegantly'
   },
   MALE: {
-    identity: 'A handsome Korean man',
-    bodyType: 'fit athletic build with broad shoulders',
-    style: 'dandy and refined presence, well-groomed appearance',
-    outfitFit: 'tailored slim-fit, clean lines'
+    identity: 'Korean man',
+    bodyType: '',
+    style: '',
+    outfitFit: ''
   }
 };
 
@@ -62,16 +63,16 @@ export const MAMA_CHARACTER_PRESETS = {
 export const PROMPT_CONSTANTS = {
   // 시작 문구 (리얼리즘 강조)
   START: 'unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style',
-  
+
   // 여성 체형 필수 문구 (정책 위반 방지 버전)
-  FEMALE_BODY: 'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves, well-managed sophisticated look despite age, tight-fitting clothes accentuating curves naturally',
-  
+  FEMALE_BODY: 'perfectly managed slim hourglass figure with toned body, curvy feminine figure, glamorous and sophisticated silhouette, elegant feminine curves, high-end fashion model aesthetics, tight-fitting clothes accentuating curves naturally and elegantly',
+
   // 남성 체형 필수 문구
-  MALE_BODY: 'fit athletic build with broad shoulders, dandy and refined presence, tailored slim-fit clothes',
-  
+  MALE_BODY: 'Korean man',
+
   // 종결 문구
   END: 'high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16',
-  
+
   // 금지 키워드 (마네킹/애니메이션 방지)
   NEGATIVE: 'NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing'
 };
@@ -201,7 +202,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
 
 export const RANDOM_SEED_POOLS = {
   locations: [
-    '엘리베이터', '주차장', '라커룸', '카페', '마트', 
+    '엘리베이터', '주차장', '라커룸', '카페', '마트',
     '미용실', '헬스장', '식당', '공원', '백화점',
     '편의점', '병원 대기실', '영화관', '호텔 로비', '공항',
     '사우나', '네일샵', '세차장', '꽃집', '약국'
@@ -240,7 +241,7 @@ export const generateRandomSeed = (): {
   truth: string;
 } => {
   const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-  
+
   return {
     location: pick(RANDOM_SEED_POOLS.locations),
     object: pick(RANDOM_SEED_POOLS.objects),
@@ -261,13 +262,13 @@ export const generateRandomSeed = (): {
  */
 export const pickFemaleOutfit = (genre: string, excludeOutfits: string[] = []): string => {
   const isSexyGenre = genre === 'affair-suspicion';
-  
+
   const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
     // 남성 의상 제외
     if (item.categories.includes('MALE')) return false;
     // 이미 선택된 의상 제외
     if (excludeOutfits.includes(item.name)) return false;
-    
+
     if (isSexyGenre) {
       // 불륜/외도: SEXY 카테고리만
       return item.categories.includes('SEXY');
@@ -276,11 +277,11 @@ export const pickFemaleOutfit = (genre: string, excludeOutfits: string[] = []): 
       return !item.categories.includes('SEXY');
     }
   });
-  
+
   if (candidates.length === 0) {
     return 'White Halter-neck Knit + Red Micro Mini Skirt';
   }
-  
+
   return candidates[Math.floor(Math.random() * candidates.length)].name;
 };
 
@@ -293,11 +294,11 @@ export const pickMaleOutfit = (excludeOutfits: string[] = []): string => {
     if (excludeOutfits.includes(item.name)) return false;
     return true;
   });
-  
+
   if (candidates.length === 0) {
     return 'Navy Slim-fit Polo + White Tailored Golf Pants';
   }
-  
+
   return candidates[Math.floor(Math.random() * candidates.length)].name;
 };
 
@@ -306,7 +307,7 @@ export const pickMaleOutfit = (excludeOutfits: string[] = []): string => {
 // ============================================
 
 export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
-  const { topic, genre, targetAge, additionalContext } = options;
+  const { topic, genre, targetAge, gender, additionalContext } = options;
 
   const genreGuide = LAB_GENRE_GUIDELINES[genre];
 
@@ -321,13 +322,19 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
 당신은 **유튜브 쇼츠 바이럴 대본 전문 작가**입니다.
-${targetAge} 한국 여성 시청자가 끝까지 보게 만드는 대본을 작성하세요.
+${targetAge} 한국 ${gender === 'female' ? '여성' : '남성'} 시청자가 끝까지 보게 만드는 대본을 작성하세요.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 주제: "${topic}"
 📌 장르: ${genreGuide?.name || '일반'}
-📌 타겟: ${targetAge} 한국 여성
+📌 타겟: ${targetAge} 한국 ${gender === 'female' ? '여성' : '남성'}
+📌 주인공 성별: ${gender === 'female' ? '여성' : '남성'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 🎭 스토리 구조 및 주인공 설정
+- **주인공**: ${gender === 'female' ? '20~50대 한국 여성' : '20~50대 한국 남성'}
+- **관점**: 주인공의 시점에서 이야기가 전개되도록 하세요.
+${genreGuide?.structure || ''}
 
 ## 🎲 이번 대본 필수 요소 (창작 시드)
 다음 요소들을 **반드시 창의적으로 활용**하세요:
@@ -454,7 +461,7 @@ ${PROMPT_CONSTANTS.START}, A stunning Korean woman in her ${targetAge}, [헤어�
 
 ### ✅ 남성 원샷 템플릿:
 \`\`\`
-${PROMPT_CONSTANTS.START}, A handsome Korean man in his ${targetAge}, [헤어스타일], fit athletic build with broad shoulders, dandy and refined presence, tailored slim-fit clothes, wearing [상의 + 하의 전체 의상명], [액세서리], [행동/표정], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
+${PROMPT_CONSTANTS.START}, Korean man in his ${targetAge}, [헤어스타일], wearing [상의 + 하의 전체 의상명], [액세서리], [행동/표정], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
 \`\`\`
 
 ### ✅ 투샷 템플릿 (🚨 각 캐릭터별 전체 명시 필수!):
@@ -472,13 +479,13 @@ Second woman (Woman B): short chic bob cut, slim hourglass figure, curvy feminin
 ${PROMPT_CONSTANTS.START}, Three people in frame, all in their ${targetAge},
 First woman (Woman A): long soft-wave hairstyle, slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing ${womanAOutfit}, delicate gold hoop earrings,
 Second woman (Woman B): short chic bob cut, slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing ${womanBOutfit}, pearl drop earrings,
-Man (Man A): short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, tailored slim-fit clothes, wearing ${manAOutfit}, silver watch,
+Man (Man A): short neat hairstyle, Korean man, wearing ${manAOutfit}, silver watch,
 [세 사람의 행동/상호작용], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
 \`\`\`
 
 ⚠️ 체형 문구 축약 금지! 
 - 여성: "slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes" 전체 포함!
-- 남성: "fit athletic build with broad shoulders, dandy and refined presence, tailored slim-fit clothes" 전체 포함!
+- 남성: "Korean man"
 
 ### ⚠️ 프롬프트 체크리스트 (매 씬마다 확인!):
 ✅ 시작 문구 "unfiltered raw photograph, 8k ultra photorealism..." 포함?
@@ -530,7 +537,7 @@ Man (Man A): short neat hairstyle, fit athletic build with broad shoulders, dand
       "name": "준호",
       "slot": "Slot Man A",
       "hair": "Short neat hairstyle",
-      "body": "Fit athletic build with broad shoulders",
+      "body": "Korean man",
       "outfit": "${manAOutfit}",
       "accessories": "silver watch"
     }
@@ -592,7 +599,7 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
     parts.push(`A stunning Korean woman in her ${characterAge}`);
     parts.push(bodyType || PROMPT_CONSTANTS.FEMALE_BODY);
   } else {
-    parts.push(`A handsome Korean man in his ${characterAge}`);
+    parts.push(`Korean man in his ${characterAge}`);
     parts.push(bodyType || PROMPT_CONSTANTS.MALE_BODY);
   }
 

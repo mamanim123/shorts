@@ -170,7 +170,7 @@ interface PromptSettings {
  * - 다른 국적 언급을 한국인으로 교체
  * - "A stunning Korean woman in her Xs" 프리픽스 강제 적용
  */
-const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number): string => {
+const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
     if (!text) return text;
     let updated = text;
 
@@ -191,8 +191,10 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
     };
 
     const englishAge = formatEnglishAgeLabel(targetAgeLabel);
-    const ageString = englishAge ? `in her ${englishAge}` : '';
-    const identityDescriptor = `A stunning Korean woman ${ageString}`.trim();
+    const ageString = englishAge ? `in ${gender === 'female' ? 'her' : 'his'} ${englishAge}` : '';
+    const identityDescriptor = gender === 'female'
+        ? `A stunning Korean woman ${ageString}`.trim()
+        : `Korean man ${ageString}`.trim();
 
     // 씬 번호와 정체성을 맨 앞으로 강제 배치
     const scenePrefix = sceneNumber ? `Scene ${sceneNumber}, ` : '';
@@ -202,8 +204,10 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
     const cleanText = updated
         .replace(/^Scene \d+[\.,]\s*/i, '')
         .replace(/^A stunning Korean woman in her [\d\w\s]+[\.,]\s*/i, '')
+        .replace(/^A handsome Korean man in his [\d\w\s]+[\.,]\s*/i, '')
         .replace(/^A stunning Korean woman[\.,]\s*/i, '')
-        .replace(/^in her [\d\w\s]+[\.,]\s*/i, '')
+        .replace(/^A handsome Korean man[\.,]\s*/i, '')
+        .replace(/^in (her|his) [\d\w\s]+[\.,]\s*/i, '')
         .trim();
 
     // 카메라 앵글로 시작하면 정체성을 맨 앞에 배치
@@ -227,6 +231,7 @@ const enhanceScenePrompt = (
         sceneNumber?: number;
         femaleOutfit?: string;
         targetAgeLabel?: string;
+        gender?: 'female' | 'male';
     } = {}
 ): string => {
     if (!text) return text;
@@ -259,7 +264,7 @@ const enhanceScenePrompt = (
     }
 
     // 한국인 정체성 강제 적용
-    updated = enforceKoreanIdentity(updated, options.targetAgeLabel, options.sceneNumber);
+    updated = enforceKoreanIdentity(updated, options.targetAgeLabel, options.sceneNumber, options.gender);
 
     return updated;
 };
@@ -272,6 +277,7 @@ const postProcessAiScenes = (
     options: {
         femaleOutfit?: string;
         targetAgeLabel?: string;
+        gender?: 'female' | 'male';
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
@@ -283,7 +289,8 @@ const postProcessAiScenes = (
             {
                 sceneNumber,
                 femaleOutfit: options.femaleOutfit,
-                targetAgeLabel: options.targetAgeLabel
+                targetAgeLabel: options.targetAgeLabel,
+                gender: options.gender
             }
         );
 
@@ -292,7 +299,7 @@ const postProcessAiScenes = (
             longPrompt: processedPrompt,
             shortPrompt: scene.shortPrompt ? enhanceScenePrompt(
                 scene.shortPrompt,
-                { sceneNumber, femaleOutfit: options.femaleOutfit, targetAgeLabel: options.targetAgeLabel }
+                { sceneNumber, femaleOutfit: options.femaleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender }
             ) : processedPrompt
         };
     });
@@ -687,8 +694,9 @@ export const ShortsLabPanel: React.FC = () => {
         if (settings.useKoreanIdentity) {
             const identity = settings.koreanGender === 'female'
                 ? KOREAN_IDENTITY_FEMALE
-                : KOREAN_IDENTITY_MALE;
-            parts.push(`${identity} in her ${aiTargetAge}`);
+                : 'Korean man';
+            const ageString = aiTargetAge ? `in ${settings.koreanGender === 'female' ? 'her' : 'his'} ${aiTargetAge}` : '';
+            parts.push(`${identity} ${ageString}`);
         }
 
         // 2. 슬롯 시스템
@@ -1109,7 +1117,8 @@ export const ShortsLabPanel: React.FC = () => {
             const prompt = buildLabScriptPrompt({
                 topic: aiTopic,
                 genre: aiGenre,
-                targetAge: aiTargetAge
+                targetAge: aiTargetAge,
+                gender: settings.koreanGender
             });
 
             // 서버 API 호출 (백엔드는 3002 포트)
@@ -1166,7 +1175,8 @@ export const ShortsLabPanel: React.FC = () => {
                     // [FIX] 후처리 적용: 한국인 정체성, 의상, no text 태그 등
                     const processedScenes = postProcessAiScenes(scenesSource, {
                         femaleOutfit: settings.selectedOutfit || undefined,
-                        targetAgeLabel: aiTargetAge
+                        targetAgeLabel: aiTargetAge,
+                        gender: settings.koreanGender
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
@@ -1581,8 +1591,8 @@ export const ShortsLabPanel: React.FC = () => {
                                         <button
                                             onClick={() => updateSetting('useKoreanIdentity', !settings.useKoreanIdentity)}
                                             className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-200 border ${settings.useKoreanIdentity
-                                                    ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                                                    : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                                ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                                                : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
                                                 }`}
                                         >
                                             한국인
@@ -1593,8 +1603,8 @@ export const ShortsLabPanel: React.FC = () => {
                                                 <button
                                                     onClick={() => updateSetting('koreanGender', 'female')}
                                                     className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'female'
-                                                            ? 'bg-emerald-600 text-white shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-300'
+                                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-300'
                                                         }`}
                                                 >
                                                     여성
@@ -1602,8 +1612,8 @@ export const ShortsLabPanel: React.FC = () => {
                                                 <button
                                                     onClick={() => updateSetting('koreanGender', 'male')}
                                                     className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'male'
-                                                            ? 'bg-emerald-600 text-white shadow-sm'
-                                                            : 'text-slate-500 hover:text-slate-300'
+                                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-300'
                                                         }`}
                                                 >
                                                     남성

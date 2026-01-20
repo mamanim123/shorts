@@ -527,13 +527,39 @@ const App: React.FC = () => {
             longPromptKo: scene.longPromptKo || '',
             soraPrompt: scene.soraPrompt || '',
             soraPromptKo: scene.soraPromptKo || '',
-            narration: scene.narration,
-            dialogue: scene.dialogue,
+            narration: typeof scene.narration === 'string' ? scene.narration : scene.narration?.text || '',
+            dialogue: scene.dialogue || scene.lipSync?.line || '',
+            voiceType: scene.voiceType,
+            narrationMeta: scene.narration && typeof scene.narration === 'object'
+              ? {
+                text: scene.narration.text || '',
+                emotion: scene.narration.emotion || '',
+                speed: scene.narration.speed || 'normal'
+              }
+              : undefined,
+            lipSync: scene.lipSync
+              ? {
+                speaker: scene.lipSync.speaker || '',
+                speakerName: scene.lipSync.speakerName || '',
+                line: scene.lipSync.line || '',
+                emotion: scene.lipSync.emotion || '',
+                timing: scene.lipSync.timing || undefined
+              }
+              : undefined,
             characterIds: Array.isArray(scene.characterIds) ? scene.characterIds.map((id: any) => String(id)) : scene.characterIds,
             characterNames: scene.characterNames
           })) : [];
 
-          const enhancedScenes = await enhanceScenesWithServerRules(enhanceScenesForImport(scenes), enhancementSettings);
+          const normalizedScenes = scenes.map((scene: any) => {
+            const voiceType = scene.voiceType || (scene.lipSync?.line ? 'both' : 'narration');
+            return {
+              ...scene,
+              voiceType,
+              narrationMeta: scene.narrationMeta || (scene.narration ? { text: scene.narration, speed: 'normal' } : undefined)
+            };
+          });
+
+          const enhancedScenes = await enhanceScenesWithServerRules(enhanceScenesForImport(normalizedScenes), enhancementSettings);
 
           const scriptBody = (s.script || s.scriptBody)
             ? String(s.script || s.scriptBody)
@@ -591,18 +617,45 @@ const App: React.FC = () => {
       if (!parsedStory.service) parsedStory.service = "IMPORTED";
 
       if (parsedStory.scenes && Array.isArray(parsedStory.scenes)) {
-        parsedStory.scenes = parsedStory.scenes.map((s: any) => ({
-          sceneNumber: s.sceneNumber || s.scene_number,
-          shortPrompt: s.shortPrompt || s.scene_visual_short_prompt || '',
-          shortPromptKo: s.shortPromptKo || s.scene_visual_short_prompt_ko || '',
-          longPrompt: s.longPrompt || s.scene_visual_long_prompt || '',
-          longPromptKo: s.longPromptKo || '',
-          soraPrompt: s.soraPrompt || s.sora_prompt || '',
-          soraPromptKo: s.soraPromptKo || '',
-          narration: s.narration,
-          dialogue: s.dialogue,
-          characterIds: Array.isArray(s.characterIds) ? s.characterIds.map((id: any) => String(id)) : s.characterIds
-        }));
+        parsedStory.scenes = parsedStory.scenes.map((s: any) => {
+          const narrationText = typeof s.narration === 'string' ? s.narration : s.narration?.text || '';
+          const lipSyncLine = s.dialogue || s.lipSync?.line || '';
+          const voiceType = s.voiceType || (lipSyncLine ? 'both' : 'narration');
+
+          return {
+            sceneNumber: s.sceneNumber || s.scene_number,
+            shortPrompt: s.shortPrompt || s.scene_visual_short_prompt || '',
+            shortPromptKo: s.shortPromptKo || s.scene_visual_short_prompt_ko || '',
+            longPrompt: s.longPrompt || s.scene_visual_long_prompt || '',
+            longPromptKo: s.longPromptKo || '',
+            soraPrompt: s.soraPrompt || s.sora_prompt || '',
+            soraPromptKo: s.soraPromptKo || '',
+            narration: narrationText,
+            dialogue: lipSyncLine,
+            voiceType,
+            narrationMeta: s.narration && typeof s.narration === 'object'
+              ? {
+                text: s.narration.text || '',
+                emotion: s.narration.emotion || '',
+                speed: s.narration.speed || 'normal'
+              }
+              : narrationText
+                ? { text: narrationText, speed: 'normal' }
+                : undefined,
+            lipSync: s.lipSync
+              ? {
+                speaker: s.lipSync.speaker || '',
+                speakerName: s.lipSync.speakerName || '',
+                line: s.lipSync.line || '',
+                emotion: s.lipSync.emotion || '',
+                timing: s.lipSync.timing || undefined
+              }
+              : lipSyncLine
+                ? { line: lipSyncLine }
+                : undefined,
+            characterIds: Array.isArray(s.characterIds) ? s.characterIds.map((id: any) => String(id)) : s.characterIds
+          };
+        });
 
         parsedStory.scenes = enhanceScenesForImport(parsedStory.scenes);
 

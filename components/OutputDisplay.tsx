@@ -27,7 +27,7 @@ const toDisplayString = (val: any) => {
 };
 
 export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState<'script' | 'short' | 'long' | 'sora'>('script');
+  const [activeTab, setActiveTab] = useState<'script' | 'short' | 'long' | 'sora' | 'voice'>('script');
   const [showImagePrompts, setShowImagePrompts] = useState(true); // Changed from false to true
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState<string>(toDisplayString(data.title));
@@ -1175,6 +1175,13 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
             >
               <Video className="w-4 h-4" /> 소라 비디오
             </button>
+            <button
+              onClick={() => setActiveTab('voice')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'voice' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                }`}
+            >
+              <FileText className="w-4 h-4" /> 보이스 시트
+            </button>
           </div>
 
           {/* Model Selector */}
@@ -1649,6 +1656,61 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Voice Sheet View */}
+          {activeTab === 'voice' && (
+            <div className="space-y-6 max-w-4xl mx-auto pr-4">
+              {safeScenes.map((scene, idx) => {
+                const voiceType = (scene as any).voiceType || ((scene as any).lipSync?.line ? 'both' : (scene as any).narrationMeta?.text || scene.narration ? 'narration' : 'none');
+                const narrationText = (scene as any).narrationMeta?.text || scene.narration || '';
+                const narrationEmotion = (scene as any).narrationMeta?.emotion || '';
+                const narrationSpeed = (scene as any).narrationMeta?.speed || 'normal';
+                const lipSyncLine = (scene as any).lipSync?.line || scene.dialogue || '';
+                const lipSyncSpeakerName = (scene as any).lipSync?.speakerName || '';
+                const lipSyncEmotion = (scene as any).lipSync?.emotion || '';
+                const lipSyncTiming = (scene as any).lipSync?.timing || '';
+
+                return (
+                  <div key={idx} className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 relative group hover:border-emerald-500/30 transition-colors">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="bg-emerald-900/40 text-emerald-200 px-2 py-1 rounded text-xs font-mono border border-emerald-500/30">Scene #{scene.sceneNumber}</span>
+                        <span className="text-xs text-emerald-400 uppercase tracking-widest">Voice Sheet</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400">voiceType</span>
+                        <span className="text-[10px] font-bold text-emerald-300 uppercase">{voiceType}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-black/40 border border-emerald-500/20 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">Narration</span>
+                          <span className="text-[10px] text-slate-400">{narrationSpeed}</span>
+                        </div>
+                        <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{narrationText || '—'}</p>
+                        {narrationEmotion && (
+                          <p className="text-[10px] text-slate-400 mt-2">emotion: {narrationEmotion}</p>
+                        )}
+                      </div>
+                      <div className="bg-black/40 border border-amber-500/20 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-tight">Lip Sync</span>
+                          <span className="text-[10px] text-slate-400">{lipSyncTiming || 'mid'}</span>
+                        </div>
+                        <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{lipSyncLine || '—'}</p>
+                        <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-2">
+                          <span>{lipSyncSpeakerName || 'speaker: -'}</span>
+                          {lipSyncEmotion && <span>emotion: {lipSyncEmotion}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

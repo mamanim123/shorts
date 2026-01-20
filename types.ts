@@ -107,6 +107,19 @@ export interface Scene {
   soraPromptKo?: string;   // Sora Video Prompt Korean
   narration?: string;
   dialogue?: string;
+  voiceType?: 'narration' | 'lipSync' | 'both' | 'none';
+  narrationMeta?: {
+    text?: string;
+    emotion?: string;
+    speed?: 'slow' | 'normal' | 'slightly-fast' | 'fast';
+  };
+  lipSync?: {
+    speaker?: string;
+    speakerName?: string;
+    line?: string;
+    emotion?: string;
+    timing?: 'start' | 'mid' | 'end';
+  };
   // Optional character metadata for multi-character visual consistency
   characterIds?: string[]; // e.g., ["A","B"] to reference characters array
   characterNames?: string[]; // fallback if ids are missing

@@ -509,6 +509,17 @@ export const RANDOM_SEED_POOLS = {
     '숨기는 병 있는 줄',
     '빚 있는 줄',
   ],
+
+  truths: [
+    '알고보니 블라우스 단추를 하나씩 밀려 끼운 채로 하루 종일 다님',
+    '알고보니 명찰을 거꾸로 달고 다니고 있었음',
+    '알고보니 셀카모드 켜진 줄 모르고 혼자 표정 연습 중이었는데 뒤에서 다 보고 있었음',
+    '알고보니 마스크 안쪽에 립스틱이 번져있었는데 본인만 몰랐음',
+    '알고보니 바지 주머니에서 영수증이 길게 삐져나와 있었음',
+    '알고보니 휴대폰 플래시가 계속 켜져 있었음',
+    '알고보니 한쪽 소매만 접힌 채로 중요한 자리 참석함',
+    '알고보니 스카프가 가방 손잡이에 걸려 끌고 다녔음'
+  ],
   
   twistTypes: [
     '배우자/가족 위한 서프라이즈 준비',
@@ -529,6 +540,7 @@ export const generateRandomSeed = (): {
   object: string;
   reaction: string;
   misunderstanding: string;
+  truth: string;
   twistType: string;
 } => {
   const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -538,6 +550,7 @@ export const generateRandomSeed = (): {
     object: pick(RANDOM_SEED_POOLS.objects),
     reaction: pick(RANDOM_SEED_POOLS.reactions),
     misunderstanding: pick(RANDOM_SEED_POOLS.misunderstandings),
+    truth: pick(RANDOM_SEED_POOLS.truths),
     twistType: pick(RANDOM_SEED_POOLS.twistTypes),
   };
 };
@@ -668,6 +681,8 @@ ${genreGuide?.emotionCurve || ''}
 - 신체반응 참고: ${seed.reaction}
 - 오해 방향: ${seed.misunderstanding}
 - 반전 유형: ${seed.twistType}
+- 구체 반전(황당) 힌트: ${seed.truth}
+
 
 ⚠️ **중요**: 주제(topic)가 최우선! 
 ⚠️ 힌트는 영감만 받고, 주제와 안 맞으면 무시하세요!

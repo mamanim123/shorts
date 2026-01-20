@@ -138,6 +138,15 @@ interface Scene {
     // 영상 프롬프트 필드
     videoPrompt?: string;
     dialogue?: string;
+    voiceType?: 'narration' | 'lipSync' | 'both' | 'none';
+    narrationText?: string;
+    narrationEmotion?: string;
+    narrationSpeed?: 'slow' | 'normal' | 'slightly-fast' | 'fast';
+    lipSyncSpeaker?: string;
+    lipSyncSpeakerName?: string;
+    lipSyncLine?: string;
+    lipSyncEmotion?: string;
+    lipSyncTiming?: 'start' | 'mid' | 'end';
     isVideoPromptGenerating?: boolean;
     videoUrl?: string;
     isVideoGenerating?: boolean;
@@ -350,7 +359,7 @@ export const ShortsLabPanel: React.FC = () => {
     // UI 상태
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<'input' | 'settings' | 'preview'>('input');
-    const [sceneTabs, setSceneTabs] = useState<Record<number, 'IMG' | 'VIDEO' | 'JSON'>>({});
+    const [sceneTabs, setSceneTabs] = useState<Record<number, 'IMG' | 'VIDEO' | 'JSON' | 'VOICE'>>({});
     const [editingScene, setEditingScene] = useState<{ number: number; field: 'ko' | 'en' } | null>(null);
     const [editValue, setEditValue] = useState<string>('');
     const [selectedImageForView, setSelectedImageForView] = useState<string | null>(null);
@@ -382,11 +391,21 @@ export const ShortsLabPanel: React.FC = () => {
             if (savedTopic) setAiTopic(savedTopic);
 
             if (savedScenes) {
-                const parsed = JSON.parse(savedScenes);
-                if (Array.isArray(parsed)) {
-                    setScenes(parsed as Scene[]);
-                    setActiveTab('preview');
-                }
+                        const parsed = JSON.parse(savedScenes);
+                        if (Array.isArray(parsed)) {
+                            const normalized = (parsed as Scene[]).map(scene => {
+                                const voiceType = scene.voiceType || (scene.lipSyncLine ? 'both' : scene.narrationText ? 'narration' : 'none');
+                                return {
+                                    ...scene,
+                                    voiceType,
+                                    narrationText: scene.narrationText || scene.text,
+                                    narrationSpeed: scene.narrationSpeed || 'normal'
+                                };
+                            });
+                            setScenes(normalized);
+                            setActiveTab('preview');
+                        }
+
             }
         } catch (error) {
             console.warn('[ShortsLab] Failed to restore state:', error);
@@ -779,6 +798,20 @@ export const ShortsLabPanel: React.FC = () => {
             }
             return updated;
         });
+    };
+
+    const getVoiceBadge = (scene: Scene): { label: string; tone: string } => {
+        const type = scene.voiceType || (scene.lipSyncLine ? 'both' : scene.narrationText ? 'narration' : 'none');
+        if (type === 'lipSync') {
+            return { label: scene.lipSyncSpeakerName ? `LIP: ${scene.lipSyncSpeakerName}` : 'LIP', tone: 'text-amber-300 border-amber-500/40' };
+        }
+        if (type === 'both') {
+            return { label: scene.lipSyncSpeakerName ? `N+L: ${scene.lipSyncSpeakerName}` : 'N+L', tone: 'text-purple-300 border-purple-500/40' };
+        }
+        if (type === 'none') {
+            return { label: 'MUTE', tone: 'text-slate-300 border-slate-500/40' };
+        }
+        return { label: 'NARR', tone: 'text-emerald-300 border-emerald-500/40' };
     };
 
     const handleCopyPrompt = async (index: number, prompt: string) => {
@@ -1181,6 +1214,12 @@ export const ShortsLabPanel: React.FC = () => {
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
                         const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
+                        const narrationText = typeof scene.narration === 'string'
+                            ? scene.narration
+                            : scene.narration?.text || '';
+                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
+                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
+
                         return {
                             number: scene.sceneNumber || idx + 1,
                             text: sceneText,
@@ -1195,7 +1234,16 @@ export const ShortsLabPanel: React.FC = () => {
                             outfit: scene.outfit || '',
                             isSelected: true,
                             videoPrompt: scene.videoPrompt || '',
-                            dialogue: scene.dialogue || ''
+                            dialogue: scene.dialogue || lipSyncLine || '',
+                            voiceType,
+                            narrationText: narrationText || sceneText,
+                            narrationEmotion: scene.narration?.emotion || '',
+                            narrationSpeed: scene.narration?.speed || 'normal',
+                            lipSyncSpeaker: scene.lipSync?.speaker || '',
+                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
+                            lipSyncLine: lipSyncLine || '',
+                            lipSyncEmotion: scene.lipSync?.emotion || '',
+                            lipSyncTiming: scene.lipSync?.timing || undefined
                         };
                     });
                     console.log(`[ShortsLab] Extracted and post-processed ${extractedScenes.length} scenes`);
@@ -1417,10 +1465,21 @@ export const ShortsLabPanel: React.FC = () => {
     // 장면 설정 및 편집 핸들러 (씨네보드 이식)
     // ============================================
 
-    const handleUpdateSceneSettings = (sceneNumber: number, field: 'age' | 'outfit' | 'dialogue', value: string) => {
-        setScenes(prev => prev.map(s =>
-            s.number === sceneNumber ? { ...s, [field]: value } : s
-        ));
+    const handleUpdateSceneSettings = (
+        sceneNumber: number,
+        field: 'age' | 'outfit' | 'dialogue' | 'voiceType' | 'narrationText' | 'narrationEmotion' | 'narrationSpeed' | 'lipSyncLine' | 'lipSyncSpeakerName' | 'lipSyncEmotion' | 'lipSyncTiming',
+        value: string
+    ) => {
+        setScenes(prev => prev.map(s => {
+            if (s.number !== sceneNumber) return s;
+            if (field === 'lipSyncLine') {
+                return { ...s, lipSyncLine: value, dialogue: value };
+            }
+            if (field === 'dialogue') {
+                return { ...s, dialogue: value, lipSyncLine: value };
+            }
+            return { ...s, [field]: value };
+        }));
     };
 
     const handleStartEdit = (sceneNumber: number, field: 'ko' | 'en', currentVal: string) => {
@@ -1791,6 +1850,7 @@ export const ShortsLabPanel: React.FC = () => {
                                             <div className="flex gap-1.5 pointer-events-auto">
                                                 <span className="bg-black/70 backdrop-blur-md text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">SCENE {scene.number}</span>
                                                 {scene.shotType && <span className="bg-black/70 backdrop-blur-md text-slate-300 text-[10px] font-medium px-2 py-0.5 rounded-md border border-slate-700/50 uppercase">{scene.shotType}</span>}
+                                                <span className={`bg-black/70 backdrop-blur-md text-[10px] font-bold px-2 py-0.5 rounded-md border ${getVoiceBadge(scene).tone}`}>{getVoiceBadge(scene).label}</span>
                                             </div>
                                             <input type="checkbox" checked={scene.isSelected || false} onChange={() => handleToggleSceneSelection(scene.number)} className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-600 focus:ring-emerald-500 pointer-events-auto cursor-pointer" />
                                         </div>
@@ -1846,7 +1906,7 @@ export const ShortsLabPanel: React.FC = () => {
                                         <div className="p-3 space-y-3">
                                             {/* 씬 탭 (IMG, VIDEO, JSON) */}
                                             <div className="flex border-b border-slate-800">
-                                                {(['IMG', 'VIDEO', 'JSON'] as const).map((tab) => (
+                                                {(['IMG', 'VIDEO', 'VOICE', 'JSON'] as const).map((tab) => (
                                                     <button key={tab} onClick={() => setSceneTabs(prev => ({ ...prev, [scene.number]: tab }))} className={`px-3 py-1.5 text-[10px] font-bold transition-all border-b-2 ${(sceneTabs[scene.number] || 'IMG') === tab ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>{tab}</button>
                                                 ))}
                                             </div>
@@ -1898,7 +1958,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                                 <span className="text-[10px] font-bold text-amber-500/70 uppercase tracking-tight">비디오 프롬프트 미리보기</span>
                                                                 <div className="text-[10px] text-slate-400 leading-relaxed space-y-1">
                                                                     <div><span className="text-purple-400">정체성:</span> A stunning Korean woman/man in her/his {aiTargetAge}</div>
-                                                                    <div><span className="text-purple-400">말(대사):</span> {scene.text}</div>
+                                                                    <div><span className="text-purple-400">말(대사):</span> {scene.dialogue || scene.text}</div>
                                                                     <div><span className="text-purple-400">동작/감정:</span> {scene.summary || scene.text.split('.')[0]}</div>
                                                                 </div>
                                                             </div>
@@ -1959,7 +2019,6 @@ export const ShortsLabPanel: React.FC = () => {
                                                                     취소
                                                                 </button>
                                                             )}
-                                                            {/* ✅ 새로 추가: 다운로드에서 가져오기 버튼 */}
                                                             <button
                                                                 onClick={() => handleImportVideoFromDownloads(scene.number)}
                                                                 className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-lg border border-blue-500/50 transition-all flex items-center gap-1.5"
@@ -1968,6 +2027,84 @@ export const ShortsLabPanel: React.FC = () => {
                                                                 <Download className="w-3 h-3" />
                                                                 가져오기
                                                             </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {(sceneTabs[scene.number] || 'IMG') === 'VOICE' && (
+                                                    <div className="flex flex-col gap-3 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">Voice Type</span>
+                                                            <select
+                                                                value={scene.voiceType || 'narration'}
+                                                                onChange={(e) => handleUpdateSceneSettings(scene.number, 'voiceType', e.target.value)}
+                                                                className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                            >
+                                                                <option value="narration">narration</option>
+                                                                <option value="lipSync">lipSync</option>
+                                                                <option value="both">both</option>
+                                                                <option value="none">none</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">Narration</span>
+                                                            <textarea
+                                                                value={scene.narrationText ?? ''}
+                                                                onChange={(e) => handleUpdateSceneSettings(scene.number, 'narrationText', e.target.value)}
+                                                                rows={3}
+                                                                className="w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                                placeholder="나레이션 텍스트"
+                                                            />
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <input
+                                                                    value={scene.narrationEmotion ?? ''}
+                                                                    onChange={(e) => handleUpdateSceneSettings(scene.number, 'narrationEmotion', e.target.value)}
+                                                                    className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
+                                                                    placeholder="감정 (예: 당황)"
+                                                                />
+                                                                <select
+                                                                    value={scene.narrationSpeed || 'normal'}
+                                                                    onChange={(e) => handleUpdateSceneSettings(scene.number, 'narrationSpeed', e.target.value)}
+                                                                    className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
+                                                                >
+                                                                    <option value="slow">slow</option>
+                                                                    <option value="normal">normal</option>
+                                                                    <option value="slightly-fast">slightly-fast</option>
+                                                                    <option value="fast">fast</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-tight">Lip Sync</span>
+                                                            <input
+                                                                value={scene.lipSyncSpeakerName ?? ''}
+                                                                onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncSpeakerName', e.target.value)}
+                                                                className="w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                                placeholder="화자 이름 (예: 지영)"
+                                                            />
+                                                            <textarea
+                                                                value={scene.lipSyncLine ?? ''}
+                                                                onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncLine', e.target.value)}
+                                                                rows={2}
+                                                                className="w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                                placeholder="립싱크 대사"
+                                                            />
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <input
+                                                                    value={scene.lipSyncEmotion ?? ''}
+                                                                    onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncEmotion', e.target.value)}
+                                                                    className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
+                                                                    placeholder="emotion (EN)"
+                                                                />
+                                                                <select
+                                                                    value={scene.lipSyncTiming || 'mid'}
+                                                                    onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncTiming', e.target.value)}
+                                                                    className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
+                                                                >
+                                                                    <option value="start">start</option>
+                                                                    <option value="mid">mid</option>
+                                                                    <option value="end">end</option>
+                                                                </select>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}

@@ -1,0 +1,218 @@
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 **유튜브 쇼츠 바이럴 대본 전문 작가**입니다.
+50s 한국 남성 시청자가 끝까지 보게 만드는 대본을 작성하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 주제: "골프장에 아름다운 여성들"
+📌 장르: 코미디/유머
+📌 타겟: 50s 한국 남성
+📌 주인공 성별: 남성
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 🎭 스토리 구조 및 주인공 설정
+- **주인공**: 20~50대 한국 남성
+- **관점**: 주인공의 시점에서 이야기가 전개되도록 하세요.
+
+[HOOK] (장소) + (황당한 상황 발생)
+[SETUP] (평범한 시작) → (구체적인 행동 묘사)
+[BUILD-UP] (상황이 꼬임) + (주변의 반응)
+[CLIMAX] (가장 황당한 순간) + (임팩트 있는 대사)
+[TWIST] (예상치 못한 반전 진실)
+
+
+## 🎲 이번 대본 필수 요소 (창작 시드)
+다음 요소들을 **반드시 창의적으로 활용**하세요:
+
+- 장소/상황: **백화점**
+- 소품/단서: **명함**
+- 반응/행동: **눈 피함**
+- 오해 포인트: **취한 줄**
+- 반전 진실: **알고보니 나만 모르는 파티**
+
+⚠️ 중요! 주제(topic)가 최우선!
+⚠️ 랜덤 시드는 참고만! 주제와 충돌하면 주제를 따르세요!
+⚠️ 주제가 "골프장", "캐디"면 → 배경은 반드시 골프장!
+⚠️ 시드의 장소가 "편의점"이어도 주제가 "골프장"이면 골프장으로!
+⚠️ 위 요소들을 자연스럽게 녹여서 **완전히 새로운 스토리**를 만드세요.
+⚠️ 요소를 억지로 다 넣지 말고, 3개 이상 자연스럽게 활용하면 됩니다.
+
+## 💡 바이럴 대본 작성 팁 (필독!)
+- **Show, Don't Tell**: '당황했다'라고 쓰지 말고 '동공이 지진 나며 손에 든 커피를 쏟을 뻔했다'라고 묘사하세요.
+- **이중적 의미 (Double Entendre)**: 특히 '대박 반전' 장르에서는 들었을 때 오해하기 쉬운 대사를 창의적으로 활용하세요.
+- **아재 유머 (50대 타겟)**: 타겟이 50대 남성일 경우, 그들이 공감할 수 있는 상황과 유머 코드를 적절히 섞으세요.
+- **반전의 퀄리티**: 단순히 '꿈이었다' 같은 뻔한 반전보다, 시청자의 뒤통수를 치는 신선한 반전을 만드세요.
+
+## 🎭 스토리 구조 (이 공식을 따르되, 내용은 새롭게!)
+
+[HOOK] (장소) + (황당한 상황 발생)
+[SETUP] (평범한 시작) → (구체적인 행동 묘사)
+[BUILD-UP] (상황이 꼬임) + (주변의 반응)
+[CLIMAX] (가장 황당한 순간) + (임팩트 있는 대사)
+[TWIST] (예상치 못한 반전 진실)
+
+
+## 💬 킬러 대사 (최소 2개 자연스럽게 삽입)
+'이게 뭐야 진짜', '아 진짜 미치겠네', '헐, 뭐라고?', '그 순간 눈이 마주쳤는데', '알고보니...', '근데 문제는', '하필이면', '그러게 왜'
+
+## ❌ 금지 패턴 (이미 너무 많이 쓴 것들)
+- 얼굴이 빨개졌다
+- 심장이 터질 것 같았다
+- 나이스샷 오해
+- 쌍둥이 반전
+- 흰 가루 오해
+
+## 📝 대본 규칙
+1. 분량: 10-12문장
+2. 문체: ~했어, ~했지, ~더라고 (친구한테 말하듯)
+3. 대사: 작은따옴표 사용 ('이렇게')
+4. 구체성: 장소, 행동, 표정 생생하게
+5. 의상 이름 대본에 절대 언급 금지
+
+
+## 👗 의상 설정 (이미지 프롬프트 전용 - 절대 변경 금지!)
+- **Woman A (지영) 고정 의상**: Lilac Seamless Crop Top + White High-waist Tight Leggings
+- **Woman B (혜경) 고정 의상**: Black Sleeveless High-neck Top + Beige Micro Pleated Skirt  
+- **Man A (준호) 고정 의상**: White Oxford Shirt + Camel Coat + Navy Slacks
+
+⚠️ 모든 8개 씬에서 위 의상을 **100% 동일하게** 사용하세요!
+⚠️ 투샷/쓰리샷에서도 **상의 + 하의 전체**를 명시하세요! (축약 금지)
+
+## 💇 헤어스타일 설정 (모든 씬에서 고정!)
+- **Woman A (지영)**: long soft-wave hairstyle
+- **Woman B (혜경)**: short chic bob cut
+- **Man A (준호)**: short neat hairstyle
+
+⚠️ 모든 씬에서 헤어스타일을 **반드시 포함**하세요! (투샷/쓰리샷 포함)
+
+## 📸 이미지 샷 타입 규칙 (중요!)
+대본 내용에 따라 적절한 샷 타입을 선택하세요:
+
+| 상황 | 샷 타입 | 프롬프트 작성법 |
+|-----|--------|---------------|
+| 1명 행동/감정 | 원샷 | "A stunning Korean woman..." |
+| 2명 함께 등장 | 투샷 | "Two stunning Korean women..." (각각 헤어+체형+의상 전체 명시) |
+| 3명 함께 등장 | 쓰리샷 | "Three people in frame..." (각각 헤어+체형+의상 전체 명시) |
+
+### 🎬 캐릭터 샷 규칙 (투샷/쓰리샷 필수!)
+⚠️ 모든 인물이 같은 동작 금지! (예: 다 같이 웃기 ❌)
+⚠️ 각 캐릭터마다 서로 다른 동작/표정 필수!
+
+✅ 좋은 예시:
+- Woman A: 커피 마시다 멈추며 눈 크게 뜸
+- Woman B: 핸드폰 보다가 고개 돌림
+- Man A: 손 흔들며 다가오는 중
+
+❌ 나쁜 예시:
+- 세 명이 나란히 서서 웃음
+- 두 명이 같이 앉아서 대화
+ 
+## 🎥 비디오 프롬프트 생성 규칙 (모든 씬 필수!)
+
+각 씬마다 동영상 프롬프트(videoPrompt)를 생성하세요:
+
+### ✅ 비디오 프롬프트 템플릿:
+```
+A stunning [Korean woman/man in her/his 50s], [동작/행동], [감정 표현]
+```
+
+### 📝 비디오 프롬프트 생성 방법:
+1. **scriptLine에서 동작 추출**: 대사 전/후에 나오는 행동 묘사 (예: "커피 마시다 멈추며" → "pauses while drinking coffee")
+2. **emotion에서 감정 추출**: 시작감정→끝감정 (예: "신남→기뻐" → "excited expression, happy")
+3. **정체성 포함**: 한국인 + 나이 (예: "A stunning Korean woman in her 40s")
+4. **영어로 번역**: 모든 것을 영어로 명확하게 표현
+
+### ✅ 비디오 프롬프트 예시:
+- **scriptLine**: "커피 마시다 멈추며 눈 크게 뜸" → **videoPrompt**: "A stunning Korean woman in her 40s pauses while drinking coffee, eyes widening with surprise, surprised expression"
+- **scriptLine**: "핸드폰 보다가 고개 돌림" → **videoPrompt**: "A stunning Korean woman in her 40s looks at phone and turns head, curious expression"
+- **scriptLine**: "손 흔들며 다가오는 중" → **videoPrompt**: "A handsome Korean man in his 40s waves hand while approaching, friendly expression"
+
+## 📤 최종 출력 형식 (JSON)
+```json
+{
+  "title": "쇼츠 제목",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "scriptLine": "대본 내용 (행동 묘사 포함)",
+      "imagePrompt": "Midjourney용 상세 영어 프롬프트 (헤어, 체형, 의상, 샷타입 포함)",
+      "videoPrompt": "Luma/Runway용 영어 프롬프트 (동작, 감정 위주)",
+      "emotion": "시작감정→끝감정",
+      "characters": ["Woman A", "Man A"]
+    }
+  ]
+}
+```
+
+이런 프롬프트를 llm 에게 보내고 
+llm 이 이딴식으로 대본을 만들었내? 뭐를 수정한거야?
+
+{
+  "title": "필드 위의 여신들, 나만 왕따였다고?",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "scriptLine": "라운딩 돌다가 클럽하우스 근처에서 '지영'이랑 '혜경'이를 발견하고 손을 흔들었지.",
+      "imagePrompt": "Three people in frame, Man A (준호) with short neat hairstyle wearing White Oxford Shirt, Camel Coat, Navy Slacks waving hand in distance. Woman A (지영) with long soft-wave hairstyle wearing Lilac Seamless Crop Top, White High-waist Tight Leggings holding a golf club. Woman B (혜경) with short chic bob cut wearing Black Sleeveless High-neck Top, Beige Micro Pleated Skirt looking at a scorecard. Outdoor golf course background, long shot.",
+      "videoPrompt": "A handsome Korean man in his 50s waves his hand while approaching two women on a golf course, friendly expression to curious expression",
+      "emotion": "반가움→의아함",
+      "characters": ["Man A", "Woman A", "Woman B"]
+    },
+    {
+      "sceneNumber": 2,
+      "scriptLine": "근데 이 친구들, 내 목소리를 들은 것 같은데 슬금슬금 눈을 피하면서 먼 산만 보더라고.",
+      "imagePrompt": "Two stunning Korean women, Woman A (지영) with long soft-wave hairstyle wearing Lilac Seamless Crop Top, White High-waist Tight Leggings turning her head away to look at trees. Woman B (혜경) with short chic bob cut wearing Black Sleeveless High-neck Top, Beige Micro Pleated Skirt intensely focusing on her fingernails. Outdoor golf course, medium shot.",
+      "videoPrompt": "Two stunning Korean women in their 40s avoid eye contact, one looking at trees and the other looking at her nails, awkward and dismissive expression",
+      "emotion": "당황→무안",
+      "characters": ["Woman A", "Woman B"]
+    },
+    {
+      "sceneNumber": 3,
+      "scriptLine": "내가 가까이 가서 아는 척하려니까 지영이가 갑자기 명함을 하나 툭 떨어뜨리며 딴청을 피우네?",
+      "imagePrompt": "Woman A (지영) with long soft-wave hairstyle wearing Lilac Seamless Crop Top, White High-waist Tight Leggings accidentally dropping a business card on the grass while pretending to fix her hair. Man A (준호) with short neat hairstyle wearing White Oxford Shirt, Camel Coat, Navy Slacks walking toward her with a confused look. Close-up on the falling card.",
+      "videoPrompt": "A stunning Korean woman in her 40s drops a business card on the grass while looking away and fixing her hair, nervous expression",
+      "emotion": "당황→회피",
+      "characters": ["Woman A", "Man A"]
+    },
+    {
+      "sceneNumber": 4,
+      "scriptLine": "혜경이는 옆에서 '어머, 준호 씨 오늘 좀 취한 줄 알았어'라며 정색을 하는데, '이게 뭐야 진짜' 싶었지.",
+      "imagePrompt": "Woman B (혜경) with short chic bob cut wearing Black Sleeveless High-neck Top, Beige Micro Pleated Skirt crossing arms and looking at Man A with a cold gaze. Man A (준호) with short neat hairstyle wearing White Oxford Shirt, Camel Coat, Navy Slacks stopping in his tracks, looking bewildered. Golf course green background.",
+      "videoPrompt": "A stunning Korean woman in her 40s crosses her arms and speaks with a cold, judging expression",
+      "emotion": "정색→불쾌",
+      "characters": ["Woman B", "Man A"]
+    },
+    {
+      "sceneNumber": 5,
+      "scriptLine": "사람들이 다 우리만 쳐다보고 분위기 싸해지는데, 하필이면 그 순간 지영이랑 눈이 마주쳤는데 완전 모르는 사람 보듯 하더라고.",
+      "imagePrompt": "Two stunning Korean women, Woman A (지영) with long soft-wave hairstyle wearing Lilac Seamless Crop Top, White High-waist Tight Leggings staring blankly through Man A. Woman B (혜경) with short chic bob cut wearing Black Sleeveless High-neck Top, Beige Micro Pleated Skirt whispering to another person off-screen. Man A (준호) stands in the center looking isolated.",
+      "videoPrompt": "A stunning Korean woman in her 40s stares blankly with an indifferent expression, ignoring the man standing in front of her",
+      "emotion": "억울→소외감",
+      "characters": ["Woman A", "Woman B", "Man A"]
+    },
+    {
+      "sceneNumber": 6,
+      "scriptLine": "속으로 '아 진짜 미치겠네' 하고 발길을 돌리려는데, 저 멀리서 사람들이 우르르 몰려나오기 시작했어.",
+      "imagePrompt": "Man A (준호) with short neat hairstyle wearing White Oxford Shirt, Camel Coat, Navy Slacks turning his body to leave, face full of frustration. In the blurred background, a group of people in luxury golf wear are approaching. Sunlit golf course.",
+      "videoPrompt": "A handsome Korean man in his 50s turns around with a frustrated expression, sighing deeply",
+      "emotion": "분노→포기",
+      "characters": ["Man A"]
+    },
+    {
+      "sceneNumber": 7,
+      "scriptLine": "갑자기 팡파르가 울리더니 지영이가 내 등을 떠밀며 웃더라고. '알고보니...' 나 빼고 다 아는 깜짝 파티였던 거야!",
+      "imagePrompt": "Three people in frame, Woman A (지영) with long soft-wave hairstyle wearing Lilac Seamless Crop Top, White High-waist Tight Leggings laughing and pushing Man A's shoulder. Woman B (혜경) with short chic bob cut wearing Black Sleeveless High-neck Top, Beige Micro Pleated Skirt holding a 'Happy Birthday' banner. Man A (준호) with short neat hairstyle wearing White Oxford Shirt, Camel Coat, Navy Slacks looking shocked with mouth open.",
+      "videoPrompt": "A stunning Korean woman in her 40s laughs and pushes a man's shoulder while another woman reveals a hidden banner, joyful and surprised expression",
+      "emotion": "충격→환희",
+      "characters": ["Woman A", "Woman B", "Man A"]
+    },
+    {
+      "sceneNumber": 8,
+      "scriptLine": "근데 문제는 내 생일은 다음 달인데, 얘네들 날짜 착각해서 오늘 이 난리를 피운 거라니까?",
+      "imagePrompt": "Three people in frame, Man A (준호) with short neat hairstyle wearing White Oxford Shirt, Camel Coat, Navy Slacks facepalming while laughing. Woman A (지영) with long soft-wave hairstyle wearing Lilac Seamless Crop Top, White High-waist Tight Leggings checking her phone with a worried look. Woman B (혜경) with short chic bob cut wearing Black Sleeveless High-neck Top, Beige Micro Pleated Skirt looking embarrassed, covering her mouth.",
+      "videoPrompt": "A handsome Korean man in his 50s laughs while shaking his head as two women look at each other with embarrassed and awkward expressions",
+      "emotion": "황당→폭소",
+      "characters": ["Man A", "Woman A", "Woman B"]
+    }
+  ]
+}

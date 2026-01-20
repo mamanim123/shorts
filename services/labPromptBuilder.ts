@@ -2,14 +2,16 @@
  * labPromptBuilder.ts
  * 쇼츠랩 전용 경량화 프롬프트 빌더
  * 
- * v2.3 업데이트 (2026-01-18):
- * - 예시 제거 → 구조/공식만 제공
- * - 랜덤 시드 시스템 추가 (창작 다양성)
- * - 의상 카테고리 단순화 (SEXY / NORMAL)
- * - 씬보드/쇼츠생성기 호환 JSON 스키마
- * - 투샷/쓰리샷 규칙 강화 (의상 전체 명시, 헤어 필수)
- * - 체형 표현 안전하게 변경 (정책 위반 방지)
- * - 마네킹/애니메이션 방지 키워드 추가
+ * v3.1 업데이트 (2026-01-20):
+ * - 40~60대 타겟 전면 리뉴얼
+ * - 4개 장르 지침 강화 (감정 곡선, 신체 반응, 좋은/나쁜 예시)
+ * - 화자(POV) 규칙 추가 - 자기 이름 3인칭 금지
+ * - 캐릭터 관계 명시 규칙 추가
+ * - 복선(Foreshadowing) 규칙 추가
+ * - 씬-캐릭터 매칭 규칙 추가
+ * - 음성 스크립트 추가 (나레이션 + 립싱크 선택)
+ * - 의상 선택 개선 (장르 + 주제 기반)
+ * - Show, Don't Tell 강제 규칙
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
@@ -43,16 +45,16 @@ export interface LabImagePromptOptions {
 
 export const MAMA_CHARACTER_PRESETS = {
   FEMALE: {
-    identity: 'A stunningly beautiful and glamorous Korean woman',
-    bodyType: 'perfectly managed slim hourglass figure with toned body, curvy feminine figure, glamorous and sophisticated silhouette, elegant feminine curves',
-    style: 'high-end fashion model aesthetics, well-managed sophisticated look despite age, elegant and confident presence',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally and elegantly'
+    identity: 'A stunning Korean woman',
+    bodyType: 'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves',
+    style: 'well-managed sophisticated look despite age, elegant and confident presence',
+    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   MALE: {
-    identity: 'Korean man',
-    bodyType: '',
-    style: '',
-    outfitFit: ''
+    identity: 'A handsome Korean man',
+    bodyType: 'fit athletic build with broad shoulders',
+    style: 'dandy and refined presence, well-groomed appearance',
+    outfitFit: 'tailored slim-fit, clean lines'
   }
 };
 
@@ -61,453 +63,786 @@ export const MAMA_CHARACTER_PRESETS = {
 // ============================================
 
 export const PROMPT_CONSTANTS = {
-  // 시작 문구 (리얼리즘 강조)
   START: 'unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style',
-
-  // 여성 체형 필수 문구 (정책 위반 방지 버전)
-  FEMALE_BODY: 'perfectly managed slim hourglass figure with toned body, curvy feminine figure, glamorous and sophisticated silhouette, elegant feminine curves, high-end fashion model aesthetics, tight-fitting clothes accentuating curves naturally and elegantly',
-
-  // 남성 체형 필수 문구
-  MALE_BODY: 'Korean man',
-
-  // 종결 문구
+  
+  FEMALE_BODY: 'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves, well-managed sophisticated look despite age, tight-fitting clothes accentuating curves naturally',
+  
+  MALE_BODY: 'fit athletic build with broad shoulders, dandy and refined presence, tailored slim-fit clothes',
+  
   END: 'high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16',
-
-  // 금지 키워드 (마네킹/애니메이션 방지)
+  
   NEGATIVE: 'NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing'
 };
 
 // ============================================
-// 강화된 장르 지침 (쇼츠랩 전용) - 예시 제거, 구조만
+// 40~60대 타겟 장르 지침 (v3.1)
 // ============================================
 
 export const LAB_GENRE_GUIDELINES: Record<string, {
   name: string;
+  description: string;
+  emotionCurve: string;
   structure: string;
   killerPhrases: string[];
+  bodyReactions: string[];
   forbiddenPatterns: string[];
+  goodTwistExamples: string[];
+  badTwistExamples: string[];
 }> = {
+
+  // ============================================
+  // 1. 코미디/유머
+  // ============================================
   'comedy-humor': {
     name: '코미디/유머',
+    description: '본인이 바보가 되는 민망한 상황. 시청자가 "에이~ 뭐야" 하면서 웃는 장르',
+    
+    emotionCurve: '😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음',
+    
     structure: `
-[HOOK] (장소) + (황당한 일 예고) → '오늘 (장소)에서 진짜 (감정) 일 있었어'
-[SETUP] (평범한 시작) → '(행동)하고 있었는데...'
-[BUILD-UP] (상황 꼬임) + (상대 반응) → '근데 문제는...', '하필이면...'
-[CLIMAX] (터지는 순간) + (킬러 대사) → 구체적 행동/표정 묘사
-[TWIST] (반전) → '알고보니...', '그래서 결국...'
+[HOOK] 😊 평화로운 시작 + 복선
+→ "오늘 (장소)에서 완전 창피당했어"
+→ 시청자 호기심 유발: "뭔데뭔데?"
+
+[SETUP] 😌 일상적 상황 묘사 + 반전 힌트 슬쩍!
+→ "(누구)랑 (뭐)하고 있었는데..."
+→ 여기서 나중에 반전될 내용 복선으로 깔기
+
+[BUILD-UP] 😳 뭔가 이상함 감지
+→ "근데 사람들이 자꾸 쳐다보는 거야"
+→ 신체반응 필수: 찜찜함, 불안감
+
+[CLIMAX] 😱 진실 발견 순간
+→ 거울, 사진, 누군가의 지적으로 발견
+→ "그때 (누가) '언니/형 저기...' 하는 거야"
+
+[TWIST] 🤦 민망한 진실 공개
+→ "알고보니 (창피한 상황)이었던 거야"
+→ SETUP의 복선과 연결!
+
+[OUTRO] 😂 자폭 멘트
+→ "아 진짜 쥐구멍에 숨고 싶었어"
 `,
+
     killerPhrases: [
-      '이게 뭐야 진짜',
-      '아 진짜 미치겠네',
-      '헐, 뭐라고?',
-      '그 순간 눈이 마주쳤는데',
-      '알고보니...',
-      '근데 문제는',
-      '하필이면',
-      '그러게 왜'
+      '야, 저기 좀 봐봐',
+      '언니 저기...',
+      '어... 그게...',
+      '아니 근데 왜 아무도 안 알려줘?',
+      '그걸 왜 이제야 말해!',
+      '아 진짜 죽고 싶었어',
+      '얼굴을 어디다 들고 다녀',
+      '그날 이후로 거기 못 가',
+      '하필이면 그날따라',
+      '에이~ 뭐야 그게',
+      '아이고 창피해라',
+      '내 참 기가 막혀서',
     ],
+    
+    bodyReactions: [
+      '얼굴이 화끈거렸어',
+      '땀이 삐질삐질 났어',
+      '다리에 힘이 풀렸어',
+      '목소리가 안 나오더라',
+      '손으로 얼굴을 가렸어',
+      '그 자리에 얼어붙었어',
+      '심장이 철렁 내려앉았어',
+      '귀까지 빨개지는 게 느껴졌어',
+    ],
+
     forbiddenPatterns: [
-      '얼굴이 빨개졌다',
-      '심장이 터질 것 같았다',
-      '나이스샷 오해',
+      '지퍼 열림',
+      '휴지 묻음',
+      '코털/콧수염 관련',
+      '이빨에 뭐 낌',
+      '방귀/트림',
+      '가발 벗겨짐',
+      '대파/야채 소재',
+      '다 같이 웃었다',
+      '해피엔딩 마무리',
+      '오해가 풀리며 훈훈',
       '쌍둥이 반전',
-      '흰 가루 오해'
-    ]
+      '우연히 연예인 만남',
+      '얼굴이 빨개졌다 (직접 서술 금지)',
+      '심장이 터질 것 같았다 (직접 서술 금지)',
+    ],
+    
+    goodTwistExamples: [
+      '알고보니 블라우스를 뒤집어 입은 채로 하루종일 다님',
+      '알고보니 한쪽 눈썹이 반쯤 지워진 채로 미팅함',
+      '알고보니 치마가 스타킹에 끼여서 뒤태가 다 보였음',
+      '알고보니 입가에 김치 묻은 채로 2시간째 대화함',
+      '알고보니 셀카모드 켜진 줄 모르고 혼자 표정 연습하고 있었는데 뒤에 사람들이 다 보고 있었음',
+      '알고보니 에어팟인 줄 알고 혼잣말 했는데 그냥 귀마개였음',
+    ],
+    
+    badTwistExamples: [
+      '알고보니 서프라이즈 파티 (뻔함)',
+      '알고보니 몰래카메라 (불쾌함)',
+      '알고보니 꿈이었음 (허무함)',
+      '알고보니 대파가 가방에 (억지스러움)',
+    ],
   },
 
+  // ============================================
+  // 2. 로맨스/설렘
+  // ============================================
   'romance-flutter': {
     name: '로맨스/설렘',
+    description: '중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림',
+    
+    emotionCurve: '😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"',
+    
     structure: `
-[HOOK] (평소와 다른 느낌) → '오늘따라 왜 이러지', '뭔가 달랐어'
-[SETUP] (일상적 만남) → '평소처럼 (행동)하는데...'
-[BUILD-UP] (물리적/감정적 거리 좁혀짐) → 시선, 손끝, 목소리 변화 묘사
-[CLIMAX] (의미심장한 순간) → 짧은 대사 + 행동
-[TWIST] (혼란/여운) → '나만 이런 건가', '뭔가 있는 건가'
+[HOOK] 😐 평소와 다른 느낌 암시
+→ "오늘따라 왜 그랬는지 모르겠어"
+→ "그 사람이 갑자기 달라 보였어"
+
+[SETUP] 👀 일상 속 만남 + 복선
+→ 늘 보던 사람인데 오늘 뭔가 다름
+→ "평소처럼 (행동)하는데..."
+
+[BUILD-UP] 💓 물리적/심리적 거리 좁혀짐
+→ 우연한 접촉, 눈 마주침, 목소리 톤 변화
+→ 시간이 느려지는 느낌 묘사
+→ 신체반응 필수
+
+[CLIMAX] 😳 결정적 순간
+→ 의미심장한 한마디 or 행동
+→ "그때 그 사람이 (말/행동)하더니..."
+
+[TWIST] 🤔 혼란 + 여운
+→ 확신 없는 결말
+→ "나만 이런 건가?", "뭔가 있는 건가?"
 `,
+
     killerPhrases: [
       '오늘따라 왜 이러지',
-      '시선을 어디 둘지 몰랐어',
-      '손끝이 미세하게 떨렸지',
-      '그 한마디에 멈췄어',
+      '원래 이랬나?',
+      '목소리가 왜 이렇게 낮아졌지',
+      '눈을 어디다 둘지 모르겠더라',
+      '괜히 신경 쓰였어',
+      '그 말이 자꾸 맴돌아',
       '나만 이런 건가',
-      '괜히 의식됐어',
-      '목소리가 작아졌어'
+      '무슨 의미였을까',
+      '설마... 아니겠지?',
+      '왜 자꾸 생각나지',
+      '내가 왜 이래 갑자기',
     ],
+    
+    bodyReactions: [
+      '심장이 갑자기 빨라졌어',
+      '귀가 빨개지는 게 느껴졌어',
+      '목소리가 작아졌어',
+      '눈을 못 마주치겠더라',
+      '손끝이 미세하게 떨렸어',
+      '숨을 참고 있었어',
+      '입이 바짝 말랐어',
+      '시간이 멈춘 것 같았어',
+    ],
+
     forbiddenPatterns: [
-      '심장이 쿵쾅쿵쾅',
-      '얼굴이 달아올랐다',
-      '첫눈에 반했다',
+      '심장이 쿵쾅쿵쾅 (유치한 표현)',
+      '나비가 날아다니는 것 같았다',
       '운명 같은 만남',
-      '그립 잡아주기'
-    ]
+      '첫눈에 반했다',
+      '바로 고백',
+      '키스/신체접촉',
+      '바로 사귀기 시작',
+      '골프장 그립 잡아주기',
+      '우연히 같은 호텔',
+      '비 오는 날 우산 씌워주기',
+      '떨어진 물건 같이 줍다 손 닿기',
+    ],
+    
+    goodTwistExamples: [
+      '평소엔 무뚝뚝한 남편이 오늘따라 내 머리 냄새를 맡더니 "향 바꿨어?" 한마디',
+      '항상 무심한 줄 알았던 그 사람이 내 커피 취향을 정확히 기억하고 있었음',
+      '악수하는데 손을 평소보다 1초 더 잡고 있더라',
+      '단톡방에서만 보던 사람인데 실제로 보니까 자꾸 눈이 갔어',
+      '옆에 앉았는데 향수 냄새가... 집에 와서도 코끝에 남아있었어',
+      '헤어질 때 "조심히 가"가 아니라 "연락해"라고 하더라',
+    ],
+    
+    badTwistExamples: [
+      '알고보니 나를 좋아했다 (너무 직접적)',
+      '바로 고백받음 (전개 급함)',
+      '꿈이었음 (허무)',
+      '알고보니 유부남/유부녀 (불쾌)',
+    ],
   },
 
+  // ============================================
+  // 3. 불륜/외도 의심
+  // ============================================
   'affair-suspicion': {
     name: '불륜/외도 의심',
+    description: '배우자의 수상한 행동 → 의심 폭발 → 건전한 반전. 시청자가 같이 의심하다가 안도하는 장르',
+    
+    emotionCurve: '🤨 수상함 → 😠 의심 → 😤 분노 폭발 직전 → 😮 반전 → 😅 안도+민망',
+    
     structure: `
-[HOOK] (충격적 발견) → '(물건)에서 (이상한 것)이 나왔어', '뭔가 이상해'
-[SETUP] (최근 정황) → '요즘 좀 (이상한 행동)하긴 했어...'
-[BUILD-UP] (의심 증폭) → 증거 수집, 내면 독백
-[CLIMAX] (대면/추궁) → 짧고 날카로운 대사
-[TWIST] (건전한 반전) → '알고보니 (선물/서프라이즈)였어'
+[HOOK] 🤨 충격적 발견/목격
+→ "오늘 (물건)에서 이상한 거 발견했어"
+→ "남편/와이프가 (수상한 행동)하는 거 봤어"
+
+[SETUP] 🧐 최근 정황 나열 + 복선!
+→ "생각해보니 요즘 좀 이상하긴 했어..."
+→ 여기서 반전의 힌트를 슬쩍 깔기
+
+[BUILD-UP] 😠 증거 수집 + 의심 폭주
+→ 추가 증거들이 쌓임
+→ "그래서 몰래 (조사 행동)했더니..."
+→ 신체반응 필수
+
+[CLIMAX] 😤 대면/추궁 순간
+→ "결국 참다참다 물어봤어"
+→ "이게 뭐야? 솔직히 말해"
+
+[TWIST] 😮 건전한 반전
+→ "알고보니 (감동적/웃긴 진실)이었어"
+→ SETUP의 복선과 연결!
+
+[OUTRO] 😅 안도 + 민망함
+→ "내가 너무했나... 근데 누가 봐도 의심하잖아!"
 `,
+
     killerPhrases: [
       '이거 뭐야?',
-      '요즘 좀 이상하지 않아?',
+      '요즘 왜 이래?',
       '솔직히 말해봐',
-      '내가 다 알아',
+      '나한테 숨기는 거 있지?',
+      '다 알아, 딴 소리 하지 마',
+      '눈 똑바로 보고 말해',
       '알고보니...',
+      '아 진짜... 나 진짜 미안해',
+      '누가 봐도 오해하잖아!',
+      '생각해보니 요즘 좀 이상하긴 했어',
       '설마 했는데',
-      '뭔가 숨기는 거 있지'
+      '아니 근데 왜 숨겨',
     ],
+    
+    bodyReactions: [
+      '손이 벌벌 떨렸어',
+      '목소리가 갈라졌어',
+      '눈물이 핑 돌았어',
+      '심장이 쿵쿵 거렸어',
+      '다리에 힘이 풀렸어',
+      '숨이 턱 막히더라',
+      '머리가 하얘졌어',
+      '손에 쥔 핸드폰을 떨어뜨릴 뻔했어',
+    ],
+
     forbiddenPatterns: [
       '실제 불륜 확정',
       '이혼 결심',
       '폭력적 대응',
-      '영수증 발견 패턴',
-      '귀걸이 발견 패턴'
-    ]
+      '자녀에게 피해',
+      '립스틱 묻음',
+      '향수 냄새',
+      '머리카락 발견',
+      '속옷 발견',
+      '영수증 발견',
+      '카톡 하트 이모지',
+      '깜짝 파티 준비 (뻔함)',
+      '서프라이즈 여행 준비 (뻔함)',
+      '결혼기념일 선물 (뻔함)',
+      '생일 선물 (뻔함)',
+    ],
+    
+    goodTwistExamples: [
+      '알고보니 남편이 내 갱년기 증상 때문에 몰래 한의원 상담받고 있었음',
+      '알고보니 와이프가 내 퇴직 후 우울해할까봐 몰래 부부동반 여행 알아보는 중이었음',
+      '알고보니 남편이 유튜브 보면서 몰래 요리 연습 중이었음 (맨날 라면만 끓이던 사람이)',
+      '알고보니 와이프가 건강검진 결과 걱정돼서 몰래 영양제 공부하고 있었음',
+      '알고보니 딸이랑 짜고 내 환갑 축하 영상 만들고 있었음',
+      '알고보니 남편이 내 명품백 중고로 팔아서 뭐하나 했더니 나 몰래 적금 들고 있었음',
+    ],
+    
+    badTwistExamples: [
+      '알고보니 회사 일 (너무 평범함)',
+      '알고보니 친구 만남 (긴장감 대비 허무)',
+      '실제 불륜이었음 (정책 위반)',
+      '그냥 오해였음으로 끝남 (감동 없음)',
+    ],
   },
 
+  // ============================================
+  // 4. 대박 반전 (매운맛)
+  // ============================================
   'hit-twist-spicy': {
     name: '대박 반전 (매운맛)',
+    description: '성적 뉘앙스로 오해받는 상황 → 알고보니 완전 건전. 야한 것 같은데 야한 게 아닌 장르',
+    
+    emotionCurve: '😏 뭔가 야해...? → 😳 어머 저게 뭐야 → 😱 헐 설마 → 🤣 뭐야 아니잖아',
+    
     structure: `
-[HOOK] (오해 유발 대사) → 이중 의미 대사로 시작
-[SETUP] (아슬아슬한 상황) → 좁은 공간, 가까운 거리
-[BUILD-UP] (오해 극대화) → 들리면 오해할 대사들 연속
-[CLIMAX] (목격/등장) → 제3자 반응
-[TWIST] (건전한 진실) → '알고보니 (일상적인 행동)이었어'
+[HOOK] 😏 이중 의미 대사로 시작
+→ 들으면 야하게 들리는 대사
+→ "조금만 더요", "너무 빡빡해요", "살살 해요"
+
+[SETUP] 😳 아슬아슬한 상황 설정 + 복선
+→ 좁은 공간, 가까운 거리, 닫힌 문
+→ 시각적으로 오해할 만한 구도
+
+[BUILD-UP] 😱 오해 극대화
+→ 밖에서 들으면 오해할 대사들 연속
+→ "조심해요", "거기 말고요", "누가 오면 어떡해"
+→ 제3자 등장 임박 암시
+
+[CLIMAX] 😲 목격 순간
+→ 누군가 문을 열거나 등장
+→ "뭐... 뭐 하는 거야 너희?!"
+
+[TWIST] 🤣 민망한 진실 공개
+→ "아니 이게 아니라..."
+→ 완전히 건전한 상황이었음
+
+[OUTRO] 😂 웃음 + 해명
+→ "오해예요 진짜!", "아 진짜 타이밍 왜..."
 `,
+
     killerPhrases: [
-      '조금만 더...',
+      '조금만 더요',
       '너무 꽉 조여요',
-      '금방 끝나요',
-      '누가 보면 어떡해',
-      '알고보니...',
-      '이게 아닌데',
-      '오해예요!'
+      '힘 좀 빼요',
+      '거기 말고요',
+      '아 살살요',
+      '누가 오면 어떡해',
+      '빨리요 빨리',
+      '뭐... 뭐 하는 거야?!',
+      '아니 이거 오해예요!',
+      '진짜 아무것도 아니에요!',
+      '아니 타이밍이 왜...',
+      '들어보면 알아요!',
     ],
+    
+    bodyReactions: [
+      '얼굴이 새빨개졌어',
+      '말문이 막혔어',
+      '손사레를 미친듯이 쳤어',
+      '버벅거리면서 해명했어',
+      '식은땀이 줄줄 났어',
+      '입이 벌어진 채로 굳었어',
+      '눈이 왔다갔다 했어',
+    ],
+
     forbiddenPatterns: [
       '실제 성적 상황',
       '노출 묘사',
       '신체 접촉 직접 묘사',
-      '장갑 끼워주기 패턴'
-    ]
-  }
+      '키스/포옹 장면',
+      '속옷 언급',
+      '장갑 끼워주기 (식상)',
+      '파스 붙여주기 (식상)',
+      '지퍼 올려주기 (식상)',
+      '넥타이 매주기 (식상)',
+      '머리에 뭐 붙은 거 떼주기 (식상)',
+      '마사지 (여전히 애매함)',
+    ],
+    
+    goodTwistExamples: [
+      '알고보니 옷 매장 피팅룸에서 찢어진 바지 꿰매주고 있었음',
+      '알고보니 콘택트렌즈 빠져서 찾아주고 있었음 (얼굴 가까이 대고)',
+      '알고보니 목에 뭐가 걸려서 하임리히법 하고 있었음',
+      '알고보니 허리 담 걸려서 일으켜 세우고 있었음',
+      '알고보니 폰 비번 풀어달라고 손가락 억지로 가져다 대고 있었음 (지문인식)',
+      '알고보니 새 구두 너무 꽉 껴서 억지로 벗기고 있었음',
+      '알고보니 목걸이가 머리카락에 엉켜서 풀어주고 있었음',
+    ],
+    
+    badTwistExamples: [
+      '마사지해주고 있었음 (여전히 애매함)',
+      '운동 동작 가르쳐주고 있었음 (식상함)',
+      '춤 연습 (뻔함)',
+      '요가 동작 (애매함)',
+    ],
+  },
 };
 
 // ============================================
-// 랜덤 시드 키워드 (창작 다양성 확보)
+// 40~60대 현실 반영 랜덤 시드 풀 (v3.1)
 // ============================================
 
 export const RANDOM_SEED_POOLS = {
   locations: [
-    '엘리베이터', '주차장', '라커룸', '카페', '마트',
-    '미용실', '헬스장', '식당', '공원', '백화점',
-    '편의점', '병원 대기실', '영화관', '호텔 로비', '공항',
-    '사우나', '네일샵', '세차장', '꽃집', '약국'
+    '골프장 라커룸', '클럽하우스 카페', '골프 연습장', '골프장 주차장',
+    '백화점', '대형마트', '아파트 엘리베이터', '동네 카페',
+    '미용실', '피부과 대기실', '헬스장', '필라테스 학원',
+    '한의원', '정형외과', '안과',
+    '동창회 식당', '계모임 장소', '와인바', '호텔 뷔페',
+    '고급 레스토랑', '골프 클럽 식당',
+    '자녀 집', '공항', '예식장', '돌잔치장',
   ],
+  
   objects: [
-    '립스틱', '영수증', '향수', '머리카락', '문자메시지',
-    '사진', '카드명세서', '선글라스', '손수건', '열쇠',
-    '귀걸이', '넥타이', '명함', '쇼핑백', '꽃다발',
-    '초콜릿', '와인', '책', '운동화', '시계'
+    '카카오톡 알림', '문자 메시지', '새 옷 쇼핑백',
+    '꽃다발', '고급 레스토랑 영수증', '호텔 주차권',
+    '다이어트 보조제', '영양제 쇼핑백', '건강식품',
+    '성형외과 명함', '새 운동복', '향수',
+    '몰래 산 골프채', '고가의 선물 포장',
+    '낯선 전화번호', '늦은 밤 문자',
   ],
+  
   reactions: [
-    '기침', '한숨', '멈칫', '눈 피함', '손 떨림',
-    '말 더듬', '헛웃음', '침묵', '눈 커짐', '입 벌림',
-    '고개 돌림', '핸드폰 확인', '물 마심', '기지개', '하품'
+    '손이 벌벌 떨림',
+    '목소리가 갈라짐',
+    '귀까지 빨개짐',
+    '한숨이 절로 나옴',
+    '입이 바짝 마름',
+    '다리에 힘이 풀림',
+    '눈물이 핑 돎',
+    '숨이 턱 막힘',
+    '식은땀이 남',
+    '심장이 철렁 내려앉음',
+    '머리가 하얘짐',
   ],
+  
   misunderstandings: [
-    '바람피는 줄', '싸우는 줄', '고백하는 줄', '헤어지는 줄',
-    '비밀 있는 줄', '거짓말하는 줄', '숨기는 줄', '화난 줄',
-    '울고 있는 줄', '아픈 줄', '취한 줄', '졸린 줄'
+    '바람피는 줄',
+    '이혼 준비하는 줄',
+    '건강검진 결과 안 좋은 줄',
+    '자녀한테 목돈 빌려주는 줄',
+    '주식/코인으로 돈 날린 줄',
+    '성형 몰래 한 줄',
+    '퇴직 통보받은 줄',
+    '숨기는 병 있는 줄',
+    '빚 있는 줄',
   ],
-  truths: [
-    '서프라이즈 준비', '선물 고르는 중', '깜짝 파티 계획',
-    '다이어트 중', '이직 준비', '자격증 공부',
-    '부모님 용돈', '기부 활동', '재테크 공부', '운동 시작'
-  ]
+  
+  twistTypes: [
+    '배우자/가족 위한 서프라이즈 준비',
+    '건강 관련 좋은 소식 또는 배려',
+    '자녀/손주 관련 이벤트 준비',
+    '본인 외모/건강 관리 비밀 시작',
+    '가족 위한 재테크/저축',
+    '말하기 쑥스러운 취미/자기계발',
+    '과거 추억 정리/복원 프로젝트',
+  ],
 };
 
 /**
- * 랜덤 시드 생성 - 매번 다른 조합으로 창작 유도
+ * 랜덤 시드 생성
  */
 export const generateRandomSeed = (): {
   location: string;
   object: string;
   reaction: string;
   misunderstanding: string;
-  truth: string;
+  twistType: string;
 } => {
-  const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-
+  const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  
   return {
     location: pick(RANDOM_SEED_POOLS.locations),
     object: pick(RANDOM_SEED_POOLS.objects),
     reaction: pick(RANDOM_SEED_POOLS.reactions),
     misunderstanding: pick(RANDOM_SEED_POOLS.misunderstandings),
-    truth: pick(RANDOM_SEED_POOLS.truths)
+    twistType: pick(RANDOM_SEED_POOLS.twistTypes),
   };
 };
 
 // ============================================
-// 의상 선택 함수 (SEXY / NORMAL 이원화)
+// 의상 선택 함수 (v3.1 - 장르 + 주제 기반)
 // ============================================
 
-/**
- * 여성 의상 선택
- * - 불륜/외도 장르: SEXY 카테고리에서 선택
- * - 그 외 장르: NORMAL (SEXY 제외 전체)에서 랜덤 선택
- */
-export const pickFemaleOutfit = (genre: string, excludeOutfits: string[] = []): string => {
-  const isSexyGenre = genre === 'affair-suspicion';
-
-  const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
-    // 남성 의상 제외
-    if (item.categories.includes('MALE')) return false;
-    // 이미 선택된 의상 제외
-    if (excludeOutfits.includes(item.name)) return false;
-
+export const pickFemaleOutfit = (
+  genre: string, 
+  topic: string = '',
+  excludeOutfits: string[] = []
+): string => {
+  
+  // 1️⃣ 장르별 기본 카테고리 설정
+  let preferredCategories: string[] = [];
+  let allowedCategories: string[] = [];
+  
+  const isSexyGenre = genre === 'affair-suspicion' || genre === 'hit-twist-spicy';
+  
+  if (isSexyGenre) {
+    preferredCategories = ['SEXY'];
+    allowedCategories = ['SEXY', 'GOLF LUXURY'];
+  } else {
+    preferredCategories = ['GOLF LUXURY'];
+    allowedCategories = ['GOLF LUXURY', 'ROYAL'];
+  }
+  
+  // 2️⃣ 주제(topic)에 따른 오버라이드
+  const topicLower = topic.toLowerCase();
+  
+  if (topicLower.includes('골프') || topicLower.includes('라운딩') || topicLower.includes('캐디') || topicLower.includes('클럽하우스')) {
     if (isSexyGenre) {
-      // 불륜/외도: SEXY 카테고리만
-      return item.categories.includes('SEXY');
+      preferredCategories = ['SEXY', 'GOLF LUXURY'];
     } else {
-      // 그 외: SEXY 제외 전체
-      return !item.categories.includes('SEXY');
+      preferredCategories = ['GOLF LUXURY'];
     }
+    allowedCategories = ['GOLF LUXURY', 'SEXY'];
+  }
+  
+  if (topicLower.includes('헬스') || topicLower.includes('필라테스') || topicLower.includes('요가')) {
+    preferredCategories = ['YOGA'];
+    allowedCategories = ['YOGA'];
+  }
+  
+  if (topicLower.includes('파티') || topicLower.includes('와인') || topicLower.includes('호텔') || topicLower.includes('레스토랑')) {
+    preferredCategories = ['SEXY', 'ROYAL'];
+    allowedCategories = ['SEXY', 'ROYAL'];
+  }
+  
+  // 3️⃣ 필터링
+  const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
+    if (item.categories.includes('MALE')) return false;
+    if (excludeOutfits.includes(item.name)) return false;
+    
+    return preferredCategories.some(cat => item.categories.includes(cat)) ||
+           allowedCategories.some(cat => item.categories.includes(cat));
   });
-
-  if (candidates.length === 0) {
+  
+  // 4️⃣ 선호 카테고리 우선 선택
+  const preferredCandidates = candidates.filter(item =>
+    preferredCategories.some(cat => item.categories.includes(cat))
+  );
+  
+  const finalCandidates = preferredCandidates.length > 0 ? preferredCandidates : candidates;
+  
+  if (finalCandidates.length === 0) {
     return 'White Halter-neck Knit + Red Micro Mini Skirt';
   }
-
-  return candidates[Math.floor(Math.random() * candidates.length)].name;
+  
+  return finalCandidates[Math.floor(Math.random() * finalCandidates.length)].name;
 };
 
-/**
- * 남성 의상 선택 - 전체에서 랜덤
- */
 export const pickMaleOutfit = (excludeOutfits: string[] = []): string => {
   const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
     if (!item.categories.includes('MALE')) return false;
     if (excludeOutfits.includes(item.name)) return false;
     return true;
   });
-
+  
   if (candidates.length === 0) {
     return 'Navy Slim-fit Polo + White Tailored Golf Pants';
   }
-
+  
   return candidates[Math.floor(Math.random() * candidates.length)].name;
 };
 
 // ============================================
-// 대본 생성용 프롬프트 (메인 함수)
+// 대본 생성용 프롬프트 (v3.1 - 완전판)
 // ============================================
 
 export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const { topic, genre, targetAge, gender, additionalContext } = options;
 
   const genreGuide = LAB_GENRE_GUIDELINES[genre];
-
-  // 🎲 랜덤 시드 생성
   const seed = generateRandomSeed();
 
-  // 👗 의상 선택 (중복 방지)
-  const womanAOutfit = pickFemaleOutfit(genre, []);
-  const womanBOutfit = pickFemaleOutfit(genre, [womanAOutfit]);
+  // 의상 선택 (주제 반영)
+  const womanAOutfit = pickFemaleOutfit(genre, topic, []);
+  const womanBOutfit = pickFemaleOutfit(genre, topic, [womanAOutfit]);
   const manAOutfit = pickMaleOutfit([]);
+
+  // 화자 설정
+  const narratorSlot = gender === 'female' ? 'Woman A (지영)' : 'Man A (준호)';
+  const narratorName = gender === 'female' ? '지영' : '준호';
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
 당신은 **유튜브 쇼츠 바이럴 대본 전문 작가**입니다.
-${targetAge} 한국 ${gender === 'female' ? '여성' : '남성'} 시청자가 끝까지 보게 만드는 대본을 작성하세요.
+40~60대 한국 ${gender === 'female' ? '여성' : '남성'} 시청자가 "내 얘기잖아!" 하면서 끝까지 보게 만드는 대본을 작성하세요.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 주제: "${topic}"
 📌 장르: ${genreGuide?.name || '일반'}
-📌 타겟: ${targetAge} 한국 ${gender === 'female' ? '여성' : '남성'}
-📌 주인공 성별: ${gender === 'female' ? '여성' : '남성'}
+📌 타겟: 40~60대 한국 ${gender === 'female' ? '여성' : '남성'}
+📌 화자: ${narratorSlot} (${narratorName})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## 🎭 스토리 구조 및 주인공 설정
-- **주인공**: ${gender === 'female' ? '20~50대 한국 여성' : '20~50대 한국 남성'}
-- **관점**: 주인공의 시점에서 이야기가 전개되도록 하세요.
+## 🎯 이 장르의 핵심
+**${genreGuide?.description || ''}**
+
+## 📈 감정 곡선 (이 흐름을 반드시 따라가세요!)
+${genreGuide?.emotionCurve || ''}
+
+## 🎲 창작 힌트 (영감용 - 억지로 다 넣지 마세요!)
+- 장소 힌트: ${seed.location}
+- 소품 힌트: ${seed.object}  
+- 신체반응 참고: ${seed.reaction}
+- 오해 방향: ${seed.misunderstanding}
+- 반전 유형: ${seed.twistType}
+
+⚠️ **중요**: 주제(topic)가 최우선! 
+⚠️ 힌트는 영감만 받고, 주제와 안 맞으면 무시하세요!
+
+## 🎭 스토리 구조
 ${genreGuide?.structure || ''}
 
-## 🎲 이번 대본 필수 요소 (창작 시드)
-다음 요소들을 **반드시 창의적으로 활용**하세요:
+## 💬 킬러 대사 (자연스럽게 2~3개 녹이세요)
+${genreGuide?.killerPhrases.map(p => `"${p}"`).join(', ') || ''}
 
-- 장소/상황: **${seed.location}**
-- 소품/단서: **${seed.object}**
-- 반응/행동: **${seed.reaction}**
-- 오해 포인트: **${seed.misunderstanding}**
-- 반전 진실: **${seed.truth}**
+## 🫀 신체 반응 표현 (최소 2개 필수!)
+${genreGuide?.bodyReactions.map(p => `"${p}"`).join(', ') || ''}
 
-⚠️ 중요! 주제(topic)가 최우선!
-⚠️ 랜덤 시드는 참고만! 주제와 충돌하면 주제를 따르세요!
-⚠️ 주제가 "골프장", "캐디"면 → 배경은 반드시 골프장!
-⚠️ 시드의 장소가 "편의점"이어도 주제가 "골프장"이면 골프장으로!
-⚠️ 위 요소들을 자연스럽게 녹여서 **완전히 새로운 스토리**를 만드세요.
-⚠️ 요소를 억지로 다 넣지 말고, 3개 이상 자연스럽게 활용하면 됩니다.
+## ✅ 좋은 반전 예시
+${genreGuide?.goodTwistExamples?.map(p => `• ${p}`).join('\n') || ''}
 
-## 🎭 스토리 구조 (이 공식을 따르되, 내용은 새롭게!)
-${genreGuide?.structure || ''}
+## ❌ 절대 금지
+${genreGuide?.forbiddenPatterns.map(p => `• ${p}`).join('\n') || ''}
 
-## 💬 킬러 대사 (최소 2개 자연스럽게 삽입)
-${genreGuide?.killerPhrases.map(p => `'${p}'`).join(', ') || ''}
+## ❌ 나쁜 반전 예시
+${genreGuide?.badTwistExamples?.map(p => `• ${p}`).join('\n') || ''}
 
-## ❌ 금지 패턴 (이미 너무 많이 쓴 것들)
-${genreGuide?.forbiddenPatterns.map(p => `- ${p}`).join('\n') || ''}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🚨 대본 품질 필수 규칙 (위반 시 0점!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## 📝 대본 규칙
-1. 분량: 10-12문장
-2. 문체: ~했어, ~했지, ~더라고 (친구한테 말하듯)
-3. 대사: 작은따옴표 사용 ('이렇게')
-4. 구체성: 장소, 행동, 표정 생생하게
-5. 의상 이름 대본에 절대 언급 금지
-${additionalContext ? `6. 추가: ${additionalContext}` : ''}
+### 1️⃣ 화자(POV) 규칙
+- 화자 = **${narratorSlot}** 고정
+- 대본 전체가 ${narratorName}의 1인칭 시점
+- **화자는 절대 자기 이름을 3인칭으로 부르지 않음!**
 
-## 👗 의상 설정 (이미지 프롬프트 전용 - 절대 변경 금지!)
-- **Woman A (지영) 고정 의상**: ${womanAOutfit}
-- **Woman B (혜경) 고정 의상**: ${womanBOutfit}  
-- **Man A (준호) 고정 의상**: ${manAOutfit}
+❌ 금지 (화자가 ${narratorName}일 때):
+"${narratorName} 어깨를 툭 쳤지" → 자기가 자기 어깨를 쳤다고?
+"${narratorName}가 당황했어" → 본인 얘기를 3인칭으로?
 
-⚠️ 모든 8개 씬에서 위 의상을 **100% 동일하게** 사용하세요!
-⚠️ 투샷/쓰리샷에서도 **상의 + 하의 전체**를 명시하세요! (축약 금지)
+✅ 올바른 표현:
+"옆에 있던 형님 어깨를 툭 쳤지"
+"순간 당황해서 말이 안 나왔어"
 
-## 💇 헤어스타일 설정 (모든 씬에서 고정!)
+### 2️⃣ 캐릭터 관계 명시 규칙
+- 모든 캐릭터 첫 등장 시 **화자와의 관계** 설명 필수
+- characters 배열에 없는 인물이 대본에 등장하면 안 됨!
+
+❌ 금지:
+"지영이가 걸어왔다" → 지영이 누구야?
+"여자 둘이 다가왔다" → 화자와 무슨 관계?
+
+✅ 올바른 표현:
+"우리 와이프 친구 지영이가 걸어왔다"
+"와이프 필라테스 동호회 후배들이 다가왔다"
+"같이 온 민수 형이 내 어깨를 쳤어"
+
+### 3️⃣ 복선(Foreshadowing) 규칙
+- 반전(TWIST)이 있으면 **SETUP(2~3번째 문장)에서 힌트** 먼저 깔기
+- 너무 노골적이면 안 됨 (시청자가 눈치채면 실패)
+
+❌ 금지 (복선 없이 갑자기):
+문장 1~9: 아무 힌트 없음
+문장 10: "알고보니 와이프 후배들이었어"
+
+✅ 올바른 흐름:
+문장 2~3: "어? 저번에 와이프가 후배들 골프장 데려온다고 했었나...?"
+문장 10: "알고보니 진짜 그 후배들이었어!"
+
+### 4️⃣ 씬-캐릭터 매칭 규칙
+- scriptLine의 **행동/감정 주체** = characterSlot에 포함
+- 화자의 감정/반응 씬 → 화자가 프레임에 등장!
+
+❌ 금지:
+scriptLine: "땀이 삐질삐질 났어" (화자 반응)
+characterSlot: "Woman B" (화자 아님)
+
+✅ 올바른 매칭:
+scriptLine: "땀이 삐질삐질 났어"
+characterSlot: "${gender === 'female' ? 'Woman A' : 'Man A'}" 또는 투샷
+
+### 5️⃣ 제목 규칙
+- "충격", "반전", "정체" 같은 추상어 금지
+- **구체적 상황**으로 호기심 유발
+
+❌ 약한 제목:
+"골프장 여신들의 충격적 정체"
+
+✅ 강한 제목:
+"잘생긴 척하다 와이프 후배들한테 걸린 썰"
+"라운딩 중 개망신 실화냐"
+"배 집어넣다 담 걸릴 뻔한 골프장 사건"
+
+### 6️⃣ Show, Don't Tell
+❌ 감정 직접 서술 금지: "당황했다", "화가 났다", "설렜다"
+✅ 행동/신체반응으로 보여주기
+
+예시:
+- ❌ "너무 창피했다" 
+- ✅ "얼굴이 화끈거려서 손으로 볼을 감쌌어"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 📝 대본 형식 규칙
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 분량: 10~12문장
+2. 문체: ~했어, ~했지, ~더라고, ~잖아 (친구한테 수다)
+3. 대사: 작은따옴표 사용 ('이렇게 말했어')
+4. 의상 이름 대본에 절대 언급 금지!
+${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
+
+## 👗 의상 설정 (이미지 프롬프트용)
+- **Woman A (지영)**: ${womanAOutfit}
+- **Woman B (혜경)**: ${womanBOutfit}  
+- **Man A (준호)**: ${manAOutfit}
+
+## 💇 헤어스타일 (모든 씬 고정!)
 - **Woman A (지영)**: long soft-wave hairstyle
 - **Woman B (혜경)**: short chic bob cut
 - **Man A (준호)**: short neat hairstyle
 
-⚠️ 모든 씬에서 헤어스타일을 **반드시 포함**하세요! (투샷/쓰리샷 포함)
-
-## 📸 이미지 샷 타입 규칙 (중요!)
-대본 내용에 따라 적절한 샷 타입을 선택하세요:
-
-| 상황 | 샷 타입 | 프롬프트 작성법 |
-|-----|--------|---------------|
-| 1명 행동/감정 | 원샷 | "A stunning Korean woman..." |
-| 2명 함께 등장 | 투샷 | "Two stunning Korean women..." (각각 헤어+체형+의상 전체 명시) |
-| 3명 함께 등장 | 쓰리샷 | "Three people in frame..." (각각 헤어+체형+의상 전체 명시) |
-
-### 🎬 캐릭터 샷 규칙 (투샷/쓰리샷 필수!)
-⚠️ 모든 인물이 같은 동작 금지! (예: 다 같이 웃기 ❌)
-⚠️ 각 캐릭터마다 서로 다른 동작/표정 필수!
-
-✅ 좋은 예시:
-- Woman A: 커피 마시다 멈추며 눈 크게 뜸
-- Woman B: 핸드폰 보다가 고개 돌림
-- Man A: 손 흔들며 다가오는 중
-
-❌ 나쁜 예시:
-- 세 명이 나란히 서서 웃음
-- 두 명이 같이 앉아서 대화
- 
-## 🎥 비디오 프롬프트 생성 규칙 (모든 씬 필수!)
-
-각 씬마다 동영상 프롬프트(videoPrompt)를 생성하세요:
-
-### ✅ 비디오 프롬프트 템플릿:
-\`\`\`
-A stunning [Korean woman/man in her/his ${targetAge}], [동작/행동], [감정 표현]
-\`\`\`
-
-### 📝 비디오 프롬프트 생성 방법:
-1. **scriptLine에서 동작 추출**: 대사 전/후에 나오는 행동 묘사 (예: "커피 마시다 멈추며" → "pauses while drinking coffee")
-2. **emotion에서 감정 추출**: 시작감정→끝감정 (예: "신남→기뻐" → "excited expression, happy")
-3. **정체성 포함**: 한국인 + 나이 (예: "A stunning Korean woman in her 40s")
-4. **영어로 번역**: 모든 것을 영어로 명확하게 표현
-
-### ✅ 비디오 프롬프트 예시:
-- **scriptLine**: "커피 마시다 멈추며 눈 크게 뜸" → **videoPrompt**: "A stunning Korean woman in her 40s pauses while drinking coffee, eyes widening with surprise, surprised expression"
-- **scriptLine**: "핸드폰 보다가 고개 돌림" → **videoPrompt**: "A stunning Korean woman in her 40s looks at phone and turns head, curious expression"
-- **scriptLine**: "손 흔들며 다가오는 중" → **videoPrompt**: "A handsome Korean man in his 40s waves hand while approaching, friendly expression"
-
-
-### ✅ 비디오 프롬프트 템플릿:
-\`\`\`
-A stunning [Korean woman/man in her/his ${targetAge}], [동작/행동], [감정 표현]
-\`\`\`
- 
-### 📝 비디오 프롬프트 생성 방법:
-1. **scriptLine에서 동작 추출**: 대사 전/후에 나오는 행동 묘사 (예: "커피 마시다 멈추며" → "pauses while drinking coffee")
-2. **emotion에서 감정 추출**: 시작감정→끝감정 (예: "신남→기뻐" → "excited expression, happy")
-3. **정체성 포함**: 한국인 + 나이 (예: "A stunning Korean woman in her 40s")
-4. **영어로 번역**: 모든 것을 영어로 명확하게 표현
- 
-### ✅ 비디오 프롬프트 예시:
-- **scriptLine**: "커피 마시다 멈추며 눈 크게 뜸" → **videoPrompt**: "A stunning Korean woman in her 40s pauses while drinking coffee, eyes widening with surprise, surprised expression"
-- **scriptLine**: "핸드폰 보다가 고개 돌림" → **videoPrompt**: "A stunning Korean woman in her 40s looks at phone and turns head, curious expression"
-- **scriptLine**: "손 흔들며 다가오는 중" → **videoPrompt**: "A handsome Korean man in his 40s waves hand while approaching, friendly expression"
- 
-### ⚠️ 비디오 프롬프트 체크리스트:
-✅ 한국인 정체성 포함? (A stunning Korean woman/man in her/his [age])
-✅ 나이 포함? (in her/his 40s)
-✅ 동작 구체적? (pauses, turns, waves 등)
-✅ 감정 명확? (surprised, curious, happy 등)
-✅ 영어 문법 정확? (present tense, action verbs)
-
-
-
-## 🎨 이미지 프롬프트 필수 규칙 (모든 씬 적용)
-
-### ✅ 여성 원샷 템플릿:
-\`\`\`
-${PROMPT_CONSTANTS.START}, A stunning Korean woman in her ${targetAge}, [헤어스타일], slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing [상의 + 하의 전체 의상명], [액세서리], [행동/표정], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
-\`\`\`
-
-### ✅ 남성 원샷 템플릿:
-\`\`\`
-${PROMPT_CONSTANTS.START}, Korean man in his ${targetAge}, [헤어스타일], wearing [상의 + 하의 전체 의상명], [액세서리], [행동/표정], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
-\`\`\`
-
-### ✅ 투샷 템플릿 (🚨 각 캐릭터별 전체 명시 필수!):
-\`\`\`
-${PROMPT_CONSTANTS.START}, Two stunning Korean women in their ${targetAge}, side by side,
-First woman (Woman A): long soft-wave hairstyle, slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing ${womanAOutfit}, delicate gold hoop earrings,
-Second woman (Woman B): short chic bob cut, slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing ${womanBOutfit}, pearl drop earrings,
-[두 사람의 행동/표정], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
-\`\`\`
-
-⚠️ 체형 문구 축약 금지! 반드시 "slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes" 전체 포함!
-
-### ✅ 쓰리샷 템플릿 (🚨 각 캐릭터별 전체 명시 필수!):
-\`\`\`
-${PROMPT_CONSTANTS.START}, Three people in frame, all in their ${targetAge},
-First woman (Woman A): long soft-wave hairstyle, slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing ${womanAOutfit}, delicate gold hoop earrings,
-Second woman (Woman B): short chic bob cut, slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes accentuating curves naturally, wearing ${womanBOutfit}, pearl drop earrings,
-Man (Man A): short neat hairstyle, Korean man, wearing ${manAOutfit}, silver watch,
-[세 사람의 행동/상호작용], [배경], [카메라앵글], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}
-\`\`\`
-
-⚠️ 체형 문구 축약 금지! 
-- 여성: "slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes" 전체 포함!
-- 남성: "Korean man"
-
-### ⚠️ 프롬프트 체크리스트 (매 씬마다 확인!):
-✅ 시작 문구 "unfiltered raw photograph, 8k ultra photorealism..." 포함?
-✅ 헤어스타일 명시? (long soft-wave / short chic bob cut / short neat)
-✅ 체형 문구 전체 포함? (여성: "slim hourglass figure, curvy feminine figure, glamorous silhouette, elegant feminine curves, tight-fitting clothes")
-✅ 의상 앞에 **wearing** 키워드 포함? (예: wearing Ivory Bodycon Blazer Mini Dress)
-✅ 의상이 **상의 + 하의 전체** 명시? (축약 금지!)
-✅ 액세서리 포함? (Woman A: delicate gold hoop earrings, Woman B: pearl drop earrings, Man A: silver watch)
-✅ 종결 문구 "shot on 85mm lens, f/1.8... --ar 9:16" 포함?
-✅ 금지 문구 "NOT cartoon, NOT anime, NOT mannequin..." 포함?
+## 📸 샷 타입 규칙
+| 상황 | 샷 타입 |
+|-----|--------|
+| 1명 행동/감정 | 원샷 |
+| 2명 상호작용 | 투샷 |
+| 3명 함께 | 쓰리샷 |
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## ⚠️ 출력 형식 (반드시 이 JSON 구조만 출력)
+## 🎙️ 음성 스크립트 규칙 (나레이션 + 립싱크)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### voiceType 판단 기준
+| 대본 내용 | voiceType | 설명 |
+|----------|-----------|-----|
+| 순수 상황 설명/묘사 | "narration" | 화자가 읽음 |
+| 캐릭터 직접 대사만 ('대사') | "lipSync" | 캐릭터 입모양 |
+| 설명 + 대사 섞임 | "both" | 나레이션 + 대사 부분 립싱크 |
+| 무음 (표정/행동만) | "none" | BGM만 |
+
+### narration 규칙
+- **text**: scriptLine 기반, TTS가 읽기 좋게 쉼표/띄어쓰기 조정
+- **emotion**: 해당 씬 감정 (한탄, 당황, 신남, 분노 등)
+- **speed**: "slow" | "normal" | "slightly-fast" | "fast"
+
+### lipSync 규칙 (작은따옴표 대사가 있을 때만!)
+- **speaker**: 대사 말하는 캐릭터 ID (WomanA, WomanB, ManA 등)
+- **speakerName**: 캐릭터 이름 (지영, 혜경, 준호)
+- **line**: 작은따옴표 안의 **정확한 대사만** 추출
+- **emotion**: 영어 감정 (curious, angry, happy, shy, excited 등)
+- **timing**: "start" | "mid" | "end"
+
+### 예시
+scriptLine: "땀이 삐질삐질 나는데 혜경이가 갑자기 '오빠?' 하면서 말을 걸더라고"
+
+→ voiceType: "both"
+→ narration.text: "땀이 삐질삐질 나는데, 혜경이가 갑자기, 오빠? 하면서 말을 걸더라고"
+→ narration.emotion: "당황"
+→ lipSync.speaker: "WomanB"
+→ lipSync.speakerName: "혜경"
+→ lipSync.line: "오빠?"
+→ lipSync.emotion: "curious"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ⚠️ 출력 형식 (반드시 이 JSON 구조만!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {
-  "title": "자극적인 제목 (15자 이내)",
+  "title": "구체적이고 호기심 유발하는 제목 (15자 이내)",
   "titleOptions": ["제목옵션1", "제목옵션2", "제목옵션3"],
-  "scriptBody": "문장1\\n문장2\\n문장3\\n...\\n문장10-12",
-  "punchline": "핵심 펀치라인 대사",
-  "hook": "첫 문장",
-  "twist": "반전 문장",
+  "scriptBody": "문장1\\n문장2\\n...\\n문장10-12",
+  "punchline": "핵심 펀치라인",
+  "hook": "첫 문장 (HOOK)",
+  "twist": "반전 문장 (TWIST)",
+  "foreshadowing": "복선 문장 (SETUP에서 깐 힌트)",
+  "narrator": {
+    "slot": "${gender === 'female' ? 'WomanA' : 'ManA'}",
+    "name": "${narratorName}"
+  },
+  "emotionFlow": "${genreGuide?.emotionCurve || ''}",
   "lockedOutfits": {
     "womanA": "${womanAOutfit}",
     "womanB": "${womanBOutfit}",
@@ -517,6 +852,7 @@ Man (Man A): short neat hairstyle, Korean man, wearing ${manAOutfit}, silver wat
     {
       "id": "WomanA",
       "name": "지영",
+      "relationToNarrator": "화자와의 관계 (예: 화자 본인, 화자의 와이프, 화자의 친구 등)",
       "slot": "Slot Woman A",
       "hair": "Long soft-wave hairstyle",
       "body": "Slim hourglass figure, curvy feminine figure, glamorous silhouette",
@@ -526,7 +862,8 @@ Man (Man A): short neat hairstyle, Korean man, wearing ${manAOutfit}, silver wat
     {
       "id": "WomanB",
       "name": "혜경",
-      "slot": "Slot Woman B",
+      "relationToNarrator": "화자와의 관계",
+      "slot": "Slot Woman B", 
       "hair": "Short chic bob cut",
       "body": "Slim hourglass figure, curvy feminine figure, glamorous silhouette",
       "outfit": "${womanBOutfit}",
@@ -535,9 +872,10 @@ Man (Man A): short neat hairstyle, Korean man, wearing ${manAOutfit}, silver wat
     {
       "id": "ManA",
       "name": "준호",
+      "relationToNarrator": "화자와의 관계",
       "slot": "Slot Man A",
       "hair": "Short neat hairstyle",
-      "body": "Korean man",
+      "body": "Fit athletic build with broad shoulders",
       "outfit": "${manAOutfit}",
       "accessories": "silver watch"
     }
@@ -545,37 +883,64 @@ Man (Man A): short neat hairstyle, Korean man, wearing ${manAOutfit}, silver wat
   "scenes": [
     {
       "sceneNumber": 1,
-      "characterSlot": "Woman A | Woman B | Man A | Woman A, Woman B | Woman A, Woman B, Man A 중 선택",
-      "shotType": "원샷 | 투샷 | 쓰리샷 중 선택",
+      "characterSlot": "캐릭터 슬롯",
+      "shotType": "원샷 | 투샷 | 쓰리샷",
+      "emotionBeat": "이 장면 감정",
       "summary": "장면 한줄 요약",
-      "scriptLine": "scriptBody에서 이 장면에 해당하는 대사",
+      "scriptLine": "이 장면 대사",
       "action": "캐릭터의 구체적 행동",
       "emotion": "시작감정 → 끝감정",
+      
+      "voiceType": "narration | lipSync | both | none",
+      "narration": {
+        "text": "TTS용 텍스트 (쉼표, 띄어쓰기 최적화)",
+        "emotion": "감정 (한글)",
+        "speed": "slow | normal | slightly-fast | fast"
+      },
+      "lipSync": {
+        "speaker": "WomanA | WomanB | ManA",
+        "speakerName": "캐릭터 이름",
+        "line": "대사 (한글)",
+        "emotion": "감정 (영어)",
+        "timing": "start | mid | end"
+      },
+      
       "shortPrompt": "간단한 영문 프롬프트",
       "shortPromptKo": "간단한 한글 프롬프트",
-      "longPrompt": "위 템플릿을 따른 상세 프롬프트 (헤어+체형+의상 전체 포함)",
+      "longPrompt": "상세 프롬프트",
       "longPromptKo": "상세 한글 프롬프트",
-      "videoPrompt": "A stunning [Korean woman/man in her/his ${targetAge}], [scriptLine에서 추출한 동작], [emotion에서 추출한 감정 표현] (영어로)"
+      "videoPrompt": "영상용 프롬프트"
     }
   ]
 }
 
-**최종 체크리스트**:
-1. ✅ scriptBody는 순수 대본만 (10-12문장)
+## ✅ 최종 체크리스트 (전부 통과해야 함!)
+
+**기본:**
+1. ✅ scriptBody 10-12문장
 2. ✅ 정확히 8개 scenes
-3. ✅ 대본 내용에 맞는 shotType (원샷/투샷/쓰리샷)
-4. ✅ 모든 씬 의상 = lockedOutfits와 **상의+하의 전체** 동일
-5. ✅ 모든 씬에 **헤어스타일** 포함
-6. ✅ 모든 여성 프롬프트에 "slim hourglass, curvy feminine, glamorous silhouette" 포함
-7. ✅ 모든 프롬프트에 "NOT cartoon, NOT mannequin" 포함
-8. ✅ 모든 프롬프트에 "shot on 85mm lens, --ar 9:16" 포함
-9. ✅ **모든 씬마다 videoPrompt 생성!** (한국인+나이+동작+감정 포함)
-10. ✅ JSON 외 텍스트 없음
+3. ✅ 의상 일관성 (lockedOutfits)
+4. ✅ JSON만 출력
+
+**품질 (🚨 필수!):**
+5. ✅ 화자(${narratorName})가 자기 이름 3인칭으로 안 씀?
+6. ✅ 캐릭터 첫 등장 시 관계 설명 있음?
+7. ✅ 반전 복선이 SETUP(2~3문장)에 있음?
+8. ✅ scriptLine 주체 = characterSlot 캐릭터?
+9. ✅ 제목이 구체적? (충격/반전 같은 추상어 금지)
+10. ✅ Show, Don't Tell 적용? (감정 직접 서술 금지)
+11. ✅ 신체 반응 최소 2개?
+12. ✅ characters.relationToNarrator 모두 작성?
+
+**음성:**
+13. ✅ 모든 씬에 voiceType 지정?
+14. ✅ 작은따옴표 대사 있으면 lipSync 추출?
+15. ✅ narration.text는 TTS 읽기 좋게 쉼표 추가?
 `;
 };
 
 // ============================================
-// 이미지 프롬프트 생성 (경량화)
+// 이미지 프롬프트 생성 (개별 씬용)
 // ============================================
 
 export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
@@ -592,14 +957,13 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
 
   const parts: string[] = [];
 
-  // 시작 문구
   parts.push(PROMPT_CONSTANTS.START);
 
   if (characterGender === 'female') {
     parts.push(`A stunning Korean woman in her ${characterAge}`);
     parts.push(bodyType || PROMPT_CONSTANTS.FEMALE_BODY);
   } else {
-    parts.push(`Korean man in his ${characterAge}`);
+    parts.push(`A handsome Korean man in his ${characterAge}`);
     parts.push(bodyType || PROMPT_CONSTANTS.MALE_BODY);
   }
 
@@ -617,7 +981,6 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
     parts.push(PROMPT_CONSTANTS.END);
   }
 
-  // 금지 키워드 추가
   parts.push(PROMPT_CONSTANTS.NEGATIVE);
 
   if (includeAspectRatio && !parts.some(p => p.includes('--ar'))) {
@@ -628,7 +991,7 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
 };
 
 // ============================================
-// 하위 호환성 함수 (기존 코드에서 호출할 경우 대비)
+// 하위 호환성 함수
 // ============================================
 
 export const pickLabOutfitByGenre = (
@@ -638,7 +1001,7 @@ export const pickLabOutfitByGenre = (
   if (gender === 'male') {
     return pickMaleOutfit([]);
   }
-  return pickFemaleOutfit(genre, []);
+  return pickFemaleOutfit(genre, '', []);
 };
 
 export const pickLabMaleOutfit = (): string => {
@@ -652,10 +1015,9 @@ export const pickRandomOutfit = (
   if (gender === 'male') {
     return pickMaleOutfit([]);
   }
-  return pickFemaleOutfit('comedy-humor', []);
+  return pickFemaleOutfit('comedy-humor', '', []);
 };
 
-// 나이 변환 헬퍼 (40대 → 40s)
 export const convertAgeToEnglish = (koreanAge: string): string => {
   const match = koreanAge.match(/(\d+)/);
   if (match) {
@@ -665,7 +1027,7 @@ export const convertAgeToEnglish = (koreanAge: string): string => {
 };
 
 // ============================================
-// 의상 프리셋 (레거시 지원)
+// 레거시 프리셋
 // ============================================
 
 export const LAB_OUTFIT_PRESETS = {
@@ -674,44 +1036,32 @@ export const LAB_OUTFIT_PRESETS = {
       'White V-neck fitted polo with micro pleated skirt',
       'Pink sleeveless polo with white tennis skirt',
       'Navy halter-neck knit with white micro shorts',
-      'White tube top with red micro mini skirt',
-      'Beige argyle V-neck knit with white fitted skirt'
     ],
     CASUAL: [
       'White off-shoulder blouse with fitted jeans',
       'Navy fitted turtleneck with leather mini skirt',
-      'Cream cashmere V-neck with white tailored pants',
-      'Black sleeveless top with high-waist shorts'
     ],
     ELEGANT: [
       'Deep V-neck silk blouse with satin skirt',
       'Wine red wrap dress with subtle slit',
-      'Black fitted mini dress with elegant neckline',
-      'Navy textured tweed fitted dress'
     ]
   },
   MALE: {
     GOLF: [
       'Navy slim-fit polo with white tailored pants',
       'White performance polo with beige chinos',
-      'Charcoal mock-neck knit with grey slacks'
     ],
     BUSINESS: [
       'White shirt with navy blazer and grey slacks',
-      'Charcoal double-breasted suit with black tie'
+      'Charcoal double-breasted suit with black tie',
     ]
   }
 };
-
-// ============================================
-// 스타일 프리셋
-// ============================================
 
 export const LAB_STYLE_PRESETS = {
   cinematic: 'cinematic photography, film grain, dramatic lighting, shallow depth of field',
   kdrama: 'Korean drama aesthetic, soft romantic lighting, dreamy atmosphere',
   noir: 'film noir style, high contrast, dramatic shadows, moody atmosphere',
-  fantasy: 'Korean historical drama, hanbok inspired, ethereal lighting',
   luxury: 'high-end luxury aesthetic, magazine cover quality, refined elegance'
 };
 
@@ -728,6 +1078,7 @@ export default {
   pickFemaleOutfit,
   pickMaleOutfit,
   generateRandomSeed,
+  convertAgeToEnglish,
   LAB_GENRE_GUIDELINES,
   LAB_OUTFIT_PRESETS,
   LAB_STYLE_PRESETS,

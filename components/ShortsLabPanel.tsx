@@ -1569,10 +1569,48 @@ export const ShortsLabPanel: React.FC = () => {
                         {/* AI 대본 생성 섹션 */}
                         <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-700/50 rounded-xl p-4">
                             <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Wand2 className="w-5 h-5 text-purple-400" />
-                                    <h3 className="font-semibold text-purple-300">AI 대본 생성</h3>
-                                    <span className="text-xs bg-purple-600/50 text-purple-200 px-2 py-0.5 rounded-full">NEW</span>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Wand2 className="w-5 h-5 text-purple-400" />
+                                        <h3 className="font-semibold text-purple-300">AI 대본 생성</h3>
+                                        <span className="text-xs bg-purple-600/50 text-purple-200 px-2 py-0.5 rounded-full">NEW</span>
+                                    </div>
+
+                                    {/* ✅ [REFINED] 헤더 내 한국인 정체성 설정 - 토글 제거, 텍스트 클릭 방식 */}
+                                    <div className="flex items-center gap-2 pl-4 border-l border-slate-700/50">
+                                        <button
+                                            onClick={() => updateSetting('useKoreanIdentity', !settings.useKoreanIdentity)}
+                                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-200 border ${settings.useKoreanIdentity
+                                                    ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                                                    : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                                }`}
+                                        >
+                                            한국인
+                                        </button>
+
+                                        {settings.useKoreanIdentity && (
+                                            <div className="flex items-center bg-slate-800/60 rounded-full p-0.5 border border-slate-700/50 ml-1">
+                                                <button
+                                                    onClick={() => updateSetting('koreanGender', 'female')}
+                                                    className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'female'
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    여성
+                                                </button>
+                                                <button
+                                                    onClick={() => updateSetting('koreanGender', 'male')}
+                                                    className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'male'
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    남성
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 {currentFolderName && (
                                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/80 px-2 py-1 rounded-md border border-slate-700">

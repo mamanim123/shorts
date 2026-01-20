@@ -1035,6 +1035,22 @@ export const ShortsLabPanel: React.FC = () => {
         return 'shorts-lab';
     };
 
+    const getTempPreviewUrl = (fileName: string) =>
+        `http://localhost:3002/api/video/temp-preview/${encodeURIComponent(fileName)}`;
+
+    const isSceneMismatch = (fileName: string, sceneNumber: number | null) => {
+        if (!sceneNumber) return false;
+        const lower = fileName.toLowerCase();
+        const padded = String(sceneNumber).padStart(2, '0');
+        const candidates = [
+            `scene-${padded}`,
+            `scene_${padded}`,
+            `scene-${sceneNumber}`,
+            `scene_${sceneNumber}`
+        ];
+        return !candidates.some(token => lower.includes(token));
+    };
+
     const handleImportVideoFromDownloads = async (sceneNumber: number) => {
         const sceneIndex = scenes.findIndex(s => s.number === sceneNumber);
         if (sceneIndex === -1) return;
@@ -1064,7 +1080,7 @@ export const ShortsLabPanel: React.FC = () => {
 
             // [NEW] 10분이 경과하여 선택이 필요한 경우
             if (data.requiresSelection) {
-                setRecentVideos(data.recentFiles || []);
+                setRecentVideos((data.recentFiles || []).map((video: any) => ({ ...video, previewUrl: getTempPreviewUrl(video.name) })));
                 setPickingSceneNumber(sceneNumber);
                 setShowRecentVideoPicker(true);
                 showToast(data.message, 'info');
@@ -1099,6 +1115,10 @@ export const ShortsLabPanel: React.FC = () => {
 
     // [NEW] 특정 파일 선택해서 가져오기 실행
     const handleImportSpecificVideo = async (fileName: string) => {
+        if (isSceneMismatch(fileName, pickingSceneNumber)) {
+            const ok = window.confirm(`마마님, 선택한 영상이 ${pickingSceneNumber}번 장면과 일치하지 않아 보입니다. 그래도 가져올까요?`);
+            if (!ok) return;
+        }
         if (pickingSceneNumber === null) return;
 
         const storyId = getEffectiveStoryId();
@@ -2186,8 +2206,29 @@ export const ShortsLabPanel: React.FC = () => {
                                         className={`group flex items-center justify-between p-4 bg-slate-800/50 hover:bg-blue-600/20 border border-slate-700 hover:border-blue-500/50 rounded-xl cursor-pointer transition-all ${isImportingSpecific ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
-                                                <Video className="w-5 h-5 text-slate-400 group-hover:text-blue-400" />
+                                            <div className="w-24 h-14 bg-slate-800 rounded-lg overflow-hidden border border-slate-700/60">
+                                                {video.previewUrl ? (
+                                                    <video
+                                                        src={video.previewUrl}
+                                                        muted
+                                                        playsInline
+                                                        preload="metadata"
+                                                        onMouseEnter={(e) => {
+                                                            const el = e.currentTarget;
+                                                            el.play().catch(() => {});
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            const el = e.currentTarget;
+                                                            el.pause();
+                                                            el.currentTime = 0;
+                                                        }}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-500">
+                                                        <Video className="w-4 h-4" />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-slate-200 group-hover:text-white truncate max-w-[300px]" title={video.name}>

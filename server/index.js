@@ -2686,6 +2686,48 @@ app.delete('/api/cineboard/favorites/:folderName', (req, res) => {
 const os = await import('os');
 const DOWNLOAD_WATCH_DIR = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
 
+app.get('/api/video/temp-preview/:fileName', (req, res) => {
+    try {
+        const { fileName } = req.params;
+        if (!fileName) return res.status(400).json({ error: '파일명이 필요합니다.' });
+
+        const safeName = path.basename(fileName);
+        const filePath = path.join(DOWNLOAD_WATCH_DIR, safeName);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
+        }
+
+        const stat = fs.statSync(filePath);
+        const range = req.headers.range;
+        if (!range) {
+            res.writeHead(200, {
+                'Content-Length': stat.size,
+                'Content-Type': 'video/mp4'
+            });
+            fs.createReadStream(filePath).pipe(res);
+            return;
+        }
+
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        const chunkSize = end - start + 1;
+
+        const stream = fs.createReadStream(filePath, { start, end });
+        res.writeHead(206, {
+            'Content-Range': 'bytes ' + start + '-' + end + '/' + stat.size,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': 'video/mp4'
+        });
+        stream.pipe(res);
+    } catch (error) {
+        console.error('[Video Preview] ❌ Failed:', error);
+        res.status(500).json({ error: error.message || '미리보기 생성 실패' });
+    }
+});
+
+
 app.post('/api/video/import-from-downloads', async (req, res) => {
     const { storyId, storyTitle, sceneNumber } = req.body;
     // ★ 이 한 줄만 추가 ★

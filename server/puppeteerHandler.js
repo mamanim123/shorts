@@ -276,13 +276,13 @@ export async function generateVideoFX(prompt, imageUrl) {
 
             if (modeCorrect) break;
 
-            console.log(`[Puppeteer Video] 🎞️ Switching mode (attempt ${i+1})...`);
+            console.log(`[Puppeteer Video] 🎞️ Switching mode (attempt ${i + 1})...`);
             await videoPage.evaluate(() => {
                 const combo = document.querySelector('button[role="combobox"], div[role="combobox"]');
                 if (combo) combo.click();
             });
             await delay(1000);
-            
+
             await videoPage.evaluate((keywords) => {
                 const items = Array.from(document.querySelectorAll('[role="option"], li, button, span'));
                 const target = items.find(item => {
@@ -302,11 +302,11 @@ export async function generateVideoFX(prompt, imageUrl) {
         console.log("[Puppeteer Video] 🎞️ Starting image upload process...");
         try {
             const fullPath = path.resolve(process.cwd(), imageUrl.startsWith("/") ? imageUrl.substring(1) : imageUrl);
-            
+
             let uploaded = false;
             for (let attempt = 1; attempt <= 3; attempt++) {
                 console.log(`[Puppeteer Video] Upload attempt ${attempt}...`);
-                
+
                 // [NEW] Wait specifically for the Add button to appear after mode switch
                 try {
                     await videoPage.waitForFunction(() => {
@@ -318,7 +318,7 @@ export async function generateVideoFX(prompt, imageUrl) {
                 }
 
                 const chooserPromise = videoPage.waitForFileChooser({ timeout: 10000 }).catch(() => null);
-                
+
                 const plusClicked = await videoPage.evaluate(() => {
                     const buttons = Array.from(document.querySelectorAll('button'));
                     const plusBtn = buttons.find(b => {
@@ -362,7 +362,7 @@ export async function generateVideoFX(prompt, imageUrl) {
                         break;
                     }
                 }
-                
+
                 const fileInput = await videoPage.$('input[type="file"]');
                 if (fileInput) {
                     await fileInput.uploadFile(fullPath);
@@ -483,131 +483,141 @@ export async function generateVideoFX(prompt, imageUrl) {
         throw err;
     }
 
-    console.log("[Puppeteer Video] 🎞️ Waiting for video generation (this may take a few minutes)...");
+    // ✅ 프롬프트 전송 완료 - 여기서 바로 종료 (대기 루프 제거)
+    console.log("[Puppeteer Video] ✅ 영상 생성 요청 완료 - Flow에서 수동 다운로드 후 '가져오기' 버튼 사용");
 
-    // 비디오 생성 완료 대기 로직
-    // VideoFX는 보통 생성이 완료되면 <video> 태그가 나타나거나 업데이트됨
-    const MAX_WAIT = 60; // 60 * 5s = 300s (5분)
-    let waited = 0;
-    let videoUrl = null;
+    return {
+        success: true,
+        message: '영상 생성 요청 완료. Flow에서 영상이 완성되면 다운로드 후 가져오기 버튼을 사용하세요.',
+        status: 'submitted'
+    };
+}
 
-    while (waited < MAX_WAIT) {
-        await new Promise(r => setTimeout(r, 5000));
+/*console.log("[Puppeteer Video] 🎞️ Waiting for video generation (this may take a few minutes)...");
 
-        const videoResult = await videoPage.evaluate((selector) => {
-            const container = document.querySelector(selector);
-            const directVideo = container && container.tagName === 'VIDEO' ? container : null;
-            const nestedVideo = container ? container.querySelector('video') : null;
-            const fallbackVideo = document.querySelector('video');
-            const video = directVideo || nestedVideo || fallbackVideo;
-            if (!video) return { url: null };
+// 비디오 생성 완료 대기 로직
+// VideoFX는 보통 생성이 완료되면 <video> 태그가 나타나거나 업데이트됨
+const MAX_WAIT = 60; // 60 * 5s = 300s (5분)
+let waited = 0;
+let videoUrl = null;
 
-            const source = video.querySelector('source');
-            const url = video.currentSrc || video.src || (source ? source.src : null);
+while (waited < MAX_WAIT) {
+    await new Promise(r => setTimeout(r, 5000));
 
-            if (url && (url.startsWith('blob:') || url.includes('googleusercontent') || url.includes('data:video'))) {
-                return { url };
-            }
-            return { url: null };
-        }, config.selectors.response);
+    const videoResult = await videoPage.evaluate((selector) => {
+        const container = document.querySelector(selector);
+        const directVideo = container && container.tagName === 'VIDEO' ? container : null;
+        const nestedVideo = container ? container.querySelector('video') : null;
+        const fallbackVideo = document.querySelector('video');
+        const video = directVideo || nestedVideo || fallbackVideo;
+        if (!video) return { url: null };
 
-        videoUrl = videoResult?.url || null;
+        const source = video.querySelector('source');
+        const url = video.currentSrc || video.src || (source ? source.src : null);
 
-        if (videoUrl) {
-            console.log("✅ Video generation complete!");
-            videoGenerationInProgress = false;
+        if (url && (url.startsWith('blob:') || url.includes('googleusercontent') || url.includes('data:video'))) {
+            return { url };
+        }
+        return { url: null };
+    }, config.selectors.response);
 
-            // Hover over video to reveal download controls
-            try {
-                await videoPage.evaluate((selector) => {
-                    const container = document.querySelector(selector);
-                    const directVideo = container && container.tagName === 'VIDEO' ? container : null;
-                    const nestedVideo = container ? container.querySelector('video') : null;
-                    const fallbackVideo = document.querySelector('video');
-                    const video = directVideo || nestedVideo || fallbackVideo;
-                    if (!video) return false;
-                    const rect = video.getBoundingClientRect();
-                    const event = new MouseEvent('mousemove', {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: rect.left + rect.width / 2,
-                        clientY: rect.top + rect.height / 2
-                    });
-                    video.dispatchEvent(event);
+    videoUrl = videoResult?.url || null;
+
+    if (videoUrl) {
+        console.log("✅ Video generation complete!");
+        videoGenerationInProgress = false;
+
+        // Hover over video to reveal download controls
+        try {
+            await videoPage.evaluate((selector) => {
+                const container = document.querySelector(selector);
+                const directVideo = container && container.tagName === 'VIDEO' ? container : null;
+                const nestedVideo = container ? container.querySelector('video') : null;
+                const fallbackVideo = document.querySelector('video');
+                const video = directVideo || nestedVideo || fallbackVideo;
+                if (!video) return false;
+                const rect = video.getBoundingClientRect();
+                const event = new MouseEvent('mousemove', {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2
+                });
+                video.dispatchEvent(event);
+                return true;
+            }, config.selectors.response);
+            await delay(800);
+        } catch (e) {
+            console.warn("[Puppeteer Video] Hover to reveal download controls failed:", e.message);
+        }
+
+        // Click download button and select 1080p option
+        try {
+            const downloadClicked = await videoPage.evaluate(() => {
+                const candidates = Array.from(document.querySelectorAll('button, a, div[role="button"], span'));
+                const downloadBtn = candidates.find(el => {
+                    const text = (el.innerText || el.textContent || '').trim();
+                    const aria = (el.getAttribute('aria-label') || '').trim();
+                    return text.includes('다운로드') || text.includes('Download') || aria.includes('Download') || aria.includes('다운로드');
+                });
+                if (downloadBtn) {
+                    downloadBtn.click();
                     return true;
-                }, config.selectors.response);
+                }
+                return false;
+            });
+            if (downloadClicked) {
+                console.log("[Puppeteer Video] 🎞️ Download button clicked.");
                 await delay(800);
-            } catch (e) {
-                console.warn("[Puppeteer Video] Hover to reveal download controls failed:", e.message);
-            }
-
-            // Click download button and select 1080p option
-            try {
-                const downloadClicked = await videoPage.evaluate(() => {
-                    const candidates = Array.from(document.querySelectorAll('button, a, div[role="button"], span'));
-                    const downloadBtn = candidates.find(el => {
+                const optionClicked = await videoPage.evaluate(() => {
+                    const items = Array.from(document.querySelectorAll('button, div[role="menuitem"], div[role="button"], li, span'));
+                    const target = items.find(el => {
                         const text = (el.innerText || el.textContent || '').trim();
-                        const aria = (el.getAttribute('aria-label') || '').trim();
-                        return text.includes('다운로드') || text.includes('Download') || aria.includes('Download') || aria.includes('다운로드');
+                        return text.includes('업스케일') || text.includes('1080p');
                     });
-                    if (downloadBtn) {
-                        downloadBtn.click();
+                    if (target) {
+                        target.scrollIntoView();
+                        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                        target.click();
                         return true;
                     }
                     return false;
                 });
-                if (downloadClicked) {
-                    console.log("[Puppeteer Video] 🎞️ Download button clicked.");
-                    await delay(800);
-                    const optionClicked = await videoPage.evaluate(() => {
-                        const items = Array.from(document.querySelectorAll('button, div[role="menuitem"], div[role="button"], li, span'));
-                        const target = items.find(el => {
-                            const text = (el.innerText || el.textContent || '').trim();
-                            return text.includes('업스케일') || text.includes('1080p');
-                        });
-                        if (target) {
-                            target.scrollIntoView();
-                            target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-                            target.click();
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (optionClicked) {
-                        console.log("[Puppeteer Video] 🎞️ Download option selected: 1080p.");
-                    } else {
-                        console.warn("[Puppeteer Video] ⚠️ Download option 1080p not found.");
-                    }
+                if (optionClicked) {
+                    console.log("[Puppeteer Video] 🎞️ Download option selected: 1080p.");
+                } else {
+                    console.warn("[Puppeteer Video] ⚠️ Download option 1080p not found.");
                 }
-            } catch (e) {
-                console.warn("[Puppeteer Video] Download click failed:", e.message);
             }
-
-            // Blob URL인 경우 직접 다운로드하여 base64로 변환하거나 서버측에서 처리 필요
-            // 여기서는 일단 URL 반환 후 필요 시 추가 처리
-            if (videoUrl.startsWith('blob:')) {
-                const base64 = await videoPage.evaluate(async (url) => {
-                    const resp = await fetch(url);
-                    const blob = await resp.blob();
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result);
-                        reader.readAsDataURL(blob);
-                    });
-                }, videoUrl);
-                return base64;
-            }
-
-            return videoUrl;
+        } catch (e) {
+            console.warn("[Puppeteer Video] Download click failed:", e.message);
         }
 
-        waited++;
-        if (waited % 2 === 0) console.log(`⏳ Still waiting for video... (${waited * 5}s)`);
+        // Blob URL인 경우 직접 다운로드하여 base64로 변환하거나 서버측에서 처리 필요
+        // 여기서는 일단 URL 반환 후 필요 시 추가 처리
+        if (videoUrl.startsWith('blob:')) {
+            const base64 = await videoPage.evaluate(async (url) => {
+                const resp = await fetch(url);
+                const blob = await resp.blob();
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            }, videoUrl);
+            return base64;
+        }
+
+        return videoUrl;
     }
 
-    videoGenerationInProgress = false;
-    throw new Error("Video generation timed out.");
+    waited++;
+    if (waited % 2 === 0) console.log(`⏳ Still waiting for video... (${waited * 5}s)`);
 }
+
+videoGenerationInProgress = false;
+throw new Error("Video generation timed out.");
+}*/
 
 // 🔹 [NEW] 모든 브라우저 종료 (클린업용)
 export async function closeAllBrowsers() {
@@ -781,7 +791,7 @@ export async function generateContent(serviceName, prompt, files = []) {
             }
             return false;
         });
-
+ 
         if (scriptPage.url().includes('accounts.google.com') || scriptPage.url().includes('/login') || scriptPage.url().includes('signin') || isLoginModalVisible) {
             console.warn("[Puppeteer Script] Login detected.");
             throw new Error("Login page/modal detected. Please log in manually.");

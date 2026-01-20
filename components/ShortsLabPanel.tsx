@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES } from '../services/labPromptBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
@@ -352,6 +352,13 @@ export const ShortsLabPanel: React.FC = () => {
     const [showFolderPicker, setShowFolderPicker] = useState(false);
     const [availableFolders, setAvailableFolders] = useState<Array<{ folderName: string; imageCount: number; scriptCount: number; mtimeMs: number }>>([]);
     const [isLoadingFolder, setIsLoadingFolder] = useState(false);
+    const [isVideoImporting, setIsVideoImporting] = useState<number | null>(null);
+
+    // [NEW] 최근 영상 선택 모달 상태
+    const [showRecentVideoPicker, setShowRecentVideoPicker] = useState(false);
+    const [recentVideos, setRecentVideos] = useState<any[]>([]);
+    const [pickingSceneNumber, setPickingSceneNumber] = useState<number | null>(null);
+    const [isImportingSpecific, setIsImportingSpecific] = useState(false);
 
     // Gemini 서비스 초기화
     React.useEffect(() => {
@@ -361,16 +368,34 @@ export const ShortsLabPanel: React.FC = () => {
     React.useEffect(() => {
         try {
             const savedScenes = localStorage.getItem('shorts-lab-scenes');
-            if (!savedScenes) return;
-            const parsed = JSON.parse(savedScenes);
-            if (Array.isArray(parsed)) {
-                setScenes(parsed as Scene[]);
-                setActiveTab('preview');
+            const savedFolder = localStorage.getItem('shorts-lab-folder');
+            const savedTopic = localStorage.getItem('shorts-lab-topic');
+
+            if (savedFolder) setCurrentFolderName(savedFolder);
+            if (savedTopic) setAiTopic(savedTopic);
+
+            if (savedScenes) {
+                const parsed = JSON.parse(savedScenes);
+                if (Array.isArray(parsed)) {
+                    setScenes(parsed as Scene[]);
+                    setActiveTab('preview');
+                }
             }
         } catch (error) {
-            console.warn('[ShortsLab] Failed to restore scenes:', error);
+            console.warn('[ShortsLab] Failed to restore state:', error);
         }
     }, []);
+
+    // [NEW] 상태 변경 시 localStorage 저장
+    React.useEffect(() => {
+        if (currentFolderName) localStorage.setItem('shorts-lab-folder', currentFolderName);
+        else localStorage.removeItem('shorts-lab-folder');
+    }, [currentFolderName]);
+
+    React.useEffect(() => {
+        if (aiTopic) localStorage.setItem('shorts-lab-topic', aiTopic);
+        else localStorage.removeItem('shorts-lab-topic');
+    }, [aiTopic]);
 
     // ============================================
     // 이미지 생성 핸들러 (신규!)
@@ -424,7 +449,9 @@ export const ShortsLabPanel: React.FC = () => {
                     body: JSON.stringify({
                         imageData: `data:image/png;base64,${base64Image}`,
                         prompt,
-                        storyId: currentFolderName || 'shorts-lab',
+                        storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+
+
                         sceneNumber
                     })
                 });
@@ -498,7 +525,9 @@ export const ShortsLabPanel: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt,
-                    storyId: currentFolderName || 'shorts-lab',
+                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+
+
                     sceneNumber,
                     service: 'GEMINI',
                     autoCapture: true,
@@ -810,7 +839,7 @@ export const ShortsLabPanel: React.FC = () => {
                 updated[sceneIndex] = {
                     ...scene,
                     videoPrompt: data.refinedPrompt,
-                    dialogue: scene.dialogue || data.refinedPrompt,
+                    dialogue: data.dialogue || scene.dialogue || scene.text,
                     isVideoPromptGenerating: false
                 };
                 return updated;
@@ -819,7 +848,7 @@ export const ShortsLabPanel: React.FC = () => {
             try {
                 const newScenes = scenes.map(item =>
                     item.number === scene.number
-                        ? { ...item, videoPrompt: data.refinedPrompt }
+                        ? { ...item, videoPrompt: data.refinedPrompt, dialogue: data.dialogue || scene.text }
                         : item
                 );
                 localStorage.setItem('shorts-lab-scenes', JSON.stringify(newScenes));
@@ -865,7 +894,9 @@ export const ShortsLabPanel: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     refinedPrompt,
-                    storyId: currentFolderName || 'shorts-lab',
+                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+
+
                     storyTitle: aiTopic?.trim() || 'ShortsLab',
                     imageUrl: scene.imageUrl,
                     sceneNumber: scene.number
@@ -926,6 +957,140 @@ export const ShortsLabPanel: React.FC = () => {
         showToast('비디오 생성이 취소되었습니다.', 'info');
     };
 
+    // ============================================
+    // 스마트 경로 추출 및 비디오 가져오기
+    // ============================================
+
+    /**
+     * [NEW] 현재 작업 중인 폴더명을 지능적으로 결정하는 함수
+     */
+    const getEffectiveStoryId = () => {
+        // 1. 현재 상태에 폴더명이 있으면 최우선 사용
+        if (currentFolderName) return currentFolderName;
+
+        // 2. 현재 로드된 장면들의 이미지 URL에서 폴더명 추출 시도
+        // 예: /generated_scripts/대본폴더/260119_.../images/scene-01.png
+        const sceneWithImage = scenes.find(s => s.imageUrl);
+        if (sceneWithImage?.imageUrl) {
+            try {
+                const url = sceneWithImage.imageUrl;
+                const match = url.match(/대본폴더\/([^\/]+)\//);
+                if (match && match[1]) {
+                    const extracted = decodeURIComponent(match[1]);
+                    console.log(`[ShortsLab] Extracted folder name from image URL: ${extracted}`);
+                    return extracted;
+                }
+            } catch (e) {
+                console.warn('[ShortsLab] Failed to extract folder from URL:', e);
+            }
+        }
+
+        // 3. 주제(aiTopic)를 기반으로 생성
+        if (aiTopic?.trim()) {
+            return aiTopic.trim().replace(/\s+/g, '_');
+        }
+
+        // 4. 최후의 수단
+        return 'shorts-lab';
+    };
+
+    const handleImportVideoFromDownloads = async (sceneNumber: number) => {
+        const sceneIndex = scenes.findIndex(s => s.number === sceneNumber);
+        if (sceneIndex === -1) return;
+
+        const scene = scenes[sceneIndex];
+        setIsVideoImporting(sceneNumber);
+
+        try {
+            showToast('다운로드 폴더에서 영상을 찾는 중...', 'info');
+
+            const storyId = getEffectiveStoryId();
+            const response = await fetch('http://localhost:3002/api/video/import-from-downloads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storyId: storyId,
+                    storyTitle: aiTopic?.trim() || storyId.split('_').pop() || 'ShortsLab',
+                    sceneNumber: scene.number
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || '영상 가져오기 실패');
+            }
+
+            // [NEW] 10분이 경과하여 선택이 필요한 경우
+            if (data.requiresSelection) {
+                setRecentVideos(data.recentFiles || []);
+                setPickingSceneNumber(sceneNumber);
+                setShowRecentVideoPicker(true);
+                showToast(data.message, 'info');
+                return;
+            }
+
+            // Scene 업데이트
+            setScenes(prev => {
+                const updated = [...prev];
+                updated[sceneIndex] = {
+                    ...scene,
+                    videoUrl: `http://localhost:3002${data.url}`,
+                    videoError: undefined
+                };
+                try {
+                    localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
+                } catch (e) {
+                    console.warn('[ShortsLab] Failed to persist scenes:', e);
+                }
+                return updated;
+            });
+
+            showToast(`✅ 영상 가져오기 완료! (${data.originalFile}, ${data.sizeFormatted})`, 'success');
+
+        } catch (error) {
+            console.error('[ShortsLab] Video import failed:', error);
+            showToast(error instanceof Error ? error.message : '영상 가져오기 실패', 'error');
+        } finally {
+            setIsVideoImporting(null);
+        }
+    };
+
+    // [NEW] 특정 파일 선택해서 가져오기 실행
+    const handleImportSpecificVideo = async (fileName: string) => {
+        if (pickingSceneNumber === null) return;
+
+        const storyId = getEffectiveStoryId();
+        setIsImportingSpecific(true);
+        try {
+            const response = await fetch('http://localhost:3002/api/video/import-specific', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storyId: storyId,
+                    storyTitle: aiTopic?.trim() || storyId.split('_').pop() || 'ShortsLab',
+                    sceneNumber: pickingSceneNumber,
+                    fileName
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || '영상 가져오기 실패');
+
+            setScenes(prev => prev.map(s =>
+                s.number === pickingSceneNumber
+                    ? { ...s, videoUrl: `http://localhost:3002${data.url}`, videoError: undefined }
+                    : s
+            ));
+
+            showToast(`✅ 영상 가져오기 완료! (${data.originalFile})`, 'success');
+            setShowRecentVideoPicker(false);
+        } catch (error: any) {
+            showToast(error.message || '영상 가져오기 실패', 'error');
+        } finally {
+            setIsImportingSpecific(false);
+        }
+    };
     // ============================================
     // AI 대본 생성 (신규!)
     // ============================================
@@ -1179,36 +1344,51 @@ export const ShortsLabPanel: React.FC = () => {
                     const sceneNum = img.sceneNumber || parseInt(img.filename?.match(/scene-?(\d+)/i)?.[1] || '0');
                     if (sceneNum > 0) {
                         const url = img.isUnifiedPath
-                            ? `/generated_scripts/${img.filename}`
-                            : `/generated_scripts/images/${img.filename}`;
+                            ? `http://localhost:3002/generated_scripts/${img.filename}`
+                            : `http://localhost:3002/generated_scripts/images/${img.filename}`;
                         imagesByScene.set(sceneNum, url);
                     }
                 });
             }
 
-            // 3. 통합 및 상항 업데이트
+            // 3. [NEW] 비디오 로드
+            const videosResponse = await fetch(`http://localhost:3002/api/video/by-story/${encodeURIComponent(folderName)}`);
+            let videosByScene = new Map<number, string>();
+            if (videosResponse.ok) {
+                const videos = await videosResponse.json();
+                videos.forEach((vid: any) => {
+                    if (vid.sceneNumber) {
+                        videosByScene.set(vid.sceneNumber, `http://localhost:3002${vid.url}`);
+                    }
+                });
+            }
+
+            // 4. 통합 및 상항 업데이트
             if (loadedScenes.length > 0) {
                 loadedScenes = loadedScenes.map(scene => ({
                     ...scene,
-                    imageUrl: imagesByScene.get(scene.number) || undefined
+                    imageUrl: imagesByScene.get(scene.number) || undefined,
+                    videoUrl: videosByScene.get(scene.number) || undefined
                 }));
                 setScenes(loadedScenes);
-                console.log(`[ShortsLab] Successfully loaded ${loadedScenes.length} scenes with images.`);
-            } else if (imagesByScene.size > 0) {
-                // 대본 파싱은 실패했지만 이미지는 있는 경우 (이미지 기반 씬 복구)
-                const imageScenes: Scene[] = Array.from(imagesByScene.entries())
-                    .sort((a, b) => a[0] - b[0])
-                    .map(([num, url]) => ({
+                console.log(`[ShortsLab] Successfully loaded ${loadedScenes.length} scenes with images and videos.`);
+            } else if (imagesByScene.size > 0 || videosByScene.size > 0) {
+                // 대본 파싱은 실패했지만 이미지나 비디오는 있는 경우
+                const allSceneNums = new Set([...imagesByScene.keys(), ...videosByScene.keys()]);
+                const restoredScenes: Scene[] = Array.from(allSceneNums)
+                    .sort((a, b) => a - b)
+                    .map(num => ({
                         number: num,
-                        text: `Scene ${num} (Restored from Image)`,
+                        text: `Scene ${num} (Restored)`,
                         prompt: '',
-                        imageUrl: url,
+                        imageUrl: imagesByScene.get(num),
+                        videoUrl: videosByScene.get(num),
                         isSelected: true
                     }));
-                setScenes(imageScenes);
-                console.log(`[ShortsLab] Restored ${imageScenes.length} scenes from images.`);
+                setScenes(restoredScenes);
+                console.log(`[ShortsLab] Restored ${restoredScenes.length} scenes from media.`);
             } else {
-                showToast('대본 또는 이미지 데이터를 찾을 수 없습니다.', 'warning');
+                showToast('대본 또는 미디어 데이터를 찾을 수 없습니다.', 'warning');
             }
 
             setCurrentFolderName(folderName);
@@ -1731,6 +1911,15 @@ export const ShortsLabPanel: React.FC = () => {
                                                                     취소
                                                                 </button>
                                                             )}
+                                                            {/* ✅ 새로 추가: 다운로드에서 가져오기 버튼 */}
+                                                            <button
+                                                                onClick={() => handleImportVideoFromDownloads(scene.number)}
+                                                                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-lg border border-blue-500/50 transition-all flex items-center gap-1.5"
+                                                                title="다운로드 폴더에서 최근 영상 가져오기 (10분 이내)"
+                                                            >
+                                                                <Download className="w-3 h-3" />
+                                                                가져오기
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 )}
@@ -1776,6 +1965,75 @@ export const ShortsLabPanel: React.FC = () => {
                             <button onClick={() => setEditingScene(null)} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-all">취소</button>
                             <button onClick={handleSaveEdit} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all">저장하기</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* [NEW] 최근 영상 선택 모달 */}
+            {showRecentVideoPicker && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[80vh] flex flex-col">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-blue-400 flex items-center gap-2">
+                                <Download className="w-6 h-6" />
+                                최근 다운로드 영상 선택
+                            </h3>
+                            <button
+                                onClick={() => setShowRecentVideoPicker(false)}
+                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="text-sm text-slate-400 mb-4 bg-blue-950/30 border border-blue-500/20 rounded-lg px-4 py-3">
+                            최근 10분 내에 다운로드된 영상이 없습니다. 아래 목록에서 가져올 영상을 선택해주세요.
+                            <br />
+                            <span className="text-[11px] text-blue-400/70">* 선택 시 해당 장면({pickingSceneNumber}번)으로 이름이 변경되어 이동됩니다.</span>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                            {recentVideos.length > 0 ? (
+                                recentVideos.map((video, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => !isImportingSpecific && handleImportSpecificVideo(video.name)}
+                                        className={`group flex items-center justify-between p-4 bg-slate-800/50 hover:bg-blue-600/20 border border-slate-700 hover:border-blue-500/50 rounded-xl cursor-pointer transition-all ${isImportingSpecific ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                                                <Video className="w-5 h-5 text-slate-400 group-hover:text-blue-400" />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium text-slate-200 group-hover:text-white truncate max-w-[300px]" title={video.name}>
+                                                    {video.name}
+                                                </div>
+                                                <div className="text-[11px] text-slate-500 flex gap-3 mt-1">
+                                                    <span>{new Date(video.mtime).toLocaleString()}</span>
+                                                    <span>{video.sizeFormatted}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button className="px-4 py-1.5 bg-slate-700 group-hover:bg-blue-600 text-white text-[11px] font-bold rounded-lg transition-all">
+                                            선택하기
+                                        </button>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-10 text-slate-500">
+                                    다운로드 폴더에 mp4 파일이 없습니다.
+                                </div>
+                            )}
+                        </div>
+
+                        {isImportingSpecific && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center rounded-2xl">
+                                <div className="bg-slate-800 px-6 py-4 rounded-xl border border-slate-600 shadow-xl flex items-center gap-3">
+                                    <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                                    <span className="text-sm font-medium text-white">영상을 가져오는 중...</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

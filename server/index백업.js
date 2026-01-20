@@ -1101,44 +1101,6 @@ app.get('/api/images/by-story/:storyId', async (req, res) => {
     }
 });
 
-// ✅ NEW: Get videos for a specific story
-app.get('/api/video/by-story/:storyId', async (req, res) => {
-    try {
-        const { storyId } = req.params;
-        if (!storyId) return res.status(400).json({ error: "Story ID is required" });
-
-        const videoDir = path.join(SCRIPTS_BASE_DIR, storyId, 'video');
-        if (!fs.existsSync(videoDir)) {
-            return res.json([]);
-        }
-
-        const videoFiles = fs.readdirSync(videoDir)
-            .filter(f => /\.mp4$/i.test(f))
-            .map(filename => {
-                const stat = fs.statSync(path.join(videoDir, filename));
-                // 파일명에서 씬 번호 추출 (예: scene-01_... -> 1)
-                const sceneMatch = filename.match(/scene-(\d+)/i);
-                const sceneNumber = sceneMatch ? parseInt(sceneMatch[1], 10) : null;
-
-                const relativePath = `대본폴더/${storyId}/video/${filename}`;
-
-                return {
-                    filename,
-                    sceneNumber,
-                    url: `/generated_scripts/${relativePath}`,
-                    mtime: stat.mtime,
-                    size: stat.size
-                };
-            })
-            .sort((a, b) => b.mtime - a.mtime);
-
-        res.json(videoFiles);
-    } catch (error) {
-        console.error('[Server] ❌ Failed to get videos:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
 app.get('/api/images/story-folders', (req, res) => {
     try {
         const folders = listImageStoryFolders();
@@ -1344,7 +1306,6 @@ app.post('/api/video/refine-prompt', async (req, res) => {
     const { script, visualPrompt, scriptLine, action, emotion, targetAge, characterSlot } = req.body || {};
     try {
         console.log(`[SmartVideo] Refining prompt based on script context...`);
-        console.log(`[SmartVideo] Script Line (대사): ${scriptLine}`);
 
         // Visual Base 정제: 불필요한 이미지 세부 정보 제거
         let cleanVisualPrompt = visualPrompt || '';
@@ -1362,118 +1323,49 @@ app.post('/api/video/refine-prompt', async (req, res) => {
             .replace(/NOT cartoon,?\s*NOT anime,?\s*NOT 3D render,?\s*NOT CGI,?\s*NOT plastic skin,?\s*NOT mannequin,?\s*NOT doll-like,?\s*NOT airbrushed,?\s*NOT overly smooth skin,?\s*NOT uncanny valley,?\s*NOT artificial looking,?\s*NOT illustration,?\s*NOT painting,?\s*NOT drawing/gi, '')
             .trim();
 
-        // ===== 새로운 프롬프트: VIDEO PROMPT + DIALOGUE 분리 =====
         const analysisPrompt = `
-[TASK: VIDEO PROMPT + DIALOGUE SEPARATION]
+[TASK: SCENE-ACCURATE VIDEO PROMPT GENERATION]
+You are a professional cinematographer for AI video generation. Your task is to create a SINGLE, precise video prompt (2-4 sentences) that describes movement and visual details for a short clip.
 
-You must create TWO separate outputs:
-1. "videoPrompt": A cinematic scene description for AI video generation (NO dialogue text here)
-2. "dialogue": Extract the EXACT spoken words from the Script Line
+[SCENE CONTEXT]
+${scriptLine ? `* Script Line: "${scriptLine}"` : ''}
+${action ? `* Core Action (MUST FOLLOW): ${action}` : ''}
+${emotion ? `* Emotion/Vibe: ${emotion}` : ''}
+${targetAge ? `* Target Age: ${targetAge}` : ''}
+${characterSlot ? `* Character Slot: ${characterSlot}` : ''}
 
-[INPUT DATA]
-* Script Line (이것이 캐릭터가 말할 실제 대사입니다): "${scriptLine || ''}"
-* Visual Base: ${cleanVisualPrompt}
-* Core Action: ${action || 'N/A'}
-* Emotion: ${emotion || 'N/A'}
-* Target Age: ${targetAge || '40s'}
-* Character Slot: ${characterSlot || '원샷'}
+[VISUAL BASE (Character/Setting consistency) - CLEANED]
+${cleanVisualPrompt}
 
-[OUTPUT RULES]
-1. "videoPrompt" must describe:
-   - Character appearance (age, Korean identity)
-   - Action/movement (walking, standing, gesturing)
-   - Camera movement (dolly in, static, pan)
-   - Lighting/mood (cinematic, golden hour, etc.)
-   - DO NOT include any dialogue or spoken words here
+⚠️ CRITICAL INSTRUCTION (STRICT ENFORCEMENT):
+1. Use ONLY actions described in Script Line and Core Action. Do NOT invent new behaviors (e.g., if it says 'looking', don't add 'walking').
+2. Maintain strict visual consistency with Visual Base (outfit, hair, environment).
+3. **ALWAYS include Korean identity and age**: "[Target Age]의 멋진 한국인 여성/남성"으로 시작. (Target Age 값을 그대로 사용)
+4. OUTPUT FORMAT: Output ONLY final Korean video prompt text.
+5. DO NOT include any conversational filler, preambles, or explanations (e.g., NO "Sure!", NO "Here is your prompt:").
+6. Starting directly with prompt text is mandatory.
+7. DO NOT generate or describe images, drawings, or prompts for image generation. Output ONLY a video prompt.
 
-2. "dialogue" must contain:
-   - ONLY the exact Korean words the character will speak
-   - Extract from Script Line, or create natural dialogue if Script Line is a description
-   - Keep it short and natural (1-2 sentences max)
-
-[OUTPUT FORMAT - STRICT JSON ONLY]
-{
-  "videoPrompt": "시각적 장면 설명만 (대사 제외)",
-  "dialogue": "캐릭터가 말할 실제 한국어 대사"
-}
-
-[EXAMPLES]
-
-Example 1:
-Script Line: "지영이랑 혜경이가 하얀 눈밭 위에서 눈부시게 서 있었지."
-Output:
-{
-  "videoPrompt": "40s의 멋진 한국인 여성 두 명이 하얀 눈밭 위에 우아하게 서있다. 바람에 머리카락이 살랑인다. 카메라가 천천히 다가간다. 골든아워 역광 조명.",
-  "dialogue": "지영이랑 혜경이가 하얀 눈밭 위에서 눈부시게 서 있었지."
-}
-
-Example 2:
-Script Line: "그녀가 카페에 들어서며 미소를 짓는다"
-Output:
-{
-  "videoPrompt": "40s의 멋진 한국인 여성이 세련된 카페 문을 열고 들어선다. 부드러운 미소를 띠며 주위를 둘러본다. 카메라가 정면에서 촬영. 따뜻한 실내 조명.",
-  "dialogue": "여기 분위기 정말 좋다."
-}
-
-Now process the input and output ONLY valid JSON (no other text, no markdown):
+Example Format:
+"[Target Age]의 멋진 한국인 여성이 [정확한 동작]. 표정은 [시작 감정]에서 [끝 감정]으로 변화한다. 카메라: [구체적 움직임]."
 `;
-
+        // ✅ [FIX] generateSimpleText 사용 (JSON 검증 없이 일반 텍스트 응답 처리)
         const { generateSimpleText } = await import('./puppeteerHandler.js');
-        const rawResponse = await Promise.race([
+        const refinedPromptText = await Promise.race([
             generateSimpleText('GEMINI', analysisPrompt),
             new Promise((_, reject) => setTimeout(() => reject(new Error('비디오 프롬프트 생성 시간 초과')), 120000))
         ]);
 
-        console.log(`[SmartVideo] Raw LLM Response: ${rawResponse.substring(0, 200)}...`);
+        // Remove code blocks and conversational preambles
+        let refinedPrompt = refinedPromptText.replace(/```(json)?/g, '').replace(/```/g, '').trim();
 
-        // JSON 파싱 시도
-        let refinedPrompt = '';
-        let dialogue = '';
+        // Remove common conversational filler if Gemini ignored instructions
+        refinedPrompt = refinedPrompt
+            .replace(/^(Sure!|Okay|Here's?|Here is|Definitely!|I can help with that|Certainly!|I've created|I have created)[^.!?:\n]*[:!\n]\s*/i, '')
+            .replace(/^[^.!?:\n]*(video prompt|refined prompt|final prompt)[^.!?:\n]*[:!\n]\s*/i, '')
+            .trim();
 
-        try {
-            // 코드 블록 및 불필요한 텍스트 제거
-            let cleanResponse = rawResponse
-                .replace(/```json/gi, '')
-                .replace(/```/g, '')
-                .replace(/^[^{]*/, '')  // JSON 시작 전 텍스트 제거
-                .replace(/[^}]*$/, '')  // JSON 끝 후 텍스트 제거
-                .trim();
-
-            // JSON 객체 추출 시도
-            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                cleanResponse = jsonMatch[0];
-            }
-
-            const parsed = JSON.parse(cleanResponse);
-
-            refinedPrompt = parsed.videoPrompt || '';
-            dialogue = parsed.dialogue || scriptLine || '';
-
-            console.log(`[SmartVideo] ✅ Parsed successfully!`);
-            console.log(`[SmartVideo] Video Prompt: ${refinedPrompt.substring(0, 100)}...`);
-            console.log(`[SmartVideo] Dialogue: ${dialogue}`);
-
-        } catch (parseError) {
-            console.warn(`[SmartVideo] ⚠️ JSON 파싱 실패, 기존 방식으로 폴백:`, parseError.message);
-
-            // 파싱 실패시: 기존 응답을 videoPrompt로, scriptLine을 dialogue로
-            refinedPrompt = rawResponse
-                .replace(/```(json)?/g, '')
-                .replace(/```/g, '')
-                .replace(/^(Sure!|Okay|Here's?|Here is)[^.!?:\n]*[:!\n]\s*/i, '')
-                .trim();
-
-            dialogue = scriptLine || '';
-        }
-
-        // 응답 반환
-        res.json({
-            success: true,
-            refinedPrompt: refinedPrompt,
-            dialogue: dialogue
-        });
-
+        res.json({ success: true, refinedPrompt });
     } catch (error) {
         console.error("[RefinePrompt] Failed:", error);
         res.status(500).json({ error: error instanceof Error ? error.message : "Failed to refine prompt" });
@@ -2676,202 +2568,6 @@ app.delete('/api/cineboard/favorites/:folderName', (req, res) => {
     } catch (e) {
         console.error("Failed to remove favorite:", e);
         res.status(500).json({ error: "Failed to remove favorite" });
-    }
-});
-
-// ============================================
-// 다운로드 폴더에서 영상 가져오기 API
-// ============================================
-
-const os = await import('os');
-const DOWNLOAD_WATCH_DIR = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
-
-app.post('/api/video/import-from-downloads', async (req, res) => {
-    const { storyId, storyTitle, sceneNumber } = req.body;
-    // ★ 이 한 줄만 추가 ★
-    console.log(`[Video Import] 📋 받은 값: storyId="${storyId}", storyTitle="${storyTitle}"`);
-
-    try {
-        console.log(`[Video Import] 📥 Scanning downloads folder: ${DOWNLOAD_WATCH_DIR}`);
-
-        // 다운로드 폴더에서 mp4 파일 찾기
-        if (!fs.existsSync(DOWNLOAD_WATCH_DIR)) {
-            return res.status(404).json({ error: '다운로드 폴더를 찾을 수 없습니다.' });
-        }
-
-        const files = fs.readdirSync(DOWNLOAD_WATCH_DIR);
-        const mp4Files = files
-            .filter(f => f.toLowerCase().endsWith('.mp4'))
-            .map(f => {
-                const filePath = path.join(DOWNLOAD_WATCH_DIR, f);
-                try {
-                    const stat = fs.statSync(filePath);
-                    return {
-                        name: f,
-                        path: filePath,
-                        mtime: stat.mtimeMs,
-                        size: stat.size
-                    };
-                } catch {
-                    return null;
-                }
-            })
-            .filter(Boolean)
-            .sort((a, b) => b.mtime - a.mtime);
-
-        if (mp4Files.length === 0) {
-            return res.status(404).json({ error: '다운로드 폴더에 mp4 파일이 없습니다.' });
-        }
-
-        // 가장 최근 파일 (10분 이내면 자동 가져오기)
-        const latestFile = mp4Files[0];
-        const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
-
-        if (latestFile.mtime < tenMinutesAgo) {
-            const minutesAgo = Math.round((Date.now() - latestFile.mtime) / 60000);
-            return res.status(200).json({
-                success: false,
-                requiresSelection: true,
-                message: `최근 10분 내 다운로드된 영상이 없습니다. (가장 최근: ${minutesAgo}분 전)`,
-                recentFiles: mp4Files.slice(0, 10).map(f => ({
-                    name: f.name,
-                    mtime: f.mtime,
-                    size: f.size,
-                    sizeFormatted: f.size > 1024 * 1024
-                        ? `${(f.size / (1024 * 1024)).toFixed(2)}MB`
-                        : `${Math.round(f.size / 1024)}KB`
-                }))
-            });
-        }
-
-        // 파일 크기 체크 (최소 100KB)
-        if (latestFile.size < 100 * 1024) {
-            return res.status(400).json({ error: '파일이 너무 작습니다. 다운로드가 완료되지 않았을 수 있습니다.' });
-        }
-
-        // 대본폴더로 복사
-        const mediaDirs = ensureStoryMediaDirectories(storyId, storyTitle);
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const sceneLabel = sceneNumber ? `scene-${String(sceneNumber).padStart(2, '0')}` : 'scene';
-        const newFilename = `${sceneLabel}_${timestamp}.mp4`;
-        const targetPath = path.join(mediaDirs.videoDir, newFilename);
-
-        // 파일 이동 (드라이브 간 이동 지원을 위해 try-catch 사용)
-        try {
-            fs.renameSync(latestFile.path, targetPath);
-        } catch (err) {
-            if (err.code === 'EXDEV') {
-                // 서로 다른 드라이브 간 이동 시 복사 후 삭제
-                fs.copyFileSync(latestFile.path, targetPath);
-                fs.unlinkSync(latestFile.path);
-                console.log(`[Video Import] 🔄 Cross-device move handled (C: -> ${targetPath.split(':')[0]}:)`);
-            } else {
-                throw err;
-            }
-        }
-
-        const fileSizeKB = Math.round(latestFile.size / 1024);
-        const fileSizeMB = (latestFile.size / (1024 * 1024)).toFixed(2);
-
-        console.log(`[Video Import] ✅ Imported: ${latestFile.name} (${fileSizeMB}MB) → ${newFilename}`);
-
-        const relativePath = `대본폴더/${mediaDirs.safeId}/video/${newFilename}`;
-
-        res.json({
-            success: true,
-            originalFile: latestFile.name,
-            filename: newFilename,
-            url: `/generated_scripts/${relativePath}`,
-            path: targetPath,
-            size: latestFile.size,
-            sizeFormatted: fileSizeKB > 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`
-        });
-
-    } catch (error) {
-        console.error('[Video Import] ❌ Failed:', error);
-        res.status(500).json({ error: error.message || '영상 가져오기 실패' });
-    }
-});
-
-// [NEW] 특정 파일 선택해서 가져오기 API
-app.post('/api/video/import-specific', async (req, res) => {
-    const { storyId, storyTitle, sceneNumber, fileName } = req.body;
-    if (!fileName) return res.status(400).json({ error: '파일명이 필요합니다.' });
-
-    try {
-        const sourcePath = path.join(DOWNLOAD_WATCH_DIR, fileName);
-        if (!fs.existsSync(sourcePath)) {
-            return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
-        }
-
-        const stat = fs.statSync(sourcePath);
-        const mediaDirs = ensureStoryMediaDirectories(storyId, storyTitle);
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const sceneLabel = sceneNumber ? `scene-${String(sceneNumber).padStart(2, '0')}` : 'scene';
-        const newFilename = `${sceneLabel}_${timestamp}.mp4`;
-        const targetPath = path.join(mediaDirs.videoDir, newFilename);
-
-        // 파일 이동 (드라이브 간 이동 지원)
-        try {
-            fs.renameSync(sourcePath, targetPath);
-        } catch (err) {
-            if (err.code === 'EXDEV') {
-                fs.copyFileSync(sourcePath, targetPath);
-                fs.unlinkSync(sourcePath);
-            } else {
-                throw err;
-            }
-        }
-
-        const fileSizeKB = Math.round(stat.size / 1024);
-        const fileSizeMB = (stat.size / (1024 * 1024)).toFixed(2);
-        const relativePath = `대본폴더/${mediaDirs.safeId}/video/${newFilename}`;
-
-        res.json({
-            success: true,
-            originalFile: fileName,
-            filename: newFilename,
-            url: `/generated_scripts/${relativePath}`,
-            sizeFormatted: fileSizeKB > 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`
-        });
-    } catch (error) {
-        console.error('[Video Import Specific] ❌ Failed:', error);
-        res.status(500).json({ error: error.message || '영상 가져오기 실패' });
-    }
-});
-
-// 다운로드 폴더 경로 확인 API
-app.get('/api/video/download-folder-info', (req, res) => {
-    try {
-        const os = require('os');
-        const downloadDir = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
-        const exists = fs.existsSync(downloadDir);
-
-        let recentFiles = [];
-        if (exists) {
-            const files = fs.readdirSync(downloadDir);
-            recentFiles = files
-                .filter(f => f.toLowerCase().endsWith('.mp4'))
-                .map(f => {
-                    try {
-                        const stat = fs.statSync(path.join(downloadDir, f));
-                        return { name: f, mtime: stat.mtimeMs };
-                    } catch {
-                        return null;
-                    }
-                })
-                .filter(Boolean)
-                .sort((a, b) => b.mtime - a.mtime)
-                .slice(0, 5);
-        }
-
-        res.json({
-            downloadDir,
-            exists,
-            recentMp4Files: recentFiles
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
     }
 });
 

@@ -300,8 +300,21 @@ export async function generateVideoFX(prompt, imageUrl) {
     // 2. Robust Image Upload
     if (imageUrl) {
         console.log("[Puppeteer Video] 🎞️ Starting image upload process...");
+        console.log(`[Puppeteer Video] 📍 Received imageUrl: ${imageUrl}`);
         try {
-            const fullPath = path.resolve(process.cwd(), imageUrl.startsWith("/") ? imageUrl.substring(1) : imageUrl);
+            // URL 형태인 경우 경로만 추출
+            let normalizedUrl = imageUrl;
+            if (imageUrl.startsWith('http://localhost:3002')) {
+                normalizedUrl = imageUrl.replace('http://localhost:3002', '');
+                console.log(`[Puppeteer Video] 📍 Normalized URL: ${normalizedUrl}`);
+            }
+            const fullPath = path.resolve(process.cwd(), normalizedUrl.startsWith("/") ? normalizedUrl.substring(1) : normalizedUrl);
+            console.log(`[Puppeteer Video] 📍 Full path: ${fullPath}`);
+            console.log(`[Puppeteer Video] 📍 File exists: ${fs.existsSync(fullPath)}`);
+
+            if (!fs.existsSync(fullPath)) {
+                throw new Error(`이미지 파일을 찾을 수 없습니다: ${fullPath}`);
+            }
 
             let uploaded = false;
             for (let attempt = 1; attempt <= 3; attempt++) {
@@ -375,9 +388,9 @@ export async function generateVideoFX(prompt, imageUrl) {
 
             if (!uploaded) throw new Error("Could not trigger image upload.");
 
-            console.log("[Puppeteer Video] 🎞️ Waiting for 'Crop and Save' button...");
+            console.log("[Puppeteer Video] 🎞️ Waiting for 'Crop and Save' button (max 60s)...");
             let cropBtnClicked = false;
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 60; i++) {
                 cropBtnClicked = await videoPage.evaluate(() => {
                     const buttons = Array.from(document.querySelectorAll('button, div[role="button"], span'));
                     const cropBtn = buttons.find(b => {
@@ -396,7 +409,12 @@ export async function generateVideoFX(prompt, imageUrl) {
                 }
                 await delay(1000);
             }
-            if (cropBtnClicked) await delay(3000);
+
+            if (!cropBtnClicked) {
+                throw new Error("'자르기 및 저장' 버튼을 찾을 수 없습니다. 이미지 업로드가 완료되지 않았습니다.");
+            }
+
+            await delay(3000);
         } catch (e) {
             console.error("[Puppeteer Video] ❌ Image upload failed:", e.message);
             throw e;
@@ -622,27 +640,48 @@ throw new Error("Video generation timed out.");
 // 🔹 [NEW] 모든 브라우저 종료 (클린업용)
 export async function closeAllBrowsers() {
     console.log("[Puppeteer] 🧹 Closing all browser instances...");
-    try {
-        if (scriptBrowser) {
-            console.log("[Puppeteer Script] Closing browser...");
-            await scriptBrowser.close();
-            scriptBrowser = null;
-            scriptPage = null;
+    const browsers = [
+        { name: 'Script', instance: scriptBrowser, setter: (val) => { scriptBrowser = val; scriptPage = null; } },
+        { name: 'Video', instance: videoBrowser, setter: (val) => { videoBrowser = val; videoPage = null; } }
+    ];
+
+    for (const b of browsers) {
+        if (b.instance) {
+            console.log(`[Puppeteer ${b.name}] Closing browser...`);
+            try {
+                // 1. 정상 종료 시도 (5초 타임아웃)
+                await Promise.race([
+                    b.instance.close(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                ]);
+                console.log(`[Puppeteer ${b.name}] Closed gracefully.`);
+            } catch (err) {
+                console.warn(`[Puppeteer ${b.name}] ⚠️ Graceful close failed or timed out. Forcing kill...`);
+                try {
+                    // 2. 강제 종료 (SIGKILL)
+                    const proc = b.instance.process();
+                    if (proc) proc.kill('SIGKILL');
+                } catch (killErr) {
+                    console.error(`[Puppeteer ${b.name}] ❌ Failed to force kill:`, killErr.message);
+                }
+            } finally {
+                b.setter(null);
+            }
         }
-        if (videoBrowser) {
-            console.log("[Puppeteer Video] Closing browser...");
-            await videoBrowser.close();
-            videoBrowser = null;
-            videoPage = null;
-        }
-        imageBrowser = null; // scriptBrowser와 통합되어 있으므로 참조만 해제
-        console.log("[Puppeteer] 🏠 All browsers closed.");
-        return true;
-    } catch (err) {
-        console.error("[Puppeteer] ❌ Error during browser cleanup:", err.message);
-        return false;
     }
+    imageBrowser = null;
+    console.log("[Puppeteer] 🏠 All browsers cleanup attempt finished.");
+    return true;
 }
+
+// 프로세스 종료 시 마지막 안전장치
+process.on('exit', () => {
+    if (scriptBrowser || videoBrowser) {
+        console.log("[Puppeteer] 🚨 Process exiting with active browsers. Attempting emergency kill...");
+        try { if (scriptBrowser) scriptBrowser.process()?.kill('SIGKILL'); } catch (e) { }
+        try { if (videoBrowser) videoBrowser.process()?.kill('SIGKILL'); } catch (e) { }
+    }
+});
 
 // 🔹 Backward compatibility (기본은 대본 브라우저 사용)
 export const launchBrowser = launchScriptBrowser;

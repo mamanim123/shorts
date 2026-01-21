@@ -720,16 +720,14 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 ## 🚨 이미지 프롬프트 절대 규칙 (위반 시 즉시 실패)
 1. **longPrompt와 negativePrompt 분리**: 모든 씬의 longPrompt에는 PROMPT_CONSTANTS.START/END를 포함하고, negativePrompt 필드에는 PROMPT_CONSTANTS.NEGATIVE를 별도로 입력해야 함. (누락/변형 금지)
 2. **캐릭터 정체성은 반드시 characters[].identity 필드 값을 그대로 사용**
-   - ✅ 올바름: "A stunning Korean woman in her 40s" (identity 필드 그대로)
-   - ❌ 금지: "Woman A (지영)", "WomanA", "지영", "Korean woman" 등 임의 형식
 3. **의상 앞에 반드시 "wearing" 키워드 추가** (characters[].outfitPrefix 참조)
-   - ✅ 올바름: "wearing White Mock-neck Sleeveless + Burgundy Skirt"
-   - ❌ 금지: "White Mock-neck Sleeveless + Burgundy Skirt" (wearing 없음)
 4. **8개 모든 씬에서 identity/hair/body/outfit 문구 100% 동일** (문자열 한 글자도 바꾸지 말 것)
-5. **characters[] 배열의 hair, body, outfit 문자열을 그대로 복사해서 사용** (축약/의역/재서술 금지)
-6. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
-7. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
-8. **배경 문구는 씬마다 변형/축약/번역 금지**
+5. **캔디드 에스테틱 (Candid Aesthetic) & 카메라 시선**:
+   - **Scene 1 (Hook)**: 시청자와의 연결을 위해 카메라를 정면 응시하며 미소 지을 것 (Eye contact, smiling at camera).
+   - **Scene 2~8**: 자연스러운 일상의 찰나를 포착한 **Candid Shot**이어야 함. 캐릭터는 **카메라를 절대 응시하지 말고(Looking away from camera)** 자신의 행동이나 상대방에게 집중할 것. 인위적인 포즈(Posed) 금지.
+6. **텍스트 금지**: 이미지 내에 어떠한 글자, 로고, 워터마크도 포함되지 않도록 "no text, no letters, no typography"를 강조할 것.
+7. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
+8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
 9. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
 
 ## 📸 샷 타입 규칙
@@ -866,7 +864,7 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
       "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}",
       "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}",
       "longPromptKo": "상세 한글 프롬프트",
-      "videoPrompt": "영상용 프롬프트"
+      "videoPrompt": "[한국어] 40대 한국인 여성이 [동작], [카메라 무빙], [조명/분위기]"
     }
   ]
 }

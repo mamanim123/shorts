@@ -1365,10 +1365,10 @@ app.post('/api/video/refine-prompt', async (req, res) => {
 
         // ===== 새로운 프롬프트: VIDEO PROMPT + DIALOGUE 분리 =====
         const analysisPrompt = `
-[TASK: VIDEO PROMPT + DIALOGUE SEPARATION]
+[TASK: DYNAMIC SCENE + DIALOGUE SEPARATION]
 
 You must create TWO separate outputs:
-1. "videoPrompt": A cinematic scene description for AI video generation (NO dialogue text here)
+1. "sceneDescription": A cinematic moving scene description for AI video generation (NO dialogue text here)
 2. "dialogue": Extract the EXACT spoken words from the Script Line
 
 [INPUT DATA]
@@ -1380,7 +1380,7 @@ You must create TWO separate outputs:
 * Character Slot: ${characterSlot || '원샷'}
 
 [OUTPUT RULES]
-1. "videoPrompt" must describe:
+1. "sceneDescription" must describe:
    - Character appearance (age, Korean identity)
    - Action/movement (walking, standing, gesturing)
    - Camera movement (dolly in, static, pan)
@@ -1394,7 +1394,7 @@ You must create TWO separate outputs:
 
 [OUTPUT FORMAT - STRICT JSON ONLY]
 {
-  "videoPrompt": "시각적 장면 설명만 (대사 제외)",
+  "sceneDescription": "시각적 움직임이 있는 장면 설명 (대사 제외)",
   "dialogue": "캐릭터가 말할 실제 한국어 대사"
 }
 
@@ -1415,6 +1415,10 @@ Output:
   "videoPrompt": "40s의 멋진 한국인 여성이 세련된 카페 문을 열고 들어선다. 부드러운 미소를 띠며 주위를 둘러본다. 카메라가 정면에서 촬영. 따뜻한 실내 조명.",
   "dialogue": "여기 분위기 정말 좋다."
 }
+
+[IMPORTANT] All outputs must be in KOREAN. (모든 출력은 반드시 한국어로 작성하세요.)
+
+[STRICT RULE] DO NOT include any conversational filler like "Sure", "Here is", or "Okay". Output ONLY the raw JSON object.
 
 Now process the input and output ONLY valid JSON (no other text, no markdown):
 `;
@@ -1448,7 +1452,7 @@ Now process the input and output ONLY valid JSON (no other text, no markdown):
 
             const parsed = JSON.parse(cleanResponse);
 
-            refinedPrompt = parsed.videoPrompt || '';
+            refinedPrompt = parsed.sceneDescription || parsed.videoPrompt || '';
             dialogue = parsed.dialogue || scriptLine || '';
 
             console.log(`[SmartVideo] ✅ Parsed successfully!`);
@@ -1503,8 +1507,19 @@ app.post('/api/video/generate-smart', async (req, res) => {
         const targetDir = mediaDirs.videoDir;
         const filePath = path.join(targetDir, filename);
 
-        const base64Data = videoData.replace(/^data:video\/\w+;base64,/, "");
-        fs.writeFileSync(filePath, base64Data, 'base64');
+        // [FIX] videoData가 객체로 오는 경우 처리
+        let finalBase64 = '';
+        if (typeof videoData === 'string') {
+            finalBase64 = videoData.replace(/^data:video\/\w+;base64,/, "");
+        } else if (videoData && typeof videoData === 'object') {
+            finalBase64 = videoData.base64 || videoData.data || '';
+        }
+
+        if (!finalBase64) {
+            console.error("[SmartVideo] Failed to extract base64 from videoData:", typeof videoData);
+            throw new Error("비디오 데이터를 추출할 수 없습니다.");
+        }
+        fs.writeFileSync(filePath, finalBase64, 'base64');
 
         const relativePath = `${mediaDirs.safeId}/video/${filename}`;
         console.log(`[SmartVideo] ✅ Video saved: ${filePath}`);
@@ -1712,8 +1727,19 @@ app.post('/api/save-video', (req, res) => {
         }
 
         const filePath = path.join(targetDir, filename);
-        const base64Data = videoData.replace(/^data:video\/\w+;base64,/, "");
-        fs.writeFileSync(filePath, base64Data, 'base64');
+        // [FIX] videoData가 객체로 오는 경우 처리
+        let finalBase64_2 = '';
+        if (typeof videoData === 'string') {
+            finalBase64_2 = videoData.replace(/^data:video\/\w+;base64,/, "");
+        } else if (videoData && typeof videoData === 'object') {
+            finalBase64_2 = videoData.base64 || videoData.data || '';
+        }
+
+        if (!finalBase64_2) {
+            console.error("[VideoFX] Failed to extract base64 from videoData:", typeof videoData);
+            throw new Error("비디오 데이터를 추출할 수 없습니다.");
+        }
+        fs.writeFileSync(filePath, finalBase64_2, 'base64');
 
         const relativePath = `${relativePrefix}/${filename}`;
         console.log(`[Server] Saved video to ${filePath}`);

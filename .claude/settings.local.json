@@ -13,7 +13,11 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(python -c \"\ncontent = ''''''@echo off\nchcp 949 > nul\ntitle Git Pull - 작업 시작\n\necho.\necho ========================================\necho   작업 시작 - 최신 코드 가져오기\necho ========================================\necho.\n\ncd /d \"\"%~dp0\"\"\n\necho 최신 코드 가져오는 중...\ngit pull\n\nif %errorlevel% neq 0 \\(\n    echo.\n    echo 오류 발생! 수동으로 확인해주세요.\n    pause\n    exit /b 1\n\\)\n\necho.\necho 완료! 최신 코드로 업데이트되었습니다.\necho.\n\npause\n''''''\nwith open\\(''start.bat'', ''w'', encoding=''cp949''\\) as f:\n    f.write\\(content\\)\nprint\\(''start.bat created''\\)\n\")",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(cmd.exe /c \"chcp 949 > nul & \\(echo @echo off & echo chcp 949 ^> nul & echo. & echo echo. & echo echo ======================================== & echo echo   [시작] Git Pull & echo echo ======================================== & echo echo. & echo cd /d \"\"%%~dp0\"\" & echo echo 최신 코드 가져오는 중... & echo git pull & echo echo. & echo echo 완료! & echo echo. & echo pause\\) > 시작.bat\")",
+      "Bash(powershell -Command \"\n$content = @''\n@echo off\nchcp 949 > nul\n\necho.\necho ========================================\necho   [시작] Git Pull\necho ========================================\necho.\n\ncd /d %~dp0\n\necho 최신 코드 가져오는 중...\ngit pull\n\necho.\necho 완료!\necho.\n\ncmd /k\n''@\n[IO.File]::WriteAllBytes\\(''시작.bat'', [Text.Encoding]::GetEncoding\\(949\\).GetBytes\\($content\\)\\)\n\")",
+      "Bash(powershell -Command \"\n$content = @''\n@echo off\nchcp 949 > nul\n\necho.\necho ========================================\necho   [끝] Git Push\necho ========================================\necho.\n\ncd /d %~dp0\n\necho 변경된 파일:\ngit status --short\n\necho.\nset /p msg=커밋 메시지 \\(Enter=저장\\): \nif \"\"%msg%\"\"==\"\"\"\" set msg=저장\n\necho.\ngit add .\ngit commit -m \"\"%msg%\"\"\ngit push\n\necho.\necho 완료!\necho.\n\ncmd /k\n''@\n[IO.File]::WriteAllBytes\\(''끝.bat'', [Text.Encoding]::GetEncoding\\(949\\).GetBytes\\($content\\)\\)\n\")",
+      "WebSearch"
     ]
   }
 }

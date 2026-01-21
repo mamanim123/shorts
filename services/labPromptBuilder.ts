@@ -604,15 +604,23 @@ export const pickFemaleOutfit = (
   return candidates[Math.floor(Math.random() * candidates.length)].name;
 };
 
-export const pickMaleOutfit = (_topic: string = '', excludeOutfits: string[] = []): string => {
+export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
+  const isGolfTopic = topic.includes('골프') || topic.includes('golf') || topic.includes('Golf');
+
   const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
     if (!item.categories.includes('MALE')) return false;
     if (excludeOutfits.includes(item.name)) return false;
-    return true;
+
+    if (isGolfTopic) {
+      return item.categories.includes('GOLF');
+    }
+
+    // 골프 주제가 아닐 때는 일반적인 남성 의상 (GOLF 제외 추천)
+    return !item.categories.includes('GOLF') || Math.random() > 0.7;
   });
 
   if (candidates.length === 0) {
-    return 'Black Knit Polo + Dark Indigo Denim';
+    return isGolfTopic ? 'Navy Slim-fit Polo + White Tailored Golf Pants' : 'Black Knit Polo + Dark Indigo Denim';
   }
 
   return candidates[Math.floor(Math.random() * candidates.length)].name;
@@ -628,10 +636,11 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const genreGuide = LAB_GENRE_GUIDELINES[genre];
   const seed = generateRandomSeed();
 
-  // 의상 선택 (장르 기반)
+  // 의상 선택 (장르 및 주제 기반)
   const womanAOutfit = pickFemaleOutfit(genre, topic, []);
   const womanBOutfit = pickFemaleOutfit(genre, topic, [womanAOutfit]);
   const manAOutfit = pickMaleOutfit(topic, []);
+  const manBOutfit = pickMaleOutfit(topic, [manAOutfit]);
 
 
   // 화자 설정
@@ -711,11 +720,13 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 - **Woman A (지영)**: ${womanAOutfit}
 - **Woman B (혜경)**: ${womanBOutfit}  
 - **Man A (준호)**: ${manAOutfit}
+- **Man B (민수)**: ${manBOutfit}
 
 ## 💇 헤어스타일 (모든 씬 고정!)
 - **Woman A (지영)**: long soft-wave hairstyle
 - **Woman B (혜경)**: short chic bob cut
 - **Man A (준호)**: short neat hairstyle
+- **Man B (민수)**: clean short cut
 
 ## 🚨 이미지 프롬프트 절대 규칙 (위반 시 즉시 실패)
 1. **longPrompt와 negativePrompt 분리**: 모든 씬의 longPrompt에는 PROMPT_CONSTANTS.START/END를 포함하고, negativePrompt 필드에는 PROMPT_CONSTANTS.NEGATIVE를 별도로 입력해야 함. (누락/변형 금지)
@@ -753,6 +764,11 @@ unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, lon
 ✅ **쓰리샷 예시** (3명) - [Person 1], [Person 2], [Person 3] 필수:
 \`\`\`
 unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, snowy golf course, ...
+\`\`\`
+
+✅ **남성 2명 투샷 예시** - [Person 1], [Person 2] 필수:
+\`\`\`
+unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Navy Polo] [Person 2: A handsome Korean man in his 40s, clean short cut hair, well-built physique..., wearing White Polo] walking together on a golf course...
 \`\`\`
 
 ❌ **금지 (캐릭터 혼동 발생)**:
@@ -794,7 +810,8 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
   "lockedOutfits": {
     "womanA": "${womanAOutfit}",
     "womanB": "${womanBOutfit}",
-    "manA": "${manAOutfit}"
+    "manA": "${manAOutfit}",
+    "manB": "${manBOutfit}"
   },
   "characters": [
     {
@@ -825,13 +842,25 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
       "id": "ManA",
       "name": "준호",
       "identity": "A handsome Korean man in his ${targetAge}",
-      "relationToNarrator": "화자와의 관계",
+      "relationToNarrator": "화자와의 관계 (예: 남편, 친구 등)",
       "slot": "Slot Man A",
       "hair": "short neat hairstyle",
       "body": "fit athletic build with broad shoulders, dandy and refined presence",
       "outfit": "${manAOutfit}",
       "outfitPrefix": "wearing",
       "accessories": "silver watch"
+    },
+    {
+      "id": "ManB",
+      "name": "민수",
+      "identity": "A handsome Korean man in his ${targetAge}",
+      "relationToNarrator": "화자와의 관계 (예: 친구, 직장동료 등)",
+      "slot": "Slot Man B",
+      "hair": "clean short cut",
+      "body": "well-built dandy physique",
+      "outfit": "${manBOutfit}",
+      "outfitPrefix": "wearing",
+      "accessories": "luxury watch"
     }
   ],
   "scenes": [
@@ -852,7 +881,7 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
         "speed": "slow | normal | slightly-fast | fast"
       },
       "lipSync": {
-        "speaker": "WomanA | WomanB | ManA",
+        "speaker": "WomanA | WomanB | ManA | ManB",
         "speakerName": "캐릭터 이름",
         "line": "대사 (한글)",
         "emotion": "감정 (영어)",

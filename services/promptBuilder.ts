@@ -1,6 +1,6 @@
 import { ModeTemplates } from '../types';
 import { getGenreGuideline } from './genreGuidelines';
-import { FEMALE_OUTFIT_PRESETS, MALE_OUTFIT_PRESETS } from '../constants';
+import { FEMALE_OUTFIT_PRESETS, MALE_OUTFIT_PRESETS, UNIFIED_OUTFIT_LIST } from '../constants';
 import { normalizeTopicText } from '../utils/topicGuard';
 
 // Helper to pick random item
@@ -23,6 +23,7 @@ export interface PromptBuilderOptions {
     lockedFemaleOutfit?: string;
     lockedFemaleOutfit2?: string;
     lockedMaleOutfit?: string;
+    lockedMaleOutfit2?: string;
   };
   backgroundContext?: string;
 }
@@ -38,7 +39,9 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
     outfits,
     backgroundContext
   } = options;
-  const normalizedTopic = normalizeTopicText(topic);
+  const normalizedContext = normalizeTopicText(
+    [topic, backgroundContext, genre].filter(Boolean).join(' ')
+  );
 
   // 1. [Common] Unified Mandatory Rules (Master Regulations)
   const mandatoryRules = `
@@ -138,8 +141,23 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
 `;
 
   // 3. Resolve Outfits
-  const { lockedFemaleOutfit, lockedFemaleOutfit2, lockedMaleOutfit } = outfits;
-  const fallbackMaleOutfit = lockedMaleOutfit || pickRandom(MALE_OUTFIT_PRESETS);
+  const { lockedFemaleOutfit, lockedFemaleOutfit2, lockedMaleOutfit, lockedMaleOutfit2 } = outfits;
+  const isGolfContext = normalizedContext.includes('골프') || normalizedContext.includes('golf');
+  const maleCandidates = UNIFIED_OUTFIT_LIST.filter(item => item.categories.includes('MALE'));
+  const maleGolfCandidates = maleCandidates.filter(item =>
+    item.categories.some(category => category.toUpperCase().includes('GOLF'))
+  );
+  const maleOutfitPool = (isGolfContext && maleGolfCandidates.length > 0)
+    ? maleGolfCandidates
+    : maleCandidates;
+  const maleOutfitNames = (maleOutfitPool.length > 0)
+    ? maleOutfitPool.map(item => item.name)
+    : MALE_OUTFIT_PRESETS;
+  const fallbackMaleOutfit = lockedMaleOutfit || pickRandom(maleOutfitNames);
+  const secondaryMaleOutfit = lockedMaleOutfit2
+    || lockedMaleOutfit
+    || pickRandom(maleOutfitNames.filter(item => item !== fallbackMaleOutfit))
+    || fallbackMaleOutfit;
   const femaleOutfits = FEMALE_OUTFIT_PRESETS;
 
   const mainOutfit = lockedFemaleOutfit || pickRandom(femaleOutfits);
@@ -149,7 +167,8 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
 [SELECTED OUTFITS - MUST USE THESE EXACTLY FOR EVERY SCENE]
 - WomanA (Main): ${mainOutfit}
 - WomanB (Sub): ${subOutfit}
-- Korean Man: ${fallbackMaleOutfit}
+- ManA (Lead): ${fallbackMaleOutfit}
+- ManB (Sub): ${secondaryMaleOutfit}
 `;
 
   // 4. Prepare Variables
@@ -161,6 +180,7 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
     LOCKED_FEMALE_OUTFIT: mainOutfit,
     LOCKED_FEMALE_OUTFIT2: subOutfit,
     LOCKED_MALE_OUTFIT: fallbackMaleOutfit,
+    LOCKED_MALE_OUTFIT2: secondaryMaleOutfit,
     LOCKED_BACKGROUND: backgroundContext || topic || genre || '일상적인 공간',
     CREATIVITY_BOOSTER: `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
   };

@@ -8,7 +8,7 @@ import {
   normalizePromptEnhancementSettings,
   NormalizedPromptEnhancementSettings,
 } from './promptEnhancementUtils';
-import { isTopicDirectlyCopied, buildTopicViolationNotice } from '../utils/topicGuard';
+import { isTopicDirectlyCopied, buildTopicViolationNotice, normalizeTopicText } from '../utils/topicGuard';
 
 // Schema definition removed as we are using web automation and raw JSON parsing.
 
@@ -921,7 +921,7 @@ const pickRandomOutfit = (category?: string): string => {
   return selected ? selected.name : DEFAULT_OUTFITS.SLOT_A_MAIN;
 };
 
-const pickRandomMaleOutfit = (category?: string): string => {
+const pickRandomMaleOutfit = (category?: string, exclude?: string): string => {
   let candidates = UNIFIED_OUTFIT_LIST.filter(item => item.categories.includes('MALE'));
 
   if (category) {
@@ -933,12 +933,17 @@ const pickRandomMaleOutfit = (category?: string): string => {
     }
   }
 
+  if (exclude) {
+    const filtered = candidates.filter(item => item.name !== exclude);
+    candidates = filtered.length > 0 ? filtered : candidates;
+  }
+
   const selected = candidates[Math.floor(Math.random() * candidates.length)];
-  return selected ? selected.name : DEFAULT_OUTFITS.MALE;
+  return selected ? selected.name : (exclude || DEFAULT_OUTFITS.MALE);
 };
 
 // 프롬프트에서 의상 자리 표시자를 실제 의상으로 교체
-const replaceOutfitPlaceholders = (prompt: string, outfits: { female?: string; male?: string }): string => {
+const replaceOutfitPlaceholders = (prompt: string, outfits: { female?: string; male?: string; male2?: string }): string => {
   if (!prompt) return prompt;
   let updated = prompt;
 
@@ -949,11 +954,14 @@ const replaceOutfitPlaceholders = (prompt: string, outfits: { female?: string; m
   if (outfits.male) {
     updated = updated.replace(/\{\{LOCKED_MALE_OUTFIT\}\}/g, outfits.male);
   }
+  if (outfits.male2) {
+    updated = updated.replace(/\{\{LOCKED_MALE_OUTFIT2\}\}/g, outfits.male2);
+  }
 
   return updated;
 };
 
-const personalizeEnginePrompt = (prompt: string, targetAge?: string, outfits?: { female?: string; male?: string }): string => {
+const personalizeEnginePrompt = (prompt: string, targetAge?: string, outfits?: { female?: string; male?: string; male2?: string }): string => {
   if (!prompt) return prompt;
   const tokens = buildAgeTokens(targetAge);
   let updated = prompt;
@@ -1028,8 +1036,13 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
   const genreInstruction = findTemplatePrompt(templateConfig.genres as any[], input.scenarioMode);
 
   // 랜덤 의상 선택
-  const selectedFemaleOutfit = pickRandomOutfit(resolvedTopic.includes('골프') ? 'golf' : undefined);
-  const selectedMaleOutfit = pickRandomMaleOutfit(resolvedTopic.includes('골프') ? 'golf' : undefined);
+  const outfitContextText = normalizeTopicText(
+    [resolvedTopic, input.customContext, input.customScript].filter(Boolean).join(' ')
+  );
+  const isGolfContext = outfitContextText.includes('골프') || outfitContextText.includes('golf');
+  const selectedFemaleOutfit = pickRandomOutfit(isGolfContext ? 'golf' : undefined);
+  const selectedMaleOutfit = pickRandomMaleOutfit(isGolfContext ? 'golf' : undefined);
+  const selectedMaleOutfit2 = pickRandomMaleOutfit(isGolfContext ? 'golf' : undefined, selectedMaleOutfit);
 
   // [MODIFIED] Select system prompt based on engineVersion (OFF → empty)
   let systemPrompt = "";
@@ -1038,7 +1051,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
     selectedEnginePrompt = resolveEnginePrompt(input.engineVersion);
     selectedEnginePrompt = personalizeEnginePrompt(selectedEnginePrompt, input.targetAge, {
       female: selectedFemaleOutfit,
-      male: selectedMaleOutfit
+      male: selectedMaleOutfit,
+      male2: selectedMaleOutfit2
     });
     systemPrompt = selectedEnginePrompt;
     const preview = selectedEnginePrompt.slice(0, 200).replace(/\s+/g, ' ');
@@ -1090,7 +1104,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
   // Apply age and outfit personalization to user prompt as well
   userPrompt = personalizeEnginePrompt(userPrompt, input.targetAge, {
     female: selectedFemaleOutfit,
-    male: selectedMaleOutfit
+    male: selectedMaleOutfit,
+    male2: selectedMaleOutfit2
   });
 
   // === SCRIPT-TO-IMAGE MODE ===

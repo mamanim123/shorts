@@ -114,6 +114,15 @@ const DEFAULT_TONES: TemplateItem[] = [
     }
 ];
 
+const dedupeById = (items: TemplateItem[]) => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+    });
+};
+
 export const useTemplateManager = () => {
     console.log("DEBUG: useTemplateManager Hook Called");
     const [genres, setGenres] = useState<TemplateItem[]>([]);
@@ -142,13 +151,13 @@ export const useTemplateManager = () => {
                 initialTones = DEFAULT_TONES;
             }
 
-            setGenres(initialGenres);
-            setTones(initialTones);
+            setGenres(dedupeById(initialGenres));
+            setTones(dedupeById(initialTones));
         } catch (err) {
             console.error(err);
             // Fallback to defaults on error
-            setGenres(DEFAULT_GENRES);
-            setTones(DEFAULT_TONES);
+            setGenres(dedupeById(DEFAULT_GENRES));
+            setTones(dedupeById(DEFAULT_TONES));
         } finally {
             setLoading(false);
         }

@@ -9,6 +9,7 @@ import { useTemplateManager } from './hooks/useTemplateManager';
 import { TemplateEditorModal } from './components/TemplateEditorModal';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { jsonrepair } from 'jsonrepair';
+import { parseJsonFromText } from './services/jsonParse';
 import { StoryResponse, AnalysisResult, ModeTemplates } from './types';
 import { generateImageWithImagen, initGeminiService, fetchAvailableModels } from './components/master-studio/services/geminiService';
 import { setBlob, getBlob, deleteBlob } from './components/master-studio/services/dbService';
@@ -665,15 +666,7 @@ const extractValidJson = (text: string) => {
 };
 
 const parseScriptsJson = (text: string) => {
-  let jsonText = text.trim();
-
-  jsonText = jsonText.replace(/```json/gi, '').replace(/```/g, '');
-  const extracted = extractValidJson(jsonText);
-  if (extracted) {
-    jsonText = extracted;
-  }
-
-  jsonText = escapeInlineQuotesForKeys(jsonText, [
+  return parseJsonFromText(text, [
     'script',
     'scriptBody',
     'scriptLine',
@@ -686,42 +679,6 @@ const parseScriptsJson = (text: string) => {
     'twist',
     'title'
   ]);
-
-  // Attempt 1: Standard Parse
-  try {
-    return JSON.parse(jsonText);
-  } catch (e) {
-    // Attempt 2: Preprocess then Parse
-    try {
-      const preprocessed = preprocessJson(jsonText);
-      return JSON.parse(preprocessed);
-    } catch (e2) {
-      // Attempt 3: jsonrepair
-      try {
-        const repaired = jsonrepair(jsonText);
-        return JSON.parse(repaired);
-      } catch (e3) {
-        // Attempt 4: Preprocess then jsonrepair
-        try {
-          const preprocessed = preprocessJson(jsonText);
-          const repaired = jsonrepair(preprocessed);
-          return JSON.parse(repaired);
-        } catch (e4) {
-          // Fallback: Auto-close missing brackets (Legacy logic)
-          // Count opening and closing braces
-          const openBraces = (jsonText.match(/{/g) || []).length;
-          const closeBraces = (jsonText.match(/}/g) || []).length;
-          const openBrackets = (jsonText.match(/\[/g) || []).length;
-          const closeBrackets = (jsonText.match(/\]/g) || []).length;
-
-          if (openBrackets > closeBrackets) jsonText += ']'.repeat(openBrackets - closeBrackets);
-          if (openBraces > closeBraces) jsonText += '}'.repeat(openBraces - closeBraces);
-
-          return JSON.parse(jsonText);
-        }
-      }
-    }
-  }
 };
 
 interface ShortsScriptGeneratorProps {

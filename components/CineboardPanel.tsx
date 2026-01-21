@@ -1339,10 +1339,15 @@ ${JSON.stringify(charData, null, 2)}
       const data = await response.json();
 
       const finalScenes = [...generationResult.scenes];
-      finalScenes[sceneIndex] = { ...scene, videoUrl: data.url, isVideoGenerating: false };
+      const resolvedUrl = data.url ? data.url : undefined;
+      finalScenes[sceneIndex] = { ...scene, videoUrl: resolvedUrl, isVideoGenerating: false };
       setGenerationResult({ ...generationResult, scenes: finalScenes });
 
-      showToast(`${sceneNumber}번 장면의 비디오 생성이 완료되었습니다.`, 'success');
+      if (data.url) {
+        showToast(`${sceneNumber}번 장면의 비디오 생성이 완료되었습니다.`, 'success');
+      } else if (data.message) {
+        showToast(data.message, 'info');
+      }
     } catch (error) {
       console.error('Scene video generation failed:', error);
       alert(`비디오 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);

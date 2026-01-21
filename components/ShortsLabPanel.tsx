@@ -15,6 +15,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES } from '../services/labPromptBuilder';
+import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
@@ -116,6 +117,20 @@ const OUTFIT_OPTIONS = [
 ];
 
 const AGE_LABELS = ['20대', '30대', '40대', '50대', '60대'];
+
+const getVoiceBadge = (scene: Scene) => {
+    switch (scene.voiceType) {
+        case 'lipSync':
+            return { label: 'LIP', tone: 'border-amber-500/30 text-amber-300' };
+        case 'both':
+            return { label: 'BOTH', tone: 'border-purple-500/30 text-purple-300' };
+        case 'none':
+            return { label: 'NONE', tone: 'border-slate-600/50 text-slate-400' };
+        case 'narration':
+        default:
+            return { label: 'NARR', tone: 'border-emerald-500/30 text-emerald-400' };
+    }
+};
 
 // ============================================
 // 타입 정의
@@ -239,6 +254,7 @@ const enhanceScenePrompt = (
     options: {
         sceneNumber?: number;
         femaleOutfit?: string;
+        maleOutfit?: string;
         targetAgeLabel?: string;
         gender?: 'female' | 'male';
     } = {}
@@ -250,7 +266,12 @@ const enhanceScenePrompt = (
     const llmProvidedOutfit = updated.includes("Outfit:");
 
     // 의상 태그가 없으면 추가
-    if (!llmProvidedOutfit && options.femaleOutfit) {
+    if (!llmProvidedOutfit && options.gender === 'male' && options.maleOutfit) {
+        const maleTag = `Outfit: ${options.maleOutfit}`;
+        if (!updated.includes(maleTag) && !updated.includes(options.maleOutfit)) {
+            updated += `, ${maleTag}`;
+        }
+    } else if (!llmProvidedOutfit && options.femaleOutfit) {
         const femaleTag = `Outfit: ${options.femaleOutfit}`;
         if (!updated.includes(femaleTag) && !updated.includes(options.femaleOutfit)) {
             updated += `, ${femaleTag}`;
@@ -285,6 +306,7 @@ const postProcessAiScenes = (
     scenes: any[],
     options: {
         femaleOutfit?: string;
+        maleOutfit?: string;
         targetAgeLabel?: string;
         gender?: 'female' | 'male';
     }
@@ -298,6 +320,7 @@ const postProcessAiScenes = (
             {
                 sceneNumber,
                 femaleOutfit: options.femaleOutfit,
+                maleOutfit: options.maleOutfit,
                 targetAgeLabel: options.targetAgeLabel,
                 gender: options.gender
             }
@@ -308,7 +331,7 @@ const postProcessAiScenes = (
             longPrompt: processedPrompt,
             shortPrompt: scene.shortPrompt ? enhanceScenePrompt(
                 scene.shortPrompt,
-                { sceneNumber, femaleOutfit: options.femaleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender }
+                { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender }
             ) : processedPrompt
         };
     });
@@ -786,62 +809,20 @@ export const ShortsLabPanel: React.FC = () => {
     };
 
     const handleRegeneratePrompts = () => {
-        setScenes(prev => {
-            const updated = prev.map(scene => ({
-                ...scene,
-                prompt: generatePrompt(scene.text)
-            }));
-            try {
-                localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
-            } catch (storageError) {
-                console.warn('[ShortsLab] Failed to persist scenes:', storageError);
-            }
-            return updated;
-        });
-    };
+        if (scenes.length === 0) return;
+        const updated = scenes.map(scene => ({
+            ...scene,
+            prompt: generatePrompt(scene.text)
+        }));
+        setScenes(updated);
+        setActiveTab('preview');
 
-    const getVoiceBadge = (scene: Scene): { label: string; tone: string } => {
-        const type = scene.voiceType || (scene.lipSyncLine ? 'both' : scene.narrationText ? 'narration' : 'none');
-        if (type === 'lipSync') {
-            return { label: scene.lipSyncSpeakerName ? `LIP: ${scene.lipSyncSpeakerName}` : 'LIP', tone: 'text-amber-300 border-amber-500/40' };
-        }
-        if (type === 'both') {
-            return { label: scene.lipSyncSpeakerName ? `N+L: ${scene.lipSyncSpeakerName}` : 'N+L', tone: 'text-purple-300 border-purple-500/40' };
-        }
-        if (type === 'none') {
-            return { label: 'MUTE', tone: 'text-slate-300 border-slate-500/40' };
-        }
-        return { label: 'NARR', tone: 'text-emerald-300 border-emerald-500/40' };
-    };
-
-    const handleCopyPrompt = async (index: number, prompt: string) => {
         try {
-            await navigator.clipboard.writeText(prompt);
-            setCopiedIndex(index);
-            setTimeout(() => setCopiedIndex(null), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
+            localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
+        } catch (storageError) {
+            console.warn('[ShortsLab] Failed to persist scenes:', storageError);
         }
     };
-
-    const handleCopyAll = async () => {
-        const allPrompts = scenes.map((s, i) => `[Scene ${s.number}]\n${s.prompt}`).join('\n\n');
-        try {
-            await navigator.clipboard.writeText(allPrompts);
-            setCopiedIndex(-1);
-            setTimeout(() => setCopiedIndex(null), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
-        }
-    };
-
-    const updateSetting = <K extends keyof PromptSettings>(key: K, value: PromptSettings[K]) => {
-        setSettings(prev => ({ ...prev, [key]: value }));
-    };
-
-    // ============================================
-    // 스마트 비디오 프롬프트 생성 (씨네보드 동일)
-    // ============================================
 
     const handleRefineVideoPrompt = async (sceneNumber: number) => {
         const sceneIndex = scenes.findIndex(s => s.number === sceneNumber);
@@ -850,10 +831,9 @@ export const ShortsLabPanel: React.FC = () => {
         const scene = scenes[sceneIndex];
         if (scene.isVideoPromptGenerating) return;
 
-        // 로딩 상태 설정
         setScenes(prev => {
             const updated = [...prev];
-            updated[sceneIndex] = { ...scene, isVideoPromptGenerating: true, videoError: undefined };
+            updated[sceneIndex] = { ...scene, isVideoPromptGenerating: true };
             return updated;
         });
 
@@ -865,44 +845,35 @@ export const ShortsLabPanel: React.FC = () => {
                     script: scriptInput,
                     scriptLine: scene.text,
                     action: scene.summary || '',
-                    emotion: '',
+                    emotion: scene.narrationEmotion || scene.lipSyncEmotion || '',
                     visualPrompt: scene.prompt,
                     targetAge: aiTargetAge,
-                    characterSlot: scene.shotType || ''
+                    characterSlot: settings.selectedSlot || ''
                 })
             });
 
-            if (!response.ok) throw new Error('프롬프트 분석 실패');
-            const data = await response.json();
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || '비디오 프롬프트 생성 실패');
+            }
 
+            const data = await response.json();
             setScenes(prev => {
                 const updated = [...prev];
                 updated[sceneIndex] = {
                     ...scene,
                     videoPrompt: data.refinedPrompt,
-                    dialogue: data.dialogue || scene.dialogue || scene.text,
+                    dialogue: data.dialogue || scene.dialogue || '',
                     isVideoPromptGenerating: false
                 };
                 return updated;
             });
-
-            try {
-                const newScenes = scenes.map(item =>
-                    item.number === scene.number
-                        ? { ...item, videoPrompt: data.refinedPrompt, dialogue: data.dialogue || scene.text }
-                        : item
-                );
-                localStorage.setItem('shorts-lab-scenes', JSON.stringify(newScenes));
-            } catch (storageError) {
-                console.warn('[ShortsLab] Failed to persist video prompt:', storageError);
-            }
-
             showToast(`${sceneNumber}번 장면의 비디오 지시어가 생성되었습니다.`, 'success');
         } catch (error) {
             console.error('Video prompt refinement failed:', error);
             setScenes(prev => {
                 const updated = [...prev];
-                updated[sceneIndex] = { ...scene, isVideoPromptGenerating: false, videoError: '비디오 지시어 생성에 실패했습니다.' };
+                updated[sceneIndex] = { ...scene, isVideoPromptGenerating: false };
                 return updated;
             });
             showToast('비디오 지시어 생성에 실패했습니다.', 'error');
@@ -916,8 +887,6 @@ export const ShortsLabPanel: React.FC = () => {
         const scene = scenes[sceneIndex];
         if (scene.isVideoGenerating || !scene.videoPrompt) return;
 
-        const controller = new AbortController();
-
         setScenes(prev => {
             const updated = [...prev];
             updated[sceneIndex] = { ...scene, isVideoGenerating: true, videoError: undefined };
@@ -925,24 +894,16 @@ export const ShortsLabPanel: React.FC = () => {
         });
 
         try {
-            const dialogue = scene.dialogue?.trim();
-            const refinedPrompt = dialogue
-                ? `${scene.videoPrompt} The character says: "${dialogue}".`
-                : scene.videoPrompt;
-
             const response = await fetch('http://localhost:3002/api/video/generate-smart', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    refinedPrompt,
-                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
-
-
+                    refinedPrompt: scene.videoPrompt,
+                    storyId: getEffectiveStoryId(),
                     storyTitle: aiTopic?.trim() || 'ShortsLab',
-                    imageUrl: scene.imageUrl,
-                    sceneNumber: scene.number
-                }),
-                signal: controller.signal
+                    sceneNumber: scene.number,
+                    imageUrl: scene.imageUrl
+                })
             });
 
             if (!response.ok) {
@@ -951,10 +912,10 @@ export const ShortsLabPanel: React.FC = () => {
             }
 
             const data = await response.json();
-
             setScenes(prev => {
                 const updated = [...prev];
-                updated[sceneIndex] = { ...scene, videoUrl: data.url, isVideoGenerating: false };
+                const resolvedUrl = data.url ? data.url : undefined;
+                updated[sceneIndex] = { ...scene, videoUrl: resolvedUrl, isVideoGenerating: false };
                 try {
                     localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
                 } catch (storageError) {
@@ -963,7 +924,11 @@ export const ShortsLabPanel: React.FC = () => {
                 return updated;
             });
 
-            showToast(`${sceneNumber}번 장면의 비디오 생성이 완료되었습니다.`, 'success');
+            if (data.url) {
+                showToast(`${sceneNumber}번 장면의 비디오 생성이 완료되었습니다.`, 'success');
+            } else if (data.message) {
+                showToast(data.message, 'info');
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : '비디오 생성 실패';
             if (message.includes('aborted')) {
@@ -977,8 +942,6 @@ export const ShortsLabPanel: React.FC = () => {
                 return updated;
             });
         }
-
-        return () => controller.abort();
     };
 
     const handleCancelSceneVideo = (sceneNumber: number) => {
@@ -1210,7 +1173,10 @@ export const ShortsLabPanel: React.FC = () => {
                     jsonClean = jsonClean.replace(/^```(json)?/, "").replace(/```$/, "").trim();
                 }
 
-                const parsed = JSON.parse(jsonClean);
+                const parsed = parseJsonFromText<any>(jsonClean, ["script", "scriptBody", "scriptLine", "shortPrompt", "shortPromptKo", "longPrompt", "longPromptKo", "hook", "punchline", "twist", "title"]);
+                if (!parsed) {
+                    throw new Error('JSON parse failed');
+                }
 
                 // 쇼츠 생성기 호환 구조 (scriptBody) 또는 기존 구조 (scripts[0].script)
                 const scriptData = parsed.scripts?.[0] || parsed;
@@ -1226,8 +1192,13 @@ export const ShortsLabPanel: React.FC = () => {
                 const scenesSource = scriptData.scenes || parsed.scenes;
                 if (scenesSource && Array.isArray(scenesSource)) {
                     // [FIX] 후처리 적용: 한국인 정체성, 의상, no text 태그 등
+                    const lockedOutfits = scriptData.lockedOutfits || parsed.lockedOutfits;
+                    const preferredFemaleOutfit = lockedOutfits?.womanA || settings.selectedOutfit || undefined;
+                    const preferredMaleOutfit = lockedOutfits?.manA || undefined;
+
                     const processedScenes = postProcessAiScenes(scenesSource, {
-                        femaleOutfit: settings.selectedOutfit || undefined,
+                        femaleOutfit: preferredFemaleOutfit,
+                        maleOutfit: preferredMaleOutfit,
                         targetAgeLabel: aiTargetAge,
                         gender: settings.koreanGender
                     });
@@ -1363,7 +1334,10 @@ export const ShortsLabPanel: React.FC = () => {
                         }
 
                         // 직접 파싱 시도 (간단한 경우만 성공할 것)
-                        const parsed = JSON.parse(jsonClean);
+                        const parsed = parseJsonFromText<any>(jsonClean, ["script", "scriptBody", "scriptLine", "shortPrompt", "shortPromptKo", "longPrompt", "longPromptKo", "hook", "punchline", "twist", "title"]);
+                        if (!parsed) {
+                            throw new Error('JSON parse failed');
+                        }
                         const scriptObj = parsed.scripts?.[0] || parsed;
                         const scenesSource = scriptObj.scenes || parsed.scenes;
 

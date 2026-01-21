@@ -26,6 +26,7 @@ import {
     switchImageService,
     submitPromptOnly,
     submitPromptAndCaptureImage,
+    generateVideoFX,
     closeAllBrowsers
 } from './puppeteerHandler.js';
 import { searchYouTube } from './youtubeSearchHandler.js';
@@ -2683,6 +2684,95 @@ app.delete('/api/cineboard/favorites/:folderName', (req, res) => {
 // 다운로드 폴더에서 영상 가져오기 API
 // ============================================
 
+// ============================================
+// 비디오 프롬프트/생성 API
+// ============================================
+
+app.post('/api/video/refine-prompt', async (req, res) => {
+    const { script, scriptLine, action, emotion, visualPrompt, targetAge, characterSlot } = req.body || {};
+    if (!scriptLine && !visualPrompt) {
+        return res.status(400).json({ error: 'scriptLine 또는 visualPrompt가 필요합니다.' });
+    }
+
+    const extractDialogue = (line = '') => {
+        const singleStart = line.indexOf("'");
+        if (singleStart !== -1) {
+            const singleEnd = line.indexOf("'", singleStart + 1);
+            if (singleEnd > singleStart) return line.slice(singleStart + 1, singleEnd).trim();
+        }
+        const doubleStart = line.indexOf('"');
+        if (doubleStart !== -1) {
+            const doubleEnd = line.indexOf('"', doubleStart + 1);
+            if (doubleEnd > doubleStart) return line.slice(doubleStart + 1, doubleEnd).trim();
+        }
+        return '';
+    };
+
+    const baseDialogue = extractDialogue(String(scriptLine || ''));
+
+    const prompt = [
+        '당신은 영상 프롬프트 전문가입니다. 아래 정보를 참고해 비디오 프롬프트를 정교화하세요.',
+        '',
+        '- 전체 대본: ' + String(script || '').slice(0, 2000),
+        '- 현재 문장: ' + String(scriptLine || ''),
+        '- 행동: ' + String(action || ''),
+        '- 감정: ' + String(emotion || ''),
+        '- 시각 프롬프트: ' + String(visualPrompt || ''),
+        '- 타겟 연령: ' + String(targetAge || ''),
+        '- 캐릭터 슬롯: ' + String(characterSlot || ''),
+        '',
+        '출력은 반드시 JSON만:',
+        '{',
+        '  "refinedPrompt": "(짧고 선명한 영상 프롬프트)",',
+        '  "dialogue": "(대사 있으면 그대로, 없으면 빈 문자열)"',
+        '}'
+    ].join('\n');
+
+    try {
+        await ensureBrowserReady('GEMINI');
+        const raw = await generateContent('GEMINI', prompt);
+        const extracted = extractValidJson(raw) || raw;
+        const parsed = tryParse(extracted);
+
+        if (parsed?.refinedPrompt) {
+            return res.json({
+                refinedPrompt: parsed.refinedPrompt,
+                dialogue: parsed.dialogue || baseDialogue
+            });
+        }
+
+        return res.json({
+            refinedPrompt: String(visualPrompt || scriptLine || '').trim(),
+            dialogue: baseDialogue
+        });
+    } catch (error) {
+        console.error('[Video Refine] ❌ Failed:', error);
+        return res.status(500).json({ error: error.message || '비디오 프롬프트 정교화 실패' });
+    }
+});
+
+app.post('/api/video/generate-smart', async (req, res) => {
+    const { refinedPrompt, storyId, storyTitle, sceneNumber, imageUrl } = req.body || {};
+    if (!refinedPrompt || typeof refinedPrompt !== 'string') {
+        return res.status(400).json({ error: 'refinedPrompt가 필요합니다.' });
+    }
+
+    try {
+        const result = await generateVideoFX(refinedPrompt, imageUrl);
+        return res.json({
+            success: true,
+            status: result?.status || 'submitted',
+            message: result?.message || '영상 생성 요청 완료',
+            storyId: storyId || null,
+            sceneNumber: sceneNumber || null,
+            url: null
+        });
+    } catch (error) {
+        console.error('[Video Generate] ❌ Failed:', error);
+        return res.status(500).json({ error: error.message || '영상 생성 실패' });
+    }
+});
+
 const os = await import('os');
 const DOWNLOAD_WATCH_DIR = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
 
@@ -2841,7 +2931,8 @@ app.post('/api/video/import-specific', async (req, res) => {
     if (!fileName) return res.status(400).json({ error: '파일명이 필요합니다.' });
 
     try {
-        const sourcePath = path.join(DOWNLOAD_WATCH_DIR, fileName);
+        const safeName = path.basename(fileName);
+        const sourcePath = path.join(DOWNLOAD_WATCH_DIR, safeName);
         if (!fs.existsSync(sourcePath)) {
             return res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
         }
@@ -2871,7 +2962,7 @@ app.post('/api/video/import-specific', async (req, res) => {
 
         res.json({
             success: true,
-            originalFile: fileName,
+            originalFile: safeName,
             filename: newFilename,
             url: `/generated_scripts/${relativePath}`,
             sizeFormatted: fileSizeKB > 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`

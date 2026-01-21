@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n✨ 이미지 프롬프트 캐릭터 identity 필드 추가 및 규칙 강화\n\n- characters 템플릿에 identity 필드 추가 \\(A stunning Korean woman in her 40s\\)\n- outfitPrefix 필드 추가 \\(wearing 키워드 강제\\)\n- 절대 규칙에 identity 사용 강제 및 금지 형식 명시\n- longPrompt 템플릿 구체화 \\(characters[].identity 참조 명시\\)\n- 체크리스트에 이미지 프롬프트 검증 항목 6개 추가\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n🔧 VideoFX 이미지 업로드 디버깅 로그 추가 및 URL 정규화\n\n- imageUrl이 http://localhost:3002 형태일 때 경로 정규화\n- 파일 존재 여부 체크 로직 추가\n- 디버깅 로그 추가 \\(경로, 파일 존재 여부\\)\n- Crop and Save 버튼 대기 시간 60초로 증가\n- 브라우저 종료 로직 개선 \\(타임아웃 + 강제종료\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n✨ 영상 생성 시 dialogue 및 VOICE 탭 필드 전송 추가\n\n- VIDEO 탭: dialogue 필드 서버로 전송\n- VOICE 탭: voiceType, narrationText, narrationEmotion, narrationSpeed 전송\n- VOICE 탭: lipSyncSpeakerName, lipSyncLine, lipSyncEmotion, lipSyncTiming 전송\n- 서버: dialogue를 프롬프트에 [Character speaks: \"...\"] 형태로 추가\n- 서버: Voice 정보 로깅 \\(향후 TTS 연동 준비\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(du:*)",
+      "Bash(xargs:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(python -c \"\ncontent = ''''''@echo off\nchcp 949 > nul\ntitle Git Pull - 작업 시작\n\necho.\necho ========================================\necho   작업 시작 - 최신 코드 가져오기\necho ========================================\necho.\n\ncd /d \"\"%~dp0\"\"\n\necho 최신 코드 가져오는 중...\ngit pull\n\nif %errorlevel% neq 0 \\(\n    echo.\n    echo 오류 발생! 수동으로 확인해주세요.\n    pause\n    exit /b 1\n\\)\n\necho.\necho 완료! 최신 코드로 업데이트되었습니다.\necho.\n\npause\n''''''\nwith open\\(''start.bat'', ''w'', encoding=''cp949''\\) as f:\n    f.write\\(content\\)\nprint\\(''start.bat created''\\)\n\")",
+      "Bash(node:*)"
     ]
   }
 }

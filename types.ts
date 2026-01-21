@@ -25,7 +25,7 @@ export enum Dialect {
 
 // EngineVersion: 기본값 외에 사용자 정의 엔진도 허용
 export type EngineVersion = 'V3' | 'V3_COSTAR' | 'NONE' | string;
-export type TargetService = 'GEMINI' | 'CHATGPT' | 'CLAUDE' | 'GENSPARK' | 'DEEPSEEK' | 'HYBRID';
+export type TargetService = 'GEMINI' | 'CHATGPT' | 'CLAUDE' | 'GENSPARK' | 'HYBRID';
 
 export interface PromptPresetSummary {
   id: string;

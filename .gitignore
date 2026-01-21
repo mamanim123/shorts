@@ -27,7 +27,11 @@ dist-ssr
 generated_scripts/
 backups/
 이미지/
+샘플이미지/
 *.zip
+*.mp4
+*.avi
+*.mov
 
 # Puppeteer User Data (Browser Profile)
 user_data*/

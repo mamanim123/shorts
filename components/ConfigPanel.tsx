@@ -97,7 +97,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ input, onChange, onOpe
           </div>
         </div>
         <div className="flex gap-1 overflow-x-auto pb-1">
-          {(['GEMINI', 'CHATGPT', 'CLAUDE', 'GENSPARK', 'DEEPSEEK'] as TargetService[]).map((service) => (
+          {(['GEMINI', 'CHATGPT', 'CLAUDE', 'GENSPARK'] as TargetService[]).map((service) => (
             <button
               key={service}
               onClick={() => onChange({ ...input, targetService: service })}

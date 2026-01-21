@@ -583,25 +583,74 @@ export const generateRandomSeed = (): {
 // 의상 선택 함수 (v3.1 - 장르 기반)
 // ============================================
 
+/**
+ * 계절별 의상 자동 보정 (겨울/눈일 경우 상의를 타이트한 긴팔로 변동)
+ */
+export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
+  const isWinter = topic.includes('눈') || topic.includes('겨울') || topic.includes('snow') || topic.includes('winter') || topic.includes('Snow') || topic.includes('Winter');
+
+  if (!isWinter) return outfit;
+
+  let adjusted = outfit;
+
+  // 이미 Long-sleeve가 포함되어 있다면 그대로 반환
+  if (adjusted.toLowerCase().includes('long-sleeve')) return adjusted;
+
+  // 상의 노출 키워드를 타이트한 긴팔로 교체
+  const replacements: { [key: string]: string } = {
+    'Sleeveless': 'Tight-fitting Long-sleeve',
+    'Short-sleeve': 'Tight-fitting Long-sleeve',
+    'Halter-neck': 'High-neck Tight Long-sleeve',
+    'Tube Top': 'Tight-fitting Long-sleeve Layered',
+    'Off-shoulder': 'Tight-fitting Long-sleeve',
+    'Cap-sleeve': 'Tight-fitting Long-sleeve'
+  };
+
+  for (const [key, val] of Object.entries(replacements)) {
+    const regex = new RegExp(key, 'gi');
+    if (regex.test(adjusted)) {
+      adjusted = adjusted.replace(regex, val);
+      return adjusted;
+    }
+  }
+
+  // 명시적인 노출 키워드가 없더라도 상의 아이템 앞에 긴팔 형상을 강제 삽입
+  const topItems = ['Knit', 'Blouse', 'Polo', 'Shirt', 'Tee', 'Top', 'One-piece', 'Dress'];
+  for (const item of topItems) {
+    if (adjusted.includes(item)) {
+      adjusted = adjusted.replace(item, `Tight-fitting Long-sleeve ${item}`);
+      break;
+    }
+  }
+
+  return adjusted;
+};
+
 export const pickFemaleOutfit = (
   genre: string,
-  _topic: string = '',
+  topic: string = '',
   excludeOutfits: string[] = []
 ): string => {
   const isSexyGenre = genre === 'affair-suspicion';
+  const isGolfTopic = topic.includes('골프') || topic.includes('golf') || topic.includes('Golf');
 
   const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
     if (item.categories.includes('MALE')) return false;
     if (excludeOutfits.includes(item.name)) return false;
+
+    // 섹시 장르가 우선
     if (isSexyGenre) return item.categories.includes('SEXY');
+
+    // 그 외에는 섹시 제외 모든 종류의 여성 의상 사용 (골프복 포함)
     return !item.categories.includes('SEXY');
   });
 
-  if (candidates.length === 0) {
-    return 'White Halter-neck Knit + Red Micro Mini Skirt';
-  }
+  const selectedName = candidates.length > 0
+    ? candidates[Math.floor(Math.random() * candidates.length)].name
+    : 'White Halter-neck Knit + Red Micro Mini Skirt';
 
-  return candidates[Math.floor(Math.random() * candidates.length)].name;
+  // 계절 보정 적용
+  return adjustOutfitForSeason(selectedName, topic);
 };
 
 export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
@@ -619,11 +668,12 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
     return !item.categories.includes('GOLF') || Math.random() > 0.7;
   });
 
-  if (candidates.length === 0) {
-    return isGolfTopic ? 'Navy Slim-fit Polo + White Tailored Golf Pants' : 'Black Knit Polo + Dark Indigo Denim';
-  }
+  const selectedName = candidates.length > 0
+    ? candidates[Math.floor(Math.random() * candidates.length)].name
+    : (isGolfTopic ? 'Navy Slim-fit Polo + White Tailored Golf Pants' : 'Black Knit Polo + Dark Indigo Denim');
 
-  return candidates[Math.floor(Math.random() * candidates.length)].name;
+  // 계절 보정 적용
+  return adjustOutfitForSeason(selectedName, topic);
 };
 
 // ============================================
@@ -739,7 +789,8 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 6. **텍스트 금지**: 이미지 내에 어떠한 글자, 로고, 워터마크도 포함되지 않도록 "no text, no letters, no typography"를 강조할 것.
 7. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
 8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
-9. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
+9. **의상 명칭 보존 (중요)**: \`shortPrompt\`와 \`longPrompt\` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.
+10. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
 
 ## 📸 샷 타입 규칙
 | 상황 | 샷 타입 |

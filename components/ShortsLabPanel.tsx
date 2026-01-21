@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES, validateAndFixPrompt } from '../services/labPromptBuilder';
 import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
@@ -192,9 +192,7 @@ interface PromptSettings {
 /**
  * 한국인 정체성을 강제로 적용하는 함수
  * - 다른 국적 언급을 한국인으로 교체
- * - "A stunning Korean woman in her Xs" 프리픽스 강제 적용 (중복 방지)
- * - AI가 잘못 생성한 "Woman A (지영)" 등의 패턴 제거 (소유격은 대명사로 치환)
- * - 의상 앞에 "wearing" 키워드 자동 추가
+ * - "A stunning Korean woman in her Xs" 프리픽스 강제 적용
  */
 const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
     if (!text) return text;
@@ -209,47 +207,6 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
         updated = updated.replace(regex, value);
     });
 
-    // ⭐ AI가 잘못 생성한 캐릭터 슬롯 패턴 처리
-    // 1. 소유격 패턴은 대명사로 치환 (텍스트 보존) - 반드시 먼저 실행!
-    const possessiveReplacements: Array<[RegExp, string]> = [
-        // 다양한 형태의 소유격 패턴 처리 (공백, 따옴표 변형 포함)
-        [/Woman\s*A\s*'s/gi, 'her'],
-        [/Woman\s*B\s*'s/gi, 'her'],
-        [/Man\s*A\s*'s/gi, 'his'],
-        [/WomanA\s*'s/gi, 'her'],
-        [/WomanB\s*'s/gi, 'her'],
-        [/ManA\s*'s/gi, 'his'],
-        // 괄호 포함 형태
-        [/Woman\s*A\s*\([^)]+\)\s*'s/gi, 'her'],
-        [/Woman\s*B\s*\([^)]+\)\s*'s/gi, 'her'],
-        [/Man\s*A\s*\([^)]+\)\s*'s/gi, 'his'],
-    ];
-    possessiveReplacements.forEach(([regex, value]) => {
-        updated = updated.replace(regex, value);
-    });
-
-    // 2. 일반 슬롯 패턴 제거 (중간에 있는 것도 제거)
-    const wrongPatterns: RegExp[] = [
-        /,?\s*Woman A \([^)]+\),?\s*/gi,      // "Woman A (지영)" 제거
-        /,?\s*Woman B \([^)]+\),?\s*/gi,      // "Woman B (혜경)" 제거
-        /,?\s*Man A \([^)]+\),?\s*/gi,        // "Man A (준호)" 제거
-        /,?\s*Woman\s+A,?\s*/gi,               // "Woman A" 제거 (공백 포함)
-        /,?\s*Woman\s+B,?\s*/gi,               // "Woman B" 제거 (공백 포함)
-        /,?\s*Man\s+A,?\s*/gi,                 // "Man A" 제거 (공백 포함)
-        /,?\s*WomanA,?\s*/gi,                  // "WomanA" 제거
-        /,?\s*WomanB,?\s*/gi,                  // "WomanB" 제거
-        /,?\s*ManA,?\s*/gi,                    // "ManA" 제거
-    ];
-    wrongPatterns.forEach(pattern => {
-        updated = updated.replace(pattern, ', ');
-    });
-    // 연속된 쉼표 정리 및 남은 고립된 's 제거
-    updated = updated
-        .replace(/,\s*'s\s*/g, ', ')           // 고립된 's 제거
-        .replace(/,\s*,/g, ',')
-        .replace(/,\s*$/, '')
-        .replace(/^\s*,/, '');
-
     // 나이 포맷팅
     const formatEnglishAgeLabel = (label?: string): string => {
         if (!label) return '';
@@ -261,17 +218,14 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
     const ageString = englishAge ? `in ${gender === 'female' ? 'her' : 'his'} ${englishAge}` : '';
     const identityDescriptor = gender === 'female'
         ? `A stunning Korean woman ${ageString}`.trim()
-        : `A handsome Korean man ${ageString}`.trim();
+        : `Korean man ${ageString}`.trim();
 
-    // ⭐ AI 원본에 이미 정체성이 있는지 확인 (중복 방지)
-    const hasIdentityAlready = /A stunning Korean woman in her \d+s/i.test(updated) ||
-                               /A handsome Korean man in his \d+s/i.test(updated);
-
-    // 씬 번호 프리픽스 (정체성 중복 시에도 씬 번호는 추가)
+    // 씬 번호와 정체성을 맨 앞으로 강제 배치
     const scenePrefix = sceneNumber ? `Scene ${sceneNumber}, ` : '';
+    const mandatoryPrefix = `${scenePrefix}${identityDescriptor}, `;
 
-    // 기존 텍스트에서 중복될 수 있는 패턴들 제거 (맨 앞)
-    let cleanText = updated
+    // 기존 텍스트에서 중복될 수 있는 패턴들 제거
+    const cleanText = updated
         .replace(/^Scene \d+[\.,]\s*/i, '')
         .replace(/^A stunning Korean woman in her [\d\w\s]+[\.,]\s*/i, '')
         .replace(/^A handsome Korean man in his [\d\w\s]+[\.,]\s*/i, '')
@@ -280,32 +234,12 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
         .replace(/^in (her|his) [\d\w\s]+[\.,]\s*/i, '')
         .trim();
 
-    // ⭐ 의상 앞에 "wearing" 키워드 자동 추가
-    // 의상 패턴: 대문자로 시작하는 의상 설명 (예: "White Mock-neck Sleeveless + Burgundy Skirt")
-    const outfitPatterns = [
-        // "White Mock-neck..." 같은 의상 패턴 앞에 wearing이 없으면 추가
-        /,\s*((?:White|Black|Navy|Pink|Red|Blue|Burgundy|Beige|Gray|Grey|Cream|Wine|Deep|Light|Dark|All)\s+[A-Z][^,]+(?:Skirt|Dress|Top|Blouse|Polo|Knit|Jeans|Pants|Slacks|Shorts|Suit)[^,]*)/gi,
-    ];
-    outfitPatterns.forEach(pattern => {
-        cleanText = cleanText.replace(pattern, (match, outfit) => {
-            // 이미 wearing이 앞에 있으면 그대로
-            if (match.toLowerCase().includes('wearing')) return match;
-            return `, wearing ${outfit.trim()}`;
-        });
-    });
-
-    // ⭐ 정체성 중복 방지: AI 원본에 이미 정체성이 있으면 씬 번호만 추가
-    if (hasIdentityAlready) {
-        return `${scenePrefix}${cleanText}`;
-    }
-
     // 카메라 앵글로 시작하면 정체성을 맨 앞에 배치
     const cameraAnglePattern = /^(Candid|Two-shot|Three-shot|Dutch|Extreme|Close-up|Wide|Medium|Over-the-shoulder|Zoom|Pan|Tracking|Bird|Aerial|Low|High|Point of view|POV)/i;
     if (cameraAnglePattern.test(cleanText)) {
         return `${scenePrefix}${identityDescriptor}, ${cleanText}`;
     }
 
-    const mandatoryPrefix = `${scenePrefix}${identityDescriptor}, `;
     return `${mandatoryPrefix}${cleanText}`;
 };
 
@@ -375,13 +309,17 @@ const postProcessAiScenes = (
         maleOutfit?: string;
         targetAgeLabel?: string;
         gender?: 'female' | 'male';
+        characters?: any[]; // [NEW] 캐릭터 정보 추가
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
 
     return scenes.map((scene: any, idx: number) => {
         const sceneNumber = scene.sceneNumber || idx + 1;
-        const processedPrompt = enhanceScenePrompt(
+        const shotType = (scene.shotType || '원샷') as '원샷' | '투샷' | '쓰리샷';
+
+        // 1. 기존 방식의 강화 (identity, outfit 등 삽입)
+        let processedPrompt = enhanceScenePrompt(
             scene.longPrompt || scene.shortPrompt || '',
             {
                 sceneNumber,
@@ -392,9 +330,28 @@ const postProcessAiScenes = (
             }
         );
 
+        // 2. [V3.2] 신규 검증 및 자동 수정 레이어 적용
+        if (options.characters) {
+            const validation = validateAndFixPrompt(
+                processedPrompt,
+                shotType,
+                options.characters.map(c => ({
+                    identity: c.identity || '',
+                    hair: c.hair || '',
+                    body: c.body || '',
+                    outfit: c.outfit || ''
+                }))
+            );
+            processedPrompt = validation.fixedPrompt;
+        }
+
+        // 3. 네거티브 프롬프트 분리 처리
+        const negativePrompt = scene.negativePrompt || '';
+
         return {
             ...scene,
             longPrompt: processedPrompt,
+            negativePrompt: negativePrompt, // [NEW] 필드 추가
             shortPrompt: scene.shortPrompt ? enhanceScenePrompt(
                 scene.shortPrompt,
                 { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender }
@@ -465,9 +422,6 @@ export const ShortsLabPanel: React.FC = () => {
     const [pickingSceneNumber, setPickingSceneNumber] = useState<number | null>(null);
     const [isImportingSpecific, setIsImportingSpecific] = useState(false);
 
-    // [NEW] 비디오 생성 요청 타임스탬프 추적 (자동 매칭용)
-    const [videoRequestTimestamps, setVideoRequestTimestamps] = useState<Record<number, number>>({});
-
     // Gemini 서비스 초기화
     React.useEffect(() => {
         initGeminiService();
@@ -483,20 +437,20 @@ export const ShortsLabPanel: React.FC = () => {
             if (savedTopic) setAiTopic(savedTopic);
 
             if (savedScenes) {
-                        const parsed = JSON.parse(savedScenes);
-                        if (Array.isArray(parsed)) {
-                            const normalized = (parsed as Scene[]).map(scene => {
-                                const voiceType = scene.voiceType || (scene.lipSyncLine ? 'both' : scene.narrationText ? 'narration' : 'none');
-                                return {
-                                    ...scene,
-                                    voiceType,
-                                    narrationText: scene.narrationText || scene.text,
-                                    narrationSpeed: scene.narrationSpeed || 'normal'
-                                };
-                            });
-                            setScenes(normalized);
-                            setActiveTab('preview');
-                        }
+                const parsed = JSON.parse(savedScenes);
+                if (Array.isArray(parsed)) {
+                    const normalized = (parsed as Scene[]).map(scene => {
+                        const voiceType = scene.voiceType || (scene.lipSyncLine ? 'both' : scene.narrationText ? 'narration' : 'none');
+                        return {
+                            ...scene,
+                            voiceType,
+                            narrationText: scene.narrationText || scene.text,
+                            narrationSpeed: scene.narrationSpeed || 'normal'
+                        };
+                    });
+                    setScenes(normalized);
+                    setActiveTab('preview');
+                }
 
             }
         } catch (error) {
@@ -956,10 +910,6 @@ export const ShortsLabPanel: React.FC = () => {
         const scene = scenes[sceneIndex];
         if (scene.isVideoGenerating || !scene.videoPrompt) return;
 
-        // [NEW] 영상 생성 요청 시점 기록 (자동 매칭용)
-        const requestTimestamp = Date.now();
-        setVideoRequestTimestamps(prev => ({ ...prev, [sceneNumber]: requestTimestamp }));
-
         setScenes(prev => {
             const updated = [...prev];
             updated[sceneIndex] = { ...scene, isVideoGenerating: true, videoError: undefined };
@@ -975,18 +925,7 @@ export const ShortsLabPanel: React.FC = () => {
                     storyId: getEffectiveStoryId(),
                     storyTitle: aiTopic?.trim() || 'ShortsLab',
                     sceneNumber: scene.number,
-                    imageUrl: scene.imageUrl,
-                    // VIDEO 탭 필드
-                    dialogue: scene.dialogue || scene.text || '',
-                    // VOICE 탭 필드
-                    voiceType: scene.voiceType || 'narration',
-                    narrationText: scene.narrationText || '',
-                    narrationEmotion: scene.narrationEmotion || '',
-                    narrationSpeed: scene.narrationSpeed || 'normal',
-                    lipSyncSpeakerName: scene.lipSyncSpeakerName || '',
-                    lipSyncLine: scene.lipSyncLine || '',
-                    lipSyncEmotion: scene.lipSyncEmotion || '',
-                    lipSyncTiming: scene.lipSyncTiming || 'mid'
+                    imageUrl: scene.imageUrl
                 })
             });
 
@@ -1115,8 +1054,7 @@ export const ShortsLabPanel: React.FC = () => {
                 body: JSON.stringify({
                     storyId: storyId,
                     storyTitle: aiTopic?.trim() || storyId.split('_').pop() || 'ShortsLab',
-                    sceneNumber: scene.number,
-                    requestedAt: videoRequestTimestamps[sceneNumber] || null  // [NEW] 타임스탬프 기반 매칭
+                    sceneNumber: scene.number
                 })
             });
 
@@ -1285,7 +1223,8 @@ export const ShortsLabPanel: React.FC = () => {
                         femaleOutfit: preferredFemaleOutfit,
                         maleOutfit: preferredMaleOutfit,
                         targetAgeLabel: aiTargetAge,
-                        gender: settings.koreanGender
+                        gender: settings.koreanGender,
+                        characters: scenesSource[0]?.characters || scenesSource.characters || scriptData.characters || parsed.characters // 캐릭터 정보 전달
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
@@ -2274,7 +2213,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                         preload="metadata"
                                                         onMouseEnter={(e) => {
                                                             const el = e.currentTarget;
-                                                            el.play().catch(() => {});
+                                                            el.play().catch(() => { });
                                                         }}
                                                         onMouseLeave={(e) => {
                                                             const el = e.currentTarget;

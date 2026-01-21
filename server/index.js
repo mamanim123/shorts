@@ -503,26 +503,14 @@ app.post('/api/browser/close', async (req, res) => {
 });
 
 // 프로세스 종료 시 클린업 (예: Ctrl+C)
-let isCleaningUp = false;
 const cleanupAndExit = async (signal) => {
-    if (isCleaningUp) return;
-    isCleaningUp = true;
     console.log(`\n[Server] Received ${signal}. Cleaning up...`);
-    try {
-        await closeAllBrowsers();
-    } catch (e) {
-        console.error("[Server] Error during cleanup:", e);
-    }
+    await closeAllBrowsers();
     process.exit(0);
 };
 
-['SIGINT', 'SIGTERM', 'SIGHUP', 'uncaughtException', 'unhandledRejection'].forEach(sig => {
-    process.on(sig, (err) => {
-        if (err && sig.includes('Exception')) console.error('[Server] Uncaught Exception:', err);
-        if (err && sig.includes('Rejection')) console.error('[Server] Unhandled Rejection:', err);
-        cleanupAndExit(sig);
-    });
-});
+process.on('SIGINT', () => cleanupAndExit('SIGINT'));
+process.on('SIGTERM', () => cleanupAndExit('SIGTERM'));
 
 // --- System API ---
 app.get('/api/auth/gemini-key', (req, res) => {
@@ -1493,8 +1481,7 @@ Now process the input and output ONLY valid JSON (no other text, no markdown):
     }
 });
 
-// [REMOVED DUPLICATE ENDPOINT]
-app.post('/api/video/generate-smart-OLD-BROKEN', async (req, res) => {
+app.post('/api/video/generate-smart', async (req, res) => {
     const { refinedPrompt, storyId, storyTitle, sceneNumber, imageUrl } = req.body || {};
 
     if (!refinedPrompt) {
@@ -2765,38 +2752,13 @@ app.post('/api/video/refine-prompt', async (req, res) => {
 });
 
 app.post('/api/video/generate-smart', async (req, res) => {
-    const {
-        refinedPrompt, storyId, storyTitle, sceneNumber, imageUrl,
-        // VIDEO 탭 필드
-        dialogue,
-        // VOICE 탭 필드
-        voiceType, narrationText, narrationEmotion, narrationSpeed,
-        lipSyncSpeakerName, lipSyncLine, lipSyncEmotion, lipSyncTiming
-    } = req.body || {};
-
+    const { refinedPrompt, storyId, storyTitle, sceneNumber, imageUrl } = req.body || {};
     if (!refinedPrompt || typeof refinedPrompt !== 'string') {
         return res.status(400).json({ error: 'refinedPrompt가 필요합니다.' });
     }
 
     try {
-        // 프롬프트에 dialogue와 voice 정보 추가
-        let finalPrompt = refinedPrompt;
-
-        // Dialogue 추가
-        if (dialogue && dialogue.trim()) {
-            finalPrompt += `\n\n[Character speaks: "${dialogue.trim()}"]`;
-        }
-
-        // Voice 정보 로깅 (향후 TTS 연동용)
-        if (voiceType && voiceType !== 'none') {
-            console.log(`[Video Generate] 🎤 Voice info - Type: ${voiceType}`);
-            if (narrationText) console.log(`  - Narration: "${narrationText}" (${narrationEmotion || 'neutral'}, ${narrationSpeed || 'normal'})`);
-            if (lipSyncLine) console.log(`  - LipSync: "${lipSyncLine}" by ${lipSyncSpeakerName || 'unknown'} (${lipSyncEmotion || 'neutral'}, ${lipSyncTiming || 'mid'})`);
-        }
-
-        console.log(`[Video Generate] 📝 Final prompt length: ${finalPrompt.length} chars`);
-
-        const result = await generateVideoFX(finalPrompt, imageUrl);
+        const result = await generateVideoFX(refinedPrompt, imageUrl);
         return res.json({
             success: true,
             status: result?.status || 'submitted',
@@ -2857,8 +2819,9 @@ app.get('/api/video/temp-preview/:fileName', (req, res) => {
 
 
 app.post('/api/video/import-from-downloads', async (req, res) => {
-    const { storyId, storyTitle, sceneNumber, requestedAt } = req.body;  // [NEW] requestedAt 추가
-    console.log(`[Video Import] 📋 받은 값: storyId="${storyId}", storyTitle="${storyTitle}", requestedAt=${requestedAt}`);
+    const { storyId, storyTitle, sceneNumber } = req.body;
+    // ★ 이 한 줄만 추가 ★
+    console.log(`[Video Import] 📋 받은 값: storyId="${storyId}", storyTitle="${storyTitle}"`);
 
     try {
         console.log(`[Video Import] 📥 Scanning downloads folder: ${DOWNLOAD_WATCH_DIR}`);
@@ -2892,26 +2855,12 @@ app.post('/api/video/import-from-downloads', async (req, res) => {
             return res.status(404).json({ error: '다운로드 폴더에 mp4 파일이 없습니다.' });
         }
 
-        // [NEW] 타임스탬프 기반 매칭: requestedAt 이후 생성된 파일 중 가장 가까운 것 선택
-        let targetFile = mp4Files[0];
-        let matchedByTimestamp = false;
-
-        if (requestedAt && typeof requestedAt === 'number') {
-            const candidates = mp4Files.filter(f => f.mtime >= requestedAt);
-            if (candidates.length > 0) {
-                // 요청 시점 이후 파일 중 가장 빠른 것 선택 (가장 가까운 매칭)
-                targetFile = candidates.sort((a, b) => a.mtime - b.mtime)[0];
-                matchedByTimestamp = true;
-                console.log(`[Video Import] 🎯 타임스탬프 매칭 성공: ${targetFile.name} (요청: ${new Date(requestedAt).toISOString()}, 파일: ${new Date(targetFile.mtime).toISOString()})`);
-            } else {
-                console.log(`[Video Import] ⚠️ 요청 시점(${new Date(requestedAt).toISOString()}) 이후 파일 없음, 최신 파일로 폴백`);
-            }
-        }
-
+        // 가장 최근 파일 (10분 이내면 자동 가져오기)
+        const latestFile = mp4Files[0];
         const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
 
-        if (targetFile.mtime < tenMinutesAgo) {
-            const minutesAgo = Math.round((Date.now() - targetFile.mtime) / 60000);
+        if (latestFile.mtime < tenMinutesAgo) {
+            const minutesAgo = Math.round((Date.now() - latestFile.mtime) / 60000);
             return res.status(200).json({
                 success: false,
                 requiresSelection: true,
@@ -2928,7 +2877,7 @@ app.post('/api/video/import-from-downloads', async (req, res) => {
         }
 
         // 파일 크기 체크 (최소 100KB)
-        if (targetFile.size < 100 * 1024) {
+        if (latestFile.size < 100 * 1024) {
             return res.status(400).json({ error: '파일이 너무 작습니다. 다운로드가 완료되지 않았을 수 있습니다.' });
         }
 
@@ -2941,35 +2890,33 @@ app.post('/api/video/import-from-downloads', async (req, res) => {
 
         // 파일 이동 (드라이브 간 이동 지원을 위해 try-catch 사용)
         try {
-            fs.renameSync(targetFile.path, targetPath);
+            fs.renameSync(latestFile.path, targetPath);
         } catch (err) {
             if (err.code === 'EXDEV') {
                 // 서로 다른 드라이브 간 이동 시 복사 후 삭제
-                fs.copyFileSync(targetFile.path, targetPath);
-                fs.unlinkSync(targetFile.path);
+                fs.copyFileSync(latestFile.path, targetPath);
+                fs.unlinkSync(latestFile.path);
                 console.log(`[Video Import] 🔄 Cross-device move handled (C: -> ${targetPath.split(':')[0]}:)`);
             } else {
                 throw err;
             }
         }
 
-        const fileSizeKB = Math.round(targetFile.size / 1024);
-        const fileSizeMB = (targetFile.size / (1024 * 1024)).toFixed(2);
+        const fileSizeKB = Math.round(latestFile.size / 1024);
+        const fileSizeMB = (latestFile.size / (1024 * 1024)).toFixed(2);
 
-
-        console.log(`[Video Import] ✅ Imported: ${targetFile.name} (${fileSizeMB}MB) → ${newFilename}`);
+        console.log(`[Video Import] ✅ Imported: ${latestFile.name} (${fileSizeMB}MB) → ${newFilename}`);
 
         const relativePath = `대본폴더/${mediaDirs.safeId}/video/${newFilename}`;
 
         res.json({
             success: true,
-            originalFile: targetFile.name,
+            originalFile: latestFile.name,
             filename: newFilename,
             url: `/generated_scripts/${relativePath}`,
             path: targetPath,
-            size: targetFile.size,
-            sizeFormatted: fileSizeKB > 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`,
-            matchedByTimestamp: matchedByTimestamp  // [NEW] 타임스탬프 매칭 여부
+            size: latestFile.size,
+            sizeFormatted: fileSizeKB > 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`
         });
 
     } catch (error) {

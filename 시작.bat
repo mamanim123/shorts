@@ -9,7 +9,7 @@ echo.
 cd /d "%~dp0"
 
 echo 최신 코드 가져오는 중...
-git pull
+git pull origin master
 
 echo.
 echo 완료! 작업을 시작하세요.

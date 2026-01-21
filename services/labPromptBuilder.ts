@@ -64,14 +64,38 @@ export const MAMA_CHARACTER_PRESETS = {
 
 export const PROMPT_CONSTANTS = {
   START: 'unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style',
-  
+
   FEMALE_BODY: 'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves, well-managed sophisticated look despite age, tight-fitting clothes accentuating curves naturally',
-  
+
   MALE_BODY: 'fit athletic build with broad shoulders, dandy and refined presence, tailored slim-fit clothes',
-  
+
   END: 'high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16',
-  
+
   NEGATIVE: 'NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing'
+};
+
+// ============================================
+// 샷 타입별 프롬프트 템플릿 (v3.2 - 캐릭터 구분자 시스템)
+// ============================================
+
+export const SHOT_TEMPLATES = {
+  // 원샷: 1명 캐릭터만 등장
+  SINGLE: {
+    description: '1명 캐릭터 단독 등장',
+    format: '[Character] identity, hair, body, wearing outfit, [Action], [Background]',
+  },
+
+  // 투샷: 2명 캐릭터 등장 - 반드시 [Person 1], [Person 2]로 구분
+  TWO_SHOT: {
+    description: '2명 캐릭터 상호작용',
+    format: '[Person 1: identity, hair, body, wearing outfit] [Person 2: identity, hair, body, wearing outfit] [Interaction], [Background]',
+  },
+
+  // 쓰리샷: 3명 캐릭터 등장 - 반드시 [Person 1], [Person 2], [Person 3]로 구분
+  THREE_SHOT: {
+    description: '3명 캐릭터 함께 등장',
+    format: '[Person 1: identity, hair, body, wearing outfit] [Person 2: identity, hair, body, wearing outfit] [Person 3: identity, hair, body, wearing outfit] [Group Action], [Background]',
+  }
 };
 
 // ============================================
@@ -96,9 +120,9 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
   'comedy-humor': {
     name: '코미디/유머',
     description: '본인이 바보가 되는 민망한 상황. 시청자가 "에이~ 뭐야" 하면서 웃는 장르',
-    
+
     emotionCurve: '😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음',
-    
+
     structure: `
 [HOOK] 😊 평화로운 시작 + 복선
 → "오늘 (장소)에서 완전 창피당했어"
@@ -138,7 +162,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '아이고 창피해라',
       '내 참 기가 막혀서',
     ],
-    
+
     bodyReactions: [
       '얼굴이 화끈거렸어',
       '땀이 삐질삐질 났어',
@@ -166,7 +190,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '얼굴이 빨개졌다 (직접 서술 금지)',
       '심장이 터질 것 같았다 (직접 서술 금지)',
     ],
-    
+
     goodTwistExamples: [
       '알고보니 블라우스를 뒤집어 입은 채로 하루종일 다님',
       '알고보니 한쪽 눈썹이 반쯤 지워진 채로 미팅함',
@@ -175,7 +199,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '알고보니 셀카모드 켜진 줄 모르고 혼자 표정 연습하고 있었는데 뒤에 사람들이 다 보고 있었음',
       '알고보니 에어팟인 줄 알고 혼잣말 했는데 그냥 귀마개였음',
     ],
-    
+
     badTwistExamples: [
       '알고보니 서프라이즈 파티 (뻔함)',
       '알고보니 몰래카메라 (불쾌함)',
@@ -190,9 +214,9 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
   'romance-flutter': {
     name: '로맨스/설렘',
     description: '중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림',
-    
+
     emotionCurve: '😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"',
-    
+
     structure: `
 [HOOK] 😐 평소와 다른 느낌 암시
 → "오늘따라 왜 그랬는지 모르겠어"
@@ -229,7 +253,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '왜 자꾸 생각나지',
       '내가 왜 이래 갑자기',
     ],
-    
+
     bodyReactions: [
       '심장이 갑자기 빨라졌어',
       '귀가 빨개지는 게 느껴졌어',
@@ -254,7 +278,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '비 오는 날 우산 씌워주기',
       '떨어진 물건 같이 줍다 손 닿기',
     ],
-    
+
     goodTwistExamples: [
       '평소엔 무뚝뚝한 남편이 오늘따라 내 머리 냄새를 맡더니 "향 바꿨어?" 한마디',
       '항상 무심한 줄 알았던 그 사람이 내 커피 취향을 정확히 기억하고 있었음',
@@ -263,7 +287,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '옆에 앉았는데 향수 냄새가... 집에 와서도 코끝에 남아있었어',
       '헤어질 때 "조심히 가"가 아니라 "연락해"라고 하더라',
     ],
-    
+
     badTwistExamples: [
       '알고보니 나를 좋아했다 (너무 직접적)',
       '바로 고백받음 (전개 급함)',
@@ -278,9 +302,9 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
   'affair-suspicion': {
     name: '불륜/외도 의심',
     description: '배우자의 수상한 행동 → 의심 폭발 → 건전한 반전. 시청자가 같이 의심하다가 안도하는 장르',
-    
+
     emotionCurve: '🤨 수상함 → 😠 의심 → 😤 분노 폭발 직전 → 😮 반전 → 😅 안도+민망',
-    
+
     structure: `
 [HOOK] 🤨 충격적 발견/목격
 → "오늘 (물건)에서 이상한 거 발견했어"
@@ -321,7 +345,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '설마 했는데',
       '아니 근데 왜 숨겨',
     ],
-    
+
     bodyReactions: [
       '손이 벌벌 떨렸어',
       '목소리가 갈라졌어',
@@ -349,7 +373,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '결혼기념일 선물 (뻔함)',
       '생일 선물 (뻔함)',
     ],
-    
+
     goodTwistExamples: [
       '알고보니 남편이 내 갱년기 증상 때문에 몰래 한의원 상담받고 있었음',
       '알고보니 와이프가 내 퇴직 후 우울해할까봐 몰래 부부동반 여행 알아보는 중이었음',
@@ -358,7 +382,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '알고보니 딸이랑 짜고 내 환갑 축하 영상 만들고 있었음',
       '알고보니 남편이 내 명품백 중고로 팔아서 뭐하나 했더니 나 몰래 적금 들고 있었음',
     ],
-    
+
     badTwistExamples: [
       '알고보니 회사 일 (너무 평범함)',
       '알고보니 친구 만남 (긴장감 대비 허무)',
@@ -373,9 +397,9 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
   'hit-twist-spicy': {
     name: '대박 반전 (매운맛)',
     description: '성적 뉘앙스로 오해받는 상황 → 알고보니 완전 건전. 야한 것 같은데 야한 게 아닌 장르',
-    
+
     emotionCurve: '😏 뭔가 야해...? → 😳 어머 저게 뭐야 → 😱 헐 설마 → 🤣 뭐야 아니잖아',
-    
+
     structure: `
 [HOOK] 😏 이중 의미 대사로 시작
 → 들으면 야하게 들리는 대사
@@ -416,7 +440,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '아니 타이밍이 왜...',
       '들어보면 알아요!',
     ],
-    
+
     bodyReactions: [
       '얼굴이 새빨개졌어',
       '말문이 막혔어',
@@ -440,7 +464,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '머리에 뭐 붙은 거 떼주기 (식상)',
       '마사지 (여전히 애매함)',
     ],
-    
+
     goodTwistExamples: [
       '알고보니 옷 매장 피팅룸에서 찢어진 바지 꿰매주고 있었음',
       '알고보니 콘택트렌즈 빠져서 찾아주고 있었음 (얼굴 가까이 대고)',
@@ -450,7 +474,7 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
       '알고보니 새 구두 너무 꽉 껴서 억지로 벗기고 있었음',
       '알고보니 목걸이가 머리카락에 엉켜서 풀어주고 있었음',
     ],
-    
+
     badTwistExamples: [
       '마사지해주고 있었음 (여전히 애매함)',
       '운동 동작 가르쳐주고 있었음 (식상함)',
@@ -474,7 +498,7 @@ export const RANDOM_SEED_POOLS = {
     '고급 레스토랑', '골프 클럽 식당',
     '자녀 집', '공항', '예식장', '돌잔치장',
   ],
-  
+
   objects: [
     '카카오톡 알림', '문자 메시지', '새 옷 쇼핑백',
     '꽃다발', '고급 레스토랑 영수증', '호텔 주차권',
@@ -483,7 +507,7 @@ export const RANDOM_SEED_POOLS = {
     '몰래 산 골프채', '고가의 선물 포장',
     '낯선 전화번호', '늦은 밤 문자',
   ],
-  
+
   reactions: [
     '손이 벌벌 떨림',
     '목소리가 갈라짐',
@@ -497,7 +521,7 @@ export const RANDOM_SEED_POOLS = {
     '심장이 철렁 내려앉음',
     '머리가 하얘짐',
   ],
-  
+
   misunderstandings: [
     '바람피는 줄',
     '이혼 준비하는 줄',
@@ -520,7 +544,7 @@ export const RANDOM_SEED_POOLS = {
     '알고보니 한쪽 소매만 접힌 채로 중요한 자리 참석함',
     '알고보니 스카프가 가방 손잡이에 걸려 끌고 다녔음'
   ],
-  
+
   twistTypes: [
     '배우자/가족 위한 서프라이즈 준비',
     '건강 관련 좋은 소식 또는 배려',
@@ -544,7 +568,7 @@ export const generateRandomSeed = (): {
   twistType: string;
 } => {
   const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-  
+
   return {
     location: pick(RANDOM_SEED_POOLS.locations),
     object: pick(RANDOM_SEED_POOLS.objects),
@@ -694,7 +718,7 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 - **Man A (준호)**: short neat hairstyle
 
 ## 🚨 이미지 프롬프트 절대 규칙 (위반 시 즉시 실패)
-1. **모든 씬의 longPrompt에 PROMPT_CONSTANTS.START/END/NEGATIVE 3개를 반드시 포함** (누락/변형/순서 변경 금지)
+1. **longPrompt와 negativePrompt 분리**: 모든 씬의 longPrompt에는 PROMPT_CONSTANTS.START/END를 포함하고, negativePrompt 필드에는 PROMPT_CONSTANTS.NEGATIVE를 별도로 입력해야 함. (누락/변형 금지)
 2. **캐릭터 정체성은 반드시 characters[].identity 필드 값을 그대로 사용**
    - ✅ 올바름: "A stunning Korean woman in her 40s" (identity 필드 그대로)
    - ❌ 금지: "Woman A (지영)", "WomanA", "지영", "Korean woman" 등 임의 형식
@@ -714,6 +738,30 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 | 1명 행동/감정 | 원샷 |
 | 2명 상호작용 | 투샷 |
 | 3명 함께 | 쓰리샷 |
+
+### 🚨 투샷/쓰리샷 longPrompt 작성 필수 규칙 (매우 중요!)
+**여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분해야 합니다!**
+
+✅ **원샷 예시** (1명):
+\`\`\`
+unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress, smiling at camera, snowy golf course, ...
+\`\`\`
+
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
+\`\`\`
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, snowy golf course, ...
+\`\`\`
+
+✅ **쓰리샷 예시** (3명) - [Person 1], [Person 2], [Person 3] 필수:
+\`\`\`
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, snowy golf course, ...
+\`\`\`
+
+❌ **금지 (캐릭터 혼동 발생)**:
+\`\`\`
+A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man..., walking together
+\`\`\`
+→ 구분자 없이 쉼표로만 연결하면 AI가 캐릭터를 혼동합니다!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🎙️ 음성 스크립트 규칙 (간단)
@@ -815,9 +863,10 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
       
       "shortPrompt": "간단한 영문 프롬프트",
       "shortPromptKo": "간단한 한글 프롬프트",
-  "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}",
-  "longPromptKo": "상세 한글 프롬프트",
-  "videoPrompt": "영상용 프롬프트"
+      "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}",
+      "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}",
+      "longPromptKo": "상세 한글 프롬프트",
+      "videoPrompt": "영상용 프롬프트"
     }
   ]
 }
@@ -902,6 +951,153 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
   }
 
   return parts.filter(Boolean).join(', ');
+};
+
+// ============================================
+// 프롬프트 검증 및 수정 레이어 (v3.2)
+// ============================================
+
+export interface PromptValidationResult {
+  isValid: boolean;
+  issues: string[];
+  fixedPrompt: string;
+}
+
+export interface CharacterInfo {
+  identity: string;
+  hair: string;
+  body: string;
+  outfit: string;
+}
+
+/**
+ * LLM이 생성한 longPrompt를 검증하고 필요시 수정합니다.
+ * 특히 투샷/쓰리샷에서 캐릭터 구분자가 없으면 추가합니다.
+ */
+export const validateAndFixPrompt = (
+  longPrompt: string,
+  shotType: '원샷' | '투샷' | '쓰리샷',
+  characters: CharacterInfo[]
+): PromptValidationResult => {
+  const issues: string[] = [];
+  let fixedPrompt = longPrompt;
+
+  // 1. 기본 검증: PROMPT_CONSTANTS 포함 여부
+  if (!longPrompt.includes('unfiltered raw photograph')) {
+    issues.push('START 문구 누락');
+    fixedPrompt = `${PROMPT_CONSTANTS.START}, ${fixedPrompt}`;
+  }
+
+  if (!longPrompt.includes('NOT cartoon')) {
+    issues.push('NEGATIVE 문구 누락');
+    fixedPrompt = `${fixedPrompt}, ${PROMPT_CONSTANTS.NEGATIVE}`;
+  }
+
+  // 2. 투샷/쓰리샷 캐릭터 구분자 검증
+  if (shotType === '투샷' || shotType === '쓰리샷') {
+    const hasPersonTags = /\[Person \d+:/.test(longPrompt);
+
+    if (!hasPersonTags) {
+      issues.push('캐릭터 구분자 [Person N:] 누락 - 자동 수정 시도');
+
+      // 캐릭터 구분자가 없는 경우 자동 수정 시도
+      fixedPrompt = autoFixMultiCharacterPrompt(longPrompt, characters, shotType);
+    }
+  }
+
+  // 3. wearing 키워드 검증
+  if (longPrompt.includes('Dress') || longPrompt.includes('Skirt') || longPrompt.includes('Polo')) {
+    // 의상 관련 키워드가 있지만 wearing이 없는 경우
+    const outfitPatterns = ['Dress', 'Skirt', 'Polo', 'Knit', 'Blouse', 'Pants'];
+    for (const pattern of outfitPatterns) {
+      const regex = new RegExp(`(?<!wearing )${pattern}`, 'g');
+      if (regex.test(fixedPrompt)) {
+        // 의상 앞에 wearing이 없는 경우는 경고만 (자동 수정 어려움)
+        issues.push(`의상 앞 "wearing" 누락 가능성 (${pattern})`);
+        break;
+      }
+    }
+  }
+
+  // 4. identity 일관성 검증 (Korean woman/man 포함 여부)
+  const expectedCharCount = shotType === '쓰리샷' ? 3 : (shotType === '투샷' ? 2 : 1);
+  const koreanWomanCount = (fixedPrompt.match(/Korean woman/g) || []).length;
+  const koreanManCount = (fixedPrompt.match(/Korean man/g) || []).length;
+
+  if (koreanWomanCount + koreanManCount < expectedCharCount) {
+    issues.push(`기대 캐릭터 수(${expectedCharCount})보다 적은 identity 발견(${koreanWomanCount + koreanManCount})`);
+  }
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+    fixedPrompt
+  };
+};
+
+/**
+ * 캐릭터 구분자가 없는 투샷/쓰리샷 프롬프트를 자동으로 수정합니다.
+ */
+const autoFixMultiCharacterPrompt = (
+  prompt: string,
+  characters: CharacterInfo[],
+  shotType: '투샷' | '쓰리샷'
+): string => {
+  const charCount = shotType === '쓰리샷' ? 3 : 2;
+  const usedChars = characters.slice(0, charCount);
+
+  if (usedChars.length < charCount) {
+    // 캐릭터 정보가 부족하면 원본 반환
+    return prompt;
+  }
+
+  // START 문구 추출
+  const startMatch = prompt.match(/^(unfiltered raw photograph[^,]*,?\s*)/);
+  const startPart = startMatch ? startMatch[1] : PROMPT_CONSTANTS.START + ', ';
+
+  // 배경/액션 추출 (마지막 부분에서)
+  const endPatterns = [
+    /,?\s*(beautiful[^,]*background[^,]*)/i,
+    /,?\s*(snowy[^,]*)/i,
+    /,?\s*(golf course[^,]*)/i,
+    /,?\s*(standing[^,]*)/i,
+    /,?\s*(walking[^,]*)/i,
+  ];
+
+  let backgroundAction = '';
+  for (const pattern of endPatterns) {
+    const match = prompt.match(pattern);
+    if (match) {
+      backgroundAction = match[1];
+      break;
+    }
+  }
+  if (!backgroundAction) backgroundAction = 'standing together';
+
+  // END/NEGATIVE 추출
+  const hasEnd = prompt.includes('high-fashion');
+  const endPart = hasEnd ? '' : `, ${PROMPT_CONSTANTS.END}`;
+  const negativePart = prompt.includes('NOT cartoon') ? '' : `, ${PROMPT_CONSTANTS.NEGATIVE}`;
+
+  // 캐릭터별 구분자 생성
+  const characterParts = usedChars.map((char, idx) => {
+    return `[Person ${idx + 1}: ${char.identity}, ${char.hair}, ${char.body}, wearing ${char.outfit}]`;
+  });
+
+  return `${startPart}${characterParts.join(' ')} ${backgroundAction}${endPart}${negativePart}`;
+};
+
+/**
+ * 전체 scenes 배열의 프롬프트를 일괄 검증합니다.
+ */
+export const validateAllScenePrompts = (
+  scenes: Array<{ longPrompt: string; shotType: string; characterSlot?: string }>,
+  characters: CharacterInfo[]
+): Array<PromptValidationResult> => {
+  return scenes.map(scene => {
+    const shotType = scene.shotType as '원샷' | '투샷' | '쓰리샷';
+    return validateAndFixPrompt(scene.longPrompt, shotType, characters);
+  });
 };
 
 // ============================================

@@ -695,12 +695,18 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 
 ## 🚨 이미지 프롬프트 절대 규칙 (위반 시 즉시 실패)
 1. **모든 씬의 longPrompt에 PROMPT_CONSTANTS.START/END/NEGATIVE 3개를 반드시 포함** (누락/변형/순서 변경 금지)
-2. **8개 모든 씬에서 헤어/체형/의상 문구 100% 동일** (문자열 한 글자도 바꾸지 말 것)
-3. **lockedOutfits + hair 문자열을 그대로 복사해서 사용** (축약/의역/재서술 금지)
-4. **투샷/쓰리샷에서는 각 인물마다 헤어+체형+의상 전체를 개별로 명시**
-5. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
-6. **배경 문구는 씬마다 변형/축약/번역 금지**
-7. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
+2. **캐릭터 정체성은 반드시 characters[].identity 필드 값을 그대로 사용**
+   - ✅ 올바름: "A stunning Korean woman in her 40s" (identity 필드 그대로)
+   - ❌ 금지: "Woman A (지영)", "WomanA", "지영", "Korean woman" 등 임의 형식
+3. **의상 앞에 반드시 "wearing" 키워드 추가** (characters[].outfitPrefix 참조)
+   - ✅ 올바름: "wearing White Mock-neck Sleeveless + Burgundy Skirt"
+   - ❌ 금지: "White Mock-neck Sleeveless + Burgundy Skirt" (wearing 없음)
+4. **8개 모든 씬에서 identity/hair/body/outfit 문구 100% 동일** (문자열 한 글자도 바꾸지 말 것)
+5. **characters[] 배열의 hair, body, outfit 문자열을 그대로 복사해서 사용** (축약/의역/재서술 금지)
+6. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
+7. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
+8. **배경 문구는 씬마다 변형/축약/번역 금지**
+9. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
 
 ## 📸 샷 타입 규칙
 | 상황 | 샷 타입 |
@@ -748,31 +754,37 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
     {
       "id": "WomanA",
       "name": "지영",
+      "identity": "A stunning Korean woman in her ${targetAge}",
       "relationToNarrator": "화자와의 관계 (예: 화자 본인, 화자의 와이프, 화자의 친구 등)",
       "slot": "Slot Woman A",
-      "hair": "Long soft-wave hairstyle",
-      "body": "Slim hourglass figure, curvy feminine figure, glamorous silhouette",
+      "hair": "long soft-wave hairstyle",
+      "body": "slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves",
       "outfit": "${womanAOutfit}",
+      "outfitPrefix": "wearing",
       "accessories": "delicate gold hoop earrings, luxury watch"
     },
     {
       "id": "WomanB",
       "name": "혜경",
+      "identity": "A stunning Korean woman in her ${targetAge}",
       "relationToNarrator": "화자와의 관계",
-      "slot": "Slot Woman B", 
-      "hair": "Short chic bob cut",
-      "body": "Slim hourglass figure, curvy feminine figure, glamorous silhouette",
+      "slot": "Slot Woman B",
+      "hair": "short chic bob cut",
+      "body": "slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves",
       "outfit": "${womanBOutfit}",
+      "outfitPrefix": "wearing",
       "accessories": "pearl drop earrings, gold bangle bracelet"
     },
     {
       "id": "ManA",
       "name": "준호",
+      "identity": "A handsome Korean man in his ${targetAge}",
       "relationToNarrator": "화자와의 관계",
       "slot": "Slot Man A",
-      "hair": "Short neat hairstyle",
-      "body": "Fit athletic build with broad shoulders",
+      "hair": "short neat hairstyle",
+      "body": "fit athletic build with broad shoulders, dandy and refined presence",
       "outfit": "${manAOutfit}",
+      "outfitPrefix": "wearing",
       "accessories": "silver watch"
     }
   ],
@@ -803,7 +815,7 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
       
       "shortPrompt": "간단한 영문 프롬프트",
       "shortPromptKo": "간단한 한글 프롬프트",
-  "longPrompt": "${PROMPT_CONSTANTS.START}, [캐릭터 정체성], [헤어], [체형], [의상 전체], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}",
+  "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}, ${PROMPT_CONSTANTS.NEGATIVE}",
   "longPromptKo": "상세 한글 프롬프트",
   "videoPrompt": "영상용 프롬프트"
     }
@@ -826,12 +838,18 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 8. ✅ 제목이 구체적? (충격/반전 같은 추상어 금지)
 9. ✅ Show, Don't Tell 적용? (감정 직접 서술 금지)
 10. ✅ 신체 반응 최소 2개?
-11. ✅ 헤어/의상 문구가 모든 씬에서 완전 동일?
-12. ✅ 배경 문구가 장면 전환 없을 때 동일?
+
+**이미지 프롬프트 (필수!):**
+11. ✅ 모든 longPrompt가 characters[].identity 값으로 시작? (예: "A stunning Korean woman in her 40s")
+12. ✅ "Woman A (지영)" 형태 사용 안 함? (identity 필드 값만 사용!)
+13. ✅ 의상 앞에 "wearing" 키워드 있음?
+14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
+15. ✅ 배경 문구가 장면 전환 없을 때 동일?
+16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
 
 **음성:**
-16. ✅ 모든 씬에 voiceType 지정?
-17. ✅ 작은따옴표 대사 있으면 lipSync 생성?
+17. ✅ 모든 씬에 voiceType 지정?
+18. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 `;
 };
 

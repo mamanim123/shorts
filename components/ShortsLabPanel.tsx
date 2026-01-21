@@ -193,6 +193,8 @@ interface PromptSettings {
  * 한국인 정체성을 강제로 적용하는 함수
  * - 다른 국적 언급을 한국인으로 교체
  * - "A stunning Korean woman in her Xs" 프리픽스 강제 적용
+ * - AI가 잘못 생성한 "Woman A (지영)" 등의 패턴 제거
+ * - 의상 앞에 "wearing" 키워드 자동 추가
  */
 const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
     if (!text) return text;
@@ -207,6 +209,24 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
         updated = updated.replace(regex, value);
     });
 
+    // ⭐ AI가 잘못 생성한 캐릭터 슬롯 패턴 제거 (중간에 있는 것도 제거)
+    const wrongPatterns: RegExp[] = [
+        /,?\s*Woman A \([^)]+\),?\s*/gi,      // "Woman A (지영)" 제거
+        /,?\s*Woman B \([^)]+\),?\s*/gi,      // "Woman B (혜경)" 제거
+        /,?\s*Man A \([^)]+\),?\s*/gi,        // "Man A (준호)" 제거
+        /,?\s*Woman A,?\s*/gi,                 // "Woman A" 제거
+        /,?\s*Woman B,?\s*/gi,                 // "Woman B" 제거
+        /,?\s*Man A,?\s*/gi,                   // "Man A" 제거
+        /,?\s*WomanA,?\s*/gi,                  // "WomanA" 제거
+        /,?\s*WomanB,?\s*/gi,                  // "WomanB" 제거
+        /,?\s*ManA,?\s*/gi,                    // "ManA" 제거
+    ];
+    wrongPatterns.forEach(pattern => {
+        updated = updated.replace(pattern, ', ');
+    });
+    // 연속된 쉼표 정리
+    updated = updated.replace(/,\s*,/g, ',').replace(/,\s*$/, '').replace(/^\s*,/, '');
+
     // 나이 포맷팅
     const formatEnglishAgeLabel = (label?: string): string => {
         if (!label) return '';
@@ -218,14 +238,14 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
     const ageString = englishAge ? `in ${gender === 'female' ? 'her' : 'his'} ${englishAge}` : '';
     const identityDescriptor = gender === 'female'
         ? `A stunning Korean woman ${ageString}`.trim()
-        : `Korean man ${ageString}`.trim();
+        : `A handsome Korean man ${ageString}`.trim();
 
     // 씬 번호와 정체성을 맨 앞으로 강제 배치
     const scenePrefix = sceneNumber ? `Scene ${sceneNumber}, ` : '';
     const mandatoryPrefix = `${scenePrefix}${identityDescriptor}, `;
 
-    // 기존 텍스트에서 중복될 수 있는 패턴들 제거
-    const cleanText = updated
+    // 기존 텍스트에서 중복될 수 있는 패턴들 제거 (맨 앞)
+    let cleanText = updated
         .replace(/^Scene \d+[\.,]\s*/i, '')
         .replace(/^A stunning Korean woman in her [\d\w\s]+[\.,]\s*/i, '')
         .replace(/^A handsome Korean man in his [\d\w\s]+[\.,]\s*/i, '')
@@ -233,6 +253,20 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
         .replace(/^A handsome Korean man[\.,]\s*/i, '')
         .replace(/^in (her|his) [\d\w\s]+[\.,]\s*/i, '')
         .trim();
+
+    // ⭐ 의상 앞에 "wearing" 키워드 자동 추가
+    // 의상 패턴: 대문자로 시작하는 의상 설명 (예: "White Mock-neck Sleeveless + Burgundy Skirt")
+    const outfitPatterns = [
+        // "White Mock-neck..." 같은 의상 패턴 앞에 wearing이 없으면 추가
+        /,\s*((?:White|Black|Navy|Pink|Red|Blue|Burgundy|Beige|Gray|Grey|Cream|Wine|Deep|Light|Dark|All)\s+[A-Z][^,]+(?:Skirt|Dress|Top|Blouse|Polo|Knit|Jeans|Pants|Slacks|Shorts|Suit)[^,]*)/gi,
+    ];
+    outfitPatterns.forEach(pattern => {
+        cleanText = cleanText.replace(pattern, (match, outfit) => {
+            // 이미 wearing이 앞에 있으면 그대로
+            if (match.toLowerCase().includes('wearing')) return match;
+            return `, wearing ${outfit.trim()}`;
+        });
+    });
 
     // 카메라 앵글로 시작하면 정체성을 맨 앞에 배치
     const cameraAnglePattern = /^(Candid|Two-shot|Three-shot|Dutch|Extreme|Close-up|Wide|Medium|Over-the-shoulder|Zoom|Pan|Tracking|Bird|Aerial|Low|High|Point of view|POV)/i;

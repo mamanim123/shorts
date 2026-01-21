@@ -596,31 +596,44 @@ export const adjustOutfitForSeason = (outfit: string, topic: string): string => 
   // 이미 Long-sleeve가 포함되어 있다면 그대로 반환
   if (adjusted.toLowerCase().includes('long-sleeve')) return adjusted;
 
-  // 상의 노출 키워드를 타이트한 긴팔로 교체
+  // 상의 노출 키워드를 팔만 긴팔로 교체하되, 본래의 시원한 스타일(Crop, Tube, Halter 등)은 유지
   const replacements: { [key: string]: string } = {
-    'Sleeveless': 'Tight-fitting Long-sleeve',
-    'Short-sleeve': 'Tight-fitting Long-sleeve',
-    'Halter-neck': 'High-neck Tight Long-sleeve',
-    'Tube Top': 'Tight-fitting Long-sleeve Layered',
-    'Off-shoulder': 'Tight-fitting Long-sleeve',
-    'Cap-sleeve': 'Tight-fitting Long-sleeve'
+    'Sleeveless': 'Long-sleeved',
+    'Short-sleeve': 'Long-sleeve',
+    'Halter-neck': 'Long-sleeved Halter-neck',
+    'Off-shoulder': 'Long-sleeved Off-shoulder',
+    'Cap-sleeve': 'Long-sleeved'
   };
 
+  let replaced = false;
   for (const [key, val] of Object.entries(replacements)) {
     const regex = new RegExp(key, 'gi');
     if (regex.test(adjusted)) {
       adjusted = adjusted.replace(regex, val);
-      return adjusted;
+      replaced = true;
     }
   }
 
-  // 명시적인 노출 키워드가 없더라도 상의 아이템 앞에 긴팔 형상을 강제 삽입
-  const topItems = ['Knit', 'Blouse', 'Polo', 'Shirt', 'Tee', 'Top', 'One-piece', 'Dress'];
-  for (const item of topItems) {
-    if (adjusted.includes(item)) {
-      adjusted = adjusted.replace(item, `Tight-fitting Long-sleeve ${item}`);
-      break;
+  // Tube Top의 경우 특별 처리 (긴팔 형태 추가 명시)
+  if (adjusted.toLowerCase().includes('tube top')) {
+    adjusted = adjusted.replace(/tube top/gi, 'Long-sleeved Tube Top');
+    replaced = true;
+  }
+
+  // 명시적인 노출 키워드가 없더라도 상의 아이템 앞에 긴팔 형상을 강제 삽입 (타이트하게)
+  if (!replaced && !adjusted.toLowerCase().includes('long-sleeve')) {
+    const topItems = ['Knit', 'Blouse', 'Polo', 'Shirt', 'Tee', 'Top', 'One-piece', 'Dress'];
+    for (const item of topItems) {
+      if (adjusted.includes(item)) {
+        adjusted = adjusted.replace(item, `Tight-fitting Long-sleeve ${item}`);
+        break;
+      }
     }
+  }
+
+  // 항상 타이트한 실루엣 강조 (마마님 선호 스타일)
+  if (!adjusted.toLowerCase().includes('tight')) {
+    adjusted = 'Tight-fitting ' + adjusted;
   }
 
   return adjusted;

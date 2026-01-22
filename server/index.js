@@ -711,7 +711,6 @@ app.post('/api/genre-guidelines', (req, res) => {
     }
 });
 
-// --- Prompt Preset API ---
 // ---------------------------------------------------------
 // 의상/캐릭터 특징 추출 API (Vision AI)
 // ---------------------------------------------------------
@@ -720,27 +719,67 @@ app.post('/api/extract-outfit', async (req, res) => {
         const { imageData } = req.body;
         if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
 
-        console.log('[Vision] Analyzing outfit using Puppeteer...');
+        console.log('[Vision] Starting precise outfit DNA extraction...');
 
-        const visionPrompt = `Analyze this image and describe the OUTFIT and BODY TYPE in extreme detail.
-        Provide the output in JSON format with two keys:
-        1. "en": A detailed Stable Diffusion prompt in English. MUST include:
-           - Body Type (e.g., slim, curvy, athletic, petite, tall)
-           - Clothing Fit (e.g., tight, loose, oversized, fitted)
-           - Material & Texture (e.g., silk, denim, leather, knit, sheer)
-           - Specific Items (e.g., pencil skirt, crop top, trench coat)
-           - Colors & Patterns
-           - Accessories (e.g., necklace, belt, glasses)
-        2. "ko": A natural Korean description including body type, outfit style, and key items.
-        
-        Example format:
-        {
-            "en": "slim hourglass figure, wearing a white silk blouse with lace details, tight black pencil skirt, high heels, pearl necklace...",
-            "ko": "슬림한 모래시계 체형에 레이스 디테일이 있는 흰색 실크 블라우스와 타이트한 검정 펜슬 스커트를 매치..."
-        }
-        Return ONLY the JSON string.`;
+        const visionPrompt = `You are a fashion expert AI. Analyze ONLY the clothing/outfit in this image.
+
+=== ABSOLUTE RULES (MUST FOLLOW) ===
+
+❌ DO NOT DESCRIBE (절대 포함하지 마세요):
+- Person: face, age, skin tone, body shape, pose, expression, hair, makeup
+- Environment: background, location, setting, scenery
+- Photography: lighting, camera angle, 8k, cinematic, bokeh
+- Mood/Atmosphere: elegant vibe, sexy mood, romantic feeling
+
+✅ DESCRIBE ONLY (오직 이것만 설명하세요):
+1. GARMENT TYPE: dress, blouse, skirt, pants, jacket, etc.
+2. COLOR: exact color names (burgundy, ivory, navy, etc.)
+3. PATTERN: solid, striped, floral, checkered, etc.
+4. MATERIAL/FABRIC: silk, cotton, wool, knit, denim, leather, lace, etc.
+5. FIT & SILHOUETTE: tight, loose, A-line, bodycon, oversized, fitted
+6. DESIGN DETAILS: neckline, sleeve type, buttons, zippers, pleats, ruffles
+7. ACCESSORIES (if worn): earrings, necklace, belt, bag, shoes
+
+=== OUTPUT FORMAT (JSON ONLY) ===
+{
+  "name": "간결한 한글 의상 이름 (형식: '색상 + 상의명 + 색상 + 하의명' 또는 '색상 + 원피스명', 예: '블랙 튜브탑 + 네이비 데님 쇼츠')",
+  "en": "Detailed English prompt for AI image generation (outfit details only, no person/background/lighting)",
+  "ko": "의상에 대한 자연스러운 한국어 설명"
+}
+
+=== NAMING RULES FOR "name" FIELD ===
+- 반드시 한글로 작성
+- 색상 + 소재/스타일 + 의류 종류 형식
+- 상하의가 있으면 " + " 로 연결
+- 15~25자 정도로 간결하게
+
+=== EXAMPLES ===
+
+Example 1 (원피스):
+{
+  "name": "버건디 실크 미디 드레스",
+  "en": "burgundy silk midi dress with sweetheart neckline, fitted bodice, A-line skirt, thin spaghetti straps",
+  "ko": "버건디색 실크 소재의 미디 드레스, 스위트하트 네크라인과 피티드 보디스, A라인 스커트"
+}
+
+Example 2 (상하의 세트):
+{
+  "name": "화이트 크롭탑 + 블랙 레더 미니스커트",
+  "en": "white ribbed crop top with square neckline, paired with high-waisted black leather mini skirt with silver zipper",
+  "ko": "화이트 골지 크롭탑에 스퀘어 네크라인, 하이웨이스트 블랙 레더 미니스커트와 실버 지퍼 디테일"
+}
+
+Example 3 (스포츠웨어):
+{
+  "name": "블랙 스포츠브라 + 핑크 레깅스",
+  "en": "black sports bra with racerback design, matching high-waisted pink compression leggings with mesh panels",
+  "ko": "블랙 레이서백 스포츠브라와 핑크 하이웨이스트 압박 레깅스, 메쉬 패널 디테일"
+}
+
+Now analyze the image and return ONLY the JSON object (no markdown, no explanation):`;
 
         const result = await generateContent('GEMINI', visionPrompt, [imageData]);
+
         const content = typeof result === 'string' ? result : (result.content || '');
 
         if (!content) {
@@ -748,7 +787,7 @@ app.post('/api/extract-outfit', async (req, res) => {
         }
 
         // JSON 파싱 시도
-        let parsed = { en: "", ko: "" };
+        let parsed = { name: "", en: "", ko: "" };
         try {
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
@@ -762,12 +801,201 @@ app.post('/api/extract-outfit', async (req, res) => {
             parsed.ko = "분석 결과 형식이 올바르지 않아 원문을 표시합니다.";
         }
 
+        // name이 없거나 영문인 경우 한글 이름 자동 생성
+        if (!parsed.name || /^[a-zA-Z\s,\+]+$/.test(parsed.name)) {
+            parsed.name = generateKoreanOutfitName(parsed.en || parsed.ko);
+        }
+
+        // 후처리: 인물/배경/조명 관련 단어 필터링
+        if (parsed.en) {
+            parsed.en = filterOutfitPrompt(parsed.en);
+        }
+
+        console.log(`[Vision] ✅ Outfit extracted: ${parsed.name}`);
         res.json({ success: true, prompt: parsed });
     } catch (error) {
         console.error('의상 추출 API 에러:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+// ✅ 영문 프롬프트에서 한글 의상 이름 생성
+function generateKoreanOutfitName(englishPrompt) {
+    if (!englishPrompt) return '추출된 의상';
+    
+    const prompt = englishPrompt.toLowerCase();
+    
+    // 색상 매핑
+    const colorMap = {
+        'black': '블랙', 'white': '화이트', 'red': '레드', 'blue': '블루',
+        'navy': '네이비', 'pink': '핑크', 'green': '그린', 'yellow': '옐로우',
+        'purple': '퍼플', 'orange': '오렌지', 'brown': '브라운', 'beige': '베이지',
+        'ivory': '아이보리', 'cream': '크림', 'gray': '그레이', 'grey': '그레이',
+        'burgundy': '버건디', 'wine': '와인', 'coral': '코랄', 'mint': '민트',
+        'khaki': '카키', 'olive': '올리브', 'gold': '골드', 'silver': '실버',
+        'nude': '누드', 'tan': '탄', 'charcoal': '차콜', 'emerald': '에메랄드',
+        'turquoise': '터콰이즈', 'lavender': '라벤더', 'peach': '피치',
+        'rose': '로즈', 'teal': '틸', 'maroon': '마룬', 'indigo': '인디고'
+    };
+    
+    // 상의 매핑
+    const topMap = {
+        'tube top': '튜브탑', 'crop top': '크롭탑', 'tank top': '탱크탑',
+        'blouse': '블라우스', 'shirt': '셔츠', 'polo': '폴로셔츠',
+        't-shirt': '티셔츠', 'tee': '티셔츠', 'sweater': '스웨터',
+        'cardigan': '가디건', 'hoodie': '후디', 'jacket': '재킷',
+        'blazer': '블레이저', 'coat': '코트', 'vest': '베스트',
+        'camisole': '캐미솔', 'bodysuit': '바디수트', 'corset': '코르셋',
+        'bustier': '뷔스티에', 'sports bra': '스포츠브라', 'bralette': '브라렛',
+        'turtleneck': '터틀넥', 'mock neck': '모크넥', 'off-shoulder': '오프숄더',
+        'halter': '홀터넥', 'one-shoulder': '원숄더', 'knit': '니트',
+        'top': '탑', 'pullover': '풀오버'
+    };
+    
+    // 하의 매핑
+    const bottomMap = {
+        'skirt': '스커트', 'mini skirt': '미니스커트', 'midi skirt': '미디스커트',
+        'maxi skirt': '맥시스커트', 'pleated skirt': '플리츠 스커트',
+        'pencil skirt': '펜슬스커트', 'a-line skirt': 'A라인 스커트',
+        'pants': '팬츠', 'trousers': '트라우저', 'jeans': '진',
+        'shorts': '쇼츠', 'denim shorts': '데님 쇼츠', 'hot pants': '핫팬츠',
+        'leggings': '레깅스', 'culottes': '큐롯', 'wide pants': '와이드팬츠',
+        'slacks': '슬랙스', 'chinos': '치노'
+    };
+    
+    // 원피스 매핑
+    const dressMap = {
+        'dress': '드레스', 'mini dress': '미니 드레스', 'midi dress': '미디 드레스',
+        'maxi dress': '맥시 드레스', 'gown': '가운', 'cocktail dress': '칵테일 드레스',
+        'bodycon dress': '바디콘 드레스', 'a-line dress': 'A라인 드레스',
+        'wrap dress': '랩 드레스', 'slip dress': '슬립 드레스',
+        'shirt dress': '셔츠 드레스', 'romper': '롬퍼', 'jumpsuit': '점프수트'
+    };
+    
+    // 소재 매핑
+    const materialMap = {
+        'silk': '실크', 'satin': '새틴', 'cotton': '코튼', 'linen': '린넨',
+        'denim': '데님', 'leather': '레더', 'suede': '스웨이드',
+        'velvet': '벨벳', 'lace': '레이스', 'chiffon': '쉬폰',
+        'knit': '니트', 'wool': '울', 'cashmere': '캐시미어',
+        'tweed': '트위드', 'sequin': '시퀸', 'mesh': '메쉬',
+        'spandex': '스판덱스', 'jersey': '저지', 'ribbed': '골지'
+    };
+    
+    // 색상 찾기 함수
+    const findColor = (text) => {
+        for (const [eng, kor] of Object.entries(colorMap)) {
+            if (text.includes(eng)) return kor;
+        }
+        return '';
+    };
+    
+    // 소재 찾기
+    let foundMaterial = '';
+    for (const [eng, kor] of Object.entries(materialMap)) {
+        if (prompt.includes(eng)) {
+            foundMaterial = kor;
+            break;
+        }
+    }
+    
+    // 원피스 확인
+    for (const [eng, kor] of Object.entries(dressMap)) {
+        if (prompt.includes(eng)) {
+            const color = findColor(prompt);
+            return [color, foundMaterial, kor].filter(Boolean).join(' ') || '추출된 드레스';
+        }
+    }
+    
+    // 상의 찾기
+    let foundTop = '';
+    let topColor = '';
+    for (const [eng, kor] of Object.entries(topMap)) {
+        if (prompt.includes(eng)) {
+            foundTop = kor;
+            // 상의 앞의 색상 찾기
+            const topIndex = prompt.indexOf(eng);
+            const beforeTop = prompt.substring(0, topIndex);
+            topColor = findColor(beforeTop) || findColor(prompt);
+            break;
+        }
+    }
+    
+    // 하의 찾기
+    let foundBottom = '';
+    let bottomColor = '';
+    for (const [eng, kor] of Object.entries(bottomMap)) {
+        if (prompt.includes(eng)) {
+            foundBottom = kor;
+            // "paired with" 이후 색상 찾기
+            const pairedIndex = prompt.indexOf('paired with');
+            if (pairedIndex > -1) {
+                const afterPaired = prompt.substring(pairedIndex);
+                bottomColor = findColor(afterPaired);
+            }
+            if (!bottomColor) {
+                const bottomIndex = prompt.indexOf(eng);
+                const beforeBottom = prompt.substring(Math.max(0, bottomIndex - 30), bottomIndex);
+                bottomColor = findColor(beforeBottom);
+            }
+            break;
+        }
+    }
+    
+    // 이름 조합
+    if (foundTop && foundBottom) {
+        const topName = [topColor, foundMaterial, foundTop].filter(Boolean).join(' ');
+        const bottomName = [bottomColor, foundBottom].filter(Boolean).join(' ');
+        return `${topName} + ${bottomName}`;
+    } else if (foundTop) {
+        return [topColor, foundMaterial, foundTop].filter(Boolean).join(' ') || '추출된 상의';
+    } else if (foundBottom) {
+        return [bottomColor, foundMaterial, foundBottom].filter(Boolean).join(' ') || '추출된 하의';
+    }
+    
+    // 기본값
+    const defaultColor = findColor(prompt);
+    return [defaultColor, foundMaterial, '의상'].filter(Boolean).join(' ') || '추출된 의상';
+}
+
+// ✅ 의상 프롬프트에서 불필요한 요소 필터링
+function filterOutfitPrompt(prompt) {
+    if (!prompt || typeof prompt !== 'string') return prompt;
+    
+    const removePatterns = [
+        /\b(korean\s+)?(woman|man|lady|girl|boy|person|model|figure)\b/gi,
+        /\b(beautiful|gorgeous|stunning|attractive|elegant|sexy)\s+(woman|lady|girl|person)\b/gi,
+        /\b(in\s+her|in\s+his)\s+\d+s\b/gi,
+        /\b\d+s?\s*(year[s]?\s*old|y\.?o\.?)\b/gi,
+        /\b(fair|tan|pale|dark|olive)\s+skin\b/gi,
+        /\b(slender|slim|curvy|petite|tall)\s+(body|figure|frame)?\b/gi,
+        /\bstanding\b/gi,
+        /\bposing\b/gi,
+        /\bsmiling\b/gi,
+        /\b(in\s+a|at\s+the|inside|outside)\s+(room|hotel|lobby|cafe|restaurant|office|studio|garden|beach|street|park)\b/gi,
+        /\b(luxurious|elegant|modern|cozy)\s+(setting|background|environment|interior|space)\b/gi,
+        /\bbackground\b/gi,
+        /\b(soft|warm|natural|studio|cinematic|dramatic|romantic)\s+(light|lighting)\b/gi,
+        /\b8k\b/gi,
+        /\bultra\s*(hd|realistic|detailed)\b/gi,
+        /\bcinematic\b/gi,
+        /\bbokeh\b/gi,
+        /\bphotorealistic\b/gi,
+    ];
+    
+    let cleaned = prompt;
+    removePatterns.forEach(pattern => {
+        cleaned = cleaned.replace(pattern, '');
+    });
+    
+    return cleaned
+        .replace(/,\s*,/g, ',')
+        .replace(/,\s*\./g, '.')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/^\s*,\s*/g, '')
+        .replace(/\s*,\s*$/g, '')
+        .trim();
+}
 
 app.post('/api/extract-face', async (req, res) => {
     try {

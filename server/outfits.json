@@ -1,3 +1,53 @@
 {
-  "outfits": []
+  "outfits": [
+    {
+      "id": "outfit-001",
+      "name": "골프웨어",
+      "prompt": "wearing professional golf attire, polo shirt, pleated skirt",
+      "category": "스포츠",
+      "createdAt": ""
+    },
+    {
+      "id": "outfit-002",
+      "name": "비즈니스 정장",
+      "prompt": "wearing a sharp business suit, tailored blazer",
+      "category": "정장",
+      "createdAt": ""
+    },
+    {
+      "id": "outfit-003",
+      "name": "K-드라마 리얼톤",
+      "prompt": "wearing modern K-drama style outfit",
+      "category": "캐주얼",
+      "createdAt": ""
+    },
+    {
+      "id": "outfit-004",
+      "name": "캐주얼",
+      "prompt": "wearing casual everyday clothes",
+      "category": "캐주얼",
+      "createdAt": ""
+    },
+    {
+      "id": "outfit-1769055244556",
+      "name": "추출된 의상",
+      "prompt": "A high-realism portrait of a young Korean woman with a slender yet curvy hourglass figure, featuring a narrow waist and elegant posture. She is wearing a tight-fitting light gray mock-neck top made of soft, breathable cotton-stretch fabric, detailed with a small black crest embroidery on the left chest. The lower half features a high-waisted black midi pencil skirt with intricate horizontal ruching and pleated textures, hugging the hips and thighs in a sophisticated bodycon fit. The scene is illuminated by natural soft daylight, showcasing ultra-detailed skin textures, fine pores, and realistic fabric fibers. 8k UHD, cinematic lighting, sharp focus on textile details and natural human skin.",
+      "category": "사용자 정의",
+      "createdAt": "2026-01-22T04:14:04.556Z"
+    },
+    {
+      "id": "outfit-1769060852068",
+      "name": "라이트그레이 터틀넥 + 블랙 셔링 펜슬스커트",
+      "prompt": "light gray shorts-sleeved turtleneck top with embroidery on left chest, tight fitted, paired with high-waisted black mini pencil skirt with horizontal ruching and shirring details",
+      "category": "ROYAL",
+      "createdAt": "2026-01-22T05:47:32.068Z"
+    },
+    {
+      "id": "outfit-1769063025448",
+      "name": "라이트그레이 코튼 스포츠브라 + 라이트그레이 플레어 팬츠",
+      "prompt": "light grey cotton sports bra with scoop neckline and thin spaghetti straps, paired with matching light grey high-waisted flared yoga pants, soft jersey fabric, solid pattern, tight fit",
+      "category": "YOGA",
+      "createdAt": "2026-01-22T06:23:45.448Z"
+    }
+  ]
 }

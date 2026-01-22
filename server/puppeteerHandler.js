@@ -729,54 +729,66 @@ export async function switchImageService(serviceName) {
 export const switchService = switchScriptService;
 
 async function uploadFileToPage(activePage, filePath) {
-    try {
-        console.log(`[Puppeteer] Attempting to upload file: ${filePath}`);
+    const MAX_RETRIES = 3;
 
-        // 0. 기존 file input이 있는지 확인하고 직접 업로드 시도
-        const existingFileInput = await activePage.$('input[type="file"]');
-        if (existingFileInput) {
-            console.log("[Puppeteer] Found existing file input, uploading directly...");
-            await existingFileInput.uploadFile(filePath);
-            await new Promise(r => setTimeout(r, 2000));
-
-            // 썸네일 확인
-            const thumbnailDetected = await activePage.evaluate(() => {
-                return document.querySelectorAll('mat-chip, .thumbnail, img[src*="blob"], [aria-label*="삭제"], [aria-label*="Remove"]').length > 0;
-            });
-
-            if (thumbnailDetected) {
-                console.log(`[Puppeteer] File uploaded successfully (thumbnail detected via direct input).`);
-                return;
-            } else {
-                console.log("[Puppeteer] Direct upload didn't show thumbnail, trying UI interaction...");
-            }
-        }
-
-        // 1. "+" 버튼 클릭하여 메뉴 열기 (UI 상호작용 우선)
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            console.log("[Puppeteer] Looking for '+' button...");
-            const plusBtn = await activePage.waitForSelector('button.upload-card-button, button[aria-label*="Upload"], button[aria-label*="업로드"]', { timeout: 3000 });
-            if (plusBtn) {
-                console.log("[Puppeteer] Clicking '+' button...");
-                await plusBtn.click();
-                await new Promise(r => setTimeout(r, 1000)); // 메뉴 애니메이션 대기
-            }
-        } catch (e) {
-            console.log("[Puppeteer] '+' button not found or not clickable, trying direct hidden button...");
-        }
+            console.log(`[Puppeteer] Attempting to upload file (attempt ${attempt}/${MAX_RETRIES}): ${filePath}`);
 
-        // 2. 파일 선택기 트리거 (메뉴 아이템 -> 히든 버튼 순)
-        console.log("[Puppeteer] Waiting for file chooser...");
-        const [fileChooser] = await Promise.all([
-            activePage.waitForFileChooser({ timeout: 15000 }),
-            activePage.evaluate(() => {
-                // 메뉴 아이템 찾기 (텍스트 기반)
-                const menuItems = Array.from(document.querySelectorAll('button, li, div[role="menuitem"], span.mat-mdc-list-item-unscoped-content, div.menu-text'));
+            // 0. 기존 file input이 있는지 확인하고 직접 업로드 시도
+            const existingFileInput = await activePage.$('input[type="file"]');
+            if (existingFileInput) {
+                console.log("[Puppeteer] Found existing file input, uploading directly...");
+                await existingFileInput.uploadFile(filePath);
+                await new Promise(r => setTimeout(r, 3000)); // 대기 시간 증가
+
+                // 썸네일 확인
+                const thumbnailDetected = await activePage.evaluate(() => {
+                    return document.querySelectorAll('mat-chip, .thumbnail, img[src*="blob"], [aria-label*="삭제"], [aria-label*="Remove"]').length > 0;
+                });
+
+                if (thumbnailDetected) {
+                    console.log(`[Puppeteer] File uploaded successfully (thumbnail detected via direct input).`);
+                    return;
+                } else {
+                    console.log("[Puppeteer] Direct upload didn't show thumbnail, trying UI interaction...");
+                }
+            }
+
+            // 1. "+" 버튼 클릭하여 메뉴 열기 (UI 상호작용 우선)
+            let plusBtnClicked = false;
+            try {
+                console.log("[Puppeteer] Looking for '+' button...");
+                const plusBtn = await activePage.waitForSelector('button.upload-card-button, button[aria-label*="Upload"], button[aria-label*="업로드"], button[aria-label*="Add"]', { timeout: 5000 });
+                if (plusBtn) {
+                    console.log("[Puppeteer] Clicking '+' button...");
+                    await plusBtn.click();
+                    plusBtnClicked = true;
+                    await new Promise(r => setTimeout(r, 2000)); // 메뉴 애니메이션 대기 시간 증가
+                }
+            } catch (e) {
+                console.log("[Puppeteer] '+' button not found or not clickable, trying direct approach...");
+            }
+
+            // 2. 파일 선택기 트리거 - 순차적 접근 (Promise.all 대신)
+            console.log("[Puppeteer] Waiting for file chooser...");
+
+            // FileChooser 대기 시작 (30초로 증가)
+            const chooserPromise = activePage.waitForFileChooser({ timeout: 30000 });
+
+            // 약간의 딜레이 후 메뉴 아이템 클릭
+            await new Promise(r => setTimeout(r, 500));
+
+            const clickResult = await activePage.evaluate(() => {
+                // 메뉴 아이템 찾기 (텍스트 기반) - 더 많은 선택자 추가
+                const menuItems = Array.from(document.querySelectorAll('button, li, div[role="menuitem"], span.mat-mdc-list-item-unscoped-content, div.menu-text, mat-list-item, [role="option"]'));
                 const uploadImgItem = menuItems.find(el =>
                     el.textContent.includes('Upload image') ||
                     el.textContent.includes('이미지 업로드') ||
                     el.textContent.includes('Upload files') ||
-                    el.textContent.includes('파일 업로드') // 스크린샷 기반 추가
+                    el.textContent.includes('파일 업로드') ||
+                    el.textContent.includes('Upload from computer') ||
+                    el.textContent.includes('컴퓨터에서 업로드')
                 );
 
                 if (uploadImgItem) {
@@ -800,32 +812,53 @@ async function uploadFileToPage(activePage, filePath) {
                     return "file-input-clicked";
                 }
 
-                throw new Error("No upload trigger found");
-            })
-        ]);
+                return "no-trigger-found";
+            });
 
-        await fileChooser.accept([filePath]);
-        console.log(`[Puppeteer] File selected via chooser, waiting for upload to complete...`);
+            console.log(`[Puppeteer] Click result: ${clickResult}`);
 
-        // 3. 업로드 완료 대기 (썸네일 확인)
-        try {
-            await activePage.waitForFunction(() => {
-                const indicators = document.querySelectorAll('mat-chip, .thumbnail, img[src*="blob"], [aria-label*="삭제"], [aria-label*="Remove"]');
-                return indicators.length > 0;
-            }, { timeout: 20000 });
-            console.log(`[Puppeteer] File uploaded successfully (thumbnail detected).`);
-        } catch (e) {
-            console.warn(`[Puppeteer] Warning: Upload thumbnail not detected. The image might not have been attached.`);
-            // 스크린샷 저장 (디버깅용)
+            // FileChooser 대기
+            const fileChooser = await chooserPromise;
+
+            await fileChooser.accept([filePath]);
+            console.log(`[Puppeteer] File selected via chooser, waiting for upload to complete...`);
+
+            // 3. 업로드 완료 대기 (썸네일 확인) - 타임아웃 증가
             try {
-                const screenshotPath = path.join(os.tmpdir(), `upload_fail_${Date.now()}.png`);
-                await activePage.screenshot({ path: screenshotPath });
-                console.log(`[Puppeteer] Saved screenshot to: ${screenshotPath}`);
-            } catch (err) { }
-        }
+                await activePage.waitForFunction(() => {
+                    const indicators = document.querySelectorAll('mat-chip, .thumbnail, img[src*="blob"], [aria-label*="삭제"], [aria-label*="Remove"], img[alt*="Upload"]');
+                    return indicators.length > 0;
+                }, { timeout: 30000 });
+                console.log(`[Puppeteer] File uploaded successfully (thumbnail detected).`);
+                return; // 성공 시 함수 종료
+            } catch (e) {
+                console.warn(`[Puppeteer] Warning: Upload thumbnail not detected. The image might not have been attached.`);
+                // 스크린샷 저장 (디버깅용)
+                try {
+                    const screenshotPath = path.join(os.tmpdir(), `upload_fail_${Date.now()}.png`);
+                    await activePage.screenshot({ path: screenshotPath });
+                    console.log(`[Puppeteer] Saved screenshot to: ${screenshotPath}`);
+                } catch (err) { }
+            }
 
-    } catch (err) {
-        console.warn(`[Puppeteer] File upload failed: ${err.message}. Proceeding with text only.`);
+            return; // FileChooser 성공했으면 종료 (썸네일 미감지여도)
+
+        } catch (err) {
+            console.warn(`[Puppeteer] File upload attempt ${attempt} failed: ${err.message}`);
+
+            if (attempt < MAX_RETRIES) {
+                console.log(`[Puppeteer] Retrying in 3 seconds...`);
+                await new Promise(r => setTimeout(r, 3000)); // 재시도 전 대기
+
+                // 페이지 새로고침 없이 상태 초기화 시도
+                try {
+                    await activePage.keyboard.press('Escape'); // 열려있는 메뉴 닫기
+                    await new Promise(r => setTimeout(r, 1000));
+                } catch (e) { }
+            } else {
+                console.warn(`[Puppeteer] All ${MAX_RETRIES} upload attempts failed. Proceeding with text only.`);
+            }
+        }
     }
 }
 

@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2 } from 'lucide-react';
+import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2, Copy, Check } from 'lucide-react';
 import { showToast } from './Toast';
 
 import { generateImageWithImagen } from './master-studio/services/geminiService';
@@ -42,6 +42,15 @@ interface Outfit {
   createdAt: string;
 }
 
+// UNIFIED_OUTFIT_LIST 아이템 타입
+interface BaseOutfitItem {
+  id: string;
+  name: string;
+  translation: string;
+  categories: string[];
+  prompt?: string;
+}
+
 interface CharacterPanelProps {
   onCharacterSelect?: (character: Character | null, slot: string) => void;
   onOutfitSelect?: (outfit: Outfit | null) => void;
@@ -67,12 +76,7 @@ const BODY_PRESETS = [
   { id: 'curvy', name: '볼륨 글래머', prompt: 'voluptuous hourglass figure with elegant curves' },
 ];
 
-const DEFAULT_OUTFITS: Outfit[] = [
-  { id: 'outfit-001', name: '골프웨어', prompt: 'wearing professional golf attire, polo shirt, pleated skirt', category: 'GOLF_LUXURY', createdAt: '' },
-  { id: 'outfit-002', name: '우아한 드레스', prompt: 'wearing elegant royal dress with sophisticated design', category: 'ROYAL', createdAt: '' },
-  { id: 'outfit-003', name: '요가복', prompt: 'wearing stylish yoga outfit, form-fitting athleisure', category: 'YOGA', createdAt: '' },
-  { id: 'outfit-004', name: '섹시 드레스', prompt: 'wearing alluring cocktail dress, elegant and seductive', category: 'SEXY', createdAt: '' },
-];
+const DEFAULT_OUTFITS: Outfit[] = [];
 
 const SLOT_OPTIONS = [
   { id: 'woman-a', name: 'Woman A', gender: 'female' as const },
@@ -81,7 +85,7 @@ const SLOT_OPTIONS = [
   { id: 'man-b', name: 'Man B', gender: 'male' as const },
 ];
 
-// 의상 카테고리 (대본 생성에 사용되는 실제 카테고리) - categories 배열의 값과 일치해야 함
+// 의상 카테고리 (대본 생성에 사용되는 실제 카테고리)
 const OUTFIT_CATEGORIES = [
   { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상' },
   { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저' },
@@ -109,6 +113,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   // 선택 상태
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedOutfitId, setSelectedOutfitId] = useState<string | null>(null);
+  const [selectedBaseOutfitId, setSelectedBaseOutfitId] = useState<string | null>(null);
 
   // 의상 추가 상태
   const [showAddOutfit, setShowAddOutfit] = useState(false);
@@ -132,7 +137,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   // 의상 추출 상태 (localStorage에서 복원)
   const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedOutfit, setExtractedOutfit] = useState<{ en: string; ko: string } | null>(() => {
+  const [extractedOutfit, setExtractedOutfit] = useState<{ name: string; en: string; ko: string } | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('extractedOutfit');
       return saved ? JSON.parse(saved) : null;
@@ -174,17 +179,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   // 마지막 업로드 파일 저장 (재분석용)
   const [lastFaceFile, setLastFaceFile] = useState<File | null>(null);
-  const [lastOutfitFile, setLastOutfitFile] = useState<File | null>(() => {
-    // localStorage에서 base64 복원 시도
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('lastOutfitImageData');
-      if (saved) {
-        // base64 데이터가 있으면 상태 표시용으로만 사용
-        return null; // File 객체는 직렬화 불가, 별도 처리
-      }
-    }
-    return null;
-  });
+  const [lastOutfitFile, setLastOutfitFile] = useState<File | null>(null);
   const [lastOutfitImageData, setLastOutfitImageData] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('lastOutfitImageData') || null;
@@ -197,6 +192,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
     return null;
   });
+
+  // 복사 상태
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
 
   // ---------------------------------------------------------
   // 데이터 로드
@@ -302,45 +300,63 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   };
 
   // ---------------------------------------------------------
-  // 핸들러
+  // 프롬프트 복사 핸들러
   // ---------------------------------------------------------
-  const handleExtractOutfit = async (file: File, imageData?: string) => {
-    setIsExtracting(true);
-    setExtractedOutfit(null);
-    setGeneratedOutfitImage(null);
+  const handleCopyPrompt = useCallback((prompt: string, id: string) => {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopiedPromptId(id);
+      showToast('프롬프트가 복사되었습니다.', 'success');
+      setTimeout(() => setCopiedPromptId(null), 2000);
+    }).catch(() => {
+      showToast('복사에 실패했습니다.', 'error');
+    });
+  }, []);
 
-    try {
-      let base64Image = imageData;
+  // ---------------------------------------------------------
+  // 핸들러 (useCallback으로 메모이제이션)
+  // ---------------------------------------------------------
+  const handleExtractOutfit = useCallback(async (file: File | null, imageData?: string) => {
+  setIsExtracting(true);
+  setExtractedOutfit(null);
+  setGeneratedOutfitImage(null);
 
-      if (!base64Image && file) {
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        base64Image = await base64Promise;
-      }
+  try {
+    let base64Image = imageData;
 
-      if (!base64Image) {
-        throw new Error('이미지 데이터가 없습니다.');
-      }
-
-      // 재분석용으로 이미지 데이터 저장
+    // ★★★ 핵심 수정: 파일이 있으면 무조건 새로 읽기 ★★★
+    if (file) {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      base64Image = await base64Promise;
+      
+      // 새 파일이면 이전 데이터 초기화 후 새 데이터 저장
       setLastOutfitFile(file);
       setLastOutfitImageData(base64Image);
+    }
 
-      const response = await fetch('http://localhost:3002/api/extract-outfit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: base64Image })
-      });
+    // imageData만 있는 경우 (재분석)
+    if (!base64Image) {
+      throw new Error('이미지 데이터가 없습니다.');
+    }
+
+    const response = await fetch('http://localhost:3002/api/extract-outfit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: base64Image })
+    });
 
       const result = await response.json();
       if (result.success && result.prompt) {
-        // JSON 파싱된 결과 처리
         const promptData = typeof result.prompt === 'string'
-          ? { en: result.prompt, ko: "분석된 의상입니다." }
-          : result.prompt;
+          ? { name: '추출된 의상', en: result.prompt, ko: "분석된 의상입니다." }
+          : {
+              name: result.prompt.name || '추출된 의상',
+              en: result.prompt.en || result.prompt,
+              ko: result.prompt.ko || "분석된 의상입니다."
+            };
 
         setExtractedOutfit(promptData);
         showToast('의상 분석이 완료되었습니다.', 'success');
@@ -353,9 +369,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsExtracting(false);
     }
-  };
+  }, []);
 
-  const handleExtractFace = async (file: File, imageData?: string) => {
+  const handleExtractFace = useCallback(async (file: File | null, imageData?: string) => {
     setIsExtractingFace(true);
     setExtractedFace(null);
     setGeneratedFaceImage(null);
@@ -376,8 +392,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         throw new Error('이미지 데이터가 없습니다.');
       }
 
-      // 재분석용으로 이미지 데이터 저장
-      setLastFaceFile(file);
+      if (file) {
+        setLastFaceFile(file);
+      }
       setLastFaceImageData(base64Image);
 
       const response = await fetch('http://localhost:3002/api/extract-face', {
@@ -388,13 +405,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const result = await response.json();
       if (result.success && result.prompt) {
-        // JSON 파싱된 결과 처리
         const promptData = typeof result.prompt === 'string'
           ? { en: result.prompt, ko: "분석된 얼굴 특징입니다." }
           : result.prompt;
 
         setExtractedFace(promptData);
-        setNewCharacter(prev => ({ ...prev, face: promptData.en })); // 영문 프롬프트 자동 입력
+        setNewCharacter(prev => ({ ...prev, face: promptData.en }));
         showToast('얼굴 특징 분석이 완료되었습니다.', 'success');
       } else {
         throw new Error(result.error || '분석 결과가 없습니다.');
@@ -405,14 +421,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsExtractingFace(false);
     }
-  };
+  }, []);
 
-  const handleGenerateCharacterImage = async (prompt: string, type: 'outfit' | 'face') => {
+  const handleGenerateCharacterImage = useCallback(async (prompt: string, type: 'outfit' | 'face') => {
     if (isGeneratingImage) return;
     setIsGeneratingImage(true);
 
     try {
-      // 쇼츠랩 미리보기와 동일한 방식으로 이미지 생성
       const safetySettings = [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -422,7 +437,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const result: any = await generateImageWithImagen(
         prompt,
-        "",  // negativePrompt
+        "",
         { aspectRatio: "1:1", model: "imagen-4.0-generate-001" },
         safetySettings
       );
@@ -441,7 +456,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
 
-      // 2. 이미지 저장 (Backend API)
       const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -468,10 +482,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsGeneratingImage(false);
     }
-  };
+  }, [isGeneratingImage]);
 
   // ---------------------------------------------------------
-  // 드래그 앤 드롭 핸들러 (안정화)
+  // 드래그 앤 드롭 핸들러
   // ---------------------------------------------------------
   const handleDragOver = useCallback((e: React.DragEvent, type: 'face' | 'outfit') => {
     e.preventDefault();
@@ -483,7 +497,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const handleDragLeave = useCallback((e: React.DragEvent, type: 'face' | 'outfit') => {
     e.preventDefault();
     e.stopPropagation();
-    // relatedTarget이 자식 요소면 무시 (깜빡임 방지)
     const target = e.currentTarget as HTMLElement;
     const relatedTarget = e.relatedTarget as HTMLElement;
     if (relatedTarget && target.contains(relatedTarget)) return;
@@ -504,7 +517,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       return;
     }
 
-    // 파일 크기 체크 (10MB)
     const MAX_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       showToast('10MB 이하 이미지만 업로드 가능합니다.', 'error');
@@ -521,9 +533,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } else {
       handleExtractOutfit(file);
     }
-  }, []);
+  }, [handleExtractFace, handleExtractOutfit]);
 
-  const handleAddOutfit = () => {
+  const handleAddOutfit = useCallback(() => {
     if (!newOutfitName.trim() || !newOutfitPrompt.trim()) return;
 
     const newOutfit: Outfit = {
@@ -541,45 +553,40 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     setNewOutfitPrompt('');
     setNewOutfitCategory('ROYAL');
     setShowAddOutfit(false);
-    // 해당 카테고리 드롭다운 자동 열기
     setExpandedCategories(prev => ({ ...prev, [newOutfitCategory]: true }));
     showToast(`'${newOutfit.name}' 의상이 ${newOutfitCategory} 카테고리에 추가되었습니다.`, 'success');
-  };
+  }, [newOutfitName, newOutfitPrompt, newOutfitCategory, outfits]);
 
-  // 카테고리 드롭다운 토글
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = useCallback((categoryId: string) => {
     setExpandedCategories(prev => ({
       ...prev,
       [categoryId]: !prev[categoryId]
     }));
-  };
+  }, []);
 
-  // UNIFIED_OUTFIT_LIST에서 카테고리별 의상 가져오기 (기본 의상)
+  // UNIFIED_OUTFIT_LIST에서 카테고리별 의상 가져오기
   const getBaseOutfitsByCategory = useMemo(() => {
-    const categoryMap: Record<string, typeof UNIFIED_OUTFIT_LIST> = {};
+    const categoryMap: Record<string, BaseOutfitItem[]> = {};
     OUTFIT_CATEGORIES.forEach(cat => {
-      categoryMap[cat.id] = UNIFIED_OUTFIT_LIST.filter(
+      categoryMap[cat.id] = (UNIFIED_OUTFIT_LIST as BaseOutfitItem[]).filter(
         item => item.categories.includes(cat.id)
       );
     });
     return categoryMap;
   }, []);
 
-  // 카테고리별 의상 필터링 (기본 + 사용자 정의)
-  const getOutfitsByCategory = (categoryId: string) => {
-    // 사용자가 추가한 의상
+  const getOutfitsByCategory = useCallback((categoryId: string) => {
     const userOutfits = outfits.filter(outfit => outfit.category === categoryId);
     return userOutfits;
-  };
+  }, [outfits]);
 
-  // 카테고리별 총 의상 개수 (기본 + 사용자 정의)
-  const getCategoryCount = (categoryId: string) => {
+  const getCategoryCount = useCallback((categoryId: string) => {
     const baseCount = getBaseOutfitsByCategory[categoryId]?.length || 0;
     const userCount = outfits.filter(o => o.category === categoryId).length;
     return baseCount + userCount;
-  };
+  }, [getBaseOutfitsByCategory, outfits]);
 
-  const handleDeleteOutfit = (id: string) => {
+  const handleDeleteOutfit = useCallback((id: string) => {
     const updated = outfits.filter(o => o.id !== id);
     setOutfits(updated);
     saveOutfitsToBE(updated);
@@ -587,14 +594,33 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       setSelectedOutfitId(null);
       onOutfitSelect?.(null);
     }
-  };
+  }, [outfits, selectedOutfitId, onOutfitSelect]);
 
-  const handleSelectOutfit = (outfit: Outfit) => {
+  const handleSelectOutfit = useCallback((outfit: Outfit) => {
     setSelectedOutfitId(outfit.id);
+    setSelectedBaseOutfitId(null);
     onOutfitSelect?.(outfit);
-  };
+  }, [onOutfitSelect]);
 
-  const handleSaveCharacter = () => {
+  // 기본 의상 선택 핸들러 (프롬프트 포함)
+  const handleSelectBaseOutfit = useCallback((item: BaseOutfitItem) => {
+    setSelectedBaseOutfitId(item.id);
+    setSelectedOutfitId(null);
+    
+    // Outfit 형태로 변환하여 콜백 호출
+    const outfitData: Outfit = {
+      id: item.id,
+      name: item.translation || item.name,
+      prompt: item.prompt || item.name, // prompt가 없으면 name 사용
+      category: item.categories[0] || 'ROYAL',
+      createdAt: ''
+    };
+    
+    onOutfitSelect?.(outfitData);
+    showToast(`'${item.translation}' 의상이 선택되었습니다.`, 'success');
+  }, [onOutfitSelect]);
+
+  const handleSaveCharacter = useCallback(() => {
     if (!newCharacter.name.trim()) return;
 
     const character: Character = {
@@ -616,7 +642,23 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     });
     setActiveTab('select');
     showToast(`${character.name} 캐릭터가 저장되었습니다.`, 'success');
-  };
+  }, [newCharacter, characters]);
+
+  const handleReExtractFace = useCallback(() => {
+    if (lastFaceImageData) {
+      handleExtractFace(null, lastFaceImageData);
+    } else {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+    }
+  }, [lastFaceImageData, handleExtractFace]);
+
+  const handleReExtractOutfit = useCallback(() => {
+    if (lastOutfitImageData) {
+      handleExtractOutfit(null, lastOutfitImageData);
+    } else {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+    }
+  }, [lastOutfitImageData, handleExtractOutfit]);
 
   // ---------------------------------------------------------
   // 렌더링
@@ -785,6 +827,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleExtractFace(file);
+                      e.target.value = '';  // ← 추가
                     }} />
                     {isExtractingFace ? (
                       <>
@@ -801,7 +844,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     )}
                   </label>
 
-                  {/* 얼굴 분석 결과 및 이미지 생성 */}
                   {extractedFace && (
                     <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
                       <div className="flex items-start gap-3">
@@ -814,7 +856,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (Korean)</div>
+                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과</div>
                           <div className="text-xs text-slate-200 leading-relaxed mb-1">{extractedFace.ko}</div>
                           <div className="text-[10px] text-slate-500 leading-relaxed italic truncate">{extractedFace.en}</div>
                         </div>
@@ -829,14 +871,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
                         </button>
                         <button
-                          onClick={() => {
-                            // AI 재분석 - 저장된 이미지로 다시 분석
-                            if (lastFaceImageData) {
-                              handleExtractFace(lastFaceFile!, lastFaceImageData);
-                            } else {
-                              showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
-                            }
-                          }}
+                          onClick={handleReExtractFace}
                           disabled={isExtractingFace}
                           className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all disabled:opacity-50"
                           title="다시 분석"
@@ -940,6 +975,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   onChange={e => {
                     const file = e.target.files?.[0];
                     if (file) handleExtractOutfit(file);
+                    e.target.value = '';  // ← 추가
                   }}
                 />
                 {isExtracting ? (
@@ -969,7 +1005,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold text-emerald-400 mb-1">✨ 추출 결과 (Korean)</div>
+                      {/* 한글 의상 이름 표시 */}
+                      <div className="text-sm font-bold text-emerald-300 mb-1">
+                        👗 {extractedOutfit.name}
+                      </div>
+                      <div className="text-[10px] font-bold text-emerald-400 mb-1">✨ 상세 설명</div>
                       <div className="text-xs text-slate-200 leading-relaxed mb-1">{extractedOutfit.ko}</div>
                       <div className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-2">{extractedOutfit.en}</div>
                     </div>
@@ -984,14 +1024,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
                     </button>
                     <button
-                      onClick={() => {
-                        // AI 재분석 - 저장된 이미지로 다시 분석
-                        if (lastOutfitImageData) {
-                          handleExtractOutfit(lastOutfitFile!, lastOutfitImageData);
-                        } else {
-                          showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
-                        }
-                      }}
+                      onClick={() => handleCopyPrompt(extractedOutfit.en, 'extracted')}
+                      className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                      title="프롬프트 복사"
+                    >
+                      {copiedPromptId === 'extracted' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                    <button
+                      onClick={handleReExtractOutfit}
                       disabled={isExtracting}
                       className="p-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg transition-all disabled:opacity-50"
                       title="AI 재분석"
@@ -1002,6 +1042,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
                   <button
                     onClick={() => {
+                      // 한글 이름과 영문 프롬프트 모두 설정
+                      setNewOutfitName(extractedOutfit.name || '추출된 의상');
                       setNewOutfitPrompt(extractedOutfit.en);
                       setShowAddOutfit(true);
                       setExtractedOutfit(null);
@@ -1035,7 +1077,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     <button onClick={() => setShowAddOutfit(false)} className="text-slate-500 hover:text-white"><X size={14} /></button>
                   </div>
 
-                  {/* 카테고리 선택 */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500">저장할 카테고리</label>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -1058,20 +1099,21 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
                   <input
                     type="text"
-                    placeholder="의상 이름 (예: 테니스복)"
+                    placeholder="의상 이름 (한글, 예: 블랙 튜브탑 + 데님 쇼츠)"
                     value={newOutfitName}
                     onChange={e => setNewOutfitName(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
                   />
                   <textarea
-                    placeholder="의상 프롬프트 (영어)"
+                    placeholder="의상 프롬프트 (영어, 이미지 생성에 사용됨)"
                     value={newOutfitPrompt}
                     onChange={e => setNewOutfitPrompt(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-16"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
                   />
                   <button
                     onClick={handleAddOutfit}
-                    className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold rounded-lg transition-all shadow-md"
+                    disabled={!newOutfitName.trim() || !newOutfitPrompt.trim()}
+                    className="w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-[11px] font-bold rounded-lg transition-all shadow-md"
                   >
                     {OUTFIT_CATEGORIES.find(c => c.id === newOutfitCategory)?.emoji} {newOutfitCategory}에 저장하기
                   </button>
@@ -1117,7 +1159,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
                       {/* 카테고리 내 의상 목록 */}
                       {isExpanded && (
-                        <div className="bg-slate-900/50 max-h-[200px] overflow-y-auto custom-scrollbar">
+                        <div className="bg-slate-900/50 max-h-[300px] overflow-y-auto custom-scrollbar">
                           {/* 사용자 정의 의상 (삭제 가능) */}
                           {userOutfits.length > 0 && (
                             <div className="border-b border-purple-500/20">
@@ -1149,7 +1191,21 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                     }`}>
                                       {outfit.name}
                                     </div>
+                                    {/* 프롬프트 미리보기 */}
+                                    <div className="text-[9px] text-slate-500 truncate mt-0.5">
+                                      {outfit.prompt.substring(0, 50)}...
+                                    </div>
                                   </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyPrompt(outfit.prompt, outfit.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-emerald-400 transition-all flex-shrink-0"
+                                    title="프롬프트 복사"
+                                  >
+                                    {copiedPromptId === outfit.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                                  </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1165,7 +1221,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             </div>
                           )}
 
-                          {/* 기본 의상 (삭제 불가) */}
+                          {/* 기본 의상 (선택 가능, 프롬프트 포함) */}
                           <div className="divide-y divide-slate-800/30">
                             <div className="px-2.5 py-1.5 bg-slate-800/30 text-[9px] font-bold text-slate-500">
                               📦 기본 의상 ({baseOutfits.length})
@@ -1173,16 +1229,47 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             {baseOutfits.map(item => (
                               <div
                                 key={item.id}
-                                className="flex items-center gap-2 p-2 hover:bg-slate-800/30 transition-all"
+                                onClick={() => handleSelectBaseOutfit(item)}
+                                className={`group flex items-center gap-2 p-2 cursor-pointer transition-all ${
+                                  selectedBaseOutfitId === item.id
+                                    ? 'bg-emerald-500/10'
+                                    : 'hover:bg-slate-800/30'
+                                }`}
                               >
-                                <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 bg-slate-800 text-slate-600">
+                                <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
+                                  selectedBaseOutfitId === item.id
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-slate-800 text-slate-600'
+                                }`}>
                                   <Shirt size={10} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-[10px] text-slate-400 truncate">
+                                  <div className={`text-[10px] truncate ${
+                                    selectedBaseOutfitId === item.id
+                                      ? 'text-emerald-400 font-bold'
+                                      : 'text-slate-400'
+                                  }`}>
                                     {item.translation || item.name}
                                   </div>
+                                  {/* 프롬프트 미리보기 (있는 경우) */}
+                                  {item.prompt && (
+                                    <div className="text-[9px] text-slate-600 truncate mt-0.5">
+                                      {item.prompt.substring(0, 40)}...
+                                    </div>
+                                  )}
                                 </div>
+                                {item.prompt && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyPrompt(item.prompt!, item.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-emerald-400 transition-all flex-shrink-0"
+                                    title="프롬프트 복사"
+                                  >
+                                    {copiedPromptId === item.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                                  </button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1197,7 +1284,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         )}
       </div>
 
-      {/* Lightbox - 이미지 크게 보기 */}
+      {/* Lightbox */}
       {lightboxImage && (
         <Lightbox
           imageUrl={lightboxImage}

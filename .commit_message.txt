@@ -1,7 +1,8 @@
-✨ UNIFIED_OUTFIT_LIST 연동으로 실제 의상 개수 표시
+🐛 Puppeteer 파일 업로드 안정성 개선
 
-- constants.ts의 UNIFIED_OUTFIT_LIST import
-- 카테고리별 실제 의상 개수 표시 (ROYAL:10, YOGA:10, GOLF LUXURY:35, SEXY:10)
-- 기본 의상과 사용자 추가 의상 분리 표시
-- 사용자 추가 의상만 삭제 가능 (기본 의상은 읽기 전용)
-- 드롭다운 내 스크롤 가능한 의상 목록 추가
+- FileChooser 타임아웃 15초 → 30초로 증가
+- 최대 3회 재시도 로직 추가
+- 메뉴 클릭 후 대기 시간 증가 (1초 → 2초)
+- Promise.all 대신 순차적 접근으로 변경
+- 더 많은 메뉴 선택자 추가 (Upload from computer 등)
+- 재시도 전 Escape 키로 메뉴 초기화

@@ -1070,7 +1070,8 @@ export async function generateContent(serviceName, prompt, files = [], options =
         }, config.selectors.response, serviceName);
 
         // [SMART JSON CHECK + STABILITY FALLBACK]
-        if (currentText && currentText.length > 300) {
+        // 100자로 낮춤 (의상/얼굴 추출 JSON은 200~300자 정도로 짧음)
+        if (currentText && currentText.length > 100) {
             // 1. Try to PARSE (Fast Path)
             try {
                 let cleanText = currentText.trim();

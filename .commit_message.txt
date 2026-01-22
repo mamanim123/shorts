@@ -1,7 +1,7 @@
-✨ 의상 라이브러리 카테고리 기반 드롭다운 시스템 구현
+✨ UNIFIED_OUTFIT_LIST 연동으로 실제 의상 개수 표시
 
-- ROYAL, YOGA, GOLF LUXURY, SEXY 4개 카테고리 추가
-- 카테고리별 접기/펼치기 드롭다운 UI 구현
-- 의상 저장 시 카테고리 선택 기능 추가
-- 각 의상 개별 삭제(X) 버튼 구현
-- DEFAULT_OUTFITS를 새 카테고리 시스템에 맞게 수정
+- constants.ts의 UNIFIED_OUTFIT_LIST import
+- 카테고리별 실제 의상 개수 표시 (ROYAL:10, YOGA:10, GOLF LUXURY:35, SEXY:10)
+- 기본 의상과 사용자 추가 의상 분리 표시
+- 사용자 추가 의상만 삭제 가능 (기본 의상은 읽기 전용)
+- 드롭다운 내 스크롤 가능한 의상 목록 추가

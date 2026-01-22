@@ -9,7 +9,7 @@
  * - 드래그 앤 드롭: 이미지 업로드 지원
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2 } from 'lucide-react';
 import { showToast } from './Toast';
 
@@ -17,6 +17,7 @@ import { generateImageWithImagen } from './master-studio/services/geminiService'
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Lightbox from './master-studio/Lightbox';
+import { UNIFIED_OUTFIT_LIST } from '../constants';
 
 // ============================================
 // 타입 정의
@@ -80,11 +81,11 @@ const SLOT_OPTIONS = [
   { id: 'man-b', name: 'Man B', gender: 'male' as const },
 ];
 
-// 의상 카테고리 (대본 생성에 사용되는 실제 카테고리)
+// 의상 카테고리 (대본 생성에 사용되는 실제 카테고리) - categories 배열의 값과 일치해야 함
 const OUTFIT_CATEGORIES = [
   { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상' },
   { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저' },
-  { id: 'GOLF_LUXURY', name: 'GOLF LUXURY', emoji: '🏌️', description: '골프/럭셔리 스포츠웨어' },
+  { id: 'GOLF LUXURY', name: 'GOLF LUXURY', emoji: '🏌️', description: '골프/럭셔리 스포츠웨어' },
   { id: 'SEXY', name: 'SEXY', emoji: '💋', description: '섹시/매혹적인 의상' },
 ];
 
@@ -553,9 +554,29 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }));
   };
 
-  // 카테고리별 의상 필터링
+  // UNIFIED_OUTFIT_LIST에서 카테고리별 의상 가져오기 (기본 의상)
+  const getBaseOutfitsByCategory = useMemo(() => {
+    const categoryMap: Record<string, typeof UNIFIED_OUTFIT_LIST> = {};
+    OUTFIT_CATEGORIES.forEach(cat => {
+      categoryMap[cat.id] = UNIFIED_OUTFIT_LIST.filter(
+        item => item.categories.includes(cat.id)
+      );
+    });
+    return categoryMap;
+  }, []);
+
+  // 카테고리별 의상 필터링 (기본 + 사용자 정의)
   const getOutfitsByCategory = (categoryId: string) => {
-    return outfits.filter(outfit => outfit.category === categoryId);
+    // 사용자가 추가한 의상
+    const userOutfits = outfits.filter(outfit => outfit.category === categoryId);
+    return userOutfits;
+  };
+
+  // 카테고리별 총 의상 개수 (기본 + 사용자 정의)
+  const getCategoryCount = (categoryId: string) => {
+    const baseCount = getBaseOutfitsByCategory[categoryId]?.length || 0;
+    const userCount = outfits.filter(o => o.category === categoryId).length;
+    return baseCount + userCount;
   };
 
   const handleDeleteOutfit = (id: string) => {
@@ -1060,7 +1081,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               {/* 카테고리별 드롭다운 목록 */}
               <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
                 {OUTFIT_CATEGORIES.map(category => {
-                  const categoryOutfits = getOutfitsByCategory(category.id);
+                  const baseOutfits = getBaseOutfitsByCategory[category.id] || [];
+                  const userOutfits = getOutfitsByCategory(category.id);
+                  const totalCount = getCategoryCount(category.id);
                   const isExpanded = expandedCategories[category.id];
 
                   return (
@@ -1077,9 +1100,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         <div className="flex items-center gap-2">
                           <span className="text-base">{category.emoji}</span>
                           <span className="text-xs font-bold text-slate-300">{category.name}</span>
-                          <span className="text-[10px] text-slate-600 bg-slate-900 px-1.5 py-0.5 rounded-full">
-                            {categoryOutfits.length}
+                          <span className="text-[10px] text-emerald-400 bg-emerald-900/30 px-1.5 py-0.5 rounded-full font-bold">
+                            {totalCount}
                           </span>
+                          {userOutfits.length > 0 && (
+                            <span className="text-[9px] text-purple-400">+{userOutfits.length} 추가됨</span>
+                          )}
                         </div>
                         <ChevronDown
                           size={16}
@@ -1091,54 +1117,75 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
                       {/* 카테고리 내 의상 목록 */}
                       {isExpanded && (
-                        <div className="bg-slate-900/50 divide-y divide-slate-800/50">
-                          {categoryOutfits.length === 0 ? (
-                            <div className="py-4 text-center text-[10px] text-slate-600">
-                              이 카테고리에 저장된 의상이 없습니다
+                        <div className="bg-slate-900/50 max-h-[200px] overflow-y-auto custom-scrollbar">
+                          {/* 사용자 정의 의상 (삭제 가능) */}
+                          {userOutfits.length > 0 && (
+                            <div className="border-b border-purple-500/20">
+                              <div className="px-2.5 py-1.5 bg-purple-900/20 text-[9px] font-bold text-purple-400">
+                                ✨ 사용자 추가 ({userOutfits.length})
+                              </div>
+                              {userOutfits.map(outfit => (
+                                <div
+                                  key={outfit.id}
+                                  onClick={() => handleSelectOutfit(outfit)}
+                                  className={`group flex items-center gap-2 p-2 cursor-pointer transition-all ${
+                                    selectedOutfitId === outfit.id
+                                      ? 'bg-emerald-500/10'
+                                      : 'hover:bg-slate-800/50'
+                                  }`}
+                                >
+                                  <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
+                                    selectedOutfitId === outfit.id
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-purple-800 text-purple-400'
+                                  }`}>
+                                    <Shirt size={10} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-[10px] font-bold truncate ${
+                                      selectedOutfitId === outfit.id
+                                        ? 'text-emerald-400'
+                                        : 'text-slate-300'
+                                    }`}>
+                                      {outfit.name}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteOutfit(outfit.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-red-400 transition-all flex-shrink-0"
+                                    title="삭제"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
-                          ) : (
-                            categoryOutfits.map(outfit => (
+                          )}
+
+                          {/* 기본 의상 (삭제 불가) */}
+                          <div className="divide-y divide-slate-800/30">
+                            <div className="px-2.5 py-1.5 bg-slate-800/30 text-[9px] font-bold text-slate-500">
+                              📦 기본 의상 ({baseOutfits.length})
+                            </div>
+                            {baseOutfits.map(item => (
                               <div
-                                key={outfit.id}
-                                onClick={() => handleSelectOutfit(outfit)}
-                                className={`group flex items-center gap-3 p-2.5 cursor-pointer transition-all ${
-                                  selectedOutfitId === outfit.id
-                                    ? 'bg-emerald-500/10'
-                                    : 'hover:bg-slate-800/50'
-                                }`}
+                                key={item.id}
+                                className="flex items-center gap-2 p-2 hover:bg-slate-800/30 transition-all"
                               >
-                                <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${
-                                  selectedOutfitId === outfit.id
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-slate-800 text-slate-600'
-                                }`}>
-                                  <Shirt size={12} />
+                                <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 bg-slate-800 text-slate-600">
+                                  <Shirt size={10} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className={`text-[11px] font-bold truncate ${
-                                    selectedOutfitId === outfit.id
-                                      ? 'text-emerald-400'
-                                      : 'text-slate-300 group-hover:text-emerald-400'
-                                  }`}>
-                                    {outfit.name}
-                                  </div>
-                                  <div className="text-[9px] text-slate-600 truncate italic">
-                                    {outfit.prompt}
+                                  <div className="text-[10px] text-slate-400 truncate">
+                                    {item.translation || item.name}
                                   </div>
                                 </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteOutfit(outfit.id);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-red-400 transition-all flex-shrink-0"
-                                  title="삭제"
-                                >
-                                  <X size={14} />
-                                </button>
                               </div>
-                            ))
-                          )}
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

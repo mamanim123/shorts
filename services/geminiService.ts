@@ -9,6 +9,9 @@ import {
   NormalizedPromptEnhancementSettings,
 } from './promptEnhancementUtils';
 import { isTopicDirectlyCopied, buildTopicViolationNotice, normalizeTopicText } from '../utils/topicGuard';
+import { buildOutfitPool } from './outfitService';
+import type { OutfitPoolItem } from './outfitService';
+import { getCachedCharacters } from './characterService';
 
 // Schema definition removed as we are using web automation and raw JSON parsing.
 
@@ -404,7 +407,15 @@ function generateCostumeV2(forceStyle?: StyleCategory): { description: string, s
 }
 
 function generateCharacterTraits(): string {
-  // CHARACTER_PRESETS에서 랜덤 선택
+  const cachedCharacters = getCachedCharacters()
+    .filter((character) => character.gender === 'female')
+    .filter((character) => character.hair && character.body);
+
+  if (cachedCharacters.length > 0) {
+    const selectedChar = pickRandom(cachedCharacters);
+    return `${selectedChar.hair}, ${selectedChar.body}`;
+  }
+
   const femaleChars = [CHARACTER_PRESETS.WOMAN_A, CHARACTER_PRESETS.WOMAN_B, CHARACTER_PRESETS.WOMAN_C];
   const selectedChar = pickRandom(femaleChars);
   return `${selectedChar.hair}, ${selectedChar.body}`;
@@ -903,15 +914,24 @@ const DEFAULT_OUTFITS = {
   MALE: "White Oxford Shirt + Camel Coat + Navy Slacks"
 };
 
-// 의상 랜덤 선택 함수 (UNIFIED_OUTFIT_LIST 사용)
+const getOutfitPool = (): OutfitPoolItem[] =>
+  buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+
+const isMaleOutfit = (item: OutfitPoolItem): boolean =>
+  item.categories.includes('MALE');
+
+const isUnisexOutfit = (item: OutfitPoolItem): boolean =>
+  item.categories.includes('UNISEX');
+
+const isCategoryMatch = (item: OutfitPoolItem, category: string): boolean =>
+  item.categories.some(cat => cat.toLowerCase().includes(category.toLowerCase()));
+
+// 의상 랜덤 선택 함수 (UNIFIED_OUTFIT_LIST + 저장 의상)
 const pickRandomOutfit = (category?: string): string => {
-  let candidates = UNIFIED_OUTFIT_LIST.filter(item => !item.categories.includes('MALE'));
+  let candidates = getOutfitPool().filter(item => !isMaleOutfit(item));
 
   if (category) {
-    // 카테고리 필터링 (예: 골프장 시나리오면 GOLF LUXURY 우선)
-    const categoryMatches = candidates.filter(item =>
-      item.categories.some(cat => cat.toLowerCase().includes(category.toLowerCase()))
-    );
+    const categoryMatches = candidates.filter(item => isCategoryMatch(item, category));
     if (categoryMatches.length > 0) {
       candidates = categoryMatches;
     }
@@ -922,12 +942,10 @@ const pickRandomOutfit = (category?: string): string => {
 };
 
 const pickRandomMaleOutfit = (category?: string, exclude?: string): string => {
-  let candidates = UNIFIED_OUTFIT_LIST.filter(item => item.categories.includes('MALE'));
+  let candidates = getOutfitPool().filter(item => isMaleOutfit(item) || isUnisexOutfit(item));
 
   if (category) {
-    const categoryMatches = candidates.filter(item =>
-      item.categories.some(cat => cat.toLowerCase().includes(category.toLowerCase()))
-    );
+    const categoryMatches = candidates.filter(item => isCategoryMatch(item, category));
     if (categoryMatches.length > 0) {
       candidates = categoryMatches;
     }

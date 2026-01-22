@@ -66,6 +66,13 @@ const GENRE_GUIDELINES_FILE = path.join(GENERATED_DIR, 'genre_guidelines.json');
 const FAVORITES_FILE = path.join(__dirname, './cineboard_favorites.json');
 const CHARACTERS_FILE = path.join(__dirname, './characters.json');
 const OUTFITS_FILE = path.join(__dirname, './outfits.json');
+const DEFAULT_OUTFIT_CATEGORIES = [
+    { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상', gender: 'female' },
+    { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저', gender: 'female' },
+    { id: 'GOLF LUXURY', name: 'GOLF LUXURY', emoji: '🏌️', description: '골프/럭셔리 스포츠웨어', gender: 'female' },
+    { id: 'SEXY', name: 'SEXY', emoji: '💋', description: '섹시/매혹적인 의상', gender: 'female' },
+    { id: 'MALE', name: 'MALE', emoji: '🕺', description: '남성 의상', gender: 'male' }
+];
 const IMAGE_CAPTURE_MAX_ATTEMPTS = Number(process.env.IMAGE_CAPTURE_MAX_ATTEMPTS || 2);
 const lastImageFingerprintsByStory = new Map();
 
@@ -95,7 +102,7 @@ if (!fs.existsSync(CHARACTERS_FILE)) {
     fs.writeFileSync(CHARACTERS_FILE, JSON.stringify({ characters: [] }, null, 2));
 }
 if (!fs.existsSync(OUTFITS_FILE)) {
-    fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits: [] }, null, 2));
+    fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits: [], categories: DEFAULT_OUTFIT_CATEGORIES }, null, 2));
 }
 
 const readEngineConfig = () => {
@@ -1036,6 +1043,8 @@ app.post('/api/extract-face', async (req, res) => {
 
         const facePrompt = `You are an expert facial feature analyst and beauty consultant. Analyze this face image with EXTREME PRECISION for AI portrait generation.
 
+IMPORTANT: Assume the person is Korean unless explicitly stated otherwise. In the English prompt, include "Korean woman" or "Korean man" based on the appearance.
+
 === DETAILED ANALYSIS CATEGORIES ===
 
 1. **FACE STRUCTURE**
@@ -1148,17 +1157,114 @@ Now analyze the face with MAXIMUM DETAIL and return ONLY the JSON object:`;
     }
 });
 
+app.post('/api/extract-hair', async (req, res) => {
+    try {
+        const { imageData } = req.body;
+        if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+
+        console.log('[Vision] Analyzing hair details using Puppeteer...');
+
+        const hairPrompt = `You are an expert hair stylist and visual analyst. Analyze the hairstyle in this image with MAXIMUM DETAIL for AI prompt generation.
+
+IMPORTANT: Assume the person is Korean unless explicitly stated otherwise. In the English prompt, include "Korean woman" or "Korean man" based on the appearance.
+IMPORTANT: The subject must be a realistic human model. Avoid mannequin, doll, CGI, illustration, or anime-style wording, and emphasize real skin texture and natural anatomy.
+IMPORTANT: If visible, describe bust volume and bust-to-waist contrast clearly (e.g., full bust, pronounced bustline, strong bust-to-waist contrast).
+
+=== OUTPUT FORMAT (JSON ONLY) ===
+{
+  "en": "Detailed English prompt describing the hairstyle. Include length, texture, cut, volume, color, parting, bangs, styling, and overall vibe.",
+  "ko": "자연스러운 한국어 헤어스타일 설명. 길이, 질감, 컷, 볼륨, 색상, 가르마, 앞머리, 스타일링을 포함."
+}
+
+Now analyze the hair and return ONLY the JSON object:`;
+
+        const result = await generateContent('GEMINI', hairPrompt, [imageData], { freshChat: true });
+        const content = typeof result === 'string' ? result : (result.content || '');
+
+        if (!content) {
+            throw new Error('헤어 분석 결과가 비어있습니다.');
+        }
+
+        let parsed = { en: "", ko: "" };
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                parsed = JSON.parse(content);
+            }
+        } catch (e) {
+            console.warn("JSON parsing failed, falling back to raw text", e);
+            parsed.en = content;
+            parsed.ko = "분석 결과 형식이 올바르지 않아 원문을 표시합니다.";
+        }
+
+        res.json({ success: true, prompt: parsed });
+    } catch (error) {
+        console.error('헤어 추출 API 에러:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/extract-body', async (req, res) => {
+    try {
+        const { imageData } = req.body;
+        if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+
+        console.log('[Vision] Analyzing body shape details using Puppeteer...');
+
+        const bodyPrompt = `You are a visual analyst specializing in body shape and posture for AI image prompts. Analyze the body silhouette and pose in this image.
+
+IMPORTANT: Assume the person is Korean unless explicitly stated otherwise. In the English prompt, include "Korean woman" or "Korean man" based on the appearance.
+
+=== OUTPUT FORMAT (JSON ONLY) ===
+{
+  "en": "Detailed English prompt describing body shape, proportions, posture, silhouette, and pose. Avoid face descriptions.",
+  "ko": "자연스러운 한국어 체형/포즈 설명. 비율, 실루엣, 자세, 분위기를 포함."
+}
+
+Now analyze the body and return ONLY the JSON object:`;
+
+        const result = await generateContent('GEMINI', bodyPrompt, [imageData], { freshChat: true });
+        const content = typeof result === 'string' ? result : (result.content || '');
+
+        if (!content) {
+            throw new Error('체형 분석 결과가 비어있습니다.');
+        }
+
+        let parsed = { en: "", ko: "" };
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                parsed = JSON.parse(content);
+            }
+        } catch (e) {
+            console.warn("JSON parsing failed, falling back to raw text", e);
+            parsed.en = content;
+            parsed.ko = "분석 결과 형식이 올바르지 않아 원문을 표시합니다.";
+        }
+
+        res.json({ success: true, prompt: parsed });
+    } catch (error) {
+        console.error('체형 추출 API 에러:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ---------------------------------------------------------
 // 한글 → 영문 번역 API (프롬프트용)
 // ---------------------------------------------------------
 app.post('/api/translate-to-english', async (req, res) => {
     try {
-        const { text, type } = req.body; // type: 'outfit' | 'face'
+        const { text, type } = req.body; // type: 'outfit' | 'face' | 'hair' | 'body'
         if (!text) return res.status(400).json({ success: false, error: '번역할 텍스트가 없습니다.' });
 
-        console.log(`[Translate] Korean → English (${type}): ${text.substring(0, 50)}...`);
+        const normalizedType = ['outfit', 'face', 'hair', 'body'].includes(type) ? type : 'face';
+        console.log(`[Translate] Korean → English (${normalizedType}): ${text.substring(0, 50)}...`);
 
-        const translatePrompt = type === 'outfit'
+        const translatePrompt = normalizedType === 'outfit'
             ? `You are a fashion prompt translator. Translate this Korean outfit description into a detailed English prompt optimized for AI image generation (Stable Diffusion/Midjourney).
 
 RULES:
@@ -1166,6 +1272,34 @@ RULES:
 - Include specific details: fabric texture, fit, silhouette, design elements
 - Use comma-separated descriptive phrases
 - Do NOT include: person description, background, lighting, mood words
+- Output ONLY the English prompt, nothing else
+
+Korean input:
+${text}
+
+English prompt:`
+            : normalizedType === 'hair'
+            ? `You are a hair prompt translator. Translate this Korean hairstyle description into a detailed English prompt optimized for AI image generation.
+
+RULES:
+- Translate accurately while expanding with relevant hair terminology
+- Include length, texture, cut, volume, color, parting, bangs, styling
+- Use comma-separated descriptive phrases
+- Do NOT include: face, body, background, lighting, mood words
+- Output ONLY the English prompt, nothing else
+
+Korean input:
+${text}
+
+English prompt:`
+            : normalizedType === 'body'
+            ? `You are a body-shape prompt translator. Translate this Korean body/silhouette description into a detailed English prompt optimized for AI image generation.
+
+RULES:
+- Translate accurately while expanding with relevant body/pose terminology
+- Include proportions, posture, silhouette, pose details
+- Use comma-separated descriptive phrases
+- Do NOT include: face, clothing details, background, lighting, mood words
 - Output ONLY the English prompt, nothing else
 
 Korean input:
@@ -1266,13 +1400,56 @@ app.post('/api/characters', (req, res) => {
     }
 });
 
+const normalizeOutfitCategories = (categories = [], outfits = []) => {
+    const map = new Map();
+    DEFAULT_OUTFIT_CATEGORIES.forEach((category) => {
+        if (category?.id) map.set(category.id, category);
+    });
+    categories.forEach((category) => {
+        const id = typeof category?.id === 'string' ? category.id.trim() : '';
+        if (!id) return;
+        map.set(id, {
+            id,
+            name: typeof category?.name === 'string' ? category.name.trim() : id,
+            emoji: typeof category?.emoji === 'string' ? category.emoji.trim() : '',
+            description: typeof category?.description === 'string' ? category.description.trim() : '',
+            gender: category?.gender || 'female'
+        });
+    });
+    outfits.forEach((outfit) => {
+        const categoryId = typeof outfit?.category === 'string' ? outfit.category.trim() : '';
+        if (categoryId && !map.has(categoryId)) {
+            map.set(categoryId, { id: categoryId, name: categoryId, gender: 'female' });
+        }
+    });
+    return Array.from(map.values());
+};
+
+const readOutfitCatalog = () => {
+    try {
+        const raw = fs.readFileSync(OUTFITS_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        const outfits = Array.isArray(parsed?.outfits) ? parsed.outfits : [];
+        const categories = normalizeOutfitCategories(parsed?.categories || [], outfits);
+        return { outfits, categories };
+    } catch (error) {
+        console.error('Failed to read outfits:', error);
+        return { outfits: [], categories: DEFAULT_OUTFIT_CATEGORIES };
+    }
+};
+
+const writeOutfitCatalog = (outfits = [], categories = []) => {
+    const normalizedCategories = normalizeOutfitCategories(categories, outfits);
+    fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits, categories: normalizedCategories }, null, 2));
+    return normalizedCategories;
+};
+
 // ---------------------------------------------------------
 // 의상 관리 API
 // ---------------------------------------------------------
 app.get('/api/outfits', (req, res) => {
     try {
-        const raw = fs.readFileSync(OUTFITS_FILE, 'utf8');
-        res.json(JSON.parse(raw));
+        res.json(readOutfitCatalog());
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -1280,9 +1457,9 @@ app.get('/api/outfits', (req, res) => {
 
 app.post('/api/outfits', (req, res) => {
     try {
-        const { outfits } = req.body;
-        fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits }, null, 2));
-        res.json({ success: true });
+        const { outfits, categories } = req.body;
+        const normalizedCategories = writeOutfitCatalog(outfits || [], categories || []);
+        res.json({ success: true, categories: normalizedCategories });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

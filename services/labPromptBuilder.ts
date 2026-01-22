@@ -15,6 +15,8 @@
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
+import { buildOutfitPool } from './outfitService';
+import type { OutfitPoolItem } from './outfitService';
 
 // ============================================
 // 타입 정의
@@ -639,6 +641,18 @@ export const adjustOutfitForSeason = (outfit: string, topic: string): string => 
   return adjusted;
 };
 
+const getOutfitPool = (): OutfitPoolItem[] =>
+  buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+
+const isMaleOutfit = (item: OutfitPoolItem): boolean =>
+  item.categories.includes('MALE');
+
+const isUnisexOutfit = (item: OutfitPoolItem): boolean =>
+  item.categories.includes('UNISEX');
+
+const isGolfOutfit = (item: OutfitPoolItem): boolean =>
+  item.categories.some((category) => category.toLowerCase().includes('golf'));
+
 export const pickFemaleOutfit = (
   genre: string,
   topic: string = '',
@@ -647,8 +661,8 @@ export const pickFemaleOutfit = (
   const isSexyGenre = genre === 'affair-suspicion';
   const isGolfTopic = topic.includes('골프') || topic.includes('golf') || topic.includes('Golf');
 
-  const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
-    if (item.categories.includes('MALE')) return false;
+  const candidates = getOutfitPool().filter(item => {
+    if (isMaleOutfit(item)) return false;
     if (excludeOutfits.includes(item.name)) return false;
 
     // 섹시 장르가 우선
@@ -669,16 +683,16 @@ export const pickFemaleOutfit = (
 export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
   const isGolfTopic = topic.includes('골프') || topic.includes('golf') || topic.includes('Golf');
 
-  const candidates = UNIFIED_OUTFIT_LIST.filter(item => {
-    if (!item.categories.includes('MALE')) return false;
+  const candidates = getOutfitPool().filter(item => {
+    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
     if (excludeOutfits.includes(item.name)) return false;
 
     if (isGolfTopic) {
-      return item.categories.includes('GOLF');
+      return isGolfOutfit(item);
     }
 
     // 골프 주제가 아닐 때는 일반적인 남성 의상 (GOLF 제외 추천)
-    return !item.categories.includes('GOLF') || Math.random() > 0.7;
+    return !isGolfOutfit(item) || Math.random() > 0.7;
   });
 
   const selectedName = candidates.length > 0

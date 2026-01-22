@@ -1,34 +1,6 @@
 {
   "outfits": [
     {
-      "id": "outfit-001",
-      "name": "골프웨어",
-      "prompt": "wearing professional golf attire, polo shirt, pleated skirt",
-      "category": "스포츠",
-      "createdAt": ""
-    },
-    {
-      "id": "outfit-002",
-      "name": "비즈니스 정장",
-      "prompt": "wearing a sharp business suit, tailored blazer",
-      "category": "정장",
-      "createdAt": ""
-    },
-    {
-      "id": "outfit-003",
-      "name": "K-드라마 리얼톤",
-      "prompt": "wearing modern K-drama style outfit",
-      "category": "캐주얼",
-      "createdAt": ""
-    },
-    {
-      "id": "outfit-004",
-      "name": "캐주얼",
-      "prompt": "wearing casual everyday clothes",
-      "category": "캐주얼",
-      "createdAt": ""
-    },
-    {
       "id": "outfit-1769055244556",
       "name": "추출된 의상",
       "prompt": "A high-realism portrait of a young Korean woman with a slender yet curvy hourglass figure, featuring a narrow waist and elegant posture. She is wearing a tight-fitting light gray mock-neck top made of soft, breathable cotton-stretch fabric, detailed with a small black crest embroidery on the left chest. The lower half features a high-waisted black midi pencil skirt with intricate horizontal ruching and pleated textures, hugging the hips and thighs in a sophisticated bodycon fit. The scene is illuminated by natural soft daylight, showcasing ultra-detailed skin textures, fine pores, and realistic fabric fibers. 8k UHD, cinematic lighting, sharp focus on textile details and natural human skin.",
@@ -69,6 +41,64 @@
       "prompt": "light sky blue long sleeve crop top with round neckline and thumbholes, matching high-waisted seamless athletic micro mini shorts, white crew socks with logo, white athletic sneakers",
       "category": "YOGA",
       "createdAt": "2026-01-22T06:46:24.737Z"
+    },
+    {
+      "id": "outfit-1769076817743",
+      "name": "라이트 워시 데님 크롭 자켓 + 데님 마이크로 쇼츠",
+      "prompt": "A coordinated denim ensemble featuring a light-wash blue denim cropped jacket with long sleeves and elasticized cinched hemline creating a voluminous puff effect. The jacket is paired with matching light-wash denim micro shorts that feature a low-rise waist, traditional five-pocket construction, and subtle distressed details on the rear pockets with white stitching accents. The shorts are skin-tight with a very short inseam and finished hems. Underneath, sheer white matte tights or stockings provide a smooth layered look, extending down to white athletic sneakers with visible white laces and a clean minimalist design. The entire outfit reflects a trendy Y2K-inspired streetwear aesthetic using medium-weight cotton denim with a classic matte texture and uniform faded blue color.",
+      "category": "ROYAL",
+      "createdAt": "2026-01-22T10:13:37.743Z"
+    },
+    {
+      "id": "outfit-1769079711361",
+      "name": "베이지 리브드 스쿱넥 롱슬리브 티셔츠",
+      "prompt": "minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use",
+      "category": "ROYAL",
+      "createdAt": "2026-01-22T11:01:51.361Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "ROYAL",
+      "name": "ROYAL",
+      "emoji": "👗",
+      "description": "로얄/우아한 의상",
+      "gender": "female"
+    },
+    {
+      "id": "YOGA",
+      "name": "YOGA",
+      "emoji": "🧘",
+      "description": "요가/애슬레저",
+      "gender": "female"
+    },
+    {
+      "id": "GOLF LUXURY",
+      "name": "GOLF LUXURY",
+      "emoji": "🏌️",
+      "description": "골프/럭셔리 스포츠웨어",
+      "gender": "female"
+    },
+    {
+      "id": "SEXY",
+      "name": "SEXY",
+      "emoji": "💋",
+      "description": "섹시/매혹적인 의상",
+      "gender": "female"
+    },
+    {
+      "id": "MALE",
+      "name": "MALE",
+      "emoji": "🕺",
+      "description": "남성 의상",
+      "gender": "male"
+    },
+    {
+      "id": "사용자 정의",
+      "name": "사용자 정의",
+      "emoji": "",
+      "description": "",
+      "gender": "female"
     }
   ]
 }

@@ -1,6 +1,8 @@
 import { ModeTemplates } from '../types';
 import { getGenreGuideline } from './genreGuidelines';
 import { FEMALE_OUTFIT_PRESETS, MALE_OUTFIT_PRESETS, UNIFIED_OUTFIT_LIST } from '../constants';
+import { buildOutfitPool } from './outfitService';
+import type { OutfitPoolItem } from './outfitService';
 import { normalizeTopicText } from '../utils/topicGuard';
 
 // Helper to pick random item
@@ -143,10 +145,14 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
   // 3. Resolve Outfits
   const { lockedFemaleOutfit, lockedFemaleOutfit2, lockedMaleOutfit, lockedMaleOutfit2 } = outfits;
   const isGolfContext = normalizedContext.includes('골프') || normalizedContext.includes('golf');
-  const maleCandidates = UNIFIED_OUTFIT_LIST.filter(item => item.categories.includes('MALE'));
-  const maleGolfCandidates = maleCandidates.filter(item =>
-    item.categories.some(category => category.toUpperCase().includes('GOLF'))
-  );
+  const outfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+  const isMaleOutfit = (item: OutfitPoolItem) => item.categories.includes('MALE');
+  const isUnisexOutfit = (item: OutfitPoolItem) => item.categories.includes('UNISEX');
+  const isGolfOutfit = (item: OutfitPoolItem) =>
+    item.categories.some(category => category.toUpperCase().includes('GOLF'));
+
+  const maleCandidates = outfitPool.filter(item => isMaleOutfit(item) || isUnisexOutfit(item));
+  const maleGolfCandidates = maleCandidates.filter(item => isGolfOutfit(item));
   const maleOutfitPool = (isGolfContext && maleGolfCandidates.length > 0)
     ? maleGolfCandidates
     : maleCandidates;
@@ -158,10 +164,14 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
     || lockedMaleOutfit
     || pickRandom(maleOutfitNames.filter(item => item !== fallbackMaleOutfit))
     || fallbackMaleOutfit;
-  const femaleOutfits = FEMALE_OUTFIT_PRESETS;
+  const femaleCandidates = outfitPool.filter(item => !isMaleOutfit(item));
+  const femaleOutfitNames = Array.from(new Set([
+    ...FEMALE_OUTFIT_PRESETS,
+    ...femaleCandidates.map(item => item.name)
+  ]));
 
-  const mainOutfit = lockedFemaleOutfit || pickRandom(femaleOutfits);
-  const subOutfit = lockedFemaleOutfit2 || pickRandom(femaleOutfits.filter(o => o !== mainOutfit));
+  const mainOutfit = lockedFemaleOutfit || pickRandom(femaleOutfitNames);
+  const subOutfit = lockedFemaleOutfit2 || pickRandom(femaleOutfitNames.filter(o => o !== mainOutfit));
 
   const outfitGuidance = `
 [SELECTED OUTFITS - MUST USE THESE EXACTLY FOR EVERY SCENE]

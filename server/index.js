@@ -64,6 +64,8 @@ const ENGINE_CONFIG_FILE = path.join(__dirname, '../engine_config.json');
 const PROMPT_PRESETS_FILE = path.join(__dirname, './prompt_presets.json');
 const GENRE_GUIDELINES_FILE = path.join(GENERATED_DIR, 'genre_guidelines.json');
 const FAVORITES_FILE = path.join(__dirname, './cineboard_favorites.json');
+const CHARACTERS_FILE = path.join(__dirname, './characters.json');
+const OUTFITS_FILE = path.join(__dirname, './outfits.json');
 const IMAGE_CAPTURE_MAX_ATTEMPTS = Number(process.env.IMAGE_CAPTURE_MAX_ATTEMPTS || 2);
 const lastImageFingerprintsByStory = new Map();
 
@@ -88,6 +90,12 @@ if (!fs.existsSync(PROMPT_PRESETS_FILE)) {
 }
 if (!fs.existsSync(FAVORITES_FILE)) {
     fs.writeFileSync(FAVORITES_FILE, JSON.stringify({ favorites: [] }, null, 2));
+}
+if (!fs.existsSync(CHARACTERS_FILE)) {
+    fs.writeFileSync(CHARACTERS_FILE, JSON.stringify({ characters: [] }, null, 2));
+}
+if (!fs.existsSync(OUTFITS_FILE)) {
+    fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits: [] }, null, 2));
 }
 
 const readEngineConfig = () => {
@@ -704,6 +712,103 @@ app.post('/api/genre-guidelines', (req, res) => {
 });
 
 // --- Prompt Preset API ---
+// ---------------------------------------------------------
+// 의상/캐릭터 특징 추출 API (Vision AI)
+// ---------------------------------------------------------
+app.post('/api/extract-outfit', async (req, res) => {
+    try {
+        const { imageData } = req.body;
+        if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+
+        console.log('[Vision] Analyzing outfit using Puppeteer...');
+
+        const visionPrompt = `Analyze this image and describe the OUTFIT only in a detailed Stable Diffusion prompt style. 
+        Focus on clothing type, material, color, and fit. 
+        Return ONLY the English prompt string.`;
+
+        const result = await generateContent('GEMINI', visionPrompt, [imageData]);
+        const prompt = typeof result === 'string' ? result : (result.content || '');
+
+        if (!prompt) {
+            throw new Error('의상 분석 결과가 비어있습니다.');
+        }
+
+        res.json({ success: true, prompt: prompt.trim() });
+    } catch (error) {
+        console.error('의상 추출 API 에러:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/extract-face', async (req, res) => {
+    try {
+        const { imageData } = req.body;
+        if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+
+        console.log('[Vision] Analyzing face features using Puppeteer...');
+
+        const facePrompt = `Analyze this face image and describe the facial features in a detailed Stable Diffusion prompt style. 
+        Focus on face shape, eyes, nose, lips, jawline, and skin texture. 
+        Return ONLY the English prompt string.`;
+
+        const result = await generateContent('GEMINI', facePrompt, [imageData]);
+        const prompt = typeof result === 'string' ? result : (result.content || '');
+
+        if (!prompt) {
+            throw new Error('얼굴 분석 결과가 비어있습니다.');
+        }
+
+        res.json({ success: true, prompt: prompt.trim() });
+    } catch (error) {
+        console.error('얼굴 추출 API 에러:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 캐릭터 관리 API
+// ---------------------------------------------------------
+app.get('/api/characters', (req, res) => {
+    try {
+        const raw = fs.readFileSync(CHARACTERS_FILE, 'utf8');
+        res.json(JSON.parse(raw));
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/characters', (req, res) => {
+    try {
+        const { characters } = req.body;
+        fs.writeFileSync(CHARACTERS_FILE, JSON.stringify({ characters }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 의상 관리 API
+// ---------------------------------------------------------
+app.get('/api/outfits', (req, res) => {
+    try {
+        const raw = fs.readFileSync(OUTFITS_FILE, 'utf8');
+        res.json(JSON.parse(raw));
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/outfits', (req, res) => {
+    try {
+        const { outfits } = req.body;
+        fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.get('/api/prompt-presets', (req, res) => {
     try {
         const presets = readPromptPresets().map(({ id, name, description }) => ({

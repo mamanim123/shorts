@@ -19,6 +19,7 @@ import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
+import CharacterPanel from './CharacterPanel';
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -401,6 +402,13 @@ export const ShortsLabPanel: React.FC = () => {
         useStylePreset: true,
         selectedStyle: 'cinematic'
     });
+
+    /**
+     * 프롬프트 설정 업데이트 헬퍼
+     */
+    const updateSetting = useCallback(<K extends keyof PromptSettings>(key: K, value: PromptSettings[K]) => {
+        setSettings(prev => ({ ...prev, [key]: value }));
+    }, []);
 
     // UI 상태
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -1652,130 +1660,154 @@ export const ShortsLabPanel: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-4">
                 {/* 입력 탭 */}
                 {activeTab === 'input' && (
-                    <div className="space-y-6">
-                        {/* AI 대본 생성 섹션 */}
-                        <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-700/50 rounded-xl p-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <Wand2 className="w-5 h-5 text-purple-400" />
-                                        <h3 className="font-semibold text-purple-300">AI 대본 생성</h3>
-                                        <span className="text-xs bg-purple-600/50 text-purple-200 px-2 py-0.5 rounded-full">NEW</span>
-                                    </div>
+                    <div className="flex flex-col lg:flex-row gap-6">
+                        {/* 왼쪽: 대본 입력 및 생성 영역 (8/12) */}
+                        <div className="flex-1 space-y-6">
+                            {/* AI 대본 생성 섹션 */}
+                            <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-700/50 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <Wand2 className="w-5 h-5 text-purple-400" />
+                                            <h3 className="font-semibold text-purple-300">AI 대본 생성</h3>
+                                            <span className="text-xs bg-purple-600/50 text-purple-200 px-2 py-0.5 rounded-full">NEW</span>
+                                        </div>
 
-                                    {/* ✅ [REFINED] 헤더 내 한국인 정체성 설정 - 토글 제거, 텍스트 클릭 방식 */}
-                                    <div className="flex items-center gap-2 pl-4 border-l border-slate-700/50">
-                                        <button
-                                            onClick={() => updateSetting('useKoreanIdentity', !settings.useKoreanIdentity)}
-                                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-200 border ${settings.useKoreanIdentity
-                                                ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                                                : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
-                                                }`}
-                                        >
-                                            한국인
-                                        </button>
+                                        {/* ✅ [REFINED] 헤더 내 한국인 정체성 설정 - 토글 제거, 텍스트 클릭 방식 */}
+                                        <div className="flex items-center gap-2 pl-4 border-l border-slate-700/50">
+                                            <button
+                                                onClick={() => updateSetting('useKoreanIdentity', !settings.useKoreanIdentity)}
+                                                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-200 border ${settings.useKoreanIdentity
+                                                    ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                                                    : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:text-slate-400 hover:border-slate-600'
+                                                    }`}
+                                            >
+                                                한국인
+                                            </button>
 
-                                        {settings.useKoreanIdentity && (
-                                            <div className="flex items-center bg-slate-800/60 rounded-full p-0.5 border border-slate-700/50 ml-1">
-                                                <button
-                                                    onClick={() => updateSetting('koreanGender', 'female')}
-                                                    className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'female'
-                                                        ? 'bg-emerald-600 text-white shadow-sm'
-                                                        : 'text-slate-500 hover:text-slate-300'
-                                                        }`}
-                                                >
-                                                    여성
-                                                </button>
-                                                <button
-                                                    onClick={() => updateSetting('koreanGender', 'male')}
-                                                    className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'male'
-                                                        ? 'bg-emerald-600 text-white shadow-sm'
-                                                        : 'text-slate-500 hover:text-slate-300'
-                                                        }`}
-                                                >
-                                                    남성
-                                                </button>
-                                            </div>
-                                        )}
+                                            {settings.useKoreanIdentity && (
+                                                <div className="flex items-center bg-slate-800/60 rounded-full p-0.5 border border-slate-700/50 ml-1">
+                                                    <button
+                                                        onClick={() => updateSetting('koreanGender', 'female')}
+                                                        className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'female'
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-300'
+                                                            }`}
+                                                    >
+                                                        여성
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateSetting('koreanGender', 'male')}
+                                                        className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all ${settings.koreanGender === 'male'
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'text-slate-500 hover:text-slate-300'
+                                                            }`}
+                                                    >
+                                                        남성
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+                                    {currentFolderName && (
+                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/80 px-2 py-1 rounded-md border border-slate-700">
+                                            <Folder className="w-3 h-3 text-emerald-500" />
+                                            <span className="truncate max-w-[150px]">{currentFolderName}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                {currentFolderName && (
-                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-800/80 px-2 py-1 rounded-md border border-slate-700">
-                                        <Folder className="w-3 h-3 text-emerald-500" />
-                                        <span className="truncate max-w-[150px]">{currentFolderName}</span>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">주제/키워드</label>
+                                        <input
+                                            type="text"
+                                            value={aiTopic}
+                                            onChange={(e) => setAiTopic(e.target.value)}
+                                            placeholder="예: 골프장에서 갑자기 눈이 온 상황"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        />
                                     </div>
-                                )}
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">장르</label>
+                                            <select
+                                                value={aiGenre}
+                                                onChange={(e) => setAiGenre(e.target.value)}
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
+                                            >
+                                                {GENRE_OPTIONS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">타겟 연령</label>
+                                            <select
+                                                value={aiTargetAge}
+                                                onChange={(e) => setAiTargetAge(e.target.value)}
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
+                                            >
+                                                {AGE_OPTIONS.map(age => <option key={age.value} value={age.value}>{age.label}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleAiGenerate}
+                                        disabled={isGenerating || !aiTopic.trim()}
+                                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> AI가 대본을 작성 중...</> : <><Wand2 className="w-5 h-5" /> AI 대본 생성</>}
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">주제/키워드</label>
-                                    <input
-                                        type="text"
-                                        value={aiTopic}
-                                        onChange={(e) => setAiTopic(e.target.value)}
-                                        placeholder="예: 골프장에서 갑자기 눈이 온 상황"
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">장르</label>
-                                        <select
-                                            value={aiGenre}
-                                            onChange={(e) => setAiGenre(e.target.value)}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
-                                        >
-                                            {GENRE_OPTIONS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">타겟 연령</label>
-                                        <select
-                                            value={aiTargetAge}
-                                            onChange={(e) => setAiTargetAge(e.target.value)}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
-                                        >
-                                            {AGE_OPTIONS.map(age => <option key={age.value} value={age.value}>{age.label}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={handleAiGenerate}
-                                    disabled={isGenerating || !aiTopic.trim()}
-                                    className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-                                >
-                                    {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> AI가 대본을 작성 중...</> : <><Wand2 className="w-5 h-5" /> AI 대본 생성</>}
-                                </button>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-px bg-slate-700" />
+                                <span className="text-xs text-slate-500">또는 직접 입력</span>
+                                <div className="flex-1 h-px bg-slate-700" />
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">대본 입력</label>
+                                <textarea
+                                    value={scriptInput}
+                                    onChange={(e) => setScriptInput(e.target.value)}
+                                    placeholder={`씬별로 대본을 입력하세요.\n\n예시:\n[씬 1] 여자가 카페에서 커피를 마시고 있다.\n[씬 2] 남자가 들어와 여자를 본다.`}
+                                    className="w-full h-64 bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleParseScenes}
+                                disabled={!scriptInput.trim()}
+                                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                            >
+                                <Scissors className="w-5 h-5" />
+                                씬 분해 & 프롬프트 생성
+                            </button>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 h-px bg-slate-700" />
-                            <span className="text-xs text-slate-500">또는 직접 입력</span>
-                            <div className="flex-1 h-px bg-slate-700" />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">대본 입력</label>
-                            <textarea
-                                value={scriptInput}
-                                onChange={(e) => setScriptInput(e.target.value)}
-                                placeholder={`씬별로 대본을 입력하세요.\n\n예시:\n[씬 1] 여자가 카페에서 커피를 마시고 있다.\n[씬 2] 남자가 들어와 여자를 본다.`}
-                                className="w-full h-64 bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                        {/* 오른쪽: 캐릭터 및 의상 관리 패널 (4/12) */}
+                        <div className="w-full lg:w-[400px] flex-shrink-0">
+                            <CharacterPanel
+                                selectedSlot={settings.selectedSlot}
+                                onCharacterSelect={(char, slot) => {
+                                    if (char) {
+                                        updateSetting('selectedSlot', slot as any);
+                                        updateSetting('useSlotSystem', true);
+                                        showToast(`${char.name} 캐릭터가 ${slot} 슬롯에 설정되었습니다.`, 'success');
+                                    }
+                                }}
+                                onOutfitSelect={(outfit) => {
+                                    if (outfit) {
+                                        updateSetting('selectedOutfit', outfit.prompt);
+                                        updateSetting('useOutfitKeywords', true);
+                                        showToast(`'${outfit.name}' 의상이 설정되었습니다.`, 'success');
+                                    }
+                                }}
                             />
                         </div>
-
-                        <button
-                            onClick={handleParseScenes}
-                            disabled={!scriptInput.trim()}
-                            className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-                        >
-                            <Scissors className="w-5 h-5" />
-                            씬 분해 & 프롬프트 생성
-                        </button>
                     </div>
                 )}
 

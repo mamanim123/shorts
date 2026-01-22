@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
@@ -131,6 +132,10 @@ export async function launchScriptBrowser() {
         console.error("[Puppeteer Script] Failed to launch browser:", error);
         throw error;
     }
+}
+
+export function getScriptPage() {
+    return scriptPage;
 }
 
 // 🔹 [UNIFIED] 이미지 생성도 scriptBrowser 사용 (통합됨)
@@ -726,16 +731,99 @@ export const switchService = switchScriptService;
 async function uploadFileToPage(activePage, filePath) {
     try {
         console.log(`[Puppeteer] Attempting to upload file: ${filePath}`);
+
+        // 0. 기존 file input이 있는지 확인하고 직접 업로드 시도
+        const existingFileInput = await activePage.$('input[type="file"]');
+        if (existingFileInput) {
+            console.log("[Puppeteer] Found existing file input, uploading directly...");
+            await existingFileInput.uploadFile(filePath);
+            await new Promise(r => setTimeout(r, 2000));
+
+            // 썸네일 확인
+            const thumbnailDetected = await activePage.evaluate(() => {
+                return document.querySelectorAll('mat-chip, .thumbnail, img[src*="blob"], [aria-label*="삭제"], [aria-label*="Remove"]').length > 0;
+            });
+
+            if (thumbnailDetected) {
+                console.log(`[Puppeteer] File uploaded successfully (thumbnail detected via direct input).`);
+                return;
+            } else {
+                console.log("[Puppeteer] Direct upload didn't show thumbnail, trying UI interaction...");
+            }
+        }
+
+        // 1. "+" 버튼 클릭하여 메뉴 열기 (UI 상호작용 우선)
+        try {
+            console.log("[Puppeteer] Looking for '+' button...");
+            const plusBtn = await activePage.waitForSelector('button.upload-card-button, button[aria-label*="Upload"], button[aria-label*="업로드"]', { timeout: 3000 });
+            if (plusBtn) {
+                console.log("[Puppeteer] Clicking '+' button...");
+                await plusBtn.click();
+                await new Promise(r => setTimeout(r, 1000)); // 메뉴 애니메이션 대기
+            }
+        } catch (e) {
+            console.log("[Puppeteer] '+' button not found or not clickable, trying direct hidden button...");
+        }
+
+        // 2. 파일 선택기 트리거 (메뉴 아이템 -> 히든 버튼 순)
+        console.log("[Puppeteer] Waiting for file chooser...");
         const [fileChooser] = await Promise.all([
-            activePage.waitForFileChooser(),
-            activePage.click('button[aria-label*="업로드"], button[aria-label*="upload"], .upload-button, md-icon-button:has(mat-icon[svgicon*="upload"])').catch(() => {
-                // Fallback for Gemini specifically
-                return activePage.click('input[type="file"]');
+            activePage.waitForFileChooser({ timeout: 15000 }),
+            activePage.evaluate(() => {
+                // 메뉴 아이템 찾기 (텍스트 기반)
+                const menuItems = Array.from(document.querySelectorAll('button, li, div[role="menuitem"], span.mat-mdc-list-item-unscoped-content, div.menu-text'));
+                const uploadImgItem = menuItems.find(el =>
+                    el.textContent.includes('Upload image') ||
+                    el.textContent.includes('이미지 업로드') ||
+                    el.textContent.includes('Upload files') ||
+                    el.textContent.includes('파일 업로드') // 스크린샷 기반 추가
+                );
+
+                if (uploadImgItem) {
+                    // 클릭 가능한 상위 요소 찾기
+                    const clickable = uploadImgItem.closest('button') || uploadImgItem.closest('mat-list-item') || uploadImgItem;
+                    clickable.click();
+                    return "menu-item-clicked";
+                }
+
+                // 히든 버튼 폴백
+                const hiddenBtn = document.querySelector('button[data-test-id="hidden-local-image-upload-button"]');
+                if (hiddenBtn) {
+                    hiddenBtn.click();
+                    return "hidden-btn-clicked";
+                }
+
+                // 일반 파일 입력 폴백 (새로 생성된 것일 수 있음)
+                const fileInput = document.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.click();
+                    return "file-input-clicked";
+                }
+
+                throw new Error("No upload trigger found");
             })
         ]);
+
         await fileChooser.accept([filePath]);
-        await delay(2000); // Wait for upload to process
-        console.log(`[Puppeteer] File uploaded successfully.`);
+        console.log(`[Puppeteer] File selected via chooser, waiting for upload to complete...`);
+
+        // 3. 업로드 완료 대기 (썸네일 확인)
+        try {
+            await activePage.waitForFunction(() => {
+                const indicators = document.querySelectorAll('mat-chip, .thumbnail, img[src*="blob"], [aria-label*="삭제"], [aria-label*="Remove"]');
+                return indicators.length > 0;
+            }, { timeout: 20000 });
+            console.log(`[Puppeteer] File uploaded successfully (thumbnail detected).`);
+        } catch (e) {
+            console.warn(`[Puppeteer] Warning: Upload thumbnail not detected. The image might not have been attached.`);
+            // 스크린샷 저장 (디버깅용)
+            try {
+                const screenshotPath = path.join(os.tmpdir(), `upload_fail_${Date.now()}.png`);
+                await activePage.screenshot({ path: screenshotPath });
+                console.log(`[Puppeteer] Saved screenshot to: ${screenshotPath}`);
+            } catch (err) { }
+        }
+
     } catch (err) {
         console.warn(`[Puppeteer] File upload failed: ${err.message}. Proceeding with text only.`);
     }
@@ -744,10 +832,28 @@ async function uploadFileToPage(activePage, filePath) {
 async function sendPromptToPage(activePage, config, prompt, serviceName, files = []) {
     await activePage.waitForSelector(config.selectors.input);
 
+    const tempFiles = [];
     // Upload files if provided
     if (files && files.length > 0) {
-        for (const file of files) {
-            await uploadFileToPage(activePage, file);
+        try {
+            for (let i = 0; i < files.length; i++) {
+                let fileToUpload = files[i];
+
+                // base64 데이터인 경우 임시 파일로 저장
+                if (typeof fileToUpload === 'string' && fileToUpload.startsWith('data:')) {
+                    console.log(`[Puppeteer] Converting base64 image to temporary file...`);
+                    const base64Data = fileToUpload.split(',')[1];
+                    const extension = fileToUpload.split(';')[0].split('/')[1] || 'png';
+                    const tempPath = path.join(os.tmpdir(), `gemini_upload_${Date.now()}_${i}.${extension}`);
+                    fs.writeFileSync(tempPath, Buffer.from(base64Data, 'base64'));
+                    fileToUpload = tempPath;
+                    tempFiles.push(tempPath);
+                }
+
+                await uploadFileToPage(activePage, fileToUpload);
+            }
+        } catch (err) {
+            console.error(`[Puppeteer] Error during file processing/upload: ${err.message}`);
         }
     }
 
@@ -799,7 +905,19 @@ async function sendPromptToPage(activePage, config, prompt, serviceName, files =
         }
     }
 
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 임시 파일 삭제
+    for (const tempPath of tempFiles) {
+        try {
+            if (fs.existsSync(tempPath)) {
+                fs.unlinkSync(tempPath);
+                console.log(`[Puppeteer] Deleted temporary file: ${tempPath}`);
+            }
+        } catch (err) {
+            console.warn(`[Puppeteer] Failed to delete temporary file ${tempPath}: ${err.message}`);
+        }
+    }
 }
 
 export async function generateContent(serviceName, prompt, files = []) {
@@ -808,6 +926,7 @@ export async function generateContent(serviceName, prompt, files = []) {
 
     // 🔹 대본 생성은 scriptPage 사용
     await launchScriptBrowser();
+    await switchScriptService(serviceName);
     await sendPromptToPage(scriptPage, config, prompt, serviceName, files);
 
     console.log("Waiting for response...");

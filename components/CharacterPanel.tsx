@@ -13,6 +13,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2 } from 'lucide-react';
 import { showToast } from './Toast';
 
+import { generateImage } from './master-studio/services/geminiService';
+import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
+
 // ============================================
 // 타입 정의
 // ============================================
@@ -112,16 +115,71 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     body: ''
   });
 
-  // 의상 추출 상태
+  // 의상 추출 상태 (localStorage에서 복원)
   const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedOutfit, setExtractedOutfit] = useState<string | null>(null);
+  const [extractedOutfit, setExtractedOutfit] = useState<{ en: string; ko: string } | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('extractedOutfit');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
 
-  // 얼굴 추출 상태
+  // 얼굴 추출 상태 (localStorage에서 복원)
   const [isExtractingFace, setIsExtractingFace] = useState(false);
+  const [extractedFace, setExtractedFace] = useState<{ en: string; ko: string } | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('extractedFace');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+
+  // 이미지 생성 상태 (localStorage에서 복원)
+  const [generatedOutfitImage, setGeneratedOutfitImage] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('generatedOutfitImage') || null;
+    }
+    return null;
+  });
+  const [generatedFaceImage, setGeneratedFaceImage] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('generatedFaceImage') || null;
+    }
+    return null;
+  });
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
 
   // 드래그 앤 드롭 상태
   const [isDraggingFace, setIsDraggingFace] = useState(false);
   const [isDraggingOutfit, setIsDraggingOutfit] = useState(false);
+
+  // 마지막 업로드 파일 저장 (재분석용)
+  const [lastFaceFile, setLastFaceFile] = useState<File | null>(null);
+  const [lastOutfitFile, setLastOutfitFile] = useState<File | null>(() => {
+    // localStorage에서 base64 복원 시도
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('lastOutfitImageData');
+      if (saved) {
+        // base64 데이터가 있으면 상태 표시용으로만 사용
+        return null; // File 객체는 직렬화 불가, 별도 처리
+      }
+    }
+    return null;
+  });
+  const [lastOutfitImageData, setLastOutfitImageData] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('lastOutfitImageData') || null;
+    }
+    return null;
+  });
+  const [lastFaceImageData, setLastFaceImageData] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('lastFaceImageData') || null;
+    }
+    return null;
+  });
 
   // ---------------------------------------------------------
   // 데이터 로드
@@ -147,6 +205,57 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     };
     fetchData();
   }, []);
+
+  // ---------------------------------------------------------
+  // 추출 결과 localStorage 저장
+  // ---------------------------------------------------------
+  useEffect(() => {
+    if (extractedOutfit) {
+      localStorage.setItem('extractedOutfit', JSON.stringify(extractedOutfit));
+    } else {
+      localStorage.removeItem('extractedOutfit');
+    }
+  }, [extractedOutfit]);
+
+  useEffect(() => {
+    if (extractedFace) {
+      localStorage.setItem('extractedFace', JSON.stringify(extractedFace));
+    } else {
+      localStorage.removeItem('extractedFace');
+    }
+  }, [extractedFace]);
+
+  useEffect(() => {
+    if (generatedOutfitImage) {
+      localStorage.setItem('generatedOutfitImage', generatedOutfitImage);
+    } else {
+      localStorage.removeItem('generatedOutfitImage');
+    }
+  }, [generatedOutfitImage]);
+
+  useEffect(() => {
+    if (generatedFaceImage) {
+      localStorage.setItem('generatedFaceImage', generatedFaceImage);
+    } else {
+      localStorage.removeItem('generatedFaceImage');
+    }
+  }, [generatedFaceImage]);
+
+  useEffect(() => {
+    if (lastOutfitImageData) {
+      localStorage.setItem('lastOutfitImageData', lastOutfitImageData);
+    } else {
+      localStorage.removeItem('lastOutfitImageData');
+    }
+  }, [lastOutfitImageData]);
+
+  useEffect(() => {
+    if (lastFaceImageData) {
+      localStorage.setItem('lastFaceImageData', lastFaceImageData);
+    } else {
+      localStorage.removeItem('lastFaceImageData');
+    }
+  }, [lastFaceImageData]);
 
   // ---------------------------------------------------------
   // 저장 헬퍼
@@ -178,17 +287,30 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   // ---------------------------------------------------------
   // 핸들러
   // ---------------------------------------------------------
-  const handleExtractOutfit = async (file: File) => {
+  const handleExtractOutfit = async (file: File, imageData?: string) => {
     setIsExtracting(true);
     setExtractedOutfit(null);
+    setGeneratedOutfitImage(null);
 
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      const base64Image = await base64Promise;
+      let base64Image = imageData;
+
+      if (!base64Image && file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        base64Image = await base64Promise;
+      }
+
+      if (!base64Image) {
+        throw new Error('이미지 데이터가 없습니다.');
+      }
+
+      // 재분석용으로 이미지 데이터 저장
+      setLastOutfitFile(file);
+      setLastOutfitImageData(base64Image);
 
       const response = await fetch('http://localhost:3002/api/extract-outfit', {
         method: 'POST',
@@ -198,7 +320,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const result = await response.json();
       if (result.success && result.prompt) {
-        setExtractedOutfit(result.prompt);
+        // JSON 파싱된 결과 처리
+        const promptData = typeof result.prompt === 'string'
+          ? { en: result.prompt, ko: "분석된 의상입니다." }
+          : result.prompt;
+
+        setExtractedOutfit(promptData);
         showToast('의상 분석이 완료되었습니다.', 'success');
       } else {
         throw new Error(result.error || '분석 결과가 없습니다.');
@@ -211,16 +338,30 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   };
 
-  const handleExtractFace = async (file: File) => {
+  const handleExtractFace = async (file: File, imageData?: string) => {
     setIsExtractingFace(true);
+    setExtractedFace(null);
+    setGeneratedFaceImage(null);
 
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      const base64Image = await base64Promise;
+      let base64Image = imageData;
+
+      if (!base64Image && file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        base64Image = await base64Promise;
+      }
+
+      if (!base64Image) {
+        throw new Error('이미지 데이터가 없습니다.');
+      }
+
+      // 재분석용으로 이미지 데이터 저장
+      setLastFaceFile(file);
+      setLastFaceImageData(base64Image);
 
       const response = await fetch('http://localhost:3002/api/extract-face', {
         method: 'POST',
@@ -230,7 +371,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const result = await response.json();
       if (result.success && result.prompt) {
-        setNewCharacter(prev => ({ ...prev, face: result.prompt }));
+        // JSON 파싱된 결과 처리
+        const promptData = typeof result.prompt === 'string'
+          ? { en: result.prompt, ko: "분석된 얼굴 특징입니다." }
+          : result.prompt;
+
+        setExtractedFace(promptData);
+        setNewCharacter(prev => ({ ...prev, face: promptData.en })); // 영문 프롬프트 자동 입력
         showToast('얼굴 특징 분석이 완료되었습니다.', 'success');
       } else {
         throw new Error(result.error || '분석 결과가 없습니다.');
@@ -243,37 +390,112 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   };
 
+  const handleGenerateCharacterImage = async (prompt: string, type: 'outfit' | 'face') => {
+    if (isGeneratingImage) return;
+    setIsGeneratingImage(true);
+
+    try {
+      // 1. 이미지 생성 (Imagen 모델 사용)
+      const result: any = await generateImage(prompt, {
+        aspectRatio: "1:1",
+        model: "imagen-4.0-generate-001"  // 이미지 생성 전용 모델 명시
+      });
+
+      let base64Image: string | null = null;
+      if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+        const generatedImage = result.generatedImages[0];
+        if (generatedImage?.image?.imageBytes) {
+          base64Image = generatedImage.image.imageBytes;
+        } else if (generatedImage?.imageBytes) {
+          base64Image = generatedImage.imageBytes;
+        }
+      } else if (result && result.images && result.images.length > 0) {
+        base64Image = result.images[0];
+      }
+
+      if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
+
+      // 2. 이미지 저장 (Backend API)
+      const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: `data:image/png;base64,${base64Image}`,
+          prompt,
+          type
+        })
+      });
+
+      const saveResult = await saveResponse.json();
+      if (saveResult.success) {
+        const imageUrl = `http://localhost:3002${saveResult.url}`;
+        if (type === 'outfit') setGeneratedOutfitImage(imageUrl);
+        else setGeneratedFaceImage(imageUrl);
+        showToast('이미지가 생성되고 저장되었습니다.', 'success');
+      } else {
+        throw new Error(saveResult.error || '이미지 저장 실패');
+      }
+
+    } catch (error: any) {
+      console.error('이미지 생성 실패:', error);
+      showToast(error.message || '이미지 생성 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
   // ---------------------------------------------------------
-  // 드래그 앤 드롭 핸들러
+  // 드래그 앤 드롭 핸들러 (안정화)
   // ---------------------------------------------------------
-  const handleDragOver = (e: React.DragEvent, type: 'face' | 'outfit') => {
+  const handleDragOver = useCallback((e: React.DragEvent, type: 'face' | 'outfit') => {
     e.preventDefault();
+    e.stopPropagation();
     if (type === 'face') setIsDraggingFace(true);
     else setIsDraggingOutfit(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e: React.DragEvent, type: 'face' | 'outfit') => {
+  const handleDragLeave = useCallback((e: React.DragEvent, type: 'face' | 'outfit') => {
     e.preventDefault();
+    e.stopPropagation();
+    // relatedTarget이 자식 요소면 무시 (깜빡임 방지)
+    const target = e.currentTarget as HTMLElement;
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && target.contains(relatedTarget)) return;
+
     if (type === 'face') setIsDraggingFace(false);
     else setIsDraggingOutfit(false);
-  };
+  }, []);
 
-  const handleDrop = async (e: React.DragEvent, type: 'face' | 'outfit') => {
+  const handleDrop = useCallback(async (e: React.DragEvent, type: 'face' | 'outfit') => {
     e.preventDefault();
+    e.stopPropagation();
     if (type === 'face') setIsDraggingFace(false);
     else setIsDraggingOutfit(false);
 
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      if (type === 'face') {
-        handleExtractFace(file);
-      } else {
-        handleExtractOutfit(file);
-      }
-    } else {
-      showToast('이미지 파일만 업로드 가능합니다.', 'error');
+    if (!file) {
+      showToast('파일을 찾을 수 없습니다.', 'error');
+      return;
     }
-  };
+
+    // 파일 크기 체크 (10MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      showToast('10MB 이하 이미지만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showToast('이미지 파일만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    if (type === 'face') {
+      handleExtractFace(file);
+    } else {
+      handleExtractOutfit(file);
+    }
+  }, []);
 
   const handleAddOutfit = () => {
     if (!newOutfitName.trim() || !newOutfitPrompt.trim()) return;
@@ -344,8 +566,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         <button
           onClick={() => setActiveTab('select')}
           className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'select'
-              ? 'bg-purple-600 text-white shadow-inner'
-              : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+            ? 'bg-purple-600 text-white shadow-inner'
+            : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
             }`}
         >
           <Users size={14} />
@@ -354,8 +576,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         <button
           onClick={() => setActiveTab('manage')}
           className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'manage'
-              ? 'bg-purple-600 text-white shadow-inner'
-              : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+            ? 'bg-purple-600 text-white shadow-inner'
+            : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
             }`}
         >
           <User size={14} />
@@ -364,8 +586,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         <button
           onClick={() => setActiveTab('outfit')}
           className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'outfit'
-              ? 'bg-purple-600 text-white shadow-inner'
-              : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+            ? 'bg-purple-600 text-white shadow-inner'
+            : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
             }`}
         >
           <Shirt size={14} />
@@ -391,8 +613,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   <button
                     key={slot.id}
                     className={`p-2.5 rounded-lg text-xs font-bold border transition-all ${selectedSlot === slot.id
-                        ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
-                        : 'border-slate-700 bg-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                      ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+                      : 'border-slate-700 bg-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
                       }`}
                   >
                     {slot.name}
@@ -419,8 +641,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         onCharacterSelect?.(char, selectedSlot);
                       }}
                       className={`group p-3 rounded-xl border cursor-pointer transition-all ${selectedCharacterId === char.id
-                          ? 'border-purple-500 bg-purple-600/10 shadow-lg'
-                          : 'border-slate-800 bg-slate-800/30 hover:border-slate-700 hover:bg-slate-800/50'
+                        ? 'border-purple-500 bg-purple-600/10 shadow-lg'
+                        : 'border-slate-800 bg-slate-800/30 hover:border-slate-700 hover:bg-slate-800/50'
                         }`}
                     >
                       <div className="flex items-center justify-between">
@@ -476,8 +698,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   key={tab}
                   onClick={() => setManageSubTab(tab)}
                   className={`flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all ${manageSubTab === tab
-                      ? 'bg-slate-700 text-purple-400 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-300'
+                    ? 'bg-slate-700 text-purple-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-300'
                     }`}
                 >
                   {tab === 'face' ? '얼굴' : tab === 'hair' ? '헤어' : '체형'}
@@ -491,8 +713,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 <div className="space-y-3 animate-in fade-in duration-300">
                   <label
                     className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingFace
-                        ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
-                        : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
+                      ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
+                      : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
                       }`}
                     onDragOver={(e) => handleDragOver(e, 'face')}
                     onDragLeave={(e) => handleDragLeave(e, 'face')}
@@ -516,6 +738,48 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       </>
                     )}
                   </label>
+
+                  {/* 얼굴 분석 결과 및 이미지 생성 */}
+                  {extractedFace && (
+                    <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
+                      <div className="flex items-start gap-3">
+                        {generatedFaceImage && (
+                          <img src={generatedFaceImage} alt="Generated Face" className="w-16 h-16 rounded-lg object-cover border border-purple-500/30" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (Korean)</div>
+                          <div className="text-xs text-slate-200 leading-relaxed mb-1">{extractedFace.ko}</div>
+                          <div className="text-[10px] text-slate-500 leading-relaxed italic truncate">{extractedFace.en}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleGenerateCharacterImage(extractedFace.en, 'face')}
+                          disabled={isGeneratingImage}
+                          className="flex-1 py-1.5 bg-purple-600/90 hover:bg-purple-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
+                        </button>
+                        <button
+                          onClick={() => {
+                            // AI 재분석 - 저장된 이미지로 다시 분석
+                            if (lastFaceImageData) {
+                              handleExtractFace(lastFaceFile!, lastFaceImageData);
+                            } else {
+                              showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+                            }
+                          }}
+                          disabled={isExtractingFace}
+                          className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all disabled:opacity-50"
+                          title="다시 분석"
+                        >
+                          {isExtractingFace ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <textarea
                     placeholder="얼굴 특징 직접 입력 (영어 권장)"
                     value={newCharacter.face}
@@ -533,8 +797,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         key={preset.id}
                         onClick={() => setNewCharacter(prev => ({ ...prev, hair: preset.prompt }))}
                         className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.hair === preset.prompt
-                            ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
-                            : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                          ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
+                          : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
                           }`}
                       >
                         {preset.name}
@@ -558,8 +822,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         key={preset.id}
                         onClick={() => setNewCharacter(prev => ({ ...prev, body: preset.prompt }))}
                         className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.body === preset.prompt
-                            ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
-                            : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                          ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
+                          : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
                           }`}
                       >
                         {preset.name}
@@ -595,8 +859,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">AI 의상 추출</div>
               <label
                 className={`flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingOutfit
-                    ? 'border-emerald-400 bg-emerald-500/10 scale-[1.02]'
-                    : 'border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5'
+                  ? 'border-emerald-400 bg-emerald-500/10 scale-[1.02]'
+                  : 'border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5'
                   }`}
                 onDragOver={(e) => handleDragOver(e, 'outfit')}
                 onDragLeave={(e) => handleDragLeave(e, 'outfit')}
@@ -628,15 +892,50 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
               {extractedOutfit && (
                 <div className="p-3 bg-emerald-950/20 border border-emerald-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
-                  <div className="text-[10px] font-bold text-emerald-400">✨ 추출 결과</div>
-                  <div className="text-xs text-slate-300 leading-relaxed italic">"{extractedOutfit}"</div>
+                  <div className="flex items-start gap-3">
+                    {generatedOutfitImage && (
+                      <img src={generatedOutfitImage} alt="Generated Outfit" className="w-20 h-20 rounded-lg object-cover border border-emerald-500/30" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-emerald-400 mb-1">✨ 추출 결과 (Korean)</div>
+                      <div className="text-xs text-slate-200 leading-relaxed mb-1">{extractedOutfit.ko}</div>
+                      <div className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-2">{extractedOutfit.en}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => handleGenerateCharacterImage(extractedOutfit.en, 'outfit')}
+                      disabled={isGeneratingImage}
+                      className="flex-1 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
+                    </button>
+                    <button
+                      onClick={() => {
+                        // AI 재분석 - 저장된 이미지로 다시 분석
+                        if (lastOutfitImageData) {
+                          handleExtractOutfit(lastOutfitFile!, lastOutfitImageData);
+                        } else {
+                          showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+                        }
+                      }}
+                      disabled={isExtracting}
+                      className="p-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg transition-all disabled:opacity-50"
+                      title="AI 재분석"
+                    >
+                      {isExtracting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
+                    </button>
+                  </div>
+
                   <button
                     onClick={() => {
-                      setNewOutfitPrompt(extractedOutfit);
+                      setNewOutfitPrompt(extractedOutfit.en);
                       setShowAddOutfit(true);
                       setExtractedOutfit(null);
+                      setGeneratedOutfitImage(null);
                     }}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all shadow-md"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg transition-all shadow-md mt-1"
                   >
                     리스트에 추가하기
                   </button>
@@ -692,8 +991,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     key={outfit.id}
                     onClick={() => handleSelectOutfit(outfit)}
                     className={`group relative flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedOutfitId === outfit.id
-                        ? 'border-emerald-500 bg-emerald-500/5 shadow-lg'
-                        : 'border-slate-800 bg-slate-800/20 hover:border-slate-700 hover:bg-slate-800/40'
+                      ? 'border-emerald-500 bg-emerald-500/5 shadow-lg'
+                      : 'border-slate-800 bg-slate-800/20 hover:border-slate-700 hover:bg-slate-800/40'
                       }`}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedOutfitId === outfit.id ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-600'}`}>

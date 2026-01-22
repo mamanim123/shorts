@@ -16,6 +16,7 @@ import { showToast } from './Toast';
 import { generateImageWithImagen } from './master-studio/services/geminiService';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import Lightbox from './master-studio/Lightbox';
 
 // ============================================
 // 타입 정의
@@ -151,6 +152,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   });
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
+  // Lightbox 상태
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // 드래그 앤 드롭 상태
   const [isDraggingFace, setIsDraggingFace] = useState(false);
@@ -754,7 +757,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
                       <div className="flex items-start gap-3">
                         {generatedFaceImage && (
-                          <img src={generatedFaceImage} alt="Generated Face" className="w-16 h-16 rounded-lg object-cover border border-purple-500/30" />
+                          <img
+                            src={generatedFaceImage}
+                            alt="Generated Face"
+                            className="w-16 h-16 rounded-lg object-cover border border-purple-500/30 cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                            onClick={() => setLightboxImage(generatedFaceImage)}
+                          />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (Korean)</div>
@@ -904,7 +912,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 <div className="p-3 bg-emerald-950/20 border border-emerald-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
                   <div className="flex items-start gap-3">
                     {generatedOutfitImage && (
-                      <img src={generatedOutfitImage} alt="Generated Outfit" className="w-20 h-20 rounded-lg object-cover border border-emerald-500/30" />
+                      <img
+                        src={generatedOutfitImage}
+                        alt="Generated Outfit"
+                        className="w-20 h-20 rounded-lg object-cover border border-emerald-500/30 cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all"
+                        onClick={() => setLightboxImage(generatedOutfitImage)}
+                      />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] font-bold text-emerald-400 mb-1">✨ 추출 결과 (Korean)</div>
@@ -1028,6 +1041,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           </div>
         )}
       </div>
+
+      {/* Lightbox - 이미지 크게 보기 */}
+      {lightboxImage && (
+        <Lightbox
+          imageUrl={lightboxImage}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   );
 };

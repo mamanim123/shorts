@@ -1062,11 +1062,14 @@ export async function generateContent(serviceName, prompt, files = []) {
                     (parsed.characters && Array.isArray(parsed.characters)) ||
                     (Object.keys(parsed).length > 0 && Object.keys(parsed).every(k => !isNaN(parseInt(k))));
 
-                if (isScript || isTemplate || isAnalysis || isCharacterAnalysis) {
-                    console.log(`✅ JSON Parse Successful! ${isScript ? 'Script' : isTemplate ? 'Template' : isAnalysis ? 'Analysis' : 'Character'} detected. Generation Complete.`);
+                // [NEW] 의상/얼굴 추출 포맷 지원 ({ en: "...", ko: "..." })
+                const isExtraction = dataToCheck.en && dataToCheck.ko;
+
+                if (isScript || isTemplate || isAnalysis || isCharacterAnalysis || isExtraction) {
+                    console.log(`✅ JSON Parse Successful! ${isScript ? 'Script' : isTemplate ? 'Template' : isAnalysis ? 'Analysis' : isExtraction ? 'Extraction' : 'Character'} detected. Generation Complete.`);
                     return currentText;
                 } else {
-                    console.log(`⏳ JSON parsed but incomplete (Script: ${!!isScript}, Template: ${!!isTemplate}, Analysis: ${!!isAnalysis}, Char: ${!!isCharacterAnalysis}). Waiting...`);
+                    console.log(`⏳ JSON parsed but incomplete (Script: ${!!isScript}, Template: ${!!isTemplate}, Analysis: ${!!isAnalysis}, Char: ${!!isCharacterAnalysis}, Ext: ${!!isExtraction}). Waiting...`);
                 }
             } catch (e) {
                 // Parse failed. Check stability (Slow Path)

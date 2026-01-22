@@ -721,62 +721,92 @@ app.post('/api/extract-outfit', async (req, res) => {
 
         console.log('[Vision] Starting precise outfit DNA extraction...');
 
-        const visionPrompt = `You are a fashion expert AI. Analyze ONLY the clothing/outfit in this image.
+        const visionPrompt = `You are a world-class fashion analyst AI with expertise in haute couture, streetwear, and everything in between. Analyze the clothing/outfit in this image with EXTREME PRECISION and RICH DETAIL.
 
-=== ABSOLUTE RULES (MUST FOLLOW) ===
+=== ABSOLUTE RULES ===
+❌ NEVER DESCRIBE: face, age, skin, body shape, pose, expression, background, lighting, camera, mood
+✅ ONLY DESCRIBE: The garments and accessories themselves
 
-❌ DO NOT DESCRIBE (절대 포함하지 마세요):
-- Person: face, age, skin tone, body shape, pose, expression, hair, makeup
-- Environment: background, location, setting, scenery
-- Photography: lighting, camera angle, 8k, cinematic, bokeh
-- Mood/Atmosphere: elegant vibe, sexy mood, romantic feeling
+=== DETAILED ANALYSIS CATEGORIES ===
 
-✅ DESCRIBE ONLY (오직 이것만 설명하세요):
-1. GARMENT TYPE: dress, blouse, skirt, pants, jacket, etc.
-2. COLOR: exact color names (burgundy, ivory, navy, etc.)
-3. PATTERN: solid, striped, floral, checkered, etc.
-4. MATERIAL/FABRIC: silk, cotton, wool, knit, denim, leather, lace, etc.
-5. FIT & SILHOUETTE: tight, loose, A-line, bodycon, oversized, fitted
-6. DESIGN DETAILS: neckline, sleeve type, buttons, zippers, pleats, ruffles
-7. ACCESSORIES (if worn): earrings, necklace, belt, bag, shoes
+1. **GARMENT IDENTIFICATION**
+   - Exact garment type (midi dress, crop top, palazzo pants, bodycon dress, etc.)
+   - Style category (casual, formal, athleisure, streetwear, bohemian, minimalist, etc.)
+
+2. **COLOR ANALYSIS**
+   - Primary color with exact shade (not just "red" → "deep burgundy", "coral red", "wine red")
+   - Secondary/accent colors
+   - Color blocking or gradient if present
+
+3. **FABRIC & TEXTURE**
+   - Material (silk, satin, velvet, cotton, linen, denim, leather, lace, chiffon, mesh, sequin, etc.)
+   - Texture quality (smooth, ribbed, textured, crinkled, pleated, quilted)
+   - Finish (matte, glossy, shimmery, metallic, iridescent)
+   - Transparency level (opaque, semi-sheer, sheer, see-through)
+   - Weight (lightweight, medium, heavy)
+
+4. **PATTERN & PRINT**
+   - Pattern type (solid, striped, plaid, checkered, polka dot, floral, animal print, geometric, abstract)
+   - Pattern scale (micro, small, medium, large, oversized)
+   - Pattern placement and direction
+
+5. **CUT & SILHOUETTE**
+   - Fit type (skin-tight, fitted, relaxed, loose, oversized, flowy)
+   - Silhouette (A-line, bodycon, shift, empire, mermaid, straight, flared)
+   - Length (cropped, regular, longline, mini, midi, maxi, floor-length)
+   - Waist position (high-waisted, mid-rise, low-rise, empire, drop-waist)
+
+6. **NECKLINE & COLLAR**
+   - Type (V-neck, scoop, square, sweetheart, halter, off-shoulder, one-shoulder, turtleneck, mock neck, crew, boat, cowl, keyhole, plunging, strapless, bandeau)
+   - Depth and width details
+
+7. **SLEEVES & SHOULDERS**
+   - Sleeve type (sleeveless, cap, short, 3/4, long, bell, bishop, puff, balloon, raglan, dolman)
+   - Shoulder style (regular, dropped, cold-shoulder, cut-out, padded)
+   - Cuff details (ribbed, buttoned, elasticized, flared)
+
+8. **CONSTRUCTION DETAILS**
+   - Seams (princess seams, French seams, exposed seams)
+   - Darts, pleats, gathers, ruching, draping
+   - Panels, inserts, cut-outs, slits
+   - Hem style (raw, finished, asymmetric, high-low, scalloped, fringed)
+
+9. **CLOSURES & HARDWARE**
+   - Type (zipper, buttons, hooks, ties, wrap, pull-on, snap)
+   - Position (front, back, side, hidden)
+   - Hardware color (gold, silver, rose gold, gunmetal, matte black)
+
+10. **EMBELLISHMENTS & DECORATIONS**
+    - Type (embroidery, beading, sequins, rhinestones, studs, patches, appliqué)
+    - Lace trim, ribbon, bows, ruffles, frills, tassels, fringe
+    - Logo or branding elements
+
+11. **LAYERING** (if multiple pieces)
+    - Each layer described separately
+    - How layers interact visually
+
+12. **ACCESSORIES** (if visible)
+    - Jewelry (earrings, necklace, bracelet, rings - style, material, size)
+    - Belt (width, material, buckle style)
+    - Bag (type, size, material)
+    - Shoes (type, heel height, material)
+    - Other (hat, scarf, sunglasses, etc.)
 
 === OUTPUT FORMAT (JSON ONLY) ===
 {
-  "name": "간결한 한글 의상 이름 (형식: '색상 + 상의명 + 색상 + 하의명' 또는 '색상 + 원피스명', 예: '블랙 튜브탑 + 네이비 데님 쇼츠')",
-  "en": "Detailed English prompt for AI image generation (outfit details only, no person/background/lighting)",
-  "ko": "의상에 대한 자연스러운 한국어 설명"
+  "name": "한글 의상명 (색상 + 스타일 + 의류종류, 상하의는 ' + '로 연결, 15~30자)",
+  "en": "Ultra-detailed English prompt optimized for AI image generation. Include ALL visible details from the categories above. Be specific and descriptive. Minimum 80 words.",
+  "ko": "상세한 한국어 설명. 소재감, 핏, 디테일을 자연스럽게 설명. 최소 50자."
 }
 
-=== NAMING RULES FOR "name" FIELD ===
-- 반드시 한글로 작성
-- 색상 + 소재/스타일 + 의류 종류 형식
-- 상하의가 있으면 " + " 로 연결
-- 15~25자 정도로 간결하게
-
-=== EXAMPLES ===
-
-Example 1 (원피스):
+=== EXAMPLE OUTPUT ===
 {
-  "name": "버건디 실크 미디 드레스",
-  "en": "burgundy silk midi dress with sweetheart neckline, fitted bodice, A-line skirt, thin spaghetti straps",
-  "ko": "버건디색 실크 소재의 미디 드레스, 스위트하트 네크라인과 피티드 보디스, A라인 스커트"
+  "name": "아이보리 새틴 슬립드레스 + 블랙 시스루 가디건",
+  "en": "elegant ivory champagne satin slip dress with cowl neckline, thin adjustable spaghetti straps, bias-cut silhouette draping smoothly over body, midi length hitting mid-calf, delicate lace trim at hem and neckline, subtle glossy sheen on fabric, paired with sheer black mesh cardigan featuring long sleeves, ribbed cuffs, small pearl buttons, cropped length ending at waist, lightweight see-through material creating layered look",
+  "ko": "샴페인 아이보리 컬러의 새틴 슬립드레스로 카울 네크라인과 가느다란 스파게티 스트랩이 특징. 바이어스컷 실루엣이 몸을 따라 부드럽게 흐르며, 미디 기장으로 종아리 중간까지 내려옴. 밑단과 네크라인에 섬세한 레이스 트림 장식. 은은한 광택감의 소재. 시스루 블랙 메쉬 가디건과 레이어링되어 있으며, 가디건은 롱슬리브에 골지 커프스, 진주 단추, 크롭 기장."
 }
 
-Example 2 (상하의 세트):
-{
-  "name": "화이트 크롭탑 + 블랙 레더 미니스커트",
-  "en": "white ribbed crop top with square neckline, paired with high-waisted black leather mini skirt with silver zipper",
-  "ko": "화이트 골지 크롭탑에 스퀘어 네크라인, 하이웨이스트 블랙 레더 미니스커트와 실버 지퍼 디테일"
-}
-
-Example 3 (스포츠웨어):
-{
-  "name": "블랙 스포츠브라 + 핑크 레깅스",
-  "en": "black sports bra with racerback design, matching high-waisted pink compression leggings with mesh panels",
-  "ko": "블랙 레이서백 스포츠브라와 핑크 하이웨이스트 압박 레깅스, 메쉬 패널 디테일"
-}
-
-Now analyze the image and return ONLY the JSON object (no markdown, no explanation):`;
+Now analyze the image with MAXIMUM DETAIL and return ONLY the JSON object:`;
 
         const result = await generateContent('GEMINI', visionPrompt, [imageData], { freshChat: true });
 
@@ -1004,23 +1034,91 @@ app.post('/api/extract-face', async (req, res) => {
 
         console.log('[Vision] Analyzing face features using Puppeteer...');
 
-        const facePrompt = `Analyze this face image and describe the facial features in extreme detail.
-        Provide the output in JSON format with two keys:
-        1. "en": A detailed Stable Diffusion prompt in English. MUST include:
-           - Face Shape (e.g., oval, round, sharp jawline)
-           - Eyes (e.g., double eyelid, almond shape, color, makeup style)
-           - Nose & Lips (e.g., high bridge, full lips, lipstick color)
-           - Skin (e.g., fair, tanned, freckles, glowing)
-           - Hair (e.g., color, style, length)
-           - Expression & Vibe (e.g., elegant, cute, serious)
-        2. "ko": A natural Korean description of the face features and makeup.
-        
-        Example format:
-        {
-            "en": "A stunning Korean woman with oval face, double eyelids, large expressive eyes, sharp nose, cherry red lips, fair glowing skin...",
-            "ko": "계란형 얼굴에 쌍꺼풀이 짙은 큰 눈, 오똑한 코와 앵두 같은 입술을 가진 한국 여성..."
-        }
-        Return ONLY the JSON string.`;
+        const facePrompt = `You are an expert facial feature analyst and beauty consultant. Analyze this face image with EXTREME PRECISION for AI portrait generation.
+
+=== DETAILED ANALYSIS CATEGORIES ===
+
+1. **FACE STRUCTURE**
+   - Face shape (oval, round, heart, square, diamond, oblong, inverted triangle)
+   - Face proportions (forehead height, midface length, lower face ratio)
+   - Jawline (sharp, soft, defined, V-line, rounded, angular)
+   - Chin (pointed, rounded, square, prominent, subtle)
+   - Cheekbones (high, prominent, subtle, wide-set)
+
+2. **EYES - DETAILED**
+   - Eye shape (almond, round, hooded, monolid, double eyelid, upturned, downturned, cat-eye)
+   - Eye size (large, medium, small) and spacing (close-set, wide-set)
+   - Iris color (dark brown, light brown, hazel, green, blue, gray)
+   - Eyelid type (single/monolid, subtle double, parallel double, crescent double)
+   - Eye expression (bright, dreamy, fierce, innocent, seductive, warm)
+
+3. **EYEBROWS**
+   - Shape (straight, arched, soft arch, high arch, flat, curved)
+   - Thickness (thin, medium, thick, bushy, feathered)
+   - Color and grooming style
+   - Position relative to eyes
+
+4. **EYELASHES**
+   - Length (short, medium, long, extra long)
+   - Curl (straight, natural curl, dramatic curl)
+   - Density (sparse, natural, full, dramatic)
+   - Style if extensions (natural, cat-eye, doll-eye, wispy)
+
+5. **NOSE**
+   - Bridge (high, medium, low, straight, slightly curved)
+   - Shape (button, Roman, Greek, upturned, bulbous, narrow)
+   - Tip (rounded, pointed, upturned)
+   - Nostrils (narrow, medium, flared)
+
+6. **LIPS & MOUTH**
+   - Lip shape (full, thin, heart-shaped, bow-shaped, asymmetric)
+   - Upper to lower lip ratio
+   - Lip color (natural pink, coral, red, nude, berry)
+   - Cupid's bow definition (defined, subtle, flat)
+   - Mouth width (small, medium, wide)
+
+7. **SKIN**
+   - Skin tone (fair/porcelain, light, medium, tan, olive, dark)
+   - Undertone (warm, cool, neutral)
+   - Texture (smooth, poreless, natural, textured)
+   - Condition (glowing, dewy, matte, healthy, radiant)
+   - Any distinctive features (beauty marks, freckles, dimples)
+
+8. **HAIR**
+   - Color (black, dark brown, chestnut, auburn, blonde, highlights, ombre, balayage)
+   - Length (pixie, short, shoulder-length, medium, long, extra long)
+   - Texture (straight, wavy, curly, coily)
+   - Style (sleek, voluminous, layered, bangs type, parting)
+   - Condition (shiny, silky, healthy, matte)
+   - Current styling (loose, tied, braided, updo, half-up)
+
+9. **MAKEUP ANALYSIS** (if wearing)
+   - Foundation/base (natural, full coverage, dewy, matte)
+   - Eye makeup (eyeshadow colors, liner style, mascara intensity)
+   - Lip color and finish (matte, glossy, satin, tinted)
+   - Blush/contour (placement, intensity, color)
+   - Highlight (placement, intensity)
+   - Overall makeup style (natural, glam, editorial, Korean, Western)
+
+10. **EXPRESSION & VIBE**
+    - Current expression (smiling, neutral, serious, playful, sultry)
+    - Overall vibe (elegant, cute, sexy, innocent, fierce, mysterious, warm, sophisticated)
+    - Age appearance range
+    - Distinctive characteristics that make this face unique
+
+=== OUTPUT FORMAT (JSON ONLY) ===
+{
+  "en": "Ultra-detailed English prompt for AI portrait generation. Describe ALL visible facial features with specific adjectives. Include hair, makeup if present, expression. Minimum 100 words. Optimized for Stable Diffusion/Midjourney.",
+  "ko": "상세한 한국어 얼굴 특징 설명. 얼굴형, 이목구비, 피부, 헤어, 메이크업, 분위기를 자연스럽게 설명. 최소 80자."
+}
+
+=== EXAMPLE OUTPUT ===
+{
+  "en": "beautiful young Asian woman with delicate oval face shape, soft V-line jawline, high cheekbones creating elegant facial structure, large almond-shaped eyes with natural double eyelids and dark brown irises, bright expressive gaze, softly arched eyebrows with feathered texture, long curled natural lashes, small refined nose with subtle upturned tip, soft full lips with natural rosy pink color and defined cupid's bow, flawless fair porcelain skin with healthy dewy glow, long silky straight black hair with subtle chestnut highlights flowing past shoulders, middle parted with face-framing layers, natural Korean makeup with gradient coral lips, subtle peachy blush on cheeks, warm innocent expression with gentle smile, youthful elegant sophisticated vibe",
+  "ko": "갸름한 계란형 얼굴에 부드러운 V라인 턱선, 도드라진 광대뼈가 우아한 얼굴 구조를 형성. 자연스러운 쌍꺼풀의 크고 아몬드형 눈에 짙은 갈색 눈동자, 생기있고 또렷한 눈빛. 부드러운 아치형 눈썹에 자연스러운 결, 길고 풍성한 속눈썹. 작고 오똑한 코에 살짝 들린 코끝, 도톰하고 부드러운 입술에 자연스러운 로지 핑크빛과 선명한 큐피드 보우. 결점 없는 맑은 도자기 피부에 촉촉한 광채. 어깨를 넘기는 길고 찰랑이는 생머리에 은은한 밤색 하이라이트, 가르마 중앙에 얼굴을 감싸는 레이어드 컷. 코랄 그라데이션 립과 복숭아빛 블러셔의 자연스러운 한국식 메이크업. 따뜻하고 순수한 표정에 부드러운 미소, 청순하면서도 세련된 분위기."
+}
+
+Now analyze the face with MAXIMUM DETAIL and return ONLY the JSON object:`;
         const result = await generateContent('GEMINI', facePrompt, [imageData], { freshChat: true });
         const content = typeof result === 'string' ? result : (result.content || '');
 

@@ -1149,6 +1149,64 @@ Now analyze the face with MAXIMUM DETAIL and return ONLY the JSON object:`;
 });
 
 // ---------------------------------------------------------
+// 한글 → 영문 번역 API (프롬프트용)
+// ---------------------------------------------------------
+app.post('/api/translate-to-english', async (req, res) => {
+    try {
+        const { text, type } = req.body; // type: 'outfit' | 'face'
+        if (!text) return res.status(400).json({ success: false, error: '번역할 텍스트가 없습니다.' });
+
+        console.log(`[Translate] Korean → English (${type}): ${text.substring(0, 50)}...`);
+
+        const translatePrompt = type === 'outfit'
+            ? `You are a fashion prompt translator. Translate this Korean outfit description into a detailed English prompt optimized for AI image generation (Stable Diffusion/Midjourney).
+
+RULES:
+- Translate accurately while expanding with relevant fashion terminology
+- Include specific details: fabric texture, fit, silhouette, design elements
+- Use comma-separated descriptive phrases
+- Do NOT include: person description, background, lighting, mood words
+- Output ONLY the English prompt, nothing else
+
+Korean input:
+${text}
+
+English prompt:`
+            : `You are a portrait prompt translator. Translate this Korean facial feature description into a detailed English prompt optimized for AI portrait generation (Stable Diffusion/Midjourney).
+
+RULES:
+- Translate accurately while expanding with relevant beauty/facial terminology
+- Include specific details: face shape, eye details, skin tone, hair style, makeup
+- Use comma-separated descriptive phrases
+- Output ONLY the English prompt, nothing else
+
+Korean input:
+${text}
+
+English prompt:`;
+
+        const result = await generateContent('GEMINI', translatePrompt, [], { freshChat: false });
+        const content = typeof result === 'string' ? result.trim() : (result.content || '').trim();
+
+        if (!content) {
+            throw new Error('번역 결과가 비어있습니다.');
+        }
+
+        // 불필요한 접두사 제거
+        let cleanedContent = content
+            .replace(/^(English prompt:?\s*)/i, '')
+            .replace(/^["']|["']$/g, '')
+            .trim();
+
+        console.log(`[Translate] ✅ Result: ${cleanedContent.substring(0, 80)}...`);
+        res.json({ success: true, translated: cleanedContent });
+    } catch (error) {
+        console.error('번역 API 에러:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
 // 캐릭터 이미지 저장 API
 // ---------------------------------------------------------
 app.post('/api/save-character-image', async (req, res) => {

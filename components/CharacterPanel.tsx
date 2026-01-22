@@ -9,7 +9,7 @@
  * - 드래그 앤 드롭: 이미지 업로드 지원
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2, Copy, Check } from 'lucide-react';
 import { showToast } from './Toast';
 
@@ -154,6 +154,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
     return null;
   });
+
+  // 자동 번역 상태
+  const [isTranslatingOutfit, setIsTranslatingOutfit] = useState(false);
+  const [isTranslatingFace, setIsTranslatingFace] = useState(false);
+  const outfitTranslateTimer = useRef<NodeJS.Timeout | null>(null);
+  const faceTranslateTimer = useRef<NodeJS.Timeout | null>(null);
 
   // 이미지 생성 상태 (localStorage에서 복원)
   const [generatedOutfitImage, setGeneratedOutfitImage] = useState<string | null>(() => {
@@ -311,6 +317,75 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       showToast('복사에 실패했습니다.', 'error');
     });
   }, []);
+
+  // ---------------------------------------------------------
+  // 한글 → 영문 자동 번역 함수
+  // ---------------------------------------------------------
+  const translateToEnglish = useCallback(async (koreanText: string, type: 'outfit' | 'face') => {
+    if (!koreanText.trim()) return;
+
+    try {
+      if (type === 'outfit') {
+        setIsTranslatingOutfit(true);
+      } else {
+        setIsTranslatingFace(true);
+      }
+
+      const response = await fetch('http://localhost:3002/api/translate-to-english', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: koreanText, type })
+      });
+
+      const result = await response.json();
+      if (result.success && result.translated) {
+        if (type === 'outfit') {
+          setExtractedOutfit(prev => prev ? { ...prev, en: result.translated } : null);
+        } else {
+          setExtractedFace(prev => prev ? { ...prev, en: result.translated } : null);
+        }
+        showToast('영문 프롬프트가 자동 번역되었습니다.', 'success');
+      }
+    } catch (error) {
+      console.error('번역 실패:', error);
+    } finally {
+      if (type === 'outfit') {
+        setIsTranslatingOutfit(false);
+      } else {
+        setIsTranslatingFace(false);
+      }
+    }
+  }, []);
+
+  // 한글 수정 시 debounce 번역 (의상)
+  const handleOutfitKoChange = useCallback((newKo: string) => {
+    setExtractedOutfit(prev => prev ? { ...prev, ko: newKo } : null);
+
+    // 기존 타이머 취소
+    if (outfitTranslateTimer.current) {
+      clearTimeout(outfitTranslateTimer.current);
+    }
+
+    // 1초 후 자동 번역
+    outfitTranslateTimer.current = setTimeout(() => {
+      translateToEnglish(newKo, 'outfit');
+    }, 1000);
+  }, [translateToEnglish]);
+
+  // 한글 수정 시 debounce 번역 (얼굴)
+  const handleFaceKoChange = useCallback((newKo: string) => {
+    setExtractedFace(prev => prev ? { ...prev, ko: newKo } : null);
+
+    // 기존 타이머 취소
+    if (faceTranslateTimer.current) {
+      clearTimeout(faceTranslateTimer.current);
+    }
+
+    // 1초 후 자동 번역
+    faceTranslateTimer.current = setTimeout(() => {
+      translateToEnglish(newKo, 'face');
+    }, 1000);
+  }, [translateToEnglish]);
 
   // ---------------------------------------------------------
   // 핸들러 (useCallback으로 메모이제이션)
@@ -856,17 +931,20 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           />
                         )}
                         <div className="flex-1 min-w-0 space-y-2">
-                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (수정 가능)</div>
+                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (한글 수정 시 자동 번역)</div>
                           <div>
-                            <label className="text-[9px] text-purple-300 mb-0.5 block">한글 설명</label>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block flex items-center gap-1">
+                              한글 설명 (수정하면 영문 자동 번역)
+                              {isTranslatingFace && <Loader2 className="w-3 h-3 animate-spin text-purple-400" />}
+                            </label>
                             <textarea
                               value={extractedFace.ko}
-                              onChange={e => setExtractedFace(prev => prev ? { ...prev, ko: e.target.value } : null)}
+                              onChange={e => handleFaceKoChange(e.target.value)}
                               className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-14"
                             />
                           </div>
                           <div>
-                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트</label>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
                             <textarea
                               value={extractedFace.en}
                               onChange={e => setExtractedFace(prev => prev ? { ...prev, en: e.target.value } : null)}
@@ -1019,7 +1097,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       />
                     )}
                     <div className="flex-1 min-w-0 space-y-2">
-                      <div className="text-[10px] font-bold text-emerald-400">✨ 분석 결과 (수정 가능)</div>
+                      <div className="text-[10px] font-bold text-emerald-400">✨ 분석 결과 (한글 수정 시 자동 번역)</div>
                       {/* 의상 이름 수정 */}
                       <div>
                         <label className="text-[9px] text-emerald-300 mb-0.5 block">👗 의상 이름</label>
@@ -1032,16 +1110,19 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       </div>
                       {/* 한글 설명 수정 */}
                       <div>
-                        <label className="text-[9px] text-emerald-300 mb-0.5 block">한글 설명</label>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block flex items-center gap-1">
+                          한글 설명 (수정하면 영문 자동 번역)
+                          {isTranslatingOutfit && <Loader2 className="w-3 h-3 animate-spin text-emerald-400" />}
+                        </label>
                         <textarea
                           value={extractedOutfit.ko}
-                          onChange={e => setExtractedOutfit(prev => prev ? { ...prev, ko: e.target.value } : null)}
+                          onChange={e => handleOutfitKoChange(e.target.value)}
                           className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none resize-none h-14"
                         />
                       </div>
                       {/* 영문 프롬프트 수정 */}
                       <div>
-                        <label className="text-[9px] text-emerald-300 mb-0.5 block">영문 프롬프트</label>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
                         <textarea
                           value={extractedOutfit.en}
                           onChange={e => setExtractedOutfit(prev => prev ? { ...prev, en: e.target.value } : null)}

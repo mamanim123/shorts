@@ -1,8 +1,6 @@
-🐛 Puppeteer 파일 업로드 안정성 개선
+✨ 의상/얼굴 추출 시 새 채팅에서 시작하도록 변경
 
-- FileChooser 타임아웃 15초 → 30초로 증가
-- 최대 3회 재시도 로직 추가
-- 메뉴 클릭 후 대기 시간 증가 (1초 → 2초)
-- Promise.all 대신 순차적 접근으로 변경
-- 더 많은 메뉴 선택자 추가 (Upload from computer 등)
-- 재시도 전 Escape 키로 메뉴 초기화
+- generateContent에 freshChat 옵션 추가
+- extract-outfit API: freshChat: true 적용
+- extract-face API: freshChat: true 적용
+- 추출할 때마다 Gemini 새 채팅 세션에서 시작

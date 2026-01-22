@@ -953,13 +953,21 @@ async function sendPromptToPage(activePage, config, prompt, serviceName, files =
     }
 }
 
-export async function generateContent(serviceName, prompt, files = []) {
+export async function generateContent(serviceName, prompt, files = [], options = {}) {
     const config = SERVICES[serviceName];
     if (!config) throw new Error(`Unknown service: ${serviceName}`);
 
     // 🔹 대본 생성은 scriptPage 사용
     await launchScriptBrowser();
     await switchScriptService(serviceName);
+
+    // 🔹 freshChat 옵션: 새 채팅에서 시작 (의상/얼굴 추출 등)
+    if (options.freshChat && serviceName === 'GEMINI') {
+        console.log('[Puppeteer] 🆕 Starting fresh chat for extraction...');
+        await startFreshGeminiChat();
+        await new Promise(r => setTimeout(r, 1000));
+    }
+
     await sendPromptToPage(scriptPage, config, prompt, serviceName, files);
 
     console.log("Waiting for response...");

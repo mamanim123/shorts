@@ -778,7 +778,7 @@ Example 3 (스포츠웨어):
 
 Now analyze the image and return ONLY the JSON object (no markdown, no explanation):`;
 
-        const result = await generateContent('GEMINI', visionPrompt, [imageData]);
+        const result = await generateContent('GEMINI', visionPrompt, [imageData], { freshChat: true });
 
         const content = typeof result === 'string' ? result : (result.content || '');
 
@@ -1021,7 +1021,7 @@ app.post('/api/extract-face', async (req, res) => {
             "ko": "계란형 얼굴에 쌍꺼풀이 짙은 큰 눈, 오똑한 코와 앵두 같은 입술을 가진 한국 여성..."
         }
         Return ONLY the JSON string.`;
-        const result = await generateContent('GEMINI', facePrompt, [imageData]);
+        const result = await generateContent('GEMINI', facePrompt, [imageData], { freshChat: true });
         const content = typeof result === 'string' ? result : (result.content || '');
 
         if (!content) {

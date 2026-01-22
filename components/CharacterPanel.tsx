@@ -13,7 +13,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2 } from 'lucide-react';
 import { showToast } from './Toast';
 
-import { generateImage } from './master-studio/services/geminiService';
+import { generateImageWithImagen } from './master-studio/services/geminiService';
+import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 
 // ============================================
@@ -395,11 +396,20 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     setIsGeneratingImage(true);
 
     try {
-      // 1. 이미지 생성 (Imagen 모델 사용)
-      const result: any = await generateImage(prompt, {
-        aspectRatio: "1:1",
-        model: "imagen-4.0-generate-001"  // 이미지 생성 전용 모델 명시
-      });
+      // 쇼츠랩 미리보기와 동일한 방식으로 이미지 생성
+      const safetySettings = [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      ];
+
+      const result: any = await generateImageWithImagen(
+        prompt,
+        "",  // negativePrompt
+        { aspectRatio: "1:1", model: "imagen-4.0-generate-001" },
+        safetySettings
+      );
 
       let base64Image: string | null = null;
       if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {

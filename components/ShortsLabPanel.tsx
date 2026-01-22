@@ -1327,6 +1327,32 @@ export const ShortsLabPanel: React.FC = () => {
         }
     };
 
+    const handleOpenImageFolder = async () => {
+        const fallbackName = aiTopic?.trim()?.replace(/\s+/g, '_');
+        const folderName = currentFolderName || fallbackName;
+        if (!folderName) {
+            showToast('열 수 있는 폴더가 없습니다.', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:3002/api/open-folder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folderName })
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok || payload?.success === false) {
+                throw new Error(payload?.error || '폴더 열기 실패');
+            }
+            showToast('이미지 폴더를 열었습니다.', 'success');
+        } catch (error) {
+            console.error('Failed to open image folder:', error);
+            showToast(error instanceof Error ? error.message : '폴더 열기에 실패했습니다.', 'error');
+        }
+    };
+
     const handleSelectFolder = async (folderName: string) => {
         setIsLoadingFolder(true);
         try {
@@ -1901,6 +1927,18 @@ export const ShortsLabPanel: React.FC = () => {
                                                 <span className="bg-black/70 backdrop-blur-md text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">SCENE {scene.number}</span>
                                                 {scene.shotType && <span className="bg-black/70 backdrop-blur-md text-slate-300 text-[10px] font-medium px-2 py-0.5 rounded-md border border-slate-700/50 uppercase">{scene.shotType}</span>}
                                                 <span className={`bg-black/70 backdrop-blur-md text-[10px] font-bold px-2 py-0.5 rounded-md border ${getVoiceBadge(scene).tone}`}>{getVoiceBadge(scene).label}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        handleOpenImageFolder();
+                                                    }}
+                                                    className="bg-black/70 hover:bg-black/80 backdrop-blur-md text-slate-200 border border-slate-700/60 rounded-md p-1 transition-colors"
+                                                    title="이미지 폴더 열기"
+                                                    aria-label="이미지 폴더 열기"
+                                                >
+                                                    <Folder className="w-3 h-3" />
+                                                </button>
                                             </div>
                                             <input type="checkbox" checked={scene.isSelected || false} onChange={() => handleToggleSceneSelection(scene.number)} className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-600 focus:ring-emerald-500 pointer-events-auto cursor-pointer" />
                                         </div>

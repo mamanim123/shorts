@@ -220,9 +220,9 @@ export const LAB_GENRE_GUIDELINES: Record<string, {
     emotionCurve: '😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"',
 
     structure: `
-[HOOK] 😐 평소와 다른 느낌 암시
-→ "오늘따라 왜 그랬는지 모르겠어"
-→ "그 사람이 갑자기 달라 보였어"
+[HOOK] ⚡ 사건/충격을 첫 문장에 바로 던지기
+→ "캐디가 내 손목을 붙잡는 순간 숨이 멎었어"
+→ "문 열자마자 들린 한마디에 다리가 풀렸어"
 
 [SETUP] 👀 일상 속 만남 + 복선
 → 늘 보던 사람인데 오늘 뭔가 다름
@@ -588,57 +588,71 @@ export const generateRandomSeed = (): {
 /**
  * 계절별 의상 자동 보정 (겨울/눈일 경우 상의를 타이트한 긴팔로 변동)
  */
+const WINTER_KEYWORDS = [
+  '눈',
+  '겨울',
+  'snow',
+  'winter',
+  '스키',
+  'ski',
+  '썰매',
+  'sled',
+  'ice',
+  '빙판',
+  '얼음',
+  'snowy'
+];
+
+const isWinterTopic = (topic: string): boolean =>
+  WINTER_KEYWORDS.some((keyword) => topic.toLowerCase().includes(keyword.toLowerCase()));
+
+const splitOutfitTop = (outfit: string) => {
+  const separators = [' + ', ' with ', ' and '];
+  for (const separator of separators) {
+    const index = outfit.toLowerCase().indexOf(separator);
+    if (index > 0) {
+      return {
+        top: outfit.slice(0, index),
+        tail: outfit.slice(index + separator.length),
+        joiner: separator
+      };
+    }
+  }
+  return { top: outfit, tail: '', joiner: '' };
+};
+
+const applyWinterGlamTop = (top: string): string => {
+  const lower = top.toLowerCase();
+  if (lower.includes('long-sleeve') || lower.includes('long sleeve')) return top;
+  if (/(tube top|strapless|bandeau)/i.test(top)) {
+    return 'Premium cold-shoulder cashmere knit top';
+  }
+  if (/(halter|off-shoulder|sleeveless|spaghetti|camisole|bustier|bralette|crop|cropped)/i.test(top)) {
+    return 'Tight-fitting mock-neck silk knit top with keyhole detail';
+  }
+  if (/(dress|one-piece)/i.test(top)) {
+    return 'Long-sleeve velvet dress';
+  }
+  if (/(blouse|shirt|top|tee|knit|polo)/i.test(top)) {
+    return `Long-sleeve ${top}`;
+  }
+  return `Long-sleeve ${top}`;
+};
+
+const applyWinterGlamOutfit = (outfit: string): string => {
+  const { top, tail, joiner } = splitOutfitTop(outfit);
+  const glamTop = applyWinterGlamTop(top.trim());
+  let result = tail ? `${glamTop}${joiner}${tail.trim()}` : glamTop;
+  if (!/tight/i.test(result)) {
+    result = `Tight-fitting ${result}`;
+  }
+  return result;
+};
+
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
-  const isWinter = topic.includes('눈') || topic.includes('겨울') || topic.includes('snow') || topic.includes('winter') || topic.includes('Snow') || topic.includes('Winter');
-
-  if (!isWinter) return outfit;
-
-  let adjusted = outfit;
-
-  // 이미 Long-sleeve가 포함되어 있다면 그대로 반환
-  if (adjusted.toLowerCase().includes('long-sleeve')) return adjusted;
-
-  // 상의 노출 키워드를 팔만 긴팔로 교체하되, 본래의 시원한 스타일(Crop, Tube, Halter 등)은 유지
-  const replacements: { [key: string]: string } = {
-    'Sleeveless': 'Long-sleeved',
-    'Short-sleeve': 'Long-sleeve',
-    'Halter-neck': 'Long-sleeved Halter-neck',
-    'Off-shoulder': 'Long-sleeved Off-shoulder',
-    'Cap-sleeve': 'Long-sleeved'
-  };
-
-  let replaced = false;
-  for (const [key, val] of Object.entries(replacements)) {
-    const regex = new RegExp(key, 'gi');
-    if (regex.test(adjusted)) {
-      adjusted = adjusted.replace(regex, val);
-      replaced = true;
-    }
-  }
-
-  // Tube Top의 경우 특별 처리 (긴팔 형태 추가 명시)
-  if (adjusted.toLowerCase().includes('tube top')) {
-    adjusted = adjusted.replace(/tube top/gi, 'Long-sleeved Tube Top');
-    replaced = true;
-  }
-
-  // 명시적인 노출 키워드가 없더라도 상의 아이템 앞에 긴팔 형상을 강제 삽입 (타이트하게)
-  if (!replaced && !adjusted.toLowerCase().includes('long-sleeve')) {
-    const topItems = ['Knit', 'Blouse', 'Polo', 'Shirt', 'Tee', 'Top', 'One-piece', 'Dress'];
-    for (const item of topItems) {
-      if (adjusted.includes(item)) {
-        adjusted = adjusted.replace(item, `Tight-fitting Long-sleeve ${item}`);
-        break;
-      }
-    }
-  }
-
-  // 항상 타이트한 실루엣 강조 (마마님 선호 스타일)
-  if (!adjusted.toLowerCase().includes('tight')) {
-    adjusted = 'Tight-fitting ' + adjusted;
-  }
-
-  return adjusted;
+  if (!outfit) return outfit;
+  if (!isWinterTopic(topic || '')) return outfit;
+  return applyWinterGlamOutfit(outfit);
 };
 
 const getOutfitPool = (): OutfitPoolItem[] =>
@@ -716,6 +730,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   // 의상 선택 (장르 및 주제 기반)
   const womanAOutfit = pickFemaleOutfit(genre, topic, []);
   const womanBOutfit = pickFemaleOutfit(genre, topic, [womanAOutfit]);
+  const womanDOutfit = pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit]);
   const manAOutfit = pickMaleOutfit(topic, []);
   const manBOutfit = pickMaleOutfit(topic, [manAOutfit]);
 
@@ -793,11 +808,12 @@ ${genreGuide?.badTwistExamples?.map(p => `• ${p}`).join('\n') || ''}
 4. 의상 이름 대본에 절대 언급 금지!
 ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 
-## 👗 의상 설정 (이미지 프롬프트용)
-- **Woman A (지영)**: ${womanAOutfit}
-- **Woman B (혜경)**: ${womanBOutfit}  
-- **Man A (준호)**: ${manAOutfit}
-- **Man B (민수)**: ${manBOutfit}
+  ## 👗 의상 설정 (이미지 프롬프트용)
+  - **Woman A (지영)**: ${womanAOutfit}
+  - **Woman B (혜경)**: ${womanBOutfit}  
+  - **Woman D (캐디)**: ${womanDOutfit}
+  - **Man A (준호)**: ${manAOutfit}
+  - **Man B (민수)**: ${manBOutfit}
 
 ## 💇 헤어스타일 (모든 씬 고정!)
 - **Woman A (지영)**: long soft-wave hairstyle
@@ -888,6 +904,7 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
   "lockedOutfits": {
     "womanA": "${womanAOutfit}",
     "womanB": "${womanBOutfit}",
+    "womanD": "${womanDOutfit}",
     "manA": "${manAOutfit}",
     "manB": "${manBOutfit}"
   },
@@ -939,6 +956,18 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
       "outfit": "${manBOutfit}",
       "outfitPrefix": "wearing",
       "accessories": "luxury watch"
+    },
+    {
+      "id": "WomanD",
+      "name": "캐디",
+      "identity": "A stunning Korean woman in her early 20s",
+      "relationToNarrator": "화자와의 관계 (예: 캐디, 스태프 등)",
+      "slot": "Slot Woman D",
+      "hair": "high-bun hairstyle",
+      "body": "slim athletic figure with feminine curves, youthful radiant beauty",
+      "outfit": "${womanDOutfit}",
+      "outfitPrefix": "wearing",
+      "accessories": "delicate stud earrings"
     }
   ],
   "scenes": [

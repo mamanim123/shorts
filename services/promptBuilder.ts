@@ -24,11 +24,74 @@ export interface PromptBuilderOptions {
   outfits: {
     lockedFemaleOutfit?: string;
     lockedFemaleOutfit2?: string;
+    lockedFemaleOutfit3?: string;
     lockedMaleOutfit?: string;
     lockedMaleOutfit2?: string;
   };
   backgroundContext?: string;
 }
+
+const WINTER_KEYWORDS = [
+  '눈',
+  '겨울',
+  'snow',
+  'winter',
+  '스키',
+  'ski',
+  '썰매',
+  'sled',
+  'ice',
+  '빙판',
+  '얼음',
+  'snowy'
+];
+
+const isWinterContext = (context: string): boolean =>
+  WINTER_KEYWORDS.some((keyword) => context.toLowerCase().includes(keyword.toLowerCase()));
+
+const splitOutfitTop = (outfit: string) => {
+  const separators = [' + ', ' with ', ' and '];
+  for (const separator of separators) {
+    const index = outfit.toLowerCase().indexOf(separator);
+    if (index > 0) {
+      return {
+        top: outfit.slice(0, index),
+        tail: outfit.slice(index + separator.length),
+        joiner: separator
+      };
+    }
+  }
+  return { top: outfit, tail: '', joiner: '' };
+};
+
+const applyWinterGlamTop = (top: string): string => {
+  const lower = top.toLowerCase();
+  if (lower.includes('long-sleeve') || lower.includes('long sleeve')) return top;
+  if (/(tube top|strapless|bandeau)/i.test(top)) {
+    return 'Premium cold-shoulder cashmere knit top';
+  }
+  if (/(halter|off-shoulder|sleeveless|spaghetti|camisole|bustier|bralette|crop|cropped)/i.test(top)) {
+    return 'Tight-fitting mock-neck silk knit top with keyhole detail';
+  }
+  if (/(dress|one-piece)/i.test(top)) {
+    return 'Long-sleeve velvet dress';
+  }
+  if (/(blouse|shirt|top|tee|knit|polo)/i.test(top)) {
+    return `Long-sleeve ${top}`;
+  }
+  return `Long-sleeve ${top}`;
+};
+
+const applyWinterGlamOutfit = (outfit: string): string => {
+  if (!outfit) return outfit;
+  const { top, tail, joiner } = splitOutfitTop(outfit);
+  const glamTop = applyWinterGlamTop(top.trim());
+  let result = tail ? `${glamTop}${joiner}${tail.trim()}` : glamTop;
+  if (!/tight/i.test(result)) {
+    result = `Tight-fitting ${result}`;
+  }
+  return result;
+};
 
 export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
   const {
@@ -52,10 +115,13 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
 
 [1. 🚀 바이럴 쇼츠 성공 공식 (최우선 순위)]
 
-**RULE 1. IMMEDIATE IMPACT (배경 설명 삭제)**
-- 첫 문장에 상황과 사건을 동시에 녹여내세요. "어느 날", "날씨가" 같은 도입부는 즉시 삭제하세요.
-- ✅ "남편 친구가 갑자기 내 허벅지를 만졌어."
-- ❌ "골프장에 갔는데 날씨가 좋았거든. 그때..."
+**RULE 1. IMMEDIATE IMPACT (강한 훅 강제)**
+- 첫 문장은 반드시 **사건/충격/갈등/금기**를 바로 던지는 문장이어야 합니다.
+- 날씨/배경 설명으로 시작하면 무조건 실패입니다. ("눈이 와서", "어느 날", "그날 골프장에서" 금지)
+- 첫 문장에 **동사/행동/대사/직설적 상황**이 포함되어야 합니다.
+- ✅ "캐디가 내 손목을 잡는 순간, 나도 모르게 숨이 멎었어."
+- ✅ "문 열자마자 들린 한마디에 다리 힘이 풀렸다."
+- ❌ "눈이 펑펑 오길래 그늘집으로 피신했지."
 
 **RULE 2. DIALOGUE RATIO 70% (대사 중심 전개)**
 - 나레이션으로 설명하지 말고, 캐릭터 간의 대화로 상황을 보여주세요.
@@ -79,7 +145,7 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
   - 성격: 솔직하고 표현력이 풍부함. 감정을 숨기지 못하고 리액션이 큼.
 - **WomanC (미숙, Observer)**: Stunning Korean woman, athletic toned body with elegant curves, low ponytail, calm yet provocative demeanor.
   - 성격: 관찰력이 뛰어나고 냉정함. 상황을 조용히 지켜보다 결정적 순간에 한마디 던짐.
-- **WomanD (Caddy)**: Stunning young Korean woman (early 20s), high-bun hairstyle (updo), wearing a fitted premium caddy uniform, slim athletic figure with feminine curves, youthful radiant beauty.
+- **WomanD (Caddy)**: Stunning young Korean woman (early 20s), high-bun hairstyle (updo), slim athletic figure with feminine curves, youthful radiant beauty, wearing a stylish feminine outfit (not a caddy uniform).
 - **ManA (준호, Lead)**: Dandy Korean man, short neat hairstyle, fit athletic build. 성격: 매력적이지만 어딘가 수상한 구석이 있음.
 - **ManB (민수, Sub)**: Dandy Korean man, clean short cut, well-built physique. 성격: 권위적이지만 허점이 있음.
 
@@ -143,7 +209,13 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
 `;
 
   // 3. Resolve Outfits
-  const { lockedFemaleOutfit, lockedFemaleOutfit2, lockedMaleOutfit, lockedMaleOutfit2 } = outfits;
+  const {
+    lockedFemaleOutfit,
+    lockedFemaleOutfit2,
+    lockedFemaleOutfit3,
+    lockedMaleOutfit,
+    lockedMaleOutfit2
+  } = outfits;
   const isGolfContext = normalizedContext.includes('골프') || normalizedContext.includes('golf');
   const outfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
   const isMaleOutfit = (item: OutfitPoolItem) => item.categories.includes('MALE');
@@ -170,13 +242,26 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
     ...femaleCandidates.map(item => item.name)
   ]));
 
-  const mainOutfit = lockedFemaleOutfit || pickRandom(femaleOutfitNames);
-  const subOutfit = lockedFemaleOutfit2 || pickRandom(femaleOutfitNames.filter(o => o !== mainOutfit));
+  const winterContextEnabled = isWinterContext(normalizedContext);
+  const selectedMainOutfit = lockedFemaleOutfit || pickRandom(femaleOutfitNames);
+  const selectedSubOutfit = lockedFemaleOutfit2 || pickRandom(femaleOutfitNames.filter(o => o !== selectedMainOutfit));
+  const mainOutfit = winterContextEnabled
+    ? applyWinterGlamOutfit(selectedMainOutfit)
+    : selectedMainOutfit;
+  const subOutfit = winterContextEnabled
+    ? applyWinterGlamOutfit(selectedSubOutfit)
+    : selectedSubOutfit;
+  const selectedCaddyOutfit = lockedFemaleOutfit3
+    || pickRandom(femaleOutfitNames.filter(o => o !== selectedMainOutfit && o !== selectedSubOutfit));
+  const caddyOutfit = winterContextEnabled
+    ? applyWinterGlamOutfit(selectedCaddyOutfit)
+    : selectedCaddyOutfit;
 
   const outfitGuidance = `
 [SELECTED OUTFITS - MUST USE THESE EXACTLY FOR EVERY SCENE]
 - WomanA (Main): ${mainOutfit}
 - WomanB (Sub): ${subOutfit}
+- WomanD (Caddy): ${caddyOutfit}
 - ManA (Lead): ${fallbackMaleOutfit}
 - ManB (Sub): ${secondaryMaleOutfit}
 `;
@@ -189,6 +274,7 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
     SCRIPT_COUNT: String(scriptCount),
     LOCKED_FEMALE_OUTFIT: mainOutfit,
     LOCKED_FEMALE_OUTFIT2: subOutfit,
+    LOCKED_FEMALE_OUTFIT3: caddyOutfit,
     LOCKED_MALE_OUTFIT: fallbackMaleOutfit,
     LOCKED_MALE_OUTFIT2: secondaryMaleOutfit,
     LOCKED_BACKGROUND: backgroundContext || topic || genre || '일상적인 공간',

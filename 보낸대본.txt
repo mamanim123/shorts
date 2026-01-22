@@ -1,1 +1,333 @@
-대본 생성 로직(프롬프트 템플릿)을 확인해서 왜 LLM이 이렇게 생성하는지 분석해
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 **유튜브 쇼츠 바이럴 대본 전문 작가**입니다.
+40~60대 한국 여성 시청자가 "내 얘기잖아!" 하면서 끝까지 보게 만드는 대본을 작성하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 주제: "눈오는 골프장에 아름다운 캐디"
+📌 장르: 로맨스/설렘
+📌 타겟: 40~60대 한국 여성
+📌 화자: Woman A (지영) (지영)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 🎯 이 장르의 핵심
+**중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림**
+
+## 📈 감정 곡선 (이 흐름을 반드시 따라가세요!)
+😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"
+
+## 🎲 창작 힌트 (영감용 - 억지로 다 넣지 마세요!)
+- 장소 힌트: 정형외과
+- 소품 힌트: 고급 레스토랑 영수증  
+- 신체반응 참고: 입이 바짝 마름
+- 오해 방향: 성형 몰래 한 줄
+- 반전 유형: 건강 관련 좋은 소식 또는 배려
+- 구체 반전(황당) 힌트: 알고보니 한쪽 소매만 접힌 채로 중요한 자리 참석함
+
+
+⚠️ **중요**: 주제(topic)가 최우선! 
+⚠️ 힌트는 영감만 받고, 주제와 안 맞으면 무시하세요!
+
+## 🎭 스토리 구조
+
+[HOOK] 😐 평소와 다른 느낌 암시
+→ "오늘따라 왜 그랬는지 모르겠어"
+→ "그 사람이 갑자기 달라 보였어"
+
+[SETUP] 👀 일상 속 만남 + 복선
+→ 늘 보던 사람인데 오늘 뭔가 다름
+→ "평소처럼 (행동)하는데..."
+
+[BUILD-UP] 💓 물리적/심리적 거리 좁혀짐
+→ 우연한 접촉, 눈 마주침, 목소리 톤 변화
+→ 시간이 느려지는 느낌 묘사
+→ 신체반응 필수
+
+[CLIMAX] 😳 결정적 순간
+→ 의미심장한 한마디 or 행동
+→ "그때 그 사람이 (말/행동)하더니..."
+
+[TWIST] 🤔 혼란 + 여운
+→ 확신 없는 결말
+→ "나만 이런 건가?", "뭔가 있는 건가?"
+
+
+## 💬 킬러 대사 (자연스럽게 2~3개 녹이세요)
+"오늘따라 왜 이러지", "원래 이랬나?", "목소리가 왜 이렇게 낮아졌지", "눈을 어디다 둘지 모르겠더라", "괜히 신경 쓰였어", "그 말이 자꾸 맴돌아", "나만 이런 건가", "무슨 의미였을까", "설마... 아니겠지?", "왜 자꾸 생각나지", "내가 왜 이래 갑자기"
+
+## 🫀 신체 반응 표현 (최소 2개 필수!)
+"심장이 갑자기 빨라졌어", "귀가 빨개지는 게 느껴졌어", "목소리가 작아졌어", "눈을 못 마주치겠더라", "손끝이 미세하게 떨렸어", "숨을 참고 있었어", "입이 바짝 말랐어", "시간이 멈춘 것 같았어"
+
+## ✅ 좋은 반전 예시
+• 평소엔 무뚝뚝한 남편이 오늘따라 내 머리 냄새를 맡더니 "향 바꿨어?" 한마디
+• 항상 무심한 줄 알았던 그 사람이 내 커피 취향을 정확히 기억하고 있었음
+• 악수하는데 손을 평소보다 1초 더 잡고 있더라
+• 단톡방에서만 보던 사람인데 실제로 보니까 자꾸 눈이 갔어
+• 옆에 앉았는데 향수 냄새가... 집에 와서도 코끝에 남아있었어
+• 헤어질 때 "조심히 가"가 아니라 "연락해"라고 하더라
+
+## ❌ 절대 금지
+• 심장이 쿵쾅쿵쾅 (유치한 표현)
+• 나비가 날아다니는 것 같았다
+• 운명 같은 만남
+• 첫눈에 반했다
+• 바로 고백
+• 키스/신체접촉
+• 바로 사귀기 시작
+• 골프장 그립 잡아주기
+• 우연히 같은 호텔
+• 비 오는 날 우산 씌워주기
+• 떨어진 물건 같이 줍다 손 닿기
+
+## ❌ 나쁜 반전 예시
+• 알고보니 나를 좋아했다 (너무 직접적)
+• 바로 고백받음 (전개 급함)
+• 꿈이었음 (허무)
+• 알고보니 유부남/유부녀 (불쾌)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ✅ 핵심 규칙 (간단/명확)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 화자는 1인칭. **본인 이름 3인칭 금지**.
+2. 인물 첫 등장 시 관계가 **자연스럽게 드러나게**.
+3. 반전이 있으면 SETUP(2~3문장)에 **힌트 1개**.
+4. 감정 직접 서술 금지. **행동/신체반응으로 표현**.
+5. 제목은 구체적 상황으로 ("충격/반전" 같은 추상어 금지).
+6. titleOptions 3개는 **서로 다른 표현**으로 작성.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 📝 대본 형식 규칙
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 분량: 10~12문장
+2. 문체: ~했어, ~했지, ~더라고, ~잖아 (친구한테 수다)
+3. 대사: 작은따옴표 사용 ('이렇게 말했어')
+4. 의상 이름 대본에 절대 언급 금지!
+
+
+  ## 👗 의상 설정 (이미지 프롬프트용)
+  - **Woman A (지영)**: Tight-fitting Long-sleeve velvet dress with Mesh Insets
+  - **Woman B (혜경)**: Tight-fitting Long-sleeve White See-through Shirt + White High-waist Hot Pants (Pure Luxury)  
+  - **Woman D (캐디)**: Tight-fitting minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use
+  - **Man A (준호)**: Tight-fitting Long-sleeve Navy Slim-fit Polo + White Tailored Golf Pants
+  - **Man B (민수)**: Tight-fitting Long-sleeve White Performance Polo + Beige Chino Golf Pants
+
+## 💇 헤어스타일 (모든 씬 고정!)
+- **Woman A (지영)**: long soft-wave hairstyle
+- **Woman B (혜경)**: short chic bob cut
+- **Man A (준호)**: short neat hairstyle
+- **Man B (민수)**: clean short cut
+
+## 🚨 이미지 프롬프트 절대 규칙 (위반 시 즉시 실패)
+1. **longPrompt와 negativePrompt 분리**: 모든 씬의 longPrompt에는 PROMPT_CONSTANTS.START/END를 포함하고, negativePrompt 필드에는 PROMPT_CONSTANTS.NEGATIVE를 별도로 입력해야 함. (누락/변형 금지)
+2. **캐릭터 정체성은 반드시 characters[].identity 필드 값을 그대로 사용**
+3. **의상 앞에 반드시 "wearing" 키워드 추가** (characters[].outfitPrefix 참조)
+4. **8개 모든 씬에서 identity/hair/body/outfit 문구 100% 동일** (문자열 한 글자도 바꾸지 말 것)
+5. **캔디드 에스테틱 (Candid Aesthetic) & 카메라 시선**:
+   - **Scene 1 (Hook)**: 시청자와의 연결을 위해 카메라를 정면 응시하며 미소 지을 것 (Eye contact, smiling at camera).
+   - **Scene 2~8**: 자연스러운 일상의 찰나를 포착한 **Candid Shot**이어야 함. 캐릭터는 **카메라를 절대 응시하지 말고(Looking away from camera)** 자신의 행동이나 상대방에게 집중할 것. 인위적인 포즈(Posed) 금지.
+6. **텍스트 금지**: 이미지 내에 어떠한 글자, 로고, 워터마크도 포함되지 않도록 "no text, no letters, no typography"를 강조할 것.
+7. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
+8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
+9. **의상 명칭 보존 (중요)**: `shortPrompt`와 `longPrompt` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.
+10. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
+
+## 📸 샷 타입 규칙
+| 상황 | 샷 타입 |
+|-----|--------|
+| 1명 행동/감정 | 원샷 |
+| 2명 상호작용 | 투샷 |
+| 3명 함께 | 쓰리샷 |
+
+### 🚨 투샷/쓰리샷 longPrompt 작성 필수 규칙 (매우 중요!)
+**여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분해야 합니다!**
+
+✅ **원샷 예시** (1명):
+```
+unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress, smiling at camera, snowy golf course, ...
+```
+
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
+```
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, snowy golf course, ...
+```
+
+✅ **쓰리샷 예시** (3명) - [Person 1], [Person 2], [Person 3] 필수:
+```
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, snowy golf course, ...
+```
+
+✅ **남성 2명 투샷 예시** - [Person 1], [Person 2] 필수:
+```
+unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Navy Polo] [Person 2: A handsome Korean man in his 40s, clean short cut hair, well-built physique..., wearing White Polo] walking together on a golf course...
+```
+
+❌ **금지 (캐릭터 혼동 발생)**:
+```
+A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man..., walking together
+```
+→ 구분자 없이 쉼표로만 연결하면 AI가 캐릭터를 혼동합니다!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 🎙️ 음성 스크립트 규칙 (간단)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- **voiceType**: "narration" | "lipSync" | "both" | "none"
+  - narration: 설명/묘사 위주
+  - lipSync: 대사만 있는 경우
+  - both: 설명 + 대사 혼합
+  - none: 무음
+- **narration.text**: scriptLine 기반 자연스러운 문장 (쉼표 강제 없음)
+- **lipSync**: 작은따옴표 대사가 있을 때만 생성
+  - line은 따옴표 안의 대사만 그대로
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ⚠️ 출력 형식 (반드시 이 JSON 구조만!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "title": "구체적이고 호기심 유발하는 제목 (15자 이내)",
+  "titleOptions": ["제목옵션1", "제목옵션2", "제목옵션3"],
+  "scriptBody": "문장1\n문장2\n...\n문장10-12",
+  "punchline": "핵심 펀치라인",
+  "hook": "첫 문장 (HOOK)",
+  "twist": "반전 문장 (TWIST)",
+  "foreshadowing": "복선 문장 (SETUP에서 깐 힌트)",
+  "narrator": {
+    "slot": "WomanA",
+    "name": "지영"
+  },
+  "emotionFlow": "😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"",
+  "lockedOutfits": {
+    "womanA": "Tight-fitting Long-sleeve velvet dress with Mesh Insets",
+    "womanB": "Tight-fitting Long-sleeve White See-through Shirt + White High-waist Hot Pants (Pure Luxury)",
+    "womanD": "Tight-fitting minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use",
+    "manA": "Tight-fitting Long-sleeve Navy Slim-fit Polo + White Tailored Golf Pants",
+    "manB": "Tight-fitting Long-sleeve White Performance Polo + Beige Chino Golf Pants"
+  },
+  "characters": [
+    {
+      "id": "WomanA",
+      "name": "지영",
+      "identity": "A stunning Korean woman in her 40s",
+      "relationToNarrator": "화자와의 관계 (예: 화자 본인, 화자의 와이프, 화자의 친구 등)",
+      "slot": "Slot Woman A",
+      "hair": "long soft-wave hairstyle",
+      "body": "slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves",
+      "outfit": "Tight-fitting Long-sleeve velvet dress with Mesh Insets",
+      "outfitPrefix": "wearing",
+      "accessories": "delicate gold hoop earrings, luxury watch"
+    },
+    {
+      "id": "WomanB",
+      "name": "혜경",
+      "identity": "A stunning Korean woman in her 40s",
+      "relationToNarrator": "화자와의 관계",
+      "slot": "Slot Woman B",
+      "hair": "short chic bob cut",
+      "body": "slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves",
+      "outfit": "Tight-fitting Long-sleeve White See-through Shirt + White High-waist Hot Pants (Pure Luxury)",
+      "outfitPrefix": "wearing",
+      "accessories": "pearl drop earrings, gold bangle bracelet"
+    },
+    {
+      "id": "ManA",
+      "name": "준호",
+      "identity": "A handsome Korean man in his 40s",
+      "relationToNarrator": "화자와의 관계 (예: 남편, 친구 등)",
+      "slot": "Slot Man A",
+      "hair": "short neat hairstyle",
+      "body": "fit athletic build with broad shoulders, dandy and refined presence",
+      "outfit": "Tight-fitting Long-sleeve Navy Slim-fit Polo + White Tailored Golf Pants",
+      "outfitPrefix": "wearing",
+      "accessories": "silver watch"
+    },
+    {
+      "id": "ManB",
+      "name": "민수",
+      "identity": "A handsome Korean man in his 40s",
+      "relationToNarrator": "화자와의 관계 (예: 친구, 직장동료 등)",
+      "slot": "Slot Man B",
+      "hair": "clean short cut",
+      "body": "well-built dandy physique",
+      "outfit": "Tight-fitting Long-sleeve White Performance Polo + Beige Chino Golf Pants",
+      "outfitPrefix": "wearing",
+      "accessories": "luxury watch"
+    },
+    {
+      "id": "WomanD",
+      "name": "캐디",
+      "identity": "A stunning Korean woman in her early 20s",
+      "relationToNarrator": "화자와의 관계 (예: 캐디, 스태프 등)",
+      "slot": "Slot Woman D",
+      "hair": "high-bun hairstyle",
+      "body": "slim athletic figure with feminine curves, youthful radiant beauty",
+      "outfit": "Tight-fitting minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use",
+      "outfitPrefix": "wearing",
+      "accessories": "delicate stud earrings"
+    }
+  ],
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "characterSlot": "캐릭터 슬롯",
+      "shotType": "원샷 | 투샷 | 쓰리샷",
+      "emotionBeat": "이 장면 감정",
+      "summary": "장면 한줄 요약",
+      "scriptLine": "이 장면 대사",
+      "action": "캐릭터의 구체적 행동",
+      "emotion": "시작감정 → 끝감정",
+      
+      "voiceType": "narration | lipSync | both | none",
+      "narration": {
+        "text": "TTS용 텍스트 (자연스러운 문장)",
+        "emotion": "감정 (한글)",
+        "speed": "slow | normal | slightly-fast | fast"
+      },
+      "lipSync": {
+        "speaker": "WomanA | WomanB | ManA | ManB",
+        "speakerName": "캐릭터 이름",
+        "line": "대사 (한글)",
+        "emotion": "감정 (영어)",
+        "timing": "start | mid | end"
+      },
+      
+      "shortPrompt": "간단한 영문 프롬프트",
+      "shortPromptKo": "간단한 한글 프롬프트",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "상세 한글 프롬프트",
+      "videoPrompt": "[한국어] 40대 한국인 여성이 [동작], [카메라 무빙], [조명/분위기]"
+    }
+  ]
+}
+
+
+## ✅ 최종 체크리스트 (전부 통과해야 함!)
+
+**기본:**
+1. ✅ scriptBody 10-12문장
+2. ✅ 정확히 8개 scenes
+3. ✅ 의상 일관성 (lockedOutfits)
+4. ✅ JSON만 출력
+
+**품질 (핵심):**
+5. ✅ 화자(지영)가 자기 이름 3인칭으로 안 씀?
+6. ✅ 캐릭터 첫 등장 시 관계가 자연스럽게 드러남?
+7. ✅ 반전 복선이 SETUP(2~3문장)에 있음?
+8. ✅ 제목이 구체적? (충격/반전 같은 추상어 금지)
+9. ✅ Show, Don't Tell 적용? (감정 직접 서술 금지)
+10. ✅ 신체 반응 최소 2개?
+
+**이미지 프롬프트 (필수!):**
+11. ✅ 모든 longPrompt가 characters[].identity 값으로 시작? (예: "A stunning Korean woman in her 40s")
+12. ✅ "Woman A (지영)" 형태 사용 안 함? (identity 필드 값만 사용!)
+13. ✅ 의상 앞에 "wearing" 키워드 있음?
+14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
+15. ✅ 배경 문구가 장면 전환 없을 때 동일?
+16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
+
+**음성:**
+17. ✅ 모든 씬에 voiceType 지정?
+18. ✅ 작은따옴표 대사 있으면 lipSync 생성?

@@ -105,6 +105,52 @@ if (!fs.existsSync(OUTFITS_FILE)) {
     fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits: [], categories: DEFAULT_OUTFIT_CATEGORIES }, null, 2));
 }
 
+const resolveSafeStoryImagesFolder = (folderName = '') => {
+    if (!folderName || typeof folderName !== 'string') return null;
+    const trimmed = folderName.trim();
+    if (!trimmed) return null;
+    if (trimmed.includes('"') || trimmed.includes('\0')) return null;
+
+    const safeName = path.basename(trimmed);
+    if (safeName !== trimmed) return null;
+
+    const storyImagesPath = path.join(SCRIPTS_BASE_DIR, safeName, 'images');
+    const legacyImagesPath = path.join(IMAGES_DIR, safeName);
+    const storyResolved = path.resolve(storyImagesPath);
+    const legacyResolved = path.resolve(legacyImagesPath);
+    const scriptsResolved = path.resolve(SCRIPTS_BASE_DIR);
+    const imagesResolved = path.resolve(IMAGES_DIR);
+
+    const candidates = [
+        { resolved: storyResolved, root: scriptsResolved },
+        { resolved: legacyResolved, root: imagesResolved }
+    ];
+
+    for (const candidate of candidates) {
+        if (!candidate.resolved.startsWith(candidate.root)) continue;
+        if (fs.existsSync(candidate.resolved)) return candidate.resolved;
+    }
+
+    return null;
+};
+
+const openFolderInExplorer = async (folderPath) => {
+    if (!folderPath) throw new Error('Invalid folder path');
+    const normalizedPath = folderPath.replace(/"/g, '');
+    const quotedPath = `"${normalizedPath}"`;
+    let command = '';
+
+    if (process.platform === 'win32') {
+        command = `start "" ${quotedPath}`;
+    } else if (process.platform === 'darwin') {
+        command = `open ${quotedPath}`;
+    } else {
+        command = `xdg-open ${quotedPath}`;
+    }
+
+    await execAsync(command);
+};
+
 const readEngineConfig = () => {
     try {
         const raw = fs.readFileSync(ENGINE_CONFIG_FILE, 'utf8');
@@ -1462,6 +1508,22 @@ app.post('/api/outfits', (req, res) => {
         res.json({ success: true, categories: normalizedCategories });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/open-folder', async (req, res) => {
+    try {
+        const { folderName } = req.body || {};
+        const targetFolder = resolveSafeStoryImagesFolder(folderName);
+        if (!targetFolder) {
+            return res.status(404).json({ success: false, error: '폴더를 찾을 수 없습니다.' });
+        }
+
+        await openFolderInExplorer(targetFolder);
+        return res.json({ success: true, path: targetFolder });
+    } catch (error) {
+        console.error('Failed to open folder:', error);
+        return res.status(500).json({ success: false, error: '폴더 열기에 실패했습니다.' });
     }
 });
 

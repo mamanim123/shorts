@@ -855,10 +855,24 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             onClick={() => setLightboxImage(generatedFaceImage)}
                           />
                         )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과</div>
-                          <div className="text-xs text-slate-200 leading-relaxed mb-1">{extractedFace.ko}</div>
-                          <div className="text-[10px] text-slate-500 leading-relaxed italic truncate">{extractedFace.en}</div>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (수정 가능)</div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">한글 설명</label>
+                            <textarea
+                              value={extractedFace.ko}
+                              onChange={e => setExtractedFace(prev => prev ? { ...prev, ko: e.target.value } : null)}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-14"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트</label>
+                            <textarea
+                              value={extractedFace.en}
+                              onChange={e => setExtractedFace(prev => prev ? { ...prev, en: e.target.value } : null)}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-16 font-mono"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -1004,14 +1018,36 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         onClick={() => setLightboxImage(generatedOutfitImage)}
                       />
                     )}
-                    <div className="flex-1 min-w-0">
-                      {/* 한글 의상 이름 표시 */}
-                      <div className="text-sm font-bold text-emerald-300 mb-1">
-                        👗 {extractedOutfit.name}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="text-[10px] font-bold text-emerald-400">✨ 분석 결과 (수정 가능)</div>
+                      {/* 의상 이름 수정 */}
+                      <div>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block">👗 의상 이름</label>
+                        <input
+                          type="text"
+                          value={extractedOutfit.name}
+                          onChange={e => setExtractedOutfit(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-sm font-bold text-emerald-300 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none"
+                        />
                       </div>
-                      <div className="text-[10px] font-bold text-emerald-400 mb-1">✨ 상세 설명</div>
-                      <div className="text-xs text-slate-200 leading-relaxed mb-1">{extractedOutfit.ko}</div>
-                      <div className="text-[10px] text-slate-500 leading-relaxed italic line-clamp-2">{extractedOutfit.en}</div>
+                      {/* 한글 설명 수정 */}
+                      <div>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block">한글 설명</label>
+                        <textarea
+                          value={extractedOutfit.ko}
+                          onChange={e => setExtractedOutfit(prev => prev ? { ...prev, ko: e.target.value } : null)}
+                          className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none resize-none h-14"
+                        />
+                      </div>
+                      {/* 영문 프롬프트 수정 */}
+                      <div>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block">영문 프롬프트</label>
+                        <textarea
+                          value={extractedOutfit.en}
+                          onChange={e => setExtractedOutfit(prev => prev ? { ...prev, en: e.target.value } : null)}
+                          className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none resize-none h-20 font-mono"
+                        />
+                      </div>
                     </div>
                   </div>
 

@@ -722,18 +722,47 @@ app.post('/api/extract-outfit', async (req, res) => {
 
         console.log('[Vision] Analyzing outfit using Puppeteer...');
 
-        const visionPrompt = `Analyze this image and describe the OUTFIT only in a detailed Stable Diffusion prompt style. 
-        Focus on clothing type, material, color, and fit. 
-        Return ONLY the English prompt string.`;
+        const visionPrompt = `Analyze this image and describe the OUTFIT and BODY TYPE in extreme detail.
+        Provide the output in JSON format with two keys:
+        1. "en": A detailed Stable Diffusion prompt in English. MUST include:
+           - Body Type (e.g., slim, curvy, athletic, petite, tall)
+           - Clothing Fit (e.g., tight, loose, oversized, fitted)
+           - Material & Texture (e.g., silk, denim, leather, knit, sheer)
+           - Specific Items (e.g., pencil skirt, crop top, trench coat)
+           - Colors & Patterns
+           - Accessories (e.g., necklace, belt, glasses)
+        2. "ko": A natural Korean description including body type, outfit style, and key items.
+        
+        Example format:
+        {
+            "en": "slim hourglass figure, wearing a white silk blouse with lace details, tight black pencil skirt, high heels, pearl necklace...",
+            "ko": "슬림한 모래시계 체형에 레이스 디테일이 있는 흰색 실크 블라우스와 타이트한 검정 펜슬 스커트를 매치..."
+        }
+        Return ONLY the JSON string.`;
 
         const result = await generateContent('GEMINI', visionPrompt, [imageData]);
-        const prompt = typeof result === 'string' ? result : (result.content || '');
+        const content = typeof result === 'string' ? result : (result.content || '');
 
-        if (!prompt) {
+        if (!content) {
             throw new Error('의상 분석 결과가 비어있습니다.');
         }
 
-        res.json({ success: true, prompt: prompt.trim() });
+        // JSON 파싱 시도
+        let parsed = { en: "", ko: "" };
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                parsed = JSON.parse(content);
+            }
+        } catch (e) {
+            console.warn("JSON parsing failed, falling back to raw text", e);
+            parsed.en = content;
+            parsed.ko = "분석 결과 형식이 올바르지 않아 원문을 표시합니다.";
+        }
+
+        res.json({ success: true, prompt: parsed });
     } catch (error) {
         console.error('의상 추출 API 에러:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -747,20 +776,86 @@ app.post('/api/extract-face', async (req, res) => {
 
         console.log('[Vision] Analyzing face features using Puppeteer...');
 
-        const facePrompt = `Analyze this face image and describe the facial features in a detailed Stable Diffusion prompt style. 
-        Focus on face shape, eyes, nose, lips, jawline, and skin texture. 
-        Return ONLY the English prompt string.`;
-
+        const facePrompt = `Analyze this face image and describe the facial features in extreme detail.
+        Provide the output in JSON format with two keys:
+        1. "en": A detailed Stable Diffusion prompt in English. MUST include:
+           - Face Shape (e.g., oval, round, sharp jawline)
+           - Eyes (e.g., double eyelid, almond shape, color, makeup style)
+           - Nose & Lips (e.g., high bridge, full lips, lipstick color)
+           - Skin (e.g., fair, tanned, freckles, glowing)
+           - Hair (e.g., color, style, length)
+           - Expression & Vibe (e.g., elegant, cute, serious)
+        2. "ko": A natural Korean description of the face features and makeup.
+        
+        Example format:
+        {
+            "en": "A stunning Korean woman with oval face, double eyelids, large expressive eyes, sharp nose, cherry red lips, fair glowing skin...",
+            "ko": "계란형 얼굴에 쌍꺼풀이 짙은 큰 눈, 오똑한 코와 앵두 같은 입술을 가진 한국 여성..."
+        }
+        Return ONLY the JSON string.`;
         const result = await generateContent('GEMINI', facePrompt, [imageData]);
-        const prompt = typeof result === 'string' ? result : (result.content || '');
+        const content = typeof result === 'string' ? result : (result.content || '');
 
-        if (!prompt) {
+        if (!content) {
             throw new Error('얼굴 분석 결과가 비어있습니다.');
         }
 
-        res.json({ success: true, prompt: prompt.trim() });
+        // JSON 파싱 시도
+        let parsed = { en: "", ko: "" };
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                parsed = JSON.parse(content);
+            }
+        } catch (e) {
+            console.warn("JSON parsing failed, falling back to raw text", e);
+            parsed.en = content;
+            parsed.ko = "분석 결과 형식이 올바르지 않아 원문을 표시합니다.";
+        }
+
+        res.json({ success: true, prompt: parsed });
     } catch (error) {
         console.error('얼굴 추출 API 에러:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 캐릭터 이미지 저장 API
+// ---------------------------------------------------------
+app.post('/api/save-character-image', async (req, res) => {
+    try {
+        const { imageData, prompt, type } = req.body; // type: 'outfit' | 'face' | 'character'
+        if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+
+        // 저장 경로 설정: generated_scripts/images/character_outfit
+        const baseDir = path.join(__dirname, '..', 'generated_scripts', 'images', 'character_outfit');
+        if (!fs.existsSync(baseDir)) {
+            fs.mkdirSync(baseDir, { recursive: true });
+        }
+
+        // 파일명 생성
+        const timestamp = Date.now();
+        const filename = `${type || 'image'}_${timestamp}.png`;
+        const filepath = path.join(baseDir, filename);
+
+        // Base64 데이터 저장
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+        fs.writeFileSync(filepath, base64Data, 'base64');
+
+        // 메타데이터 저장 (선택 사항)
+        const metaPath = filepath.replace('.png', '.json');
+        fs.writeFileSync(metaPath, JSON.stringify({ prompt, createdAt: new Date().toISOString() }, null, 2));
+
+        // URL 반환 (로컬 서버 경로)
+        const fileUrl = `/generated_scripts/images/character_outfit/${filename}`;
+
+        console.log(`[Server] Character image saved: ${filepath}`);
+        res.json({ success: true, url: fileUrl, filename });
+    } catch (error) {
+        console.error('이미지 저장 실패:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -914,7 +1009,7 @@ app.post('/api/create-story-folder', (req, res) => {
         if (!title) return res.status(400).json({ error: "Title is required" });
 
         const { safeId } = createStoryFolderFromTitle(title);
-        console.log(`[Server] 📁 Explicit folder creation requested for: ${title} -> ${safeId}`);
+        console.log(`[Server] 📁 Explicit folder creation requested for: ${title} -> ${safeId} `);
 
         res.json({
             success: true,
@@ -931,7 +1026,7 @@ app.post('/api/save-story', (req, res) => {
         const { title, content, service } = req.body;
         const safeTitle = (title || 'Untitled').replace(/[^a-z0-9가-힣\s]/gi, '').trim().substring(0, 50) || 'Untitled';
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const servicePrefix = service ? `[${service}] ` : '';
+        const servicePrefix = service ? `[${service}]` : '';
         const filename = `${servicePrefix}${timestamp}_${safeTitle}.txt`;
         // ✅ [수정] 루트 폴더 저장은 제거하고 스토리 폴더에만 저장
         let folderName = req.body.folderName || null;
@@ -962,7 +1057,7 @@ app.post('/api/save-story', (req, res) => {
 
         const filePath = path.join(storyDir, filename);
         fs.writeFileSync(filePath, content);
-        console.log(`[Server] ✅ Script saved to story folder: ${filePath}`);
+        console.log(`[Server] ✅ Script saved to story folder: ${filePath} `);
 
         res.json({ success: true, filename, folderName });
     } catch (e) {
@@ -981,7 +1076,7 @@ app.post('/api/save-image', async (req, res) => {
         const safePrompt = (prompt || 'generated_image').replace(/[^a-z0-9가-힣\s]/gi, '').trim().substring(0, 30);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const sceneLabel = typeof sceneNumber === 'number'
-            ? `scene-${String(sceneNumber).padStart(2, '0')}`
+            ? `scene - ${String(sceneNumber).padStart(2, '0')} `
             : 'scene';
         const filename = `${sceneLabel}_${timestamp}_${safePrompt || 'image'}.png`;
         const filePath = path.join(imagesDir, filename);
@@ -1025,9 +1120,9 @@ app.post('/api/save-image', async (req, res) => {
                 storyId: safeId || ''
             };
             fs.writeFileSync(promptsJsonPath, JSON.stringify(promptsData, null, 2));
-            console.log(`[Server] ✅ Prompt saved to prompts.json: ${filename}`);
+            console.log(`[Server] ✅ Prompt saved to prompts.json: ${filename} `);
         } catch (jsonError) {
-            console.warn(`[Server] ⚠️ Failed to save prompt to JSON:`, jsonError);
+            console.warn(`[Server] ⚠️ Failed to save prompt to JSON: `, jsonError);
         }
 
         const url = isLegacy

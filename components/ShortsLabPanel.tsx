@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES, validateAndFixPrompt } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES, PROMPT_CONSTANTS, validateAndFixPrompt } from '../services/labPromptBuilder';
 import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
@@ -244,6 +244,19 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
     return `${mandatoryPrefix}${cleanText}`;
 };
 
+const extractNegativePrompt = (text: string): { cleaned: string; negative: string } => {
+    if (!text) return { cleaned: text, negative: '' };
+    const negative = PROMPT_CONSTANTS.NEGATIVE;
+    if (!negative || !text.includes(negative)) return { cleaned: text, negative: '' };
+    const cleaned = text
+        .replace(negative, '')
+        .replace(/,\s*,/g, ',')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/,\s*$/g, '')
+        .trim();
+    return { cleaned, negative };
+};
+
 /**
  * 씬 프롬프트를 보강하는 함수
  * - 의상 태그 추가
@@ -347,7 +360,9 @@ const postProcessAiScenes = (
         }
 
         // 3. 네거티브 프롬프트 분리 처리
-        const negativePrompt = scene.negativePrompt || '';
+        const extracted = extractNegativePrompt(processedPrompt);
+        processedPrompt = extracted.cleaned;
+        const negativePrompt = scene.negativePrompt || extracted.negative || '';
 
         return {
             ...scene,

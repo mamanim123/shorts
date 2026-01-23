@@ -430,6 +430,11 @@ export const applyFullEnhancement = (prompt, characterIds, characterMap) => {
         const hasCustomSentence = slot.customSentence && slot.customSentence.trim().length > 0;
         if (!hasKeywords && !hasCustomSentence) return;
         if (FEMALE_SLOT_REGEX.test(slot.label || '') && !hasFemale) return;
+        if (hasKeywords && !hasCustomSentence) {
+            const promptLower = newPrompt.toLowerCase();
+            const alreadyHasKeyword = slot.keywords.some((kw) => promptLower.includes(String(kw).toLowerCase()));
+            if (alreadyHasKeyword) return;
+        }
         const sentence = buildSlotSentence(slot);
         if (sentence) {
             newPrompt = insertSentence(newPrompt, sentence);
@@ -449,7 +454,8 @@ export const applyFullEnhancement = (prompt, characterIds, characterMap) => {
     }
 
     if (settings.useQualityTags !== false) {
-        if (!/8k\s+resolution/i.test(newPrompt)) {
+        const hasQualityTags = /(8k|ultra\s*-?hd|photorealistic|cinematic lighting|masterpiece)/i.test(newPrompt);
+        if (!hasQualityTags) {
             newPrompt = newPrompt.replace(/--ar\s+\d+:\d+/gi, '').trim() + (settings.qualityTags || QUALITY_TAG_FALLBACK);
         } else if (!/--ar\s+9:16/i.test(newPrompt)) {
             newPrompt = `${newPrompt} --ar 9:16`;

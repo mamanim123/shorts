@@ -71,6 +71,108 @@ export const PROMPT_CONSTANTS = {
   NEGATIVE: 'NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing'
 };
 
+export const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
+  if (!text) return text;
+  let updated = text;
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\b(Vietnamese|Vietnam|Thai|Thailand|Japanese|Japan|Chinese|China|American|Europe(?:an)?|Western)\b/gi, 'Korean'],
+    [/(베트남|베트남인|태국|일본|중국|미국|서양|서구)/g, '한국인']
+  ];
+  replacements.forEach(([regex, value]) => {
+    updated = updated.replace(regex, value);
+  });
+
+  const formatEnglishAgeLabel = (label?: string): string => {
+    if (!label) return '';
+    const match = label.match(/\d+/);
+    return match ? `${match[0]}s` : '';
+  };
+
+  const englishAge = formatEnglishAgeLabel(targetAgeLabel);
+  const ageString = englishAge ? `in ${gender === 'female' ? 'her' : 'his'} ${englishAge}` : '';
+  const identityDescriptor = gender === 'female'
+    ? `A stunning Korean woman ${ageString}`.trim()
+    : `Korean man ${ageString}`.trim();
+
+  const scenePrefix = sceneNumber ? `Scene ${sceneNumber}, ` : '';
+  const mandatoryPrefix = `${scenePrefix}${identityDescriptor}, `;
+
+  const cleanText = updated
+    .replace(/^Scene \d+[\.,]\s*/i, '')
+    .replace(/^A stunning Korean woman in her [\d\w\s]+[\.,]\s*/i, '')
+    .replace(/^A handsome Korean man in his [\d\w\s]+[\.,]\s*/i, '')
+    .replace(/^A stunning Korean woman[\.,]\s*/i, '')
+    .replace(/^A handsome Korean man[\.,]\s*/i, '')
+    .replace(/^in (her|his) [\d\w\s]+[\.,]\s*/i, '')
+    .trim();
+
+  const cameraAnglePattern = /^(Candid|Two-shot|Three-shot|Dutch|Extreme|Close-up|Wide|Medium|Over-the-shoulder|Zoom|Pan|Tracking|Bird|Aerial|Low|High|Point of view|POV)/i;
+  if (cameraAnglePattern.test(cleanText)) {
+    return `${scenePrefix}${identityDescriptor}, ${cleanText}`;
+  }
+
+  return `${mandatoryPrefix}${cleanText}`;
+};
+
+export const enhanceScenePrompt = (
+  text: string = "",
+  options: {
+    sceneNumber?: number;
+    femaleOutfit?: string;
+    maleOutfit?: string;
+    targetAgeLabel?: string;
+    gender?: 'female' | 'male';
+  } = {}
+): string => {
+  if (!text) return text;
+  let updated = text.trim();
+
+  const llmProvidedOutfit = updated.includes("Outfit:");
+
+  if (!llmProvidedOutfit && options.gender === 'male' && options.maleOutfit) {
+    const maleTag = `Outfit: ${options.maleOutfit}`;
+    if (!updated.includes(maleTag) && !updated.includes(options.maleOutfit)) {
+      updated += `, ${maleTag}`;
+    }
+  } else if (!llmProvidedOutfit && options.femaleOutfit) {
+    const femaleTag = `Outfit: ${options.femaleOutfit}`;
+    if (!updated.includes(femaleTag) && !updated.includes(options.femaleOutfit)) {
+      updated += `, ${femaleTag}`;
+    }
+  }
+
+  if (options.sceneNumber !== undefined) {
+    const scenePrefix = `Scene ${options.sceneNumber}. `;
+    if (!updated.startsWith(`Scene ${options.sceneNumber}`)) {
+      updated = updated.replace(/^Scene \d+\.\s*/i, '');
+      updated = scenePrefix + updated;
+    }
+  }
+
+  const noTextTag = "no text, no letters, no typography, no watermarks, no words";
+  if (!updated.toLowerCase().includes("no text")) {
+    updated += `, ${noTextTag}`;
+  }
+
+  updated = enforceKoreanIdentity(updated, options.targetAgeLabel, options.sceneNumber, options.gender);
+
+  return updated;
+};
+
+export const extractNegativePrompt = (text: string): { cleaned: string; negative: string } => {
+  if (!text) return { cleaned: text, negative: '' };
+  const negative = PROMPT_CONSTANTS.NEGATIVE;
+  if (!negative || !text.includes(negative)) return { cleaned: text, negative: '' };
+  const cleaned = text
+    .replace(negative, '')
+    .replace(/,\s*,/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/,\s*$/g, '')
+    .trim();
+  return { cleaned, negative };
+};
+
 // ============================================
 // 샷 타입별 프롬프트 템플릿 (v3.2 - 캐릭터 구분자 시스템)
 // ============================================
@@ -691,8 +793,15 @@ export const pickFemaleOutfit = (
     return !item.categories.includes('SEXY');
   });
 
-  const selectedName = candidates.length > 0
-    ? candidates[Math.floor(Math.random() * candidates.length)].name
+  const fallbackCandidates = getOutfitPool().filter(item => {
+    if (isMaleOutfit(item)) return false;
+    if (excludeOutfits.includes(item.name)) return false;
+    return true;
+  });
+
+  const poolToUse = candidates.length > 0 ? candidates : fallbackCandidates;
+  const selectedName = poolToUse.length > 0
+    ? poolToUse[Math.floor(Math.random() * poolToUse.length)].name
     : 'White Halter-neck Knit + Red Micro Mini Skirt';
 
   return adjustOutfitForSeason(selectedName, topic);
@@ -707,8 +816,15 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
     return !isGolfOutfit(item) || Math.random() > 0.7;
   });
 
-  const selectedName = candidates.length > 0
-    ? candidates[Math.floor(Math.random() * candidates.length)].name
+  const fallbackCandidates = getOutfitPool().filter(item => {
+    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+    if (excludeOutfits.includes(item.name)) return false;
+    return true;
+  });
+
+  const poolToUse = candidates.length > 0 ? candidates : fallbackCandidates;
+  const selectedName = poolToUse.length > 0
+    ? poolToUse[Math.floor(Math.random() * poolToUse.length)].name
     : (isGolfTopic ? 'Navy Slim-fit Polo + White Tailored Golf Pants' : 'Black Knit Polo + Dark Indigo Denim');
 
   return adjustOutfitForSeason(selectedName, topic);

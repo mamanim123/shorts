@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES, PROMPT_CONSTANTS, validateAndFixPrompt } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt } from '../services/labPromptBuilder';
 import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
@@ -133,6 +133,12 @@ const getVoiceBadge = (scene: Scene) => {
     }
 };
 
+const normalizeSceneNumbers = (items: Scene[]): Scene[] =>
+    items.map((scene, index) => ({
+        ...scene,
+        number: index + 1
+    }));
+
 // ============================================
 // 타입 정의
 // ============================================
@@ -186,132 +192,6 @@ interface PromptSettings {
     selectedStyle: string;
 }
 
-// ============================================
-// 후처리 유틸리티 함수 (쇼츠 생성기에서 이식)
-// ============================================
-
-/**
- * 한국인 정체성을 강제로 적용하는 함수
- * - 다른 국적 언급을 한국인으로 교체
- * - "A stunning Korean woman in her Xs" 프리픽스 강제 적용
- */
-const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
-    if (!text) return text;
-    let updated = text;
-
-    // 다른 국적을 한국인으로 교체
-    const replacements: Array<[RegExp, string]> = [
-        [/\b(Vietnamese|Vietnam|Thai|Thailand|Japanese|Japan|Chinese|China|American|Europe(?:an)?|Western)\b/gi, 'Korean'],
-        [/(베트남|베트남인|태국|일본|중국|미국|서양|서구)/g, '한국인']
-    ];
-    replacements.forEach(([regex, value]) => {
-        updated = updated.replace(regex, value);
-    });
-
-    // 나이 포맷팅
-    const formatEnglishAgeLabel = (label?: string): string => {
-        if (!label) return '';
-        const match = label.match(/\d+/);
-        return match ? `${match[0]}s` : '';
-    };
-
-    const englishAge = formatEnglishAgeLabel(targetAgeLabel);
-    const ageString = englishAge ? `in ${gender === 'female' ? 'her' : 'his'} ${englishAge}` : '';
-    const identityDescriptor = gender === 'female'
-        ? `A stunning Korean woman ${ageString}`.trim()
-        : `Korean man ${ageString}`.trim();
-
-    // 씬 번호와 정체성을 맨 앞으로 강제 배치
-    const scenePrefix = sceneNumber ? `Scene ${sceneNumber}, ` : '';
-    const mandatoryPrefix = `${scenePrefix}${identityDescriptor}, `;
-
-    // 기존 텍스트에서 중복될 수 있는 패턴들 제거
-    const cleanText = updated
-        .replace(/^Scene \d+[\.,]\s*/i, '')
-        .replace(/^A stunning Korean woman in her [\d\w\s]+[\.,]\s*/i, '')
-        .replace(/^A handsome Korean man in his [\d\w\s]+[\.,]\s*/i, '')
-        .replace(/^A stunning Korean woman[\.,]\s*/i, '')
-        .replace(/^A handsome Korean man[\.,]\s*/i, '')
-        .replace(/^in (her|his) [\d\w\s]+[\.,]\s*/i, '')
-        .trim();
-
-    // 카메라 앵글로 시작하면 정체성을 맨 앞에 배치
-    const cameraAnglePattern = /^(Candid|Two-shot|Three-shot|Dutch|Extreme|Close-up|Wide|Medium|Over-the-shoulder|Zoom|Pan|Tracking|Bird|Aerial|Low|High|Point of view|POV)/i;
-    if (cameraAnglePattern.test(cleanText)) {
-        return `${scenePrefix}${identityDescriptor}, ${cleanText}`;
-    }
-
-    return `${mandatoryPrefix}${cleanText}`;
-};
-
-const extractNegativePrompt = (text: string): { cleaned: string; negative: string } => {
-    if (!text) return { cleaned: text, negative: '' };
-    const negative = PROMPT_CONSTANTS.NEGATIVE;
-    if (!negative || !text.includes(negative)) return { cleaned: text, negative: '' };
-    const cleaned = text
-        .replace(negative, '')
-        .replace(/,\s*,/g, ',')
-        .replace(/\s{2,}/g, ' ')
-        .replace(/,\s*$/g, '')
-        .trim();
-    return { cleaned, negative };
-};
-
-/**
- * 씬 프롬프트를 보강하는 함수
- * - 의상 태그 추가
- * - 씬 번호 강제 적용
- * - "no text" 태그 추가
- */
-const enhanceScenePrompt = (
-    text: string = "",
-    options: {
-        sceneNumber?: number;
-        femaleOutfit?: string;
-        maleOutfit?: string;
-        targetAgeLabel?: string;
-        gender?: 'female' | 'male';
-    } = {}
-): string => {
-    if (!text) return text;
-    let updated = text.trim();
-
-    // LLM이 이미 Outfit을 제공했는지 확인
-    const llmProvidedOutfit = updated.includes("Outfit:");
-
-    // 의상 태그가 없으면 추가
-    if (!llmProvidedOutfit && options.gender === 'male' && options.maleOutfit) {
-        const maleTag = `Outfit: ${options.maleOutfit}`;
-        if (!updated.includes(maleTag) && !updated.includes(options.maleOutfit)) {
-            updated += `, ${maleTag}`;
-        }
-    } else if (!llmProvidedOutfit && options.femaleOutfit) {
-        const femaleTag = `Outfit: ${options.femaleOutfit}`;
-        if (!updated.includes(femaleTag) && !updated.includes(options.femaleOutfit)) {
-            updated += `, ${femaleTag}`;
-        }
-    }
-
-    // 씬 번호 강제 적용
-    if (options.sceneNumber !== undefined) {
-        const scenePrefix = `Scene ${options.sceneNumber}. `;
-        if (!updated.startsWith(`Scene ${options.sceneNumber}`)) {
-            updated = updated.replace(/^Scene \d+\.\s*/i, '');
-            updated = scenePrefix + updated;
-        }
-    }
-
-    // "no text" 태그 추가
-    const noTextTag = "no text, no letters, no typography, no watermarks, no words";
-    if (!updated.toLowerCase().includes("no text")) {
-        updated += `, ${noTextTag}`;
-    }
-
-    // 한국인 정체성 강제 적용
-    updated = enforceKoreanIdentity(updated, options.targetAgeLabel, options.sceneNumber, options.gender);
-
-    return updated;
-};
 
 /**
  * AI 생성된 씬들을 후처리하는 함수
@@ -491,6 +371,18 @@ export const ShortsLabPanel: React.FC = () => {
         if (aiTopic) localStorage.setItem('shorts-lab-topic', aiTopic);
         else localStorage.removeItem('shorts-lab-topic');
     }, [aiTopic]);
+
+    React.useEffect(() => {
+        try {
+            if (scenes.length > 0) {
+                localStorage.setItem('shorts-lab-scenes', JSON.stringify(scenes));
+            } else {
+                localStorage.removeItem('shorts-lab-scenes');
+            }
+        } catch (storageError) {
+            console.warn('[ShortsLab] Failed to persist scenes:', storageError);
+        }
+    }, [scenes]);
 
     // ============================================
     // 이미지 생성 핸들러 (신규!)
@@ -700,10 +592,17 @@ export const ShortsLabPanel: React.FC = () => {
             }
         } catch (error) {
             console.error("Failed to forward prompt to AI image service", error);
-            if (error instanceof Error && error.message.includes('Waiting failed')) {
+            const message = error instanceof Error ? error.message : String(error || '');
+            if (message.includes('Waiting failed')) {
                 showToast('이미지를 찾지 못했습니다. 프롬프트 전송 후 새 이미지가 생성되는지 확인해주세요.', 'warning');
+            } else if (/rate|quota|limit/i.test(message)) {
+                showToast('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 'error');
+            } else if (/policy|safety|blocked|harm/i.test(message)) {
+                showToast('안전 정책으로 인해 이미지 생성이 차단되었습니다.', 'error');
+            } else if (/network|failed to fetch|timeout/i.test(message)) {
+                showToast('네트워크 오류로 이미지 생성에 실패했습니다.', 'error');
             } else {
-                showToast(error instanceof Error ? error.message : 'AI 서비스 전송 오류가 발생했습니다.', 'error');
+                showToast(message || 'AI 서비스 전송 오류가 발생했습니다.', 'error');
             }
         } finally {
             setAiForwardingId(null);
@@ -874,14 +773,8 @@ export const ShortsLabPanel: React.FC = () => {
             ...scene,
             prompt: generatePrompt(scene.text)
         }));
-        setScenes(withPrompts);
+        setScenes(normalizeSceneNumbers(withPrompts));
         setActiveTab('preview');
-
-        try {
-            localStorage.setItem('shorts-lab-scenes', JSON.stringify(withPrompts));
-        } catch (storageError) {
-            console.warn('[ShortsLab] Failed to persist scenes:', storageError);
-        }
     };
 
     const handleRegeneratePrompts = () => {
@@ -892,12 +785,6 @@ export const ShortsLabPanel: React.FC = () => {
         }));
         setScenes(updated);
         setActiveTab('preview');
-
-        try {
-            localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
-        } catch (storageError) {
-            console.warn('[ShortsLab] Failed to persist scenes:', storageError);
-        }
     };
 
     const handleRefineVideoPrompt = async (sceneNumber: number) => {
@@ -1624,7 +1511,7 @@ export const ShortsLabPanel: React.FC = () => {
 
     const handleDeleteScene = (sceneNumber: number) => {
         if (window.confirm(`Scene ${sceneNumber}를 삭제하시겠습니까?`)) {
-            setScenes(prev => prev.filter(s => s.number !== sceneNumber));
+            setScenes(prev => normalizeSceneNumbers(prev.filter(s => s.number !== sceneNumber)));
         }
     };
 

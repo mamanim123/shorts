@@ -177,20 +177,24 @@ export const parseJsonFromText = <T = any>(text: string, keys: string[] = []): T
 
   try {
     return JSON.parse(jsonText) as T;
-  } catch {
+  } catch (error) {
+    console.debug('[jsonParse] JSON.parse failed', error);
     try {
       const preprocessed = preprocessJson(jsonText);
       return JSON.parse(preprocessed) as T;
-    } catch {
+    } catch (error2) {
+      console.debug('[jsonParse] preprocessJson parse failed', error2);
       try {
         const repaired = jsonrepair(jsonText);
         return JSON.parse(repaired) as T;
-      } catch {
+      } catch (error3) {
+        console.debug('[jsonParse] jsonrepair failed', error3);
         try {
           const preprocessed = preprocessJson(jsonText);
           const repaired = jsonrepair(preprocessed);
           return JSON.parse(repaired) as T;
-        } catch {
+        } catch (error4) {
+          console.debug('[jsonParse] preprocess+jsonrepair failed', error4);
           return null;
         }
       }

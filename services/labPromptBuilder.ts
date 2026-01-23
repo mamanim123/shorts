@@ -38,6 +38,13 @@
  * - POV 샷에서 시점 주인공(카메라 역할) 제외 규칙 강조
  * - 반반 이미지 생성 문제 해결 (캐릭터 중복 방지)
  * - 체크리스트에 POV 검증 항목 2개 추가
+ *
+ * v3.7.5 업데이트 (2026-01-24):
+ * - 캐디(WomanD) 캐릭터 설정 추가: 밝고 세련되고 아름다운 프로페셔널 골프 캐디
+ * - 헤어스타일 섹션에 캐디 추가 (high-bun hairstyle)
+ * - 캐릭터 설정 섹션 신규 추가 (모든 캐릭터의 성격/특징 명시)
+ * - 겨울 악세서리를 각 캐릭터마다 다르게 착용 (A, B, D 각각 다른 악세서리 선택)
+ * - lockedOutfits에 winterAccessoriesA/B/D 개별 저장
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
@@ -1201,17 +1208,26 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
     }
   });
 
-  // 겨울 악세서리 토글이 ON일 때만 겨울 아이템 적용 (모든 씬 일관성)
+  // v3.7.5: 겨울 악세서리 토글이 ON일 때만 겨울 아이템 적용 (각 캐릭터마다 다른 악세서리)
   let winterOuterwear = '';
-  let winterAccessories: string[] = [];
+  let winterAccessoriesA: string[] = [];
+  let winterAccessoriesB: string[] = [];
+  let winterAccessoriesD: string[] = [];
   if (enableWinterAccessories) {
-    const winterItems = selectWinterItems();
-    winterOuterwear = winterItems.outerwear;
-    winterAccessories = winterItems.accessories;
-    // 여성 의상에만 겨울 아이템 적용
-    womanAOutfit = applyWinterItems(womanAOutfit, winterOuterwear, winterAccessories);
-    womanBOutfit = applyWinterItems(womanBOutfit, winterOuterwear, winterAccessories);
-    womanDOutfit = applyWinterItems(womanDOutfit, winterOuterwear, winterAccessories);
+    // 각 캐릭터마다 다른 악세서리 선택
+    const winterItemsA = selectWinterItems();
+    const winterItemsB = selectWinterItems();
+    const winterItemsD = selectWinterItems();
+
+    winterOuterwear = winterItemsA.outerwear; // 아우터는 빈 문자열 (v3.7.2)
+    winterAccessoriesA = winterItemsA.accessories;
+    winterAccessoriesB = winterItemsB.accessories;
+    winterAccessoriesD = winterItemsD.accessories;
+
+    // 여성 의상에만 겨울 아이템 적용 (각각 다른 악세서리)
+    womanAOutfit = applyWinterItems(womanAOutfit, winterOuterwear, winterAccessoriesA);
+    womanBOutfit = applyWinterItems(womanBOutfit, winterOuterwear, winterAccessoriesB);
+    womanDOutfit = applyWinterItems(womanDOutfit, winterOuterwear, winterAccessoriesD);
   }
 
   const narratorSlot = gender === 'female' ? 'Woman A (지영)' : 'Man A (준호)';
@@ -1321,8 +1337,16 @@ ${additionalContext ? `4. 추가 요청: ${additionalContext}` : ''}
 ## 💇 헤어스타일
 - **Woman A (지영)**: long soft-wave hairstyle
 - **Woman B (혜경)**: short chic bob cut
+- **Woman D (캐디)**: high-bun hairstyle (Professional golf caddy look)
 - **Man A (준호)**: short neat hairstyle
 - **Man B (민수)**: clean short cut
+
+## 👥 캐릭터 설정
+- **Woman A (지영)**: 40대 주인공, 우아하고 자신감 있는 여성
+- **Woman B (혜경)**: 40대 친구, 활발하고 장난기 있는 성격
+- **Woman D (캐디)**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional golf caddy)
+- **Man A (준호)**: 40대 남성, 댄디하고 세련된 신사
+- **Man B (민수)**: 40대 남성 친구, 솔직하고 유머러스함
 
 ## 🚨 이미지 프롬프트 절대 규칙 (위반 시 즉시 실패)
 1. **longPrompt와 negativePrompt 분리**: 모든 씬의 longPrompt에는 PROMPT_CONSTANTS.START/END를 포함하고, negativePrompt 필드에는 PROMPT_CONSTANTS.NEGATIVE를 별도로 입력해야 함. (누락/변형 금지)
@@ -1442,7 +1466,9 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
     "manA": "${manAOutfit}",
     "manB": "${manBOutfit}",
     "winterOuterwear": "${winterOuterwear}",
-    "winterAccessories": "${winterAccessories.join(', ')}"
+    "winterAccessoriesA": "${winterAccessoriesA.join(', ')}",
+    "winterAccessoriesB": "${winterAccessoriesB.join(', ')}",
+    "winterAccessoriesD": "${winterAccessoriesD.join(', ')}"
   },
   "characters": [
     { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${PROMPT_CONSTANTS.FEMALE_BODY}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },

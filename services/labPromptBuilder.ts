@@ -17,12 +17,31 @@ import type { OutfitPoolItem } from './outfitService';
 // 타입 정의
 // ============================================
 
+export interface LabGenreGuideline {
+  name: string;
+  description: string;
+  emotionCurve: string;
+  structure: string;
+  killerPhrases: string[];
+  supportingCharacterPhrasePatterns?: string[];
+  bodyReactions: string[];
+  forbiddenPatterns: string[];
+  goodTwistExamples: string[];
+  supportingCharacterTwistPatterns?: string[];
+  badTwistExamples: string[];
+}
+
+export interface LabGenreGuidelineEntry extends LabGenreGuideline {
+  id: string;
+}
+
 export interface LabScriptOptions {
   topic: string;
   genre: string;
   targetAge: string;
   gender: 'female' | 'male';
   additionalContext?: string;
+  genreGuideOverride?: LabGenreGuideline;
 }
 
 export interface LabImagePromptOptions {
@@ -230,19 +249,7 @@ export const SHOT_TEMPLATES = {
 // 40~60대 타겟 장르 지침 (v3.5)
 // ============================================
 
-export const LAB_GENRE_GUIDELINES: Record<string, {
-  name: string;
-  description: string;
-  emotionCurve: string;
-  structure: string;
-  killerPhrases: string[];
-  supportingCharacterPhrasePatterns?: string[];
-  bodyReactions: string[];
-  forbiddenPatterns: string[];
-  goodTwistExamples: string[];
-  supportingCharacterTwistPatterns?: string[];
-  badTwistExamples: string[];
-}> = {
+export const LAB_GENRE_GUIDELINES: Record<string, LabGenreGuideline> = {
 
   'comedy-humor': {
     name: '코미디 / 유머',
@@ -836,7 +843,7 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
 
 export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const { topic, genre, targetAge, gender, additionalContext } = options;
-  const genreGuide = LAB_GENRE_GUIDELINES[genre];
+  const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const seed = generateRandomSeed();
 
   // 기본 의상 선택
@@ -864,15 +871,23 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
-당신은 **유튜브 쇼츠 바이럴 대본 전문 작가**입니다.
-40~60대 한국 ${gender === 'female' ? '여성' : '남성'} 시청자가 "내 얘기잖아!" 하면서 끝까지 보게 만드는 대본을 작성하세요.
+당신은 **대한민국 최고의 유튜브 쇼츠 바이럴 마스터이자 전문 작가**입니다. 
+단 1초 만에 시청자의 시선을 강탈하고, 60초 내내 심장을 쫄깃하게 만들어 "이건 무조건 공유해야 돼!"라는 감탄이 터져 나오는 대박 쇼츠 대본을 집필하세요.
+
+시청자가 영상을 보자마자 "헐, 이거 내 얘기 아냐?" 혹은 "대박, 진짜 이래?"라며 몰입할 수밖에 없는 하이퍼 리얼리티와 극강의 재미를 추구합니다.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 주제: "${topic}"
 📌 장르: ${genreGuide?.name || '일반'}
-📌 타겟: 40~60대 한국 ${gender === 'female' ? '여성' : '남성'}
+📌 타겟: 대한민국 모든 **중년** 시청자 (40~60대)
 📌 화자: ${narratorSlot} (${narratorName})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 🚀 대박 나는 쇼츠의 공식
+1. **초강력 훅(Hook)**: 첫 1~3초 안에 모든 것이 결정됩니다. 호기심을 폭발시키거나 공감을 저격하는 대사로 시작하세요.
+2. **리듬감 있는 전개**: 짧은 문장 위주로, 마치 숏폼 영상을 보듯 빠른 템포의 수다체로 작성하세요.
+3. **확실한 도파민/공감**: 중년들의 현실 고증, 황당한 반전, 혹은 가슴 뻥 뚫리는 사이다 결말을 제공하세요.
+4. **시각적 묘사**: AI 이미지 생성을 위해 각 장면의 상황과 인물의 표정, 행동을 아주 생생하게 묘사하세요.
 
 ## 🎯 이 장르의 핵심
 **${genreGuide?.description || ''}**

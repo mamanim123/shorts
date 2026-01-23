@@ -12,9 +12,11 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, LAB_GENRE_GUIDELINES, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt } from '../services/labPromptBuilder';
+import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
+import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
@@ -78,15 +80,23 @@ const STYLE_PRESETS = [
 ];
 
 // ============================================
-// 장르 옵션 (labPromptBuilder에서 가져옴)
+// 장르 옵션 - useShortsLabGenreManager hook에서 동적으로 로드
 // ============================================
 
-const GENRE_OPTIONS = [
-    { id: 'comedy-humor', name: '코미디/유머', desc: '웃긴 상황, 황당한 에피소드' },
-    { id: 'romance-flutter', name: '로맨스/설렘', desc: '감성적인 연애, 설렘 가득한 순간' },
-    { id: 'affair-suspicion', name: '불륜/외도 의심', desc: '배우자의 이상한 행동, 의심과 반전' },
-    { id: 'hit-twist-spicy', name: '대박 반전 (매운맛)', desc: '아슬아슬한 오해와 건전한 반전' }
-];
+// Empty genre template for new genres
+const EMPTY_GENRE_TEMPLATE: Omit<LabGenreGuidelineEntry, 'id'> = {
+    name: '',
+    description: '',
+    emotionCurve: '',
+    structure: '',
+    killerPhrases: [],
+    supportingCharacterPhrasePatterns: [],
+    bodyReactions: [],
+    forbiddenPatterns: [],
+    goodTwistExamples: [],
+    supportingCharacterTwistPatterns: [],
+    badTwistExamples: []
+};
 
 const AGE_OPTIONS = [
     { value: '', label: '나이 미선택' },
@@ -261,6 +271,21 @@ const postProcessAiScenes = (
 // ============================================
 
 export const ShortsLabPanel: React.FC = () => {
+    // ===========================================
+    // ShortsLab Genre Manager Hook
+    // ===========================================
+    const {
+        genres: labGenres,
+        loading: genresLoading,
+        addGenre,
+        updateGenre,
+        deleteGenre,
+        reset: resetGenres
+    } = useShortsLabGenreManager();
+
+    // Genre management modal state
+    const [showGenreModal, setShowGenreModal] = useState(false);
+
     // 대본 입력 상태
     const [scriptInput, setScriptInput] = useState('');
     const [scenes, setScenes] = useState<Scene[]>([]);
@@ -1092,12 +1117,31 @@ export const ShortsLabPanel: React.FC = () => {
         setGenerationError(null);
 
         try {
-            // 쇼츠랩 전용 경량 프롬프트 생성
+            // Find selected genre guideline from dynamic genres
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
+                ? {
+                    name: selectedGenreData.name,
+                    description: selectedGenreData.description,
+                    emotionCurve: selectedGenreData.emotionCurve,
+                    structure: selectedGenreData.structure,
+                    killerPhrases: selectedGenreData.killerPhrases,
+                    supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                    bodyReactions: selectedGenreData.bodyReactions,
+                    forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                    goodTwistExamples: selectedGenreData.goodTwistExamples,
+                    supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                    badTwistExamples: selectedGenreData.badTwistExamples
+                }
+                : undefined;
+
+            // ShortsLab lightweight prompt generation with genre guide override
             const prompt = buildLabScriptPrompt({
                 topic: aiTopic,
                 genre: aiGenre,
                 targetAge: aiTargetAge,
-                gender: settings.koreanGender
+                gender: settings.koreanGender,
+                genreGuideOverride
             });
 
             // 서버 API 호출 (백엔드는 3002 포트)
@@ -1700,13 +1744,23 @@ export const ShortsLabPanel: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-300 mb-1.5">장르</label>
-                                            <select
-                                                value={aiGenre}
-                                                onChange={(e) => setAiGenre(e.target.value)}
-                                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
-                                            >
-                                                {GENRE_OPTIONS.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                            </select>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={aiGenre}
+                                                    onChange={(e) => setAiGenre(e.target.value)}
+                                                    className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
+                                                    disabled={genresLoading}
+                                                >
+                                                    {labGenres.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                                </select>
+                                                <button
+                                                    onClick={() => setShowGenreModal(true)}
+                                                    className="px-3 py-2.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
+                                                    title="장르 관리"
+                                                >
+                                                    <Settings2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-300 mb-1.5">타겟 연령</label>
@@ -1866,7 +1920,7 @@ export const ShortsLabPanel: React.FC = () => {
                                         {/* 카드 헤더: 씬 번호 & 샷 타입 */}
                                         <div className="absolute top-0 left-0 right-0 z-10 p-2 flex justify-between items-start pointer-events-none">
                                             <div className="flex gap-1.5 pointer-events-auto">
-                                                <span className="bg-black/70 backdrop-blur-md text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">SCENE {scene.number}</span>
+                                                <span className="bg-black/70 backdrop-blur-md text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">장면 {scene.number}</span>
                                                 {scene.shotType && <span className="bg-black/70 backdrop-blur-md text-slate-300 text-[10px] font-medium px-2 py-0.5 rounded-md border border-slate-700/50 uppercase">{scene.shotType}</span>}
                                                 <span className={`bg-black/70 backdrop-blur-md text-[10px] font-bold px-2 py-0.5 rounded-md border ${getVoiceBadge(scene).tone}`}>{getVoiceBadge(scene).label}</span>
                                                 <button
@@ -1904,7 +1958,7 @@ export const ShortsLabPanel: React.FC = () => {
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-2">
                                                     <ImageIcon className="w-10 h-10 opacity-20" />
-                                                    <span className="text-[10px] font-medium uppercase tracking-wider opacity-40">No Image</span>
+                                                    <span className="text-[10px] font-medium uppercase tracking-wider opacity-40">이미지 없음</span>
                                                 </div>
                                             )}
 
@@ -1948,7 +2002,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                         {/* 한국어 프롬프트 */}
                                                         <div className="group/edit relative">
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Korean Prompt</span>
+                                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">한국어 프롬프트</span>
                                                                 <button onClick={() => handleStartEdit(scene.number, 'ko', scene.longPromptKo || '')} className="opacity-0 group-hover/edit:opacity-100 p-1 hover:bg-slate-800 rounded transition-all"><Edit3 className="w-3 h-3 text-slate-400" /></button>
                                                             </div>
                                                             <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">{scene.longPromptKo || scene.text}</p>
@@ -1957,7 +2011,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                         {/* 영어 프롬프트 */}
                                                         <div className="group/edit relative">
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">English Prompt</span>
+                                                                <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">영어 프롬프트</span>
                                                                 <button onClick={() => handleStartEdit(scene.number, 'en', scene.prompt)} className="opacity-0 group-hover/edit:opacity-100 p-1 hover:bg-slate-800 rounded transition-all"><Edit3 className="w-3 h-3 text-slate-400" /></button>
                                                             </div>
                                                             <p className="text-[11px] text-slate-400 font-mono leading-relaxed line-clamp-2 italic">{scene.prompt}</p>
@@ -1966,11 +2020,11 @@ export const ShortsLabPanel: React.FC = () => {
                                                         {/* 설정 선택기 */}
                                                         <div className="grid grid-cols-2 gap-2 pt-1">
                                                             <select value={scene.age || ''} onChange={(e) => handleUpdateSceneSettings(scene.number, 'age', e.target.value)} className="bg-slate-800/50 border border-slate-700/50 rounded-md px-2 py-1 text-[10px] text-slate-300 focus:outline-none focus:border-emerald-500/50">
-                                                                <option value="">Age: Default</option>
+                                                                <option value="">나이: 기본값</option>
                                                                 {AGE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                                             </select>
                                                             <select value={scene.outfit || ''} onChange={(e) => handleUpdateSceneSettings(scene.number, 'outfit', e.target.value)} className="bg-slate-800/50 border border-slate-700/50 rounded-md px-2 py-1 text-[10px] text-slate-300 focus:outline-none focus:border-emerald-500/50">
-                                                                <option value="">Outfit: Default</option>
+                                                                <option value="">의상: 기본값</option>
                                                                 {OUTFIT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                                             </select>
                                                         </div>
@@ -1980,7 +2034,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                     <div className="flex flex-col gap-3 py-4">
                                                         {scene.videoPrompt ? (
                                                             <div className="space-y-2">
-                                                                <span className="text-[10px] font-bold text-purple-500/70 uppercase tracking-tight">Video Prompt</span>
+                                                                <span className="text-[10px] font-bold text-purple-500/70 uppercase tracking-tight">영상 프롬프트</span>
                                                                 <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-purple-500/30">{scene.videoPrompt}</p>
                                                             </div>
                                                         ) : (
@@ -1994,7 +2048,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                             </div>
                                                         )}
                                                         <div className="space-y-2">
-                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">Dialogue</span>
+                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">대사 (Dialogue)</span>
                                                             <textarea
                                                                 value={scene.dialogue ?? scene.text}
                                                                 onChange={(e) => handleUpdateSceneSettings(scene.number, 'dialogue', e.target.value)}
@@ -2005,7 +2059,7 @@ export const ShortsLabPanel: React.FC = () => {
                                                         </div>
                                                         {scene.videoUrl && (
                                                             <div className="space-y-2">
-                                                                <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">Video Preview</span>
+                                                                <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">영상 미리보기</span>
                                                                 <video
                                                                     src={scene.videoUrl}
                                                                     controls
@@ -2063,20 +2117,20 @@ export const ShortsLabPanel: React.FC = () => {
                                                 {(sceneTabs[scene.number] || 'IMG') === 'VOICE' && (
                                                     <div className="flex flex-col gap-3 py-4">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">Voice Type</span>
+                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">목소리 타입</span>
                                                             <select
                                                                 value={scene.voiceType || 'narration'}
                                                                 onChange={(e) => handleUpdateSceneSettings(scene.number, 'voiceType', e.target.value)}
                                                                 className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-emerald-500/50"
                                                             >
-                                                                <option value="narration">narration</option>
-                                                                <option value="lipSync">lipSync</option>
-                                                                <option value="both">both</option>
-                                                                <option value="none">none</option>
+                                                                <option value="narration">나레이션</option>
+                                                                <option value="lipSync">립싱크</option>
+                                                                <option value="both">둘 다</option>
+                                                                <option value="none">없음</option>
                                                             </select>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">Narration</span>
+                                                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">나레이션 (Narration)</span>
                                                             <textarea
                                                                 value={scene.narrationText ?? ''}
                                                                 onChange={(e) => handleUpdateSceneSettings(scene.number, 'narrationText', e.target.value)}
@@ -2096,15 +2150,15 @@ export const ShortsLabPanel: React.FC = () => {
                                                                     onChange={(e) => handleUpdateSceneSettings(scene.number, 'narrationSpeed', e.target.value)}
                                                                     className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
                                                                 >
-                                                                    <option value="slow">slow</option>
-                                                                    <option value="normal">normal</option>
-                                                                    <option value="slightly-fast">slightly-fast</option>
-                                                                    <option value="fast">fast</option>
+                                                                    <option value="slow">느리게</option>
+                                                                    <option value="normal">보통</option>
+                                                                    <option value="slightly-fast">약간 빠르게</option>
+                                                                    <option value="fast">빠르게</option>
                                                                 </select>
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-tight">Lip Sync</span>
+                                                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-tight">립싱크 (Lip Sync)</span>
                                                             <input
                                                                 value={scene.lipSyncSpeakerName ?? ''}
                                                                 onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncSpeakerName', e.target.value)}
@@ -2123,16 +2177,16 @@ export const ShortsLabPanel: React.FC = () => {
                                                                     value={scene.lipSyncEmotion ?? ''}
                                                                     onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncEmotion', e.target.value)}
                                                                     className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
-                                                                    placeholder="emotion (EN)"
+                                                                    placeholder="감정 (영문)"
                                                                 />
                                                                 <select
                                                                     value={scene.lipSyncTiming || 'mid'}
                                                                     onChange={(e) => handleUpdateSceneSettings(scene.number, 'lipSyncTiming', e.target.value)}
                                                                     className="bg-slate-800/60 border border-slate-700/60 rounded-lg px-2 py-1 text-[10px] text-slate-200"
                                                                 >
-                                                                    <option value="start">start</option>
-                                                                    <option value="mid">mid</option>
-                                                                    <option value="end">end</option>
+                                                                    <option value="start">시작</option>
+                                                                    <option value="mid">중간</option>
+                                                                    <option value="end">끝</option>
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -2273,6 +2327,32 @@ export const ShortsLabPanel: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Genre Management Modal */}
+            {showGenreModal && (
+                <GenreManagementModal
+                    genres={labGenres}
+                    onClose={() => {
+                        setShowGenreModal(false);
+                    }}
+                    onAdd={async (genre) => {
+                        await addGenre(genre);
+                        showToast(`'${genre.name}' genre added.`, 'success');
+                    }}
+                    onUpdate={async (id, updates) => {
+                        await updateGenre(id, updates);
+                        showToast(`Genre updated.`, 'success');
+                    }}
+                    onDelete={async (id) => {
+                        await deleteGenre(id);
+                        showToast(`Genre deleted.`, 'success');
+                    }}
+                    onReset={async () => {
+                        await resetGenres();
+                        showToast(`Genres reset to default.`, 'success');
+                    }}
+                />
+            )}
         </div>
     );
 };
@@ -2326,5 +2406,471 @@ const ToggleItem: React.FC<ToggleItemProps> = ({ checked, onChange, label, descr
         </div>
     </label>
 );
+
+// ============================================
+// Genre Management Modal Component
+// ============================================
+
+interface GenreManagementModalProps {
+    genres: LabGenreGuidelineEntry[];
+    onClose: () => void;
+    onAdd: (genre: LabGenreGuidelineEntry) => Promise<void>;
+    onUpdate: (id: string, updates: Partial<LabGenreGuideline>) => Promise<void>;
+    onDelete: (id: string) => Promise<void>;
+    onReset: () => Promise<void>;
+}
+
+const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
+    genres,
+    onClose,
+    onAdd,
+    onUpdate,
+    onDelete,
+    onReset
+}) => {
+    const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
+    const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
+
+    // Draggable state
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragOffset({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (isDragging) {
+            setPosition({
+                x: e.clientX - dragOffset.x,
+                y: e.clientY - dragOffset.y
+            });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+    const [formData, setFormData] = useState<LabGenreGuidelineEntry>({
+        id: '',
+        name: '',
+        description: '',
+        emotionCurve: '',
+        structure: '',
+        killerPhrases: [],
+        supportingCharacterPhrasePatterns: [],
+        bodyReactions: [],
+        forbiddenPatterns: [],
+        goodTwistExamples: [],
+        supportingCharacterTwistPatterns: [],
+        badTwistExamples: []
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleStartEdit = (genre: LabGenreGuidelineEntry) => {
+        setSelectedGenre(genre);
+        setFormData({ ...genre });
+        setMode('edit');
+    };
+
+    const handleStartAdd = () => {
+        const newId = `custom-${Date.now()}`;
+        setFormData({
+            ...EMPTY_GENRE_TEMPLATE,
+            id: newId
+        });
+        setSelectedGenre(null);
+        setMode('add');
+    };
+
+    const handleSave = async () => {
+        if (!formData.name.trim()) {
+            alert('장르 이름을 입력해주세요.');
+            return;
+        }
+        setIsSaving(true);
+
+        // 데이터 저장 전 배열 필드 정리 (공백 제거 및 빈 줄 삭제)
+        const cleanedData: LabGenreGuidelineEntry = {
+            ...formData,
+            killerPhrases: (formData.killerPhrases || []).map(s => s.trim()).filter(Boolean),
+            supportingCharacterPhrasePatterns: (formData.supportingCharacterPhrasePatterns || []).map(s => s.trim()).filter(Boolean),
+            bodyReactions: (formData.bodyReactions || []).map(s => s.trim()).filter(Boolean),
+            forbiddenPatterns: (formData.forbiddenPatterns || []).map(s => s.trim()).filter(Boolean),
+            goodTwistExamples: (formData.goodTwistExamples || []).map(s => s.trim()).filter(Boolean),
+            supportingCharacterTwistPatterns: (formData.supportingCharacterTwistPatterns || []).map(s => s.trim()).filter(Boolean),
+            badTwistExamples: (formData.badTwistExamples || []).map(s => s.trim()).filter(Boolean)
+        };
+
+        try {
+            if (mode === 'add') {
+                await onAdd(cleanedData);
+            } else if (mode === 'edit' && selectedGenre) {
+                await onUpdate(selectedGenre.id, cleanedData);
+            }
+            setMode('list');
+            setSelectedGenre(null);
+        } catch (err) {
+            console.error('Failed to save genre:', err);
+            alert('장르 저장에 실패했습니다.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('정말 이 장르를 삭제하시겠습니까?')) return;
+        try {
+            await onDelete(id);
+        } catch (err) {
+            console.error('Failed to delete genre:', err);
+            alert('장르 삭제에 실패했습니다.');
+        }
+    };
+
+    const handleReset = async () => {
+        if (!window.confirm('모든 장르를 기본값으로 초기화하시겠습니까? 커스텀 장르는 삭제됩니다.')) return;
+        try {
+            await onReset();
+        } catch (err) {
+            console.error('Failed to reset genres:', err);
+            alert('장르 초기화에 실패했습니다.');
+        }
+    };
+
+    const updateField = <K extends keyof LabGenreGuidelineEntry>(key: K, value: LabGenreGuidelineEntry[K]) => {
+        setFormData(prev => ({ ...prev, [key]: value }));
+    };
+
+    const updateArrayField = (key: keyof LabGenreGuidelineEntry, text: string) => {
+        const lines = text.split('\n');
+        setFormData(prev => ({ ...prev, [key]: lines }));
+    };
+
+    const arrayToText = (arr: string[] | undefined): string => {
+        return arr?.join('\n') || '';
+    };
+
+    return (
+        <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onClick={onClose}
+        >
+            <div 
+                className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                style={{
+                    transform: `translate(${position.x}px, ${position.y}px)`,
+                    transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div 
+                    className="flex items-center justify-between p-6 border-b border-slate-800 cursor-move select-none"
+                    onMouseDown={handleMouseDown}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                            <Settings2 className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-white">쇼츠랩 장르 매니저</h2>
+                            <p className="text-xs text-slate-400">커스텀 장르 가이드라인을 관리합니다</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {mode === 'list' && (
+                        <div className="space-y-4">
+                            {/* Action buttons */}
+                            <div className="flex gap-2 mb-4">
+                                <button
+                                    onClick={handleStartAdd}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    새 장르 추가
+                                </button>
+                                <button
+                                    onClick={handleReset}
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    기본값으로 초기화
+                                </button>
+                            </div>
+
+                            {/* Genre list */}
+                            <div className="grid gap-3">
+                                {genres.map(genre => (
+                                    <div
+                                        key={genre.id}
+                                        className="p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:border-purple-500/50 transition-colors group"
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <h3 className="text-base font-semibold text-white group-hover:text-purple-300 transition-colors">
+                                                    {genre.name}
+                                                </h3>
+                                                <p className="text-sm text-slate-400 mt-1 line-clamp-2">
+                                                    {genre.description}
+                                                </p>
+                                                <div className="flex gap-2 mt-2 flex-wrap">
+                                                    <span className="text-[10px] bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded">
+                                                        킬러 문구 {genre.killerPhrases?.length || 0}개
+                                                    </span>
+                                                    <span className="text-[10px] bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded">
+                                                        반전 예시 {genre.goodTwistExamples?.length || 0}개
+                                                    </span>
+                                                    <span className="text-[10px] bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded">
+                                                        금지 패턴 {genre.forbiddenPatterns?.length || 0}개
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleStartEdit(genre)}
+                                                    className="p-2 bg-purple-600/80 hover:bg-purple-500 text-white rounded-lg transition-colors"
+                                                    title="수정"
+                                                >
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(genre.id)}
+                                                    className="p-2 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg transition-colors"
+                                                    title="삭제"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {(mode === 'edit' || mode === 'add') && (
+                        <div className="space-y-6">
+                            {/* Back button */}
+                            <button
+                                onClick={() => {
+                                    setMode('list');
+                                    setSelectedGenre(null);
+                                }}
+                                className="text-sm text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                                목록으로 돌아가기
+                            </button>
+
+                            <h3 className="text-lg font-bold text-purple-400">
+                                {mode === 'add' ? '새 장르 추가' : `수정: ${selectedGenre?.name}`}
+                            </h3>
+
+                            {/* Form fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Basic info */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">이름 *</label>
+                                        <input
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) => updateField('name', e.target.value)}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            placeholder="장르 이름 (예: 코미디/유머)"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">설명</label>
+                                        <textarea
+                                            value={formData.description}
+                                            onChange={(e) => updateField('description', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="장르에 대한 설명..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">감정 곡선 (Emotion Curve)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.emotionCurve}
+                                            onChange={(e) => updateField('emotionCurve', e.target.value)}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            placeholder="예: 즐거움 -> 놀람 -> 웃음"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">구성 방식 (Structure)</label>
+                                        <textarea
+                                            value={formData.structure}
+                                            onChange={(e) => updateField('structure', e.target.value)}
+                                            rows={6}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none font-mono"
+                                            placeholder="[HOOK] ..."
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Array fields */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            킬러 문구 (Killer Phrases) <span className="text-slate-500">(한 줄에 하나씩)</span>
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.killerPhrases)}
+                                            onChange={(e) => updateArrayField('killerPhrases', e.target.value)}
+                                            rows={4}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="핵심 문구들을 입력하세요..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            신체 반응 (Body Reactions) <span className="text-slate-500">(한 줄에 하나씩)</span>
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.bodyReactions)}
+                                            onChange={(e) => updateArrayField('bodyReactions', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="묘사할 신체 반응들을 입력하세요..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            좋은 반전 예시 (Good Twist Examples) <span className="text-slate-500">(한 줄에 하나씩)</span>
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.goodTwistExamples)}
+                                            onChange={(e) => updateArrayField('goodTwistExamples', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="좋은 반전 사례들을 입력하세요..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            나쁜 반전 예시 (Bad Twist Examples) <span className="text-slate-500">(한 줄에 하나씩)</span>
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.badTwistExamples)}
+                                            onChange={(e) => updateArrayField('badTwistExamples', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="피해야 할 반전 사례들을 입력하세요..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            금지 패턴 (Forbidden Patterns) <span className="text-slate-500">(한 줄에 하나씩)</span>
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.forbiddenPatterns)}
+                                            onChange={(e) => updateArrayField('forbiddenPatterns', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="금지할 패턴들을 입력하세요..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Advanced array fields (collapsible) */}
+                            <details className="bg-slate-800/30 border border-slate-700 rounded-lg p-4">
+                                <summary className="text-sm font-medium text-slate-300 cursor-pointer hover:text-white">
+                                    고급 설정 (조연 캐릭터 패턴)
+                                </summary>
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            조연 대사 패턴
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.supportingCharacterPhrasePatterns)}
+                                            onChange={(e) => updateArrayField('supportingCharacterPhrasePatterns', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="조연 캐릭터의 말투나 패턴..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            조연 반전 패턴
+                                        </label>
+                                        <textarea
+                                            value={arrayToText(formData.supportingCharacterTwistPatterns)}
+                                            onChange={(e) => updateArrayField('supportingCharacterTwistPatterns', e.target.value)}
+                                            rows={3}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                            placeholder="조연과 관련된 반전 패턴..."
+                                        />
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                {(mode === 'edit' || mode === 'add') && (
+                    <div className="p-6 border-t border-slate-800 flex justify-end gap-3">
+                        <button
+                            onClick={() => {
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+                        >
+                            취소
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    저장 중...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-4 h-4" />
+                                    장르 저장
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export default ShortsLabPanel;

@@ -1616,7 +1616,7 @@ Long: ${s.longPrompt || ''}
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 relative z-10 overflow-hidden p-4">
+        <div className="flex-1 relative z-30 overflow-hidden p-4">
           {rightTab === 'analysis' && (
             <div className="h-full flex flex-col gap-4 min-h-0">
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">

@@ -45,6 +45,12 @@
  * - 캐릭터 설정 섹션 신규 추가 (모든 캐릭터의 성격/특징 명시)
  * - 겨울 악세서리를 각 캐릭터마다 다르게 착용 (A, B, D 각각 다른 악세서리 선택)
  * - lockedOutfits에 winterAccessoriesA/B/D 개별 저장
+ *
+ * v3.7.6 업데이트 (2026-01-24):
+ * - scriptBody와 scenes 개수를 8~12개 가변으로 변경 (완전한 1:1 매칭)
+ * - 대본 문장 수에 따라 씬 개수가 자동 조절되어 문장 누락 방지
+ * - 스토리 복잡도에 따라 유연한 씬 구성 가능 (짧은 스토리 8개, 복잡한 스토리 12개)
+ * - 체크리스트 및 프롬프트에 1:1 매칭 규칙 명시
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
@@ -1449,10 +1455,17 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ⚠️ 출력 형식 (JSON)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**중요: scriptBody와 scenes의 1:1 매칭 규칙**
+- scriptBody: 8~12개 문장 (스토리 복잡도에 따라 유연하게 조절)
+- scenes: scriptBody 문장 수와 **정확히 동일**하게 생성 (8~12개)
+- 예: scriptBody 10문장 → scenes 10개 (1:1 매칭)
+- 각 scene의 scriptLine은 scriptBody의 해당 문장과 일치해야 함
+
 {
   "title": "제목",
   "titleOptions": ["옵션1", "옵션2", "옵션3"],
-  "scriptBody": "문장1\\n문장2...",
+  "scriptBody": "문장1\\n문장2... (8~12개 문장, scenes 개수와 동일)",
   "punchline": "펀치라인",
   "hook": "HOOK",
   "twist": "TWIST",
@@ -1477,7 +1490,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
     { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${PROMPT_CONSTANTS.MALE_BODY}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
     { "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "${PROMPT_CONSTANTS.FEMALE_BODY}", "outfit": "${womanDOutfit}", "outfitPrefix": "wearing" }
   ],
-  "scenes": [
+  "scenes": [  // 8~12개 (scriptBody 문장 수와 정확히 동일)
     {
       "sceneNumber": 1,
       "cameraAngle": "close-up | medium | wide | over-shoulder | POV (위 카메라 앵글 표 참조)",
@@ -1517,8 +1530,8 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 ## ✅ 최종 체크리스트 (전부 통과해야 함!)
 
 **기본:**
-1. ✅ scriptBody 10-12문장
-2. ✅ 정확히 8개 scenes
+1. ✅ scriptBody 8~12문장 (스토리 복잡도에 따라 유연하게)
+2. ✅ scenes 개수 = scriptBody 문장 수 (8~12개, 1:1 매칭)
 3. ✅ 의상 일관성 (lockedOutfits)
 4. ✅ JSON만 출력
 
@@ -1532,7 +1545,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 **이미지 프롬프트 (필수!):**
 11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/medium/over-shoulder/POV)
-12. ✅ 8개 씬에서 같은 앵글 2연속 없음? (미디움샷만 8개 ❌)
+12. ✅ 모든 씬에서 같은 앵글 2연속 없음? (미디움샷만 계속 ❌)
 13. ✅ 클로즈업, 와이드샷, 오버숄더/POV 각각 최소 1개 이상?
 14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
 15. ✅ 배경 문구가 장면 전환 없을 때 동일?

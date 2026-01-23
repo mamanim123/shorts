@@ -21,10 +21,19 @@ git status --short
 
 set HAS_CHANGES=
 for /f %%A in ('git status --short') do set HAS_CHANGES=1
+
+set HAS_UNPUSHED=
+for /f %%A in ('git log origin/master..HEAD --oneline 2^>nul') do set HAS_UNPUSHED=1
+
 if not defined HAS_CHANGES (
+  if not defined HAS_UNPUSHED (
+    echo.
+    echo No changes to save and no commits to push.
+    goto :end
+  )
   echo.
-  echo No changes to save. Skipping upload.
-  goto :end
+  echo No new changes, but found unpushed commits. Pushing...
+  goto :push
 )
 
 echo.
@@ -47,6 +56,7 @@ if errorlevel 1 (
   goto :end
 )
 
+:push
 git push origin master
 if errorlevel 1 (
   echo.

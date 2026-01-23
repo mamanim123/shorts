@@ -879,14 +879,20 @@ unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short
 A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man..., walking together
 \`\`\`
 → 구분자 없이 쉼표로만 연결하면 AI가 캐릭터를 혼동합니다!
-=======
-## 🚨 이미지 프롬프트 절대 규칙
-1. **의상 일관성 (100% 복사)**: 각 캐릭터의 의상은 상단에 정의된 **"lockedOutfits"의 내용을 토씨 하나 틀리지 말고 그대로 복사**하여 사용하세요.
-2. **액션 우선순위 (Action First)**: \`longPrompt\`에서 캐릭터 정보 바로 뒤에 **대본의 핵심 동작(윙크, 팔 치기, 당황한 표정 등)**을 가장 먼저 배치하세요.
-3. **장르별 톤 준수**: 코미디 장르에선 **망가지는 표정, 당황한 눈빛, 어색한 포즈**를 구체적으로 묘사하세요.
-4. **카메라 앵글**: 같은 앵글 2연속 금지. 와이드샷, 오버숄더, POV를 각각 최소 1개 이상 포함.
-5. **Candid Aesthetic**: 1번 씬만 카메라 응시, 나머지는 카메라 외면.
->>>>>>> Stashed changes
+## 📷 카메라 앵글 필수 규칙 (미디움샷만 쓰면 안됨!)
+| 씬 | 권장 앵글 | 프롬프트 키워드 |
+|---|----------|---------------|
+| Scene 1 (Hook) | **클로즈업** | close-up portrait shot, face in focus |
+| Scene 2 (Setup) | **와이드샷** | wide establishing shot, full body visible |
+| Scene 3 | **미디엄샷** | medium shot, waist-up framing |
+| Scene 4 | **오버숄더** | over-the-shoulder shot |
+| Scene 5 (Climax) | **클로즈업** | close-up shot, dramatic expression |
+| Scene 6 | **POV** | first-person POV shot |
+| Scene 7 (Twist) | **와이드샷** | wide shot, revealing context |
+| Scene 8 (Outro) | **미디엄샷** | medium shot, natural pose |
+
+⚠️ **필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
+⚠️ **금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ⚠️ 출력 형식 (JSON)
@@ -920,7 +926,7 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
   "scenes": [
     {
       "sceneNumber": 1,
-<<<<<<< Updated upstream
+      "cameraAngle": "close-up | medium | wide | over-shoulder | POV (위 카메라 앵글 표 참조)",
       "characterSlot": "캐릭터 슬롯",
       "shotType": "원샷 | 투샷 | 쓰리샷",
       "emotionBeat": "이 장면 감정",
@@ -928,7 +934,7 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
       "scriptLine": "이 장면 대사",
       "action": "캐릭터의 구체적 행동",
       "emotion": "시작감정 → 끝감정",
-      
+
       "voiceType": "narration | lipSync | both | none",
       "narration": {
         "text": "TTS용 텍스트 (자연스러운 문장)",
@@ -942,10 +948,10 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
         "emotion": "감정 (영어)",
         "timing": "start | mid | end"
       },
-      
+
       "shortPrompt": "간단한 영문 프롬프트",
       "shortPromptKo": "간단한 한글 프롬프트",
-      "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}",
+      "longPrompt": "${PROMPT_CONSTANTS.START}, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity], [hair], [body], wearing [outfit], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}",
       "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}",
       "longPromptKo": "상세 한글 프롬프트",
       "videoPrompt": "[한국어] 40대 한국인 여성이 [동작], [카메라 무빙], [조명/분위기]"
@@ -971,9 +977,9 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
 10. ✅ 신체 반응 최소 2개?
 
 **이미지 프롬프트 (필수!):**
-11. ✅ 모든 longPrompt가 characters[].identity 값으로 시작? (예: "A stunning Korean woman in her 40s")
-12. ✅ "Woman A (지영)" 형태 사용 안 함? (identity 필드 값만 사용!)
-13. ✅ 의상 앞에 "wearing" 키워드 있음?
+11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/medium/over-shoulder/POV)
+12. ✅ 8개 씬에서 같은 앵글 2연속 없음? (미디움샷만 8개 ❌)
+13. ✅ 클로즈업, 와이드샷, 오버숄더/POV 각각 최소 1개 이상?
 14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
 15. ✅ 배경 문구가 장면 전환 없을 때 동일?
 16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
@@ -981,21 +987,6 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
 **음성:**
 17. ✅ 모든 씬에 voiceType 지정?
 18. ✅ 작은따옴표 대사 있으면 lipSync 생성?
-=======
-      "characterSlot": "Slot",
-      "shotType": "앵글",
-      "scriptLine": "대사",
-      "action": "동작",
-      "emotion": "감정",
-      "voiceType": "narration",
-      "narration": { "text": "TTS", "emotion": "감정", "speed": "normal" },
-      "shortPrompt": "short",
-      "longPrompt": "${PROMPT_CONSTANTS.START}, [앵글], [캐릭터 identity/hair/body], wearing [outfit], [⚠️ action 동작], [배경], ${PROMPT_CONSTANTS.END}",
-      "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}"
-    }
-  ]
-}
->>>>>>> Stashed changes
 `;
 };
 

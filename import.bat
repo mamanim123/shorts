@@ -1,4 +1,5 @@
 @echo off
+title Import - Git Pull
 
 echo.
 echo ========================================
@@ -8,6 +9,13 @@ echo.
 
 cd /d "%~dp0"
 
+set /p confirm="Start git pull? (Y/N): "
+if /i not "%confirm%"=="Y" (
+  echo Cancelled.
+  goto :end
+)
+
+echo.
 echo Fetching latest code...
 git pull --ff-only origin master
 if errorlevel 1 (

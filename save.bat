@@ -9,6 +9,13 @@ echo.
 
 cd /d "%~dp0"
 
+set /p confirm="Start git push? (Y/N): "
+if /i not "%confirm%"=="Y" (
+  echo Cancelled.
+  goto :end
+)
+
+echo.
 echo [Checking changes]
 git status --short
 

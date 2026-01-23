@@ -830,6 +830,9 @@ export const UNIFIED_OUTFIT_LIST = [
   { id: "royal-008", name: "White Lace Crop Top + Deep Blue Satin Micro Mini Skirt", translation: "화이트 레이스 크롭탑 + 딥 블루 새틴 마이크로 미니 스커트", categories: ["ROYAL"] },
   { id: "royal-009", name: "Royal Blue Sleeveless Turtleneck + White Micro Mini Skirt", translation: "로열 블루 슬리브리스 터틀넥 + 화이트 마이크로 미니스커트", categories: ["ROYAL"] },
   { id: "royal-010", name: "White Chiffon Shirt (Unbuttoned) + Navy Lace Micro Mini Skirt", translation: "화이트 시폰 셔츠(언버튼) + 네이비 레이스 마이크로 미니스커트", categories: ["ROYAL"] },
+  { id: "royal-011", name: "Deep V-neck Inner Top + Navy Tight Micro Mini Skirt", translation: "딥브이 이너탑 + 네이비 타이트 마이크로 미니스커트", categories: ["ROYAL"] },
+  { id: "royal-012", name: "Low-cut Tight Knit Top + White Micro Mini Skirt", translation: "로우컷 타이트 니트탑 + 화이트 마이크로 미니스커트", categories: ["ROYAL"] },
+  { id: "royal-013", name: "Deep V-neck Tight-fitting Knit Top + Royal Blue Tight Micro Mini Skirt", translation: "딥브이 타이트 니트탑 + 로열 블루 타이트 마이크로 미니스커트", categories: ["ROYAL"] },
 
   // [Style 2: Yoga Fitness] - 10 athletic chic styles
   { id: "yoga-001", name: "White Sports Bra + High-waist Pink Tight Leggings", translation: "화이트 스포츠 브라 + 하이웨이스트 핑크 타이트 레깅스", categories: ["YOGA"] },

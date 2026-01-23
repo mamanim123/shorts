@@ -19,7 +19,14 @@
       "Bash(powershell -Command \"\n$content = @''\n@echo off\nchcp 949 > nul\n\necho.\necho ========================================\necho   [끝] Git Push\necho ========================================\necho.\n\ncd /d %~dp0\n\necho 변경된 파일:\ngit status --short\n\necho.\nset /p msg=커밋 메시지 \\(Enter=저장\\): \nif \"\"%msg%\"\"==\"\"\"\" set msg=저장\n\necho.\ngit add .\ngit commit -m \"\"%msg%\"\"\ngit push\n\necho.\necho 완료!\necho.\n\ncmd /k\n''@\n[IO.File]::WriteAllBytes\\(''끝.bat'', [Text.Encoding]::GetEncoding\\(949\\).GetBytes\\($content\\)\\)\n\")",
       "WebSearch",
       "Bash(git commit:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(echo:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(cmd /c \"chcp 949 >nul && cd /d \"\"F:\\\\test\\\\쇼츠대본생성기-v3.5.3\"\" && certutil -encodehex 가져오기.bat temp_hex.txt && type temp_hex.txt\")",
+      "Bash(cmd /c \"chcp 949 >nul && type \"\"F:\\\\test\\\\쇼츠대본생성기-v3.5.3\\\\temp_hex.txt\"\"\")",
+      "Bash(xxd:*)",
+      "Bash(grep:*)"
     ]
   }
 }

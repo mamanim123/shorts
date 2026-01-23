@@ -570,6 +570,36 @@ export const ShortsLabPanel: React.FC = () => {
         }
     };
 
+    // ============================================
+    // 전체 이미지 생성 핸들러
+    // ============================================
+    const handleGenerateAllImages = async () => {
+        if (scenes.length === 0) {
+            showToast('생성할 씬이 없습니다.', 'warning');
+            return;
+        }
+
+        const scenesWithoutImages = scenes.filter(s => !s.imageUrl && s.prompt);
+        if (scenesWithoutImages.length === 0) {
+            showToast('모든 씬에 이미지가 있습니다.', 'info');
+            return;
+        }
+
+        showToast(`${scenesWithoutImages.length}개 씬의 이미지를 생성합니다...`, 'info');
+
+        for (const scene of scenesWithoutImages) {
+            try {
+                await handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number);
+                // 각 요청 사이에 잠시 대기 (API 제한 방지)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } catch (error) {
+                console.error(`Scene ${scene.number} image generation failed:`, error);
+            }
+        }
+
+        showToast('전체 이미지 생성 완료!', 'success');
+    };
+
     const cancelAiForwarding = () => {
         if (aiForwardAbortRef.current) {
             try {
@@ -1232,7 +1262,7 @@ export const ShortsLabPanel: React.FC = () => {
                         maleOutfit: preferredMaleOutfit,
                         targetAgeLabel: aiTargetAge,
                         gender: settings.koreanGender,
-                        characters: scenesSource[0]?.characters || scenesSource.characters || scriptData.characters || parsed.characters // 캐릭터 정보 전달
+                        characters: scriptData.characters || parsed.characters // 캐릭터 정보 전달
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
@@ -1600,6 +1630,25 @@ export const ShortsLabPanel: React.FC = () => {
                             <h2 className="text-lg font-bold">쇼츠 랩</h2>
                             <p className="text-xs text-slate-400">프롬프트 고정 문구 테스트</p>
                         </div>
+
+                        {/* 불러오기 버튼 - 쇼츠 랩 옆으로 이동 */}
+                        <button
+                            onClick={handleLoadFolders}
+                            className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                        >
+                            <Folder className="w-4 h-4" />
+                            불러오기
+                        </button>
+
+                        {/* 전체 이미지 생성 버튼 */}
+                        <button
+                            onClick={handleGenerateAllImages}
+                            disabled={scenes.length === 0 || generatingId !== null || aiForwardingId !== null}
+                            className="px-3 py-1.5 bg-purple-600/80 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                        >
+                            <ImageIcon className="w-4 h-4" />
+                            전체이미지생성
+                        </button>
                     </div>
 
                     {/* 탭 버튼 */}
@@ -1620,15 +1669,6 @@ export const ShortsLabPanel: React.FC = () => {
                             </button>
                         ))}
                     </div>
-
-                    {/* 불러오기 버튼 */}
-                    <button
-                        onClick={handleLoadFolders}
-                        className="px-4 py-2 bg-purple-600/80 hover:bg-purple-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Folder className="w-4 h-4" />
-                        불러오기
-                    </button>
                 </div>
             </div>
 

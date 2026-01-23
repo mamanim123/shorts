@@ -27,6 +27,11 @@
  * v3.7.2 업데이트 (2026-01-23):
  * - 겨울 아웃웨어 완전 제거 (패딩/재킷 없음, 악세서리만 사용)
  * - applyWinterItems 함수 수정: outerwear가 빈 문자열일 때 'layered with' 구문 제거
+ *
+ * v3.7.3 업데이트 (2026-01-23):
+ * - 겨울 악세서리 적용 시 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환
+ * - Off-shoulder tight-fitting long-sleeve 스타일 강제 적용
+ * - 쇄골과 어깨라인 강조로 여성스러움 극대화
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
@@ -1008,6 +1013,55 @@ const WINTER_ACCESSORIES = [
 // 겨울 아우터 (v3.7.2부터 완전 제거 - 악세서리만 사용)
 const WINTER_OUTERWEAR: string[] = [];
 
+/**
+ * 겨울용 타이트 긴팔 + 어깨/쇄골 노출 변환 (v3.7.3)
+ * 모든 상의를 타이트한 긴팔 + 어깨라인 드러나는 스타일로 강제 변환
+ */
+export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string => {
+  let result = outfit;
+
+  // 쇄골과 어깨라인 강조 키워드
+  const shoulderExposure = 'off-shoulder tight-fitting long-sleeve';
+  const shoulderLineEmphasis = 'exposing collarbone and shoulder line';
+
+  // 1. Halter-neck → Off-shoulder tight-fitting long-sleeve
+  result = result.replace(/Halter-neck/gi, shoulderExposure);
+
+  // 2. Sleeveless → Off-shoulder tight-fitting long-sleeve
+  result = result.replace(/Sleeveless/gi, shoulderExposure);
+
+  // 3. Short-sleeve → Off-shoulder tight-fitting long-sleeve
+  result = result.replace(/Short-sleeve/gi, shoulderExposure);
+
+  // 4. Tank top → Off-shoulder tight-fitting long-sleeve top
+  result = result.replace(/Tank top/gi, `${shoulderExposure} top`);
+
+  // 5. Camisole → Off-shoulder tight-fitting long-sleeve top
+  result = result.replace(/Camisole/gi, `${shoulderExposure} top`);
+
+  // 6. Crop top → Off-shoulder tight-fitting long-sleeve crop top
+  result = result.replace(/Crop top(?! with)/gi, `${shoulderExposure} crop top`);
+
+  // 7. 일반 Knit/Top/Blouse → Off-shoulder tight-fitting long-sleeve
+  if (!result.toLowerCase().includes('long-sleeve') &&
+      !result.toLowerCase().includes('off-shoulder')) {
+    result = result.replace(/\b(Knit|Top|Blouse|Shirt|Turtleneck)\b/gi, `${shoulderExposure} $1`);
+  }
+
+  // 8. 이미 long-sleeve가 있지만 off-shoulder가 없으면 추가
+  if (result.toLowerCase().includes('long-sleeve') &&
+      !result.toLowerCase().includes('off-shoulder')) {
+    result = result.replace(/long-sleeve/gi, shoulderExposure);
+  }
+
+  // 9. 중복 방지
+  result = result.replace(/off-shoulder\s+off-shoulder/gi, 'off-shoulder');
+  result = result.replace(/tight-fitting\s+tight-fitting/gi, 'tight-fitting');
+  result = result.replace(/long-sleeve\s+long-sleeve/gi, 'long-sleeve');
+
+  return result;
+};
+
 // 겨울 아우터 + 악세서리 한번 선택 (모든 씬 일관성용)
 // v3.7.2: 아우터 제거, 악세서리만 반환
 export const selectWinterItems = (): { outerwear: string; accessories: string[] } => {
@@ -1019,16 +1073,20 @@ export const selectWinterItems = (): { outerwear: string; accessories: string[] 
 
 // 의상에 겨울 아이템 추가 (기존 의상 유지 + 아우터 + 악세서리)
 // v3.7.2: outerwear가 빈 문자열일 때 'layered with' 구문 제거
+// v3.7.3: 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 강제 변환
 export const applyWinterItems = (
   outfit: string,
   outerwear: string,
   accessories: string[]
 ): string => {
+  // v3.7.3: 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 강제 변환
+  const winterStyledOutfit = convertToTightLongSleeveWithShoulderLine(outfit);
+
   const accsStr = accessories.join(', ');
   if (outerwear) {
-    return `${outfit}, layered with ${outerwear}, accessorized with ${accsStr}`;
+    return `${winterStyledOutfit}, layered with ${outerwear}, accessorized with ${accsStr}`;
   }
-  return `${outfit}, accessorized with ${accsStr}`;
+  return `${winterStyledOutfit}, accessorized with ${accsStr}`;
 };
 
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {

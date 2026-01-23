@@ -905,28 +905,6 @@ ${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 9. **의상 명칭 보존 (중요)**: \`shortPrompt\`와 \`longPrompt\` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.
 10. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
 
-## ⭐ 이미지 프롬프트 품질 규칙 (대본-이미지 일치)
-
-11. **action 필드를 longPrompt에 정확히 반영**:
-   - action에 "팔을 잡으며"가 있으면 → longPrompt에 "grabbing arm" 포함
-   - action에 "명함을 건네며"가 있으면 → longPrompt에 "handing over a business card" 포함
-   - action의 구체적 동작이 longPrompt에 누락되면 안 됨!
-
-12. **scriptLine과 이미지 일관성**:
-   - scriptLine의 핵심 상황이 longPrompt에 반영되어야 함
-   - 예: "입이 바짝 마르면서" → "licking dry lips" (O), "adjusting collar" (X, 대본에 없는 동작)
-   - 캐릭터 의상과 맞지 않는 동작 금지 (골프웨어인데 넥타이 만지기 등)
-
-13. **회상 장면(Flashback) 처리 규칙**:
-   - 회상 장면이면 배경을 회상 내용에 맞게 변경 (예: 예식장 회상 → wedding hall background)
-   - 회상에서 "누구를 만났다"면 그 사람이 등장하는 장면으로 구성
-   - 예: "캐디가 아내 여동생이었다 (예식장에서 만남)" → 캐디와 아내가 예식장에 함께 있는 투샷
-   - 회상의 주체(기억 속 인물)가 이미지의 주인공이어야 함
-
-14. **모순되는 지시 금지**:
-   - "towards the camera" + "looking away from camera" 같은 모순 금지
-   - 하나의 명확한 방향으로 통일
-
 ## 📸 샷 타입 규칙
 | 상황 | 샷 타입 |
 |-----|--------|
@@ -1070,9 +1048,8 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
       "emotionBeat": "이 장면 감정",
       "summary": "장면 한줄 요약",
       "scriptLine": "이 장면 대사",
-      "action": "캐릭터의 구체적 행동 (⚠️ 이 동작이 longPrompt에 반드시 반영되어야 함!)",
+      "action": "캐릭터의 구체적 행동",
       "emotion": "시작감정 → 끝감정",
-      "isFlashback": "회상 장면이면 true, 아니면 생략",
       
       "voiceType": "narration | lipSync | both | none",
       "narration": {
@@ -1090,7 +1067,7 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
       
       "shortPrompt": "간단한 영문 프롬프트",
       "shortPromptKo": "간단한 한글 프롬프트",
-      "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity], [hair], [body], wearing [outfit], [⚠️ action 필드의 동작을 영어로 번역하여 정확히 반영!], [배경 - 회상이면 회상 장소로 변경], ${PROMPT_CONSTANTS.END}",
+      "longPrompt": "${PROMPT_CONSTANTS.START}, [characters[해당캐릭터].identity 그대로 복사 예: A stunning Korean woman in her 40s], [characters[해당캐릭터].hair 그대로 복사], [characters[해당캐릭터].body 그대로 복사], wearing [characters[해당캐릭터].outfit 그대로 복사], [행동/표정], [배경], ${PROMPT_CONSTANTS.END}",
       "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}",
       "longPromptKo": "상세 한글 프롬프트",
       "videoPrompt": "[한국어] 40대 한국인 여성이 [동작], [카메라 무빙], [조명/분위기]"
@@ -1122,13 +1099,10 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
 14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
 15. ✅ 배경 문구가 장면 전환 없을 때 동일?
 16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
-17. ✅ action 필드의 동작이 longPrompt에 정확히 반영됨? (예: "팔을 잡으며" → "grabbing arm")
-18. ✅ 회상 장면이면 배경이 회상 내용에 맞게 변경됨?
-19. ✅ scriptLine의 핵심 상황이 longPrompt에 반영됨?
 
 **음성:**
-20. ✅ 모든 씬에 voiceType 지정?
-21. ✅ 작은따옴표 대사 있으면 lipSync 생성?
+17. ✅ 모든 씬에 voiceType 지정?
+18. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 `;
 };
 

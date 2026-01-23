@@ -1,12 +1,32 @@
 /**
  * labPromptBuilder.ts
  * 쇼츠랩 전용 경량화 프롬프트 빌더
- * 
+ *
  * v3.5 업데이트 (2026-01-23):
  * - 가슴라인 강조 강화 (voluptuous chest line)
  * - 겨울 방한용품 시스템 도입 (귀도리, 비니, 크롭 패딩 등)
  * - 코미디 장르 최적화 (생생한 표정 및 역동적 포즈 강조)
  * - 의상 일관성 강제 규칙 강화 (lockedOutfits 100% 복사)
+ *
+ * v3.6 업데이트 (2026-01-23):
+ * - 표정(facial expression)을 프롬프트 맨 앞에 배치
+ * - 카메라 앵글을 스토리 단계별로 자동 배치
+ * - 장르별 표정 키워드 세트 추가
+ *
+ * v3.7 업데이트 (2026-01-23):
+ * - 동작 묘사 강화: action 필드의 한국어 동작을 영어로 자동 변환하여 longPrompt에 반영
+ * - 한국어 동작 키워드 매핑 테이블 추가 (60+ 동작 패턴)
+ * - 의상 검증 로지 추가: validateOutfit 함수로 의상 명칭 및 길이 검증
+ * - 프롬프트에 의상 선택 규칙 강조 섹션 추가
+ *
+ * v3.7.1 업데이트 (2026-01-23):
+ * - pickMaleOutfit 함수에서 골프 주제 특별 처리 제거 (모든 남성/유니섹스 의상 평등 선택)
+ * - 겨울 악세서리 정리: 모자, 귀마개, 장갑, 목도리, 신발 카테고리만 유지 (19종 → 16종)
+ * - 겨울 아웃웨어 정리: luxurious fur vest 제거 (3종 → 2종)
+ *
+ * v3.7.2 업데이트 (2026-01-23):
+ * - 겨울 아웃웨어 완전 제거 (패딩/재킷 없음, 악세서리만 사용)
+ * - applyWinterItems 함수 수정: outerwear가 빈 문자열일 때 'layered with' 구문 제거
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
@@ -42,6 +62,7 @@ export interface LabScriptOptions {
   gender: 'female' | 'male';
   additionalContext?: string;
   genreGuideOverride?: LabGenreGuideline;
+  enableWinterAccessories?: boolean;
 }
 
 export interface LabImagePromptOptions {
@@ -54,6 +75,208 @@ export interface LabImagePromptOptions {
   includeQualityTags: boolean;
   includeAspectRatio: boolean;
 }
+
+// ============================================
+// v3.6 - 장르별 표정 키워드 세트
+// ============================================
+
+export const GENRE_EXPRESSION_KEYWORDS: Record<string, Record<string, string>> = {
+  'romance-thrill': {
+    'hook': 'shy blushing smile, nervous fluttering eyes, heart-fluttering gaze',
+    'setup': 'curious gentle smile, soft anticipating eyes, subtle excitement',
+    'buildup': 'longing gaze, blushing cheeks, nervous lip bite, trembling anticipation',
+    'climax': 'intense eye contact, passionate expression, breathless surprise',
+    'twist': 'tearful happy smile, overwhelming emotion, touched expression',
+    'outro': 'warm loving smile, soft tender eyes, peaceful contentment'
+  },
+  'comedy-humor': {
+    'hook': 'confident smirk, oblivious happy face, clueless cheerful expression',
+    'setup': 'proud satisfied smile, self-assured expression, relaxed confident look',
+    'buildup': 'slightly confused look, dawning realization, nervous smile',
+    'climax': 'shocked wide eyes, jaw-dropping surprise, mortified expression, embarrassed frozen face',
+    'twist': 'cringing embarrassment, facepalm moment, awkward grimace',
+    'outro': 'self-deprecating laugh, sheepish grin, resigned amusement'
+  },
+  'touching-warm': {
+    'hook': 'wistful nostalgic gaze, gentle reminiscing smile',
+    'setup': 'soft caring expression, warm loving eyes',
+    'buildup': 'concerned worried look, anxious caring face',
+    'climax': 'tearful emotional eyes, moved to tears, overwhelming gratitude',
+    'twist': 'surprised touched expression, happy crying, grateful smile',
+    'outro': 'peaceful warm smile, content happy tears, serene loving gaze'
+  },
+  'revenge-twist': {
+    'hook': 'subtle knowing smirk, mysterious confident gaze',
+    'setup': 'calm collected expression, patient calculating look',
+    'buildup': 'hidden satisfaction, suppressed smile, anticipating expression',
+    'climax': 'triumphant smile, victorious expression, satisfying smirk',
+    'twist': 'shocked frozen face, disbelief expression, stunned realization',
+    'outro': 'satisfied peaceful smile, justice-served expression, content relief'
+  },
+  'default': {
+    'hook': 'expressive engaging face, attention-grabbing expression',
+    'setup': 'natural relaxed expression, authentic genuine look',
+    'buildup': 'building tension face, anticipating expression',
+    'climax': 'peak emotion expression, intense dramatic face',
+    'twist': 'surprised realization, unexpected discovery face',
+    'outro': 'resolved peaceful expression, satisfying conclusion look'
+  }
+};
+
+// ============================================
+// v3.6 - 스토리 단계별 카메라 앵글 자동 배치
+// ============================================
+
+export const SCENE_CAMERA_MAPPING: Record<string, { angle: string; prompt: string }> = {
+  'hook': { 
+    angle: 'close-up', 
+    prompt: 'close-up portrait shot, face in focus, shallow depth of field, dramatic lighting' 
+  },
+  'setup': { 
+    angle: 'wide', 
+    prompt: 'wide establishing shot, full body visible, environment context, cinematic framing' 
+  },
+  'buildup': { 
+    angle: 'medium', 
+    prompt: 'medium shot, waist-up framing, natural pose, conversational distance' 
+  },
+  'climax': { 
+    angle: 'close-up', 
+    prompt: 'extreme close-up, intense focus on face, dramatic shallow depth of field' 
+  },
+  'twist': { 
+    angle: 'close-up', 
+    prompt: 'close-up reaction shot, face filling frame, capturing micro-expressions' 
+  },
+  'outro': { 
+    angle: 'medium', 
+    prompt: 'medium shot, relaxed framing, warm natural lighting' 
+  }
+};
+
+// 장면 번호 → 스토리 단계 매핑 (12장면 기준)
+export const getStoryStageBySceneNumber = (sceneNumber: number, totalScenes: number = 12): string => {
+  const ratio = sceneNumber / totalScenes;
+  
+  if (sceneNumber === 1) return 'hook';
+  if (ratio <= 0.25) return 'setup';
+  if (ratio <= 0.5) return 'buildup';
+  if (ratio <= 0.7) return 'climax';
+  if (ratio <= 0.85) return 'twist';
+  return 'outro';
+};
+
+// 장르 ID에서 표정 키워드 가져오기
+export const getExpressionForScene = (genre: string, storyStage: string): string => {
+  const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/[\/\\]/g, '-');
+  const expressions = GENRE_EXPRESSION_KEYWORDS[genreKey] || GENRE_EXPRESSION_KEYWORDS['default'];
+  return expressions[storyStage] || expressions['hook'];
+};
+
+// 카메라 앵글 프롬프트 가져오기
+export const getCameraPromptForScene = (storyStage: string): string => {
+  const mapping = SCENE_CAMERA_MAPPING[storyStage] || SCENE_CAMERA_MAPPING['buildup'];
+  return mapping.prompt;
+};
+
+// ============================================
+// 한국어 동작 → 영어 변환 매핑 테이블
+// ============================================
+
+export const ACTION_KEYWORD_MAPPING: Record<string, string> = {
+  // 골프 관련
+  '골프채를 휘두르다': 'swinging golf club',
+  '골프채를 휘두르는': 'swinging golf club',
+  '골프 스윙': 'golf swing motion',
+  '퍼팅하다': 'putting golf ball',
+
+  // 손 동작
+  '손을 흔들다': 'waving hand',
+  '손을 흔드는': 'waving hand',
+  '손가락질하다': 'pointing finger',
+  '손바닥으로 가리다': 'covering with palm',
+  '박수치다': 'clapping hands',
+  '주먹 쥐다': 'clenching fist',
+
+  // 물건 관련
+  '가방을 꽉 쥐다': 'clutching bag tightly',
+  '가방을 꽉 쥐는': 'clutching bag tightly',
+  '리모컨을 들다': 'holding remote control',
+  '리모컨을 들고': 'holding remote control',
+  '핸드폰을 보다': 'looking at phone',
+  '서류를 펼치다': 'spreading documents',
+  '잔을 들다': 'holding glass',
+  '컵을 들다': 'holding cup',
+
+  // 머리/얼굴 동작
+  '고개를 갸우뚱': 'tilting head',
+  '고개를 끄덕이다': 'nodding head',
+  '고개를 저으며': 'shaking head',
+  '입을 가리다': 'covering mouth',
+  '입을 가리며': 'covering mouth',
+  '눈을 감다': 'closing eyes',
+  '눈을 크게 뜨다': 'wide eyes open',
+  '이마를 짚다': 'touching forehead',
+  '턱을 괴다': 'resting chin on hand',
+
+  // 이동/자세
+  '걷다': 'walking',
+  '뛰다': 'running',
+  '앉다': 'sitting down',
+  '일어서다': 'standing up',
+  '돌아서다': 'turning around',
+  '몸을 숙이다': 'bending forward',
+  '팔짱을 끼다': 'crossing arms',
+  '허리에 손을 올리다': 'hands on hips',
+
+  // 감정 표현 동작
+  '한숨을 쉬다': 'sighing deeply',
+  '웃으며': 'while smiling',
+  '미소짓다': 'smiling',
+  '찡그리다': 'frowning',
+  '놀라며': 'looking surprised',
+  '당황하며': 'looking flustered',
+
+  // 대화 관련
+  '속삭이다': 'whispering',
+  '소리지르다': 'shouting',
+  '대화하다': 'having conversation',
+  '대화하는': 'having conversation',
+  '말하다': 'talking',
+  '말하며': 'while talking',
+
+  // 기타
+  '뒤돌아보다': 'looking back',
+  '쳐다보다': 'staring at',
+  '응시하다': 'gazing at',
+  '피하다': 'avoiding',
+  '다가가다': 'approaching',
+  '멀어지다': 'moving away'
+};
+
+/**
+ * 한국어 동작 텍스트를 영어로 변환
+ * 매핑 테이블의 키워드를 찾아 영어로 변환하고, 없으면 원문 반환
+ */
+export const translateActionToEnglish = (action: string): string => {
+  if (!action) return '';
+
+  let translated = action;
+  let foundMatch = false;
+
+  // 매핑 테이블에서 가장 긴 매치부터 찾기 (부분 문자열 문제 방지)
+  const sortedKeys = Object.keys(ACTION_KEYWORD_MAPPING).sort((a, b) => b.length - a.length);
+
+  for (const koreanKey of sortedKeys) {
+    if (translated.includes(koreanKey)) {
+      translated = translated.replace(koreanKey, ACTION_KEYWORD_MAPPING[koreanKey]);
+      foundMatch = true;
+    }
+  }
+
+  // 매핑을 찾지 못한 경우 원문 반환 (영어일 수도 있음)
+  return foundMatch ? translated : action;
+};
 
 // ============================================
 // 마마님 취향 반영 캐릭터 프리셋
@@ -142,10 +365,31 @@ export const enhanceScenePrompt = (
     maleOutfit?: string;
     targetAgeLabel?: string;
     gender?: 'female' | 'male';
+    genre?: string;           // v3.6: 장르 추가
+    totalScenes?: number;     // v3.6: 전체 장면 수 추가
+    action?: string;          // v3.7: 동작 묘사 추가
   } = {}
 ): string => {
   if (!text) return text;
   let updated = text.trim();
+
+  // v3.6: 스토리 단계 결정 및 표정/카메라 앵글 추출
+  const sceneNum = options.sceneNumber || 1;
+  const totalScenes = options.totalScenes || 12;
+  const storyStage = getStoryStageBySceneNumber(sceneNum, totalScenes);
+  const genre = options.genre || 'default';
+
+  // 표정 키워드 (맨 앞에 배치할 것)
+  const expressionKeywords = getExpressionForScene(genre, storyStage);
+
+  // 카메라 앵글 프롬프트
+  const cameraPrompt = getCameraPromptForScene(storyStage);
+
+  // v3.7: 동작 묘사 영어 변환
+  let actionPrompt = '';
+  if (options.action) {
+    actionPrompt = translateActionToEnglish(options.action);
+  }
 
   const llmProvidedOutfit = updated.includes("Outfit:");
 
@@ -161,12 +405,14 @@ export const enhanceScenePrompt = (
     }
   }
 
+  // v3.6: 표정과 카메라 앵글을 맨 앞에 삽입
+  // 기존 카메라 앵글이 이미 있으면 제거 후 새로 추가
+  const existingCameraPattern = /^(close-up|medium shot|wide shot|extreme close-up|over-the-shoulder)[^,]*,?\s*/i;
+  updated = updated.replace(existingCameraPattern, '');
+
+  // Scene 번호 처리
   if (options.sceneNumber !== undefined) {
-    const scenePrefix = `Scene ${options.sceneNumber}. `;
-    if (!updated.startsWith(`Scene ${options.sceneNumber}`)) {
-      updated = updated.replace(/^Scene \d+\.\s*/i, '');
-      updated = scenePrefix + updated;
-    }
+    updated = updated.replace(/^Scene \d+\.?\s*/i, '');
   }
 
   const noTextTag = "no text, no letters, no typography, no watermarks, no words";
@@ -176,7 +422,22 @@ export const enhanceScenePrompt = (
 
   updated = enforceKoreanIdentity(updated, options.targetAgeLabel, options.sceneNumber, options.gender);
 
-  return updated;
+  // v3.7: 최종 프롬프트 조립 - [표정] + [카메라] + [동작] + [기존 내용]
+  // Scene 번호 제거 후 재조립
+  const sceneMatch = updated.match(/^Scene \d+[.,]?\s*/i);
+  const scenePrefix = sceneMatch ? sceneMatch[0] : (options.sceneNumber ? `Scene ${options.sceneNumber}. ` : '');
+  const contentWithoutScene = updated.replace(/^Scene \d+[.,]?\s*/i, '').trim();
+
+  // 최종 조립: Scene N. [표정], [카메라], [동작], [내용]
+  // 동작이 있으면 카메라 앵글과 배경 사이에 삽입
+  let finalPrompt: string;
+  if (actionPrompt) {
+    finalPrompt = `${scenePrefix}[${expressionKeywords}], ${cameraPrompt}, ${actionPrompt}, ${contentWithoutScene}`;
+  } else {
+    finalPrompt = `${scenePrefix}[${expressionKeywords}], ${cameraPrompt}, ${contentWithoutScene}`;
+  }
+
+  return finalPrompt;
 };
 
 export const extractNegativePrompt = (text: string): { cleaned: string; negative: string } => {
@@ -719,55 +980,55 @@ const splitOutfitTop = (outfit: string) => {
   return { top: outfit, tail: '', joiner: '' };
 };
 
-// 겨울 악세서리 (귀엽고 여성스러운 아이템 19종)
+// 겨울 악세서리 (모자, 귀마개, 장갑, 목도리, 신발 - 16종)
 const WINTER_ACCESSORIES = [
-  // 기존 7종
-  'fluffy faux fur earmuffs',
+  // 모자 (Beanie/Hat) - 5종
   'cute pom-pom knit beanie',
   'fuzzy faux fur bucket hat',
   'faux fur trapper hat',
-  'cute fuzzy mittens',
-  'chunky faux fur moon boots',
-  'knit leg warmers',
-  // 리본/하트 계열
+  'cat ear knit beanie',
+  'angora beret with pom-pom',
+  // 귀마개 (Earmuffs) - 5종
+  'fluffy faux fur earmuffs',
   'ribbon bow earmuffs',
   'heart-shaped fluffy earmuffs',
   'pearl-decorated earmuffs',
-  'ribbon-tied knit mittens',
-  // 귀여운 동물 계열
-  'cat ear knit beanie',
-  'bunny ear fuzzy hood',
   'bear ear fleece headband',
-  // 여성스러운 계열
+  // 장갑 (Gloves/Mittens) - 3종
+  'cute fuzzy mittens',
+  'ribbon-tied knit mittens',
   'fluffy faux fur hand muff',
+  // 목도리 (Scarf/Neck warmer) - 2종
   'oversized chunky cable knit scarf',
-  'angora beret with pom-pom',
-  'fuzzy faux fur neck warmer'
+  'fuzzy faux fur neck warmer',
+  // 신발 (Boots) - 1종
+  'chunky faux fur moon boots'
 ];
 
-// 겨울 아우터 (순수 아우터만 - 3종)
-const WINTER_OUTERWEAR = [
-  'cropped puffer jacket',
-  'fur-hooded puffer jacket',
-  'luxurious fur vest'
-];
+// 겨울 아우터 (v3.7.2부터 완전 제거 - 악세서리만 사용)
+const WINTER_OUTERWEAR: string[] = [];
 
 // 겨울 아우터 + 악세서리 한번 선택 (모든 씬 일관성용)
+// v3.7.2: 아우터 제거, 악세서리만 반환
 export const selectWinterItems = (): { outerwear: string; accessories: string[] } => {
-  const outerwear = WINTER_OUTERWEAR[Math.floor(Math.random() * WINTER_OUTERWEAR.length)];
+  const outerwear = ''; // 아우터 완전 제거
   const shuffled = [...WINTER_ACCESSORIES].sort(() => 0.5 - Math.random());
   const accessories = shuffled.slice(0, Math.random() < 0.5 ? 1 : 2);
   return { outerwear, accessories };
 };
 
 // 의상에 겨울 아이템 추가 (기존 의상 유지 + 아우터 + 악세서리)
+// v3.7.2: outerwear가 빈 문자열일 때 'layered with' 구문 제거
 export const applyWinterItems = (
   outfit: string,
   outerwear: string,
   accessories: string[]
 ): string => {
   const accsStr = accessories.join(', ');
-  return `${outfit}, layered with ${outerwear}, accessorized with ${accsStr}`;
+  if (outerwear) {
+    return `${outfit}, layered with ${outerwear}, accessorized with ${accsStr}`;
+  }
+  return `${outfit}, accessorized with ${accsStr}`;
 };
 
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
@@ -786,6 +1047,25 @@ const isUnisexOutfit = (item: OutfitPoolItem): boolean =>
 
 const isGolfOutfit = (item: OutfitPoolItem): boolean =>
   item.categories.some((category) => category.toLowerCase().includes('golf'));
+
+// ============================================
+// 의상 검증 로직
+// ============================================
+
+/**
+ * 의상 명칭이 유효한지 검증
+ * 1. UNIFIED_OUTFIT_LIST에 존재하는지 확인
+ * 2. 최대 길이 제한 (100자) 체크
+ */
+export const validateOutfit = (outfit: string): boolean => {
+  if (!outfit) return false;
+
+  const pool = getOutfitPool();
+  const exists = pool.some(item => item.name === outfit);
+  const isValidLength = outfit.length <= 100; // 최대 100자
+
+  return exists && isValidLength;
+};
 
 export const pickFemaleOutfit = (
   genre: string,
@@ -815,24 +1095,15 @@ export const pickFemaleOutfit = (
 };
 
 export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
-  const isGolfTopic = topic.includes('골프') || topic.includes('golf') || topic.includes('Golf');
   const candidates = getOutfitPool().filter(item => {
-    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
-    if (excludeOutfits.includes(item.name)) return false;
-    if (isGolfTopic) return isGolfOutfit(item);
-    return !isGolfOutfit(item) || Math.random() > 0.7;
-  });
-
-  const fallbackCandidates = getOutfitPool().filter(item => {
     if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
     if (excludeOutfits.includes(item.name)) return false;
     return true;
   });
 
-  const poolToUse = candidates.length > 0 ? candidates : fallbackCandidates;
-  const selectedName = poolToUse.length > 0
-    ? poolToUse[Math.floor(Math.random() * poolToUse.length)].name
-    : (isGolfTopic ? 'Navy Slim-fit Polo + White Tailored Golf Pants' : 'Black Knit Polo + Dark Indigo Denim');
+  const selectedName = candidates.length > 0
+    ? candidates[Math.floor(Math.random() * candidates.length)].name
+    : 'Navy Slim-fit Polo + White Tailored Golf Pants';
 
   return adjustOutfitForSeason(selectedName, topic);
 };
@@ -842,7 +1113,7 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
 // ============================================
 
 export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
-  const { topic, genre, targetAge, gender, additionalContext } = options;
+  const { topic, genre, targetAge, gender, additionalContext, enableWinterAccessories } = options;
   const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const seed = generateRandomSeed();
 
@@ -853,10 +1124,23 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const manAOutfit = pickMaleOutfit(topic, []);
   const manBOutfit = pickMaleOutfit(topic, [manAOutfit]);
 
-  // 겨울 테마 감지 시 아우터 + 악세서리 일괄 적용 (모든 씬 일관성)
+  // 의상 검증 (너무 긴 설명문 방지)
+  [
+    { outfit: womanAOutfit, label: 'Woman A' },
+    { outfit: womanBOutfit, label: 'Woman B' },
+    { outfit: womanDOutfit, label: 'Woman D' },
+    { outfit: manAOutfit, label: 'Man A' },
+    { outfit: manBOutfit, label: 'Man B' }
+  ].forEach(({ outfit, label }) => {
+    if (!validateOutfit(outfit)) {
+      console.warn(`Invalid outfit detected (${label}): ${outfit.substring(0, 50)}...`);
+    }
+  });
+
+  // 겨울 악세서리 토글이 ON일 때만 겨울 아이템 적용 (모든 씬 일관성)
   let winterOuterwear = '';
   let winterAccessories: string[] = [];
-  if (isWinterTopic(topic)) {
+  if (enableWinterAccessories) {
     const winterItems = selectWinterItems();
     winterOuterwear = winterItems.outerwear;
     winterAccessories = winterItems.accessories;
@@ -949,10 +1233,26 @@ ${additionalContext ? `4. 추가 요청: ${additionalContext}` : ''}
 
 ## 👗 의상 설정 (이미지 프롬프트용)
 - **Woman A (지영)**: ${womanAOutfit}
-- **Woman B (혜경)**: ${womanBOutfit}  
+- **Woman B (혜경)**: ${womanBOutfit}
 - **Woman D (캐디)**: ${womanDOutfit}
 - **Man A (준호)**: ${manAOutfit}
 - **Man B (민수)**: ${manBOutfit}
+
+## 🚨 의상 선택 절대 규칙 (매우 중요!)
+⚠️ **의상은 반드시 위에 지정된 명칭을 100% 그대로 사용해야 합니다!**
+
+✅ **올바른 사용**:
+- lockedOutfits 필드의 의상 명칭을 정확히 그대로 복사
+- 예: "White Halter-neck Knit + Red Micro Mini Skirt" → 전체 명칭 그대로 사용
+
+❌ **절대 금지**:
+- 의상 설명문 직접 생성 (예: "흰색 상의와 빨간 치마" ❌)
+- 의상 명칭 요약/생략 (예: "White Halter-neck Knit" → "White Knit" ❌)
+- 의상 명칭 변형 (예: "Pink Dress" → "Pink Summer Dress" ❌)
+
+📋 **UNIFIED_OUTFIT_LIST에서만 선택**
+- 모든 의상은 사전 정의된 리스트에서 정확한 명칭으로 선택
+- 리스트에 없는 의상 생성 절대 금지
 
 ## 💇 헤어스타일
 - **Woman A (지영)**: long soft-wave hairstyle
@@ -1142,28 +1442,76 @@ export interface CharacterInfo { identity: string; hair: string; body: string; o
 export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '투샷' | '쓰리샷', characters: CharacterInfo[]): PromptValidationResult => {
   const issues: string[] = [];
   let fixedPrompt = longPrompt;
-  if (!longPrompt.includes('unfiltered raw photograph')) fixedPrompt = `${PROMPT_CONSTANTS.START}, ${fixedPrompt}`;
+
+  // 1. 필수 시작 문구 확인
+  if (!longPrompt.includes('unfiltered raw photograph')) {
+    fixedPrompt = `${PROMPT_CONSTANTS.START}, ${fixedPrompt}`;
+  }
 
   const needsPersonMarkers = shotType === '투샷' || shotType === '쓰리샷';
+
   if (needsPersonMarkers) {
     const requiredCount = shotType === '투샷' ? 2 : 3;
-    const hasMarkers = /\[Person\s+1:/i.test(fixedPrompt);
-    if (!hasMarkers) {
-      issues.push(`${shotType} 프롬프트에 [Person N] 구분자가 없습니다.`);
-      const people = characters.slice(0, requiredCount).map((character, index) => {
-        const parts = [character.identity, character.hair, character.body].filter(Boolean);
-        if (character.outfit) parts.push(`wearing ${character.outfit}`);
-        const content = parts.length ? parts.join(', ') : `Person ${index + 1}`;
-        return `[Person ${index + 1}: ${content}]`;
-      });
+    
+    // [V3.5.3 개선] 기존 마커가 있는지 확인하고, 있으면 내용을 교체, 없으면 새로 생성
+    for (let i = 1; i <= requiredCount; i++) {
+      const markerRegex = new RegExp(`\\[Person\\s+${i}:[^\\]]*\\]`, 'gi');
+      const character = characters[i - 1];
+      if (!character) continue;
 
-      const peopleBlock = people.join(' ');
-      const startPrefix = PROMPT_CONSTANTS.START;
-      if (fixedPrompt.includes(startPrefix)) {
-        const remainder = fixedPrompt.replace(startPrefix, '').trim().replace(/^,\s*/, '');
-        fixedPrompt = `${startPrefix}, ${peopleBlock}${remainder ? `, ${remainder}` : ''}`;
+      const goldenContent = [
+        character.identity,
+        character.hair,
+        character.body,
+        character.outfit ? `wearing ${character.outfit.replace(/^wearing\s+/i, '')}` : ''
+      ].filter(Boolean).join(', ');
+      
+      const goldenMarker = `[Person ${i}: ${goldenContent}]`;
+
+      if (markerRegex.test(fixedPrompt)) {
+        // 기존 마커가 있으면 강제 교체 (일관성 보장)
+        fixedPrompt = fixedPrompt.replace(markerRegex, goldenMarker);
       } else {
-        fixedPrompt = `${peopleBlock}, ${fixedPrompt}`.trim();
+        // 마커가 없으면 적절한 위치에 삽입 (시작 문구 뒤)
+        issues.push(`${shotType} 프롬프트에 [Person ${i}] 마커가 누락되어 추가했습니다.`);
+        if (i === 1) {
+          const startPrefix = PROMPT_CONSTANTS.START;
+          if (fixedPrompt.includes(startPrefix)) {
+            const remainder = fixedPrompt.replace(startPrefix, '').trim().replace(/^,\s*/, '');
+            fixedPrompt = `${startPrefix}, ${goldenMarker}${remainder ? `, ${remainder}` : ''}`;
+          } else {
+            fixedPrompt = `${goldenMarker}, ${fixedPrompt}`;
+          }
+        } else {
+          // Person 1 뒤에 삽입
+          const prevMarker = `[Person ${i-1}:`;
+          const parts = fixedPrompt.split(prevMarker);
+          if (parts.length > 1) {
+            const firstPart = parts[0] + prevMarker + parts[1].split(']')[0] + ']';
+            const secondPart = fixedPrompt.substring(firstPart.length);
+            fixedPrompt = `${firstPart} ${goldenMarker}${secondPart.startsWith(',') ? '' : ','}${secondPart}`;
+          } else {
+            fixedPrompt += `, ${goldenMarker}`;
+          }
+        }
+      }
+    }
+  } else {
+    // 원샷인 경우에도 캐릭터 정보 강제 동기화
+    const character = characters[0];
+    if (character) {
+      if (character.identity && !fixedPrompt.includes(character.identity)) {
+        issues.push('캐릭터 정체성 정보를 보정했습니다.');
+        fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.identity},`);
+      }
+      if (character.outfit && !fixedPrompt.includes(character.outfit)) {
+        issues.push('캐릭터 의상 정보를 보정했습니다.');
+        const wearingRegex = /wearing\s+[^,]+/i;
+        if (wearingRegex.test(fixedPrompt)) {
+          fixedPrompt = fixedPrompt.replace(wearingRegex, `wearing ${character.outfit.replace(/^wearing\s+/i, '')}`);
+        } else {
+          fixedPrompt = fixedPrompt.replace(/([^,]+,)\s*([배경|장소|at|in|on])/i, `$1 wearing ${character.outfit}, $2`);
+        }
       }
     }
   }

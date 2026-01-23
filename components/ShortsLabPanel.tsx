@@ -214,15 +214,19 @@ const postProcessAiScenes = (
         targetAgeLabel?: string;
         gender?: 'female' | 'male';
         characters?: any[]; // [NEW] 캐릭터 정보 추가
+        genre?: string;     // [v3.6] 장르 정보 추가
+        totalScenes?: number; // [v3.6] 전체 장면 수 추가
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
+    
+    const totalScenes = options.totalScenes || scenes.length || 12;
 
     return scenes.map((scene: any, idx: number) => {
         const sceneNumber = scene.sceneNumber || idx + 1;
         const shotType = (scene.shotType || '원샷') as '원샷' | '투샷' | '쓰리샷';
 
-        // 1. 기존 방식의 강화 (identity, outfit 등 삽입)
+        // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
         let processedPrompt = enhanceScenePrompt(
             scene.longPrompt || scene.shortPrompt || '',
             {
@@ -230,7 +234,9 @@ const postProcessAiScenes = (
                 femaleOutfit: options.femaleOutfit,
                 maleOutfit: options.maleOutfit,
                 targetAgeLabel: options.targetAgeLabel,
-                gender: options.gender
+                gender: options.gender,
+                genre: options.genre,         // v3.6
+                totalScenes: totalScenes      // v3.6
             }
         );
 
@@ -260,7 +266,7 @@ const postProcessAiScenes = (
             negativePrompt: negativePrompt, // [NEW] 필드 추가
             shortPrompt: scene.shortPrompt ? enhanceScenePrompt(
                 scene.shortPrompt,
-                { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender }
+                { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes }
             ) : processedPrompt
         };
     });
@@ -294,6 +300,7 @@ export const ShortsLabPanel: React.FC = () => {
     const [aiTopic, setAiTopic] = useState('');
     const [aiGenre, setAiGenre] = useState('comedy-humor');
     const [aiTargetAge, setAiTargetAge] = useState('40대');
+    const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
@@ -1141,7 +1148,8 @@ export const ShortsLabPanel: React.FC = () => {
                 genre: aiGenre,
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
-                genreGuideOverride
+                genreGuideOverride,
+                enableWinterAccessories
             });
 
             // 서버 API 호출 (백엔드는 3002 포트)
@@ -1208,7 +1216,9 @@ export const ShortsLabPanel: React.FC = () => {
                         maleOutfit: preferredMaleOutfit,
                         targetAgeLabel: aiTargetAge,
                         gender: settings.koreanGender,
-                        characters: scriptData.characters || parsed.characters // 캐릭터 정보 전달
+                        characters: scriptData.characters || parsed.characters, // 캐릭터 정보 전달
+                        genre: aiGenre,                    // v3.6: 장르 정보 전달
+                        totalScenes: scenesSource.length   // v3.6: 전체 장면 수 전달
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
@@ -1772,6 +1782,25 @@ export const ShortsLabPanel: React.FC = () => {
                                                 {AGE_OPTIONS.map(age => <option key={age.value} value={age.value}>{age.label}</option>)}
                                             </select>
                                         </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
                                     </div>
 
                                     <button

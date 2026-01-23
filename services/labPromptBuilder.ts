@@ -32,6 +32,12 @@
  * - 겨울 악세서리 적용 시 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환
  * - Off-shoulder tight-fitting long-sleeve 스타일 강제 적용
  * - 쇄골과 어깨라인 강조로 여성스러움 극대화
+ *
+ * v3.7.4 업데이트 (2026-01-23):
+ * - POV 샷 규칙 명확화: 화면에 보이는 캐릭터만 프롬프트에 포함
+ * - POV 샷에서 시점 주인공(카메라 역할) 제외 규칙 강조
+ * - 반반 이미지 생성 문제 해결 (캐릭터 중복 방지)
+ * - 체크리스트에 POV 검증 항목 2개 추가
  */
 
 import { UNIFIED_OUTFIT_LIST } from '../constants';
@@ -1382,6 +1388,40 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
 ⚠️ **필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
 ⚠️ **금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용
 
+## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️ 매우 중요!
+
+POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
+
+**필수 규칙:**
+1. ✅ **화면에 보이는 캐릭터만 longPrompt에 포함**
+   - "지영의 시선에서 캐디가 웃으며" → 프롬프트에는 **캐디만** 포함
+   - "준호가 보는 앞에서 혜경이 걷는" → 프롬프트에는 **혜경만** 포함
+
+2. ❌ **시점의 주인공(카메라 역할)은 절대 프롬프트에 포함 금지**
+   - "지영의 시선" → 지영은 카메라이므로 프롬프트에서 완전히 제외
+   - 지영의 identity, hair, body, outfit 모두 제외
+
+3. ✅ **POV 대상 캐릭터는 카메라를 바라봄**
+   - "looking at camera (POV target)" 필수
+   - "looking away from camera" 사용 금지
+
+**올바른 예시:**
+\`\`\`
+한글: "지영의 시선에서 캐디가 손을 흔들며 인사하는 POV 샷"
+영문 longPrompt: "unfiltered raw photograph..., first-person POV shot, A stunning Korean woman in her early 20s (캐디만!), high-bun hairstyle, ..., waving hand, looking at camera (POV target), ..."
+\`\`\`
+
+**잘못된 예시 (절대 금지):**
+\`\`\`
+❌ "A stunning Korean woman in her 40s (지영), POV shot, A stunning Korean woman in her early 20s (캐디)..."
+→ 지영이 POV 시점 주인공이므로 프롬프트에서 완전히 제외해야 함!
+→ 이렇게 하면 반반 이미지 생성됨!
+\`\`\`
+
+**투샷/쓰리샷과의 차이:**
+- 투샷/쓰리샷: 여러 캐릭터가 화면에 함께 보임 → 모두 프롬프트에 포함
+- POV 샷: 한 캐릭터의 시점 → 화면에 보이는 캐릭터만 포함
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ⚠️ 출력 형식 (JSON)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1471,10 +1511,12 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
 14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
 15. ✅ 배경 문구가 장면 전환 없을 때 동일?
 16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
+17. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
+18. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
 
 **음성:**
-17. ✅ 모든 씬에 voiceType 지정?
-18. ✅ 작은따옴표 대사 있으면 lipSync 생성?
+19. ✅ 모든 씬에 voiceType 지정?
+20. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 `;
 };
 

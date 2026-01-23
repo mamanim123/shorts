@@ -17,6 +17,7 @@ import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
+import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { parseJsonFromText } from '../services/jsonParse';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
@@ -282,12 +283,29 @@ export const ShortsLabPanel: React.FC = () => {
     // ===========================================
     const {
         genres: labGenres,
+        backups: labGenreBackups,
         loading: genresLoading,
         addGenre,
         updateGenre,
         deleteGenre,
-        reset: resetGenres
+        reset: resetGenres,
+        createBackup,
+        restoreBackup,
+        deleteBackup,
+        renameBackup,
+        updateBackupContent
     } = useShortsLabGenreManager();
+    const {
+        rules: labPromptRules,
+        backups: labPromptRuleBackups,
+        updateRules: updatePromptRules,
+        resetRules: resetPromptRules,
+        createBackup: createPromptRulesBackup,
+        restoreBackup: restorePromptRulesBackup,
+        deleteBackup: deletePromptRulesBackup,
+        renameBackup: renamePromptRulesBackup,
+        updateBackupContent: updatePromptRulesBackupContent
+    } = useShortsLabPromptRulesManager();
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
@@ -2361,6 +2379,9 @@ export const ShortsLabPanel: React.FC = () => {
             {showGenreModal && (
                 <GenreManagementModal
                     genres={labGenres}
+                    backups={labGenreBackups}
+                    promptRules={labPromptRules}
+                    promptRuleBackups={labPromptRuleBackups}
                     onClose={() => {
                         setShowGenreModal(false);
                     }}
@@ -2379,6 +2400,54 @@ export const ShortsLabPanel: React.FC = () => {
                     onReset={async () => {
                         await resetGenres();
                         showToast(`Genres reset to default.`, 'success');
+                    }}
+                    onBackupCreate={async (name) => {
+                        await createBackup(name);
+                        showToast('장르 백업이 저장되었습니다.', 'success');
+                    }}
+                    onBackupRestore={async (id) => {
+                        await restoreBackup(id);
+                        showToast('백업에서 장르를 복구했습니다.', 'success');
+                    }}
+                    onBackupDelete={async (id) => {
+                        await deleteBackup(id);
+                        showToast('백업이 삭제되었습니다.', 'success');
+                    }}
+                    onBackupRename={async (id, name) => {
+                        await renameBackup(id, name);
+                        showToast('백업 이름이 변경되었습니다.', 'success');
+                    }}
+                    onBackupEdit={async (id, genresInput) => {
+                        await updateBackupContent(id, genresInput);
+                        showToast('백업 내용이 저장되었습니다.', 'success');
+                    }}
+                    onPromptRulesSave={async (rulesInput) => {
+                        await updatePromptRules(rulesInput);
+                        showToast('프롬프트 규칙이 저장되었습니다.', 'success');
+                    }}
+                    onPromptRulesReset={async () => {
+                        await resetPromptRules();
+                        showToast('프롬프트 규칙이 기본값으로 초기화되었습니다.', 'success');
+                    }}
+                    onPromptRulesBackupCreate={async (name) => {
+                        await createPromptRulesBackup(name);
+                        showToast('프롬프트 규칙 백업이 저장되었습니다.', 'success');
+                    }}
+                    onPromptRulesBackupRestore={async (id) => {
+                        await restorePromptRulesBackup(id);
+                        showToast('프롬프트 규칙을 백업에서 복구했습니다.', 'success');
+                    }}
+                    onPromptRulesBackupDelete={async (id) => {
+                        await deletePromptRulesBackup(id);
+                        showToast('프롬프트 규칙 백업이 삭제되었습니다.', 'success');
+                    }}
+                    onPromptRulesBackupRename={async (id, name) => {
+                        await renamePromptRulesBackup(id, name);
+                        showToast('백업 이름이 변경되었습니다.', 'success');
+                    }}
+                    onPromptRulesBackupEdit={async (id, rulesInput) => {
+                        await updatePromptRulesBackupContent(id, rulesInput);
+                        showToast('백업 내용이 저장되었습니다.', 'success');
                     }}
                 />
             )}
@@ -2442,21 +2511,62 @@ const ToggleItem: React.FC<ToggleItemProps> = ({ checked, onChange, label, descr
 
 interface GenreManagementModalProps {
     genres: LabGenreGuidelineEntry[];
+    backups: {
+        id: string;
+        name: string;
+        createdAt: string;
+        genres: LabGenreGuidelineEntry[];
+    }[];
+    promptRules: unknown;
+    promptRuleBackups: {
+        id: string;
+        name: string;
+        createdAt: string;
+        rules: unknown;
+    }[];
     onClose: () => void;
     onAdd: (genre: LabGenreGuidelineEntry) => Promise<void>;
     onUpdate: (id: string, updates: Partial<LabGenreGuideline>) => Promise<void>;
     onDelete: (id: string) => Promise<void>;
     onReset: () => Promise<void>;
+    onBackupCreate: (name?: string) => Promise<void>;
+    onBackupRestore: (id: string) => Promise<void>;
+    onBackupDelete: (id: string) => Promise<void>;
+    onBackupRename: (id: string, name: string) => Promise<void>;
+    onBackupEdit: (id: string, genresInput: unknown) => Promise<void>;
+    onPromptRulesSave: (rulesInput: unknown) => Promise<void>;
+    onPromptRulesReset: () => Promise<void>;
+    onPromptRulesBackupCreate: (name?: string) => Promise<void>;
+    onPromptRulesBackupRestore: (id: string) => Promise<void>;
+    onPromptRulesBackupDelete: (id: string) => Promise<void>;
+    onPromptRulesBackupRename: (id: string, name: string) => Promise<void>;
+    onPromptRulesBackupEdit: (id: string, rulesInput: unknown) => Promise<void>;
 }
 
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     genres,
+    backups,
+    promptRules,
+    promptRuleBackups,
     onClose,
     onAdd,
     onUpdate,
     onDelete,
-    onReset
+    onReset,
+    onBackupCreate,
+    onBackupRestore,
+    onBackupDelete,
+    onBackupRename,
+    onBackupEdit,
+    onPromptRulesSave,
+    onPromptRulesReset,
+    onPromptRulesBackupCreate,
+    onPromptRulesBackupRestore,
+    onPromptRulesBackupDelete,
+    onPromptRulesBackupRename,
+    onPromptRulesBackupEdit
 }) => {
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
@@ -2500,6 +2610,24 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         badTwistExamples: []
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [backupName, setBackupName] = useState('');
+    const [backupEdits, setBackupEdits] = useState<Record<string, string>>({});
+    const [editingBackupId, setEditingBackupId] = useState<string | null>(null);
+    const [backupEditText, setBackupEditText] = useState('');
+    const [backupEditError, setBackupEditError] = useState<string | null>(null);
+    const [rulesEditText, setRulesEditText] = useState('');
+    const [rulesEditError, setRulesEditError] = useState<string | null>(null);
+    const [rulesDirty, setRulesDirty] = useState(false);
+    const [rulesBackupName, setRulesBackupName] = useState('');
+    const [rulesBackupEdits, setRulesBackupEdits] = useState<Record<string, string>>({});
+    const [editingRulesBackupId, setEditingRulesBackupId] = useState<string | null>(null);
+    const [rulesBackupEditText, setRulesBackupEditText] = useState('');
+    const [rulesBackupEditError, setRulesBackupEditError] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (rulesDirty) return;
+        setRulesEditText(JSON.stringify(promptRules, null, 2));
+    }, [promptRules, rulesDirty]);
 
     const handleStartEdit = (genre: LabGenreGuidelineEntry) => {
         setSelectedGenre(genre);
@@ -2572,6 +2700,174 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
+    const handleBackupCreate = async () => {
+        try {
+            await onBackupCreate(backupName);
+            setBackupName('');
+        } catch (err) {
+            console.error('Failed to create backup:', err);
+            alert('백업 생성에 실패했습니다.');
+        }
+    };
+
+    const handleBackupRestore = async (id: string) => {
+        if (!window.confirm('이 백업으로 장르를 복구하시겠습니까? 현재 장르 목록이 덮어씌워집니다.')) return;
+        try {
+            await onBackupRestore(id);
+        } catch (err) {
+            console.error('Failed to restore backup:', err);
+            alert('백업 복구에 실패했습니다.');
+        }
+    };
+
+    const handleBackupDelete = async (id: string) => {
+        if (!window.confirm('이 백업을 삭제하시겠습니까?')) return;
+        try {
+            await onBackupDelete(id);
+        } catch (err) {
+            console.error('Failed to delete backup:', err);
+            alert('백업 삭제에 실패했습니다.');
+        }
+    };
+
+    const handleBackupRename = async (id: string) => {
+        const name = (backupEdits[id] || '').trim();
+        if (!name) {
+            alert('백업 이름을 입력해주세요.');
+            return;
+        }
+        try {
+            await onBackupRename(id, name);
+            setBackupEdits(prev => ({ ...prev, [id]: name }));
+        } catch (err) {
+            console.error('Failed to rename backup:', err);
+            alert('백업 이름 변경에 실패했습니다.');
+        }
+    };
+
+    const handleOpenBackupEditor = (backupId: string) => {
+        const backup = backups.find(item => item.id === backupId);
+        if (!backup) return;
+        setEditingBackupId(backupId);
+        setBackupEditText(JSON.stringify(backup.genres, null, 2));
+        setBackupEditError(null);
+    };
+
+    const handleCloseBackupEditor = () => {
+        setEditingBackupId(null);
+        setBackupEditText('');
+        setBackupEditError(null);
+    };
+
+    const handleBackupSaveContent = async () => {
+        if (!editingBackupId) return;
+        try {
+            const parsed = JSON.parse(backupEditText);
+            await onBackupEdit(editingBackupId, parsed);
+            handleCloseBackupEditor();
+        } catch (err) {
+            console.error('Failed to save backup content:', err);
+            setBackupEditError('JSON 형식이 올바르지 않습니다.');
+        }
+    };
+
+    const handlePromptRulesSave = async () => {
+        try {
+            const parsed = JSON.parse(rulesEditText);
+            await onPromptRulesSave(parsed);
+            setRulesDirty(false);
+            setRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to save prompt rules:', err);
+            setRulesEditError('JSON 형식이 올바르지 않습니다.');
+        }
+    };
+
+    const handlePromptRulesReset = async () => {
+        if (!window.confirm('프롬프트 규칙을 기본값으로 초기화하시겠습니까?')) return;
+        try {
+            await onPromptRulesReset();
+            setRulesDirty(false);
+            setRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to reset prompt rules:', err);
+            alert('프롬프트 규칙 초기화에 실패했습니다.');
+        }
+    };
+
+    const handlePromptRulesBackupCreate = async () => {
+        try {
+            await onPromptRulesBackupCreate(rulesBackupName);
+            setRulesBackupName('');
+        } catch (err) {
+            console.error('Failed to create prompt rules backup:', err);
+            alert('프롬프트 규칙 백업 생성에 실패했습니다.');
+        }
+    };
+
+    const handlePromptRulesBackupRestore = async (id: string) => {
+        if (!window.confirm('이 백업으로 프롬프트 규칙을 복구하시겠습니까?')) return;
+        try {
+            await onPromptRulesBackupRestore(id);
+            setRulesDirty(false);
+            setRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to restore prompt rules backup:', err);
+            alert('프롬프트 규칙 백업 복구에 실패했습니다.');
+        }
+    };
+
+    const handlePromptRulesBackupDelete = async (id: string) => {
+        if (!window.confirm('이 백업을 삭제하시겠습니까?')) return;
+        try {
+            await onPromptRulesBackupDelete(id);
+        } catch (err) {
+            console.error('Failed to delete prompt rules backup:', err);
+            alert('프롬프트 규칙 백업 삭제에 실패했습니다.');
+        }
+    };
+
+    const handlePromptRulesBackupRename = async (id: string) => {
+        const name = (rulesBackupEdits[id] || '').trim();
+        if (!name) {
+            alert('백업 이름을 입력해주세요.');
+            return;
+        }
+        try {
+            await onPromptRulesBackupRename(id, name);
+            setRulesBackupEdits(prev => ({ ...prev, [id]: name }));
+        } catch (err) {
+            console.error('Failed to rename prompt rules backup:', err);
+            alert('백업 이름 변경에 실패했습니다.');
+        }
+    };
+
+    const handleOpenPromptRulesBackupEditor = (backupId: string) => {
+        const backup = promptRuleBackups.find(item => item.id === backupId);
+        if (!backup) return;
+        setEditingRulesBackupId(backupId);
+        setRulesBackupEditText(JSON.stringify(backup.rules, null, 2));
+        setRulesBackupEditError(null);
+    };
+
+    const handleClosePromptRulesBackupEditor = () => {
+        setEditingRulesBackupId(null);
+        setRulesBackupEditText('');
+        setRulesBackupEditError(null);
+    };
+
+    const handleSavePromptRulesBackupContent = async () => {
+        if (!editingRulesBackupId) return;
+        try {
+            const parsed = JSON.parse(rulesBackupEditText);
+            await onPromptRulesBackupEdit(editingRulesBackupId, parsed);
+            handleClosePromptRulesBackupEditor();
+        } catch (err) {
+            console.error('Failed to save prompt rules backup content:', err);
+            setRulesBackupEditError('JSON 형식이 올바르지 않습니다.');
+        }
+    };
+
     const updateField = <K extends keyof LabGenreGuidelineEntry>(key: K, value: LabGenreGuidelineEntry[K]) => {
         setFormData(prev => ({ ...prev, [key]: value }));
     };
@@ -2622,9 +2918,38 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                     </button>
                 </div>
 
+                <div className="px-6 pt-4">
+                    <div className="inline-flex rounded-xl border border-slate-700 bg-slate-800/60 p-1">
+                        <button
+                            onClick={() => {
+                                setActiveTab('genres');
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'genres'
+                                ? 'bg-purple-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            장르 관리
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('rules');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'rules'
+                                ? 'bg-emerald-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            프롬프트 규칙
+                        </button>
+                    </div>
+                </div>
+
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
-                    {mode === 'list' && (
+                    {activeTab === 'genres' && mode === 'list' && (
                         <div className="space-y-4">
                             {/* Action buttons */}
                             <div className="flex gap-2 mb-4">
@@ -2642,6 +2967,87 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                     <RefreshCw className="w-4 h-4" />
                                     기본값으로 초기화
                                 </button>
+                            </div>
+
+                            {/* Backup manager */}
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-200">백업 관리</h3>
+                                        <p className="text-[11px] text-slate-500">최대 5개까지 저장됩니다. 초과 시 오래된 백업이 제거됩니다.</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col md:flex-row gap-2">
+                                    <input
+                                        type="text"
+                                        value={backupName}
+                                        onChange={(e) => setBackupName(e.target.value)}
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        placeholder="백업 이름 (비워두면 자동 생성)"
+                                    />
+                                    <button
+                                        onClick={handleBackupCreate}
+                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        백업 생성
+                                    </button>
+                                </div>
+                                {backups.length === 0 ? (
+                                    <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                ) : (
+                                    <div className="space-y-2">
+                                {backups.map((backup) => (
+                                            <div
+                                                key={backup.id}
+                                                className="flex flex-col md:flex-row md:items-center gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2"
+                                            >
+                                                <div className="flex-1 flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={backupEdits[backup.id] ?? backup.name}
+                                                            onChange={(e) =>
+                                                                setBackupEdits((prev) => ({ ...prev, [backup.id]: e.target.value }))
+                                                            }
+                                                            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                        />
+                                                        <button
+                                                            onClick={() => handleBackupRename(backup.id)}
+                                                            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md text-[11px] font-medium"
+                                                        >
+                                                            이름 저장
+                                                        </button>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500">
+                                                        {new Date(backup.createdAt).toLocaleString()}
+                                                        <span className="ml-2 text-slate-600">({backup.genres.length}개 장르)</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleOpenBackupEditor(backup.id)}
+                                                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-medium"
+                                                    >
+                                                        보기/편집
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBackupRestore(backup.id)}
+                                                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium"
+                                                    >
+                                                        복구
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBackupDelete(backup.id)}
+                                                        className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg text-xs font-medium"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Genre list */}
@@ -2694,7 +3100,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                         </div>
                     )}
 
-                    {(mode === 'edit' || mode === 'add') && (
+                    {activeTab === 'genres' && (mode === 'edit' || mode === 'add') && (
                         <div className="space-y-6">
                             {/* Back button */}
                             <button
@@ -2864,10 +3270,129 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                             </details>
                         </div>
                     )}
+
+                    {activeTab === 'rules' && (
+                        <div className="space-y-5">
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-200">프롬프트 규칙 편집</h3>
+                                        <p className="text-[11px] text-slate-500">JSON 수정 후 저장하면 즉시 적용됩니다.</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handlePromptRulesReset}
+                                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
+                                        >
+                                            기본값으로 초기화
+                                        </button>
+                                        <button
+                                            onClick={handlePromptRulesSave}
+                                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            저장
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea
+                                    value={rulesEditText}
+                                    onChange={(e) => {
+                                        setRulesEditText(e.target.value);
+                                        setRulesDirty(true);
+                                        setRulesEditError(null);
+                                    }}
+                                    rows={14}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                />
+                                {rulesEditError && (
+                                    <div className="text-xs text-rose-400">{rulesEditError}</div>
+                                )}
+                            </div>
+
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-200">프롬프트 규칙 백업</h3>
+                                        <p className="text-[11px] text-slate-500">최대 5개까지 저장됩니다.</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col md:flex-row gap-2">
+                                    <input
+                                        type="text"
+                                        value={rulesBackupName}
+                                        onChange={(e) => setRulesBackupName(e.target.value)}
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        placeholder="백업 이름 (비워두면 자동 생성)"
+                                    />
+                                    <button
+                                        onClick={handlePromptRulesBackupCreate}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        백업 생성
+                                    </button>
+                                </div>
+                                {promptRuleBackups.length === 0 ? (
+                                    <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {promptRuleBackups.map((backup) => (
+                                            <div
+                                                key={backup.id}
+                                                className="flex flex-col md:flex-row md:items-center gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2"
+                                            >
+                                                <div className="flex-1 flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={rulesBackupEdits[backup.id] ?? backup.name}
+                                                            onChange={(e) =>
+                                                                setRulesBackupEdits((prev) => ({ ...prev, [backup.id]: e.target.value }))
+                                                            }
+                                                            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                        />
+                                                        <button
+                                                            onClick={() => handlePromptRulesBackupRename(backup.id)}
+                                                            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md text-[11px] font-medium"
+                                                        >
+                                                            이름 저장
+                                                        </button>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500">
+                                                        {new Date(backup.createdAt).toLocaleString()}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleOpenPromptRulesBackupEditor(backup.id)}
+                                                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-medium"
+                                                    >
+                                                        보기/편집
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handlePromptRulesBackupRestore(backup.id)}
+                                                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium"
+                                                    >
+                                                        복구
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handlePromptRulesBackupDelete(backup.id)}
+                                                        className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg text-xs font-medium"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
-                {(mode === 'edit' || mode === 'add') && (
+                {activeTab === 'genres' && (mode === 'edit' || mode === 'add') && (
                     <div className="p-6 border-t border-slate-800 flex justify-end gap-3">
                         <button
                             onClick={() => {
@@ -2898,6 +3423,112 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                     </div>
                 )}
             </div>
+
+            {editingBackupId && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                    onClick={handleCloseBackupEditor}
+                >
+                    <div
+                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">백업 프롬프트 보기/편집</h3>
+                                <p className="text-xs text-slate-400">장르 가이드라인 JSON을 수정한 뒤 저장하세요.</p>
+                            </div>
+                            <button
+                                onClick={handleCloseBackupEditor}
+                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                            <textarea
+                                value={backupEditText}
+                                onChange={(e) => {
+                                    setBackupEditText(e.target.value);
+                                    setBackupEditError(null);
+                                }}
+                                rows={16}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                            />
+                            {backupEditError && (
+                                <div className="text-xs text-rose-400">{backupEditError}</div>
+                            )}
+                        </div>
+                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
+                            <button
+                                onClick={handleCloseBackupEditor}
+                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
+                            >
+                                닫기
+                            </button>
+                            <button
+                                onClick={handleBackupSaveContent}
+                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
+                            >
+                                저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {editingRulesBackupId && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                    onClick={handleClosePromptRulesBackupEditor}
+                >
+                    <div
+                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">프롬프트 규칙 백업 보기/편집</h3>
+                                <p className="text-xs text-slate-400">JSON을 수정한 뒤 저장하세요.</p>
+                            </div>
+                            <button
+                                onClick={handleClosePromptRulesBackupEditor}
+                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                            <textarea
+                                value={rulesBackupEditText}
+                                onChange={(e) => {
+                                    setRulesBackupEditText(e.target.value);
+                                    setRulesBackupEditError(null);
+                                }}
+                                rows={16}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                            />
+                            {rulesBackupEditError && (
+                                <div className="text-xs text-rose-400">{rulesBackupEditError}</div>
+                            )}
+                        </div>
+                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
+                            <button
+                                onClick={handleClosePromptRulesBackupEditor}
+                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
+                            >
+                                닫기
+                            </button>
+                            <button
+                                onClick={handleSavePromptRulesBackupContent}
+                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
+                            >
+                                저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

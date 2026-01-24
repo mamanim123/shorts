@@ -135,6 +135,147 @@ export interface LabGenreGuidelineEntry extends LabGenreGuideline {
   id: string;
 }
 
+// ============================================
+// 장르별 가이드라인 정의
+// ============================================
+
+export const LAB_GENRE_GUIDELINES: Record<string, LabGenreGuideline> = {
+  'comedy-humor': {
+    name: '코미디/유머',
+    description: '웃긴 상황과 반전',
+    emotionCurve: '평온 → 당황 → 폭소',
+    structure: `[HOOK] 황당한 일 예고
+[SETUP] 평범한 시작
+[BUILD-UP] 상황 꼬임
+[CLIMAX] 터지는 순간
+[TWIST] 황당한 반전`,
+    killerPhrases: [
+      '이게 뭐야 진짜',
+      '아 진짜 미치겠네',
+      '헐, 뭐라고?',
+      '알고보니...',
+      '근데 문제는',
+      '하필이면'
+    ],
+    supportingCharacterPhrasePatterns: [],
+    bodyReactions: [
+      '눈이 커지며',
+      '입을 벌리고',
+      '손으로 입을 막으며'
+    ],
+    forbiddenPatterns: [
+      '얼굴이 빨개졌다',
+      '심장이 터질 것 같았다',
+      '나이스샷 오해',
+      '깜짝 파티 결말'
+    ],
+    goodTwistExamples: [],
+    supportingCharacterTwistPatterns: [],
+    badTwistExamples: []
+  },
+
+  'romance-flutter': {
+    name: '로맨스/설렘',
+    description: '설레는 감정과 순간',
+    emotionCurve: '평온 → 설렘 → 두근거림',
+    structure: `[HOOK] 평소와 다른 느낌
+[SETUP] 일상적 만남
+[BUILD-UP] 거리 좁혀짐
+[CLIMAX] 의미심장한 순간
+[TWIST] 혼란/여운`,
+    killerPhrases: [
+      '오늘따라 왜 이러지',
+      '시선을 어디 둘지 몰랐어',
+      '손끝이 미세하게 떨렸지',
+      '나만 이런 건가',
+      '괜히 의식됐어'
+    ],
+    supportingCharacterPhrasePatterns: [],
+    bodyReactions: [
+      '눈을 피하며',
+      '손끝이 떨리며',
+      '목소리가 작아지며'
+    ],
+    forbiddenPatterns: [
+      '심장이 쿵쾅쿵쾅',
+      '얼굴이 달아올랐다',
+      '첫눈에 반했다',
+      '운명 같은 만남'
+    ],
+    goodTwistExamples: [],
+    supportingCharacterTwistPatterns: [],
+    badTwistExamples: []
+  },
+
+  'affair-suspicion': {
+    name: '불륜/외도 의심',
+    description: '의심과 오해, 건전한 반전',
+    emotionCurve: '의심 → 증폭 → 해소',
+    structure: `[HOOK] 충격적 발견
+[SETUP] 최근 정황
+[BUILD-UP] 의심 증폭
+[CLIMAX] 대면/추궁
+[TWIST] 건전한 반전`,
+    killerPhrases: [
+      '이거 뭐야?',
+      '요즘 좀 이상하지 않아?',
+      '솔직히 말해봐',
+      '내가 다 알아',
+      '알고보니...',
+      '뭔가 숨기는 거 있지'
+    ],
+    supportingCharacterPhrasePatterns: [],
+    bodyReactions: [
+      '눈을 피하며',
+      '말을 더듬으며',
+      '땀을 흘리며'
+    ],
+    forbiddenPatterns: [
+      '실제 불륜 확정',
+      '이혼 결심',
+      '폭력적 대응',
+      '영수증 발견 패턴'
+    ],
+    goodTwistExamples: [],
+    supportingCharacterTwistPatterns: [],
+    badTwistExamples: []
+  },
+
+  'hit-twist-spicy': {
+    name: '대박 반전 (매운맛)',
+    description: '오해 유발 후 건전한 반전',
+    emotionCurve: '긴장 → 오해 극대화 → 해소',
+    structure: `[HOOK] 오해 유발 대사
+[SETUP] 아슬아슬한 상황
+[BUILD-UP] 오해 극대화
+[CLIMAX] 목격/등장
+[TWIST] 건전한 진실`,
+    killerPhrases: [
+      '조금만 더...',
+      '너무 꽉 조여요',
+      '금방 끝나요',
+      '누가 보면 어떡해',
+      '알고보니...',
+      '오해예요!'
+    ],
+    supportingCharacterPhrasePatterns: [],
+    bodyReactions: [
+      '얼굴이 붉어지며',
+      '당황하며',
+      '소리를 지르며'
+    ],
+    forbiddenPatterns: [
+      '실제 성적 상황',
+      '노출 묘사',
+      '신체 접촉 직접 묘사',
+      '장갑 끼워주기 패턴'
+    ],
+    goodTwistExamples: [],
+    supportingCharacterTwistPatterns: [],
+    badTwistExamples: []
+  }
+};
+
 /**
  * 겨울용 타이트 긴팔 변환 (v3.9.0)
  */
@@ -429,6 +570,29 @@ export const pickFemaleOutfit = (genre: string, topic: string = '', exclude: str
 export const applyWinterItems = (outfit: string, outerwear: string, accessories: string[]): string => {
   const styled = convertToTightLongSleeveWithShoulderLine(outfit);
   return `${styled}, accessorized with ${accessories.join(', ')}`;
+};
+
+/**
+ * 프롬프트에서 네거티브 프롬프트 부분을 추출하고 분리
+ * @param prompt 전체 프롬프트 문자열
+ * @returns { cleaned: 네거티브가 제거된 클린 프롬프트, negative: 추출된 네거티브 프롬프트 }
+ */
+export const extractNegativePrompt = (prompt: string): { cleaned: string; negative: string } => {
+  if (!prompt) return { cleaned: '', negative: '' };
+
+  const trimmed = prompt.trim();
+
+  // "NOT"으로 시작하는 부분을 찾아서 분리
+  const notIndex = trimmed.search(/\bNOT\s+/i);
+
+  if (notIndex === -1) {
+    return { cleaned: trimmed, negative: '' };
+  }
+
+  const cleaned = trimmed.slice(0, notIndex).trim().replace(/,\s*$/, '');
+  const negative = trimmed.slice(notIndex).trim();
+
+  return { cleaned, negative };
 };
 
 export const validateAndFixPrompt = (prompt: string): string => {

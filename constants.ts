@@ -15,7 +15,7 @@ export const CHARACTER_PRESETS = {
     name: '지영',
     role: 'Female Lead',
     hair: 'Long soft-wave hairstyle',
-    body: 'Voluptuous hourglass figure with confident presence',
+    body: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
     gender: 'FEMALE'
   },
   WOMAN_B: {
@@ -23,7 +23,7 @@ export const CHARACTER_PRESETS = {
     name: '혜경',
     role: 'Female Sub',
     hair: 'Short chic bob cut',
-    body: 'Petite frame with surprising curves',
+    body: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves',
     gender: 'FEMALE'
   },
   WOMAN_C: {
@@ -31,7 +31,15 @@ export const CHARACTER_PRESETS = {
     name: '미숙',
     role: 'Female Observer',
     hair: 'Low ponytail',
-    body: 'Athletic toned body with calm demeanor',
+    body: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust',
+    gender: 'FEMALE'
+  },
+  WOMAN_D: {
+    id: 'WomanD',
+    name: '캐디',
+    role: 'Caddy / Supporter',
+    hair: 'High-bun hairstyle (updo)',
+    body: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
     gender: 'FEMALE'
   },
   MAN_A: {
@@ -67,7 +75,7 @@ export const getCharacterById = (id: string) => {
 
 // Helper to get all female characters
 export const getFemaleCharacters = () => {
-  return [CHARACTER_PRESETS.WOMAN_A, CHARACTER_PRESETS.WOMAN_B, CHARACTER_PRESETS.WOMAN_C];
+  return [CHARACTER_PRESETS.WOMAN_A, CHARACTER_PRESETS.WOMAN_B, CHARACTER_PRESETS.WOMAN_C, CHARACTER_PRESETS.WOMAN_D];
 };
 
 // Helper to get all male characters
@@ -364,7 +372,7 @@ Your priority is "Refined Elegance", "High-End Visuals", "Tailored & Flattering 
 - 등장 규칙: 여성 주인공이 필요한 모든 씬에 등장
 
 [외형 고정]
-- 체형: 볼륨감 있는 아워글래스 (Voluptuous hourglass figure)
+- 체형: 압도적으로 봉긋하고 탄탄한 최상급 실루엣 (Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure)
 - 전체 인상: 성숙함, 우아함, 주도적인 존재감 (Confident presence)
 
 [헤어 고정]
@@ -384,7 +392,7 @@ Your priority is "Refined Elegance", "High-End Visuals", "Tailored & Flattering 
 - 등장 규칙: 여성 캐릭터가 2명 이상일 경우 활성화
 
 [외형 고정]
-- 체형: 아담하고 작으며 귀여엽지만 체형에 비해 글래머러스한 프레임 (Petite frame with surprising curves)
+- 체형: 아담하고 슬림하며 체형에 비해 압도적으로 풍만하고 봉긋한 곡선 (Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves)
 - 전체 인상: 솔직하고 긴장이 드러나는 분위기
 
 [헤어 고정]
@@ -404,7 +412,7 @@ Your priority is "Refined Elegance", "High-End Visuals", "Tailored & Flattering 
 - 등장 규칙: 여성 캐릭터가 3명일 경우에만 활성화
 
 [외형 고정]
-- 체형: 운동으로 다져진 탄탄한 체형 글래머러스 (Athletic toned body)
+- 체형: 우아하게 탄탄하고 슬림한 운동형 바디, 가슴은 봉긋하게 솟아 있는 실루엣 (Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust)
 - 전체 인상: 차분하고 안정적인 인상
 
 [헤어 고정]
@@ -595,9 +603,9 @@ Do not change their clothes, hair, or style.
 [Prompt Template Structure - UPDATED]
 **START with**: "A stunning Korean woman in her [Target Age], [Slot ID], High-End Luxury Golf Aesthetic, [Dynamic Action/Candid Moment],"
 **INSERT Slot Details**:
-  - Slot Woman A: "Long polished soft-wave hairstyle, voluptuous hourglass figure, confident presence"
-  - Slot Woman B: "Short chic bob cut, petite frame with surprising curves, expressive reactions"
-  - Slot Woman C: "Low ponytail, athletic toned body, calm observer demeanor"
+  - Slot Woman A: "Extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, confident presence"
+  - Slot Woman B: "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, expressive reactions"
+  - Slot Woman C: "Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor"
 **ADD Outfit (CRITICAL - VERBATIM)**: Copy the EXACT outfit description from [LOCKED VARIABLES]. Place outfit description IMMEDIATELY after slot details. Example: "wearing [EXACT OUTFIT NAME FROM INPUT]"
 **ADD Nationality (CRITICAL - NEVER OMIT)**: EVERY character MUST be explicitly described as "Korean". 
   - Single woman: "A stunning Korean woman in her [Age]"
@@ -999,7 +1007,7 @@ You MUST use the exact Outfit descriptions provided in the Locked Variables.
 - 등장 규칙: 여성 주인공이 필요한 모든 씬에 등장
 
 [외형 고정]
-- 체형: 볼륨감 있는 아워글래스 (Voluptuous hourglass figure)
+- 체형: 압도적으로 봉긋하고 탄탄한 최상급 실루엣 (Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure)
 - 전체 인상: 성숙함, 우아함, 주도적인 존재감 (Confident presence)
 
 [헤어 고정]
@@ -1009,12 +1017,12 @@ You MUST use the exact Outfit descriptions provided in the Locked Variables.
 ---
 
 ### 👩 Slot Woman B — 여성 서브 / 감정 반응
-(대표 이름: 이여사)
+(대표 이름: 혜경)
 - 역할: 여성 서브 캐릭터, 감정 반응 담당
 - 등장 규칙: 여성 캐릭터가 2명 이상일 경우 활성화
 
 [외형 고정]
-- 체형: 아담하고 작으며 귀여운 프레임 (Petite frame with surprising curves)
+- 체형: 아담하고 슬림하며 체형에 비해 압도적으로 풍만하고 봉긋한 곡선 (Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves)
 - 전체 인상: 솔직하고 긴장이 드러나는 분위기
 
 [헤어 고정]
@@ -1024,17 +1032,32 @@ You MUST use the exact Outfit descriptions provided in the Locked Variables.
 ---
 
 ### 👩 Slot Woman C — 여성 관찰자 / 균형 축
-(대표 이름: 박여사)
+(대표 이름: 미숙)
 - 역할: 여성 서브 캐릭터, 관찰자 포지션
 - 등장 규칙: 여성 캐릭터가 3명일 경우에만 활성화
 
 [외형 고정]
-- 체형: 운동으로 다져진 탄탄한 체형 (Athletic toned body)
+- 체형: 우아하게 탄탄하고 슬림한 운동형 바디, 가슴은 봉긋하게 솟아 있는 실루엣 (Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust)
 - 전체 인상: 차분하고 안정적인 인상
 
 [헤어 고정]
 - 로우 포니테일 (Low ponytail)
 - 단정하고 깔끔한 스타일을 모든 씬에서 유지
+
+---
+
+### 👩 Slot Woman D — 여성 조력자 / 캐디
+(대표 이름: 지수)
+- 역할: 캐디 또는 조력자 캐릭터
+- 등장 규칙: 캐디 설정이 필요하거나 여성 캐릭터 4명 시 활성화
+
+[외형 고정]
+- 체형: 압도적으로 봉긋하고 탄탄한 최상급 실루엣 (Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure)
+- 전체 인상: 밝고 건강한 젊은 에너지 (Youthful energy)
+
+[헤어 고정]
+- 하이 번 헤어 (High-bun hairstyle)
+- 깔끔하게 올린 머리 스타일 유지
 
 ---
 
@@ -1163,9 +1186,9 @@ Do not change their clothes, hair, or style.
 [Prompt Template Structure - UPDATED]
 **START with**: "A stunning Korean woman in her [Target Age], [Slot ID], High-End Luxury Golf Aesthetic, [Dynamic Action/Candid Moment],"
 **INSERT Slot Details**:
-  - Slot Woman A: "Long polished soft-wave hairstyle, voluptuous hourglass figure, confident presence"
-  - Slot Woman B: "Short chic bob cut, petite frame with surprising curves, expressive reactions"
-  - Slot Woman C: "Low ponytail, athletic toned body, calm observer demeanor"
+  - Slot Woman A: "Extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, confident presence"
+  - Slot Woman B: "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, expressive reactions"
+  - Slot Woman C: "Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor"
 **ADD Outfit (CRITICAL - MUST BE EXACT)**: "wearing [EXACT OUTFIT FROM LOCKED VARIABLES]" - Copy the outfit description word-for-word. Do NOT paraphrase or shorten. Place IMMEDIATELY after slot details.
 **ADD Nationality (CRITICAL - NEVER OMIT)**: EVERY character MUST be explicitly described as "Korean". 
   - Single woman: "A stunning Korean woman in her [Age]"
@@ -1310,7 +1333,7 @@ You MUST use the exact Outfit descriptions provided in the Locked Variables.
 - 등장 규칙: 여성 주인공이 필요한 모든 씬에 등장
 
 [외형 고정]
-- 체형: 볼륨감 있는 아워글래스 (Voluptuous hourglass figure)
+- 체형: 압도적으로 봉긋하고 탄탄한 최상급 실루엣 (Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure)
 - 전체 인상: 성숙함, 우아함, 주도적인 존재감 (Confident presence)
 
 [헤어 고정]
@@ -1320,12 +1343,12 @@ You MUST use the exact Outfit descriptions provided in the Locked Variables.
 ---
 
 ### 👩 Slot Woman B — 여성 서브 / 감정 반응
-(대표 이름: 이여사)
+(대표 이름: 혜경)
 - 역할: 여성 서브 캐릭터, 감정 반응 담당
 - 등장 규칙: 여성 캐릭터가 2명 이상일 경우 활성화
 
 [외형 고정]
-- 체형: 아담하고 작으며 귀여운 프레임 (Petite frame with surprising curves)
+- 체형: 아담하고 슬림하며 체형에 비해 압도적으로 풍만하고 봉긋한 곡선 (Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves)
 - 전체 인상: 솔직하고 긴장이 드러나는 분위기
 
 [헤어 고정]
@@ -1335,17 +1358,32 @@ You MUST use the exact Outfit descriptions provided in the Locked Variables.
 ---
 
 ### 👩 Slot Woman C — 여성 관찰자 / 균형 축
-(대표 이름: 박여사)
+(대표 이름: 미숙)
 - 역할: 여성 서브 캐릭터, 관찰자 포지션
 - 등장 규칙: 여성 캐릭터가 3명일 경우에만 활성화
 
 [외형 고정]
-- 체형: 운동으로 다져진 탄탄한 체형 (Athletic toned body)
+- 체형: 우아하게 탄탄하고 슬림한 운동형 바디, 가슴은 봉긋하게 솟아 있는 실루엣 (Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust)
 - 전체 인상: 차분하고 안정적인 인상
 
 [헤어 고정]
 - 로우 포니테일 (Low ponytail)
 - 단정하고 깔끔한 스타일을 모든 씬에서 유지
+
+---
+
+### 👩 Slot Woman D — 여성 조력자 / 캐디
+(대표 이름: 지수)
+- 역할: 캐디 또는 조력자 캐릭터
+- 등장 규칙: 캐디 설정이 필요하거나 여성 캐릭터 4명 시 활성화
+
+[외형 고정]
+- 체형: 압도적으로 봉긋하고 탄탄한 최상급 실루엣 (Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure)
+- 전체 인상: 밝고 건강한 젊은 에너지 (Youthful energy)
+
+[헤어 고정]
+- 하이 번 헤어 (High-bun hairstyle)
+- 깔끔하게 올린 머리 스타일 유지
 
 ---
 
@@ -1474,9 +1512,10 @@ Do not change their clothes, hair, or style.
 [Prompt Template Structure - UPDATED]
 **START with**: "A stunning Korean character in their [Target Age], [Slot ID], High-End Luxury Golf Aesthetic, [Dynamic Action/Candid Moment],"
 **INSERT Slot Details**:
-  - Slot Woman A: "Long polished soft-wave hairstyle, voluptuous hourglass figure, confident presence"
-  - Slot Woman B: "Short chic bob cut, petite frame with surprising curves, expressive reactions"
-  - Slot Woman C: "Low ponytail, athletic toned body, calm observer demeanor"
+  - Slot Woman A: "Extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, confident presence"
+  - Slot Woman B: "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, expressive reactions"
+  - Slot Woman C: "Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor"
+  - Slot Woman D: "Extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, youthful energy"
   - Slot Man A: "Short neat hairstyle, fit and athletic build, dandy presence"
 **ADD Outfit (CRITICAL - MUST BE EXACT)**: "wearing [EXACT OUTFIT FROM LOCKED VARIABLES]" - Copy the outfit description word-for-word. Do NOT paraphrase or shorten. Place IMMEDIATELY after slot details.
 **ADD Nationality (CRITICAL - NEVER OMIT)**: EVERY character MUST be explicitly described as "Korean". 

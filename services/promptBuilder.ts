@@ -139,13 +139,13 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
 - 문장 수에 집착하지 말고 8~15문장 사이에서 최고의 몰입감을 만드세요.
 
 [2. CHARACTER SLOT SYSTEM - 외형 및 성격 고정]
-- **WomanA (지영, Main)**: Stunning Korean woman in her {{TARGET_LABEL}}, slim hourglass figure with toned body, full bust with slim waist, perfectly managed sophisticated look, long soft-wave hairstyle.
+- **WomanA (지영, Main)**: Stunning Korean woman in her {{TARGET_LABEL}}, extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, perfectly managed sophisticated look, long soft-wave hairstyle.
   - 성격: 겉으로는 차분하고 여유롭지만 속으로는 호기심과 의심이 많음. 상황을 파악하려는 욕구가 강함.
-- **WomanB (혜경, Sub)**: Stunning Korean woman, slim petite frame with full bust, short chic bob cut, sensual and alluring aura.
+- **WomanB (혜경, Sub)**: Stunning Korean woman, petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, short chic bob cut, sensual and alluring aura.
   - 성격: 솔직하고 표현력이 풍부함. 감정을 숨기지 못하고 리액션이 큼.
-- **WomanC (미숙, Observer)**: Stunning Korean woman, athletic toned body with elegant curves, low ponytail, calm yet provocative demeanor.
+- **WomanC (미숙, Observer)**: Stunning Korean woman, gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, low ponytail, calm yet provocative demeanor.
   - 성격: 관찰력이 뛰어나고 냉정함. 상황을 조용히 지켜보다 결정적 순간에 한마디 던짐.
-- **WomanD (Caddy)**: Stunning young Korean woman (early 20s), high-bun hairstyle (updo), slim athletic figure with feminine curves, youthful radiant beauty, wearing a stylish feminine outfit (not a caddy uniform).
+- **WomanD (Caddy)**: Stunning young Korean woman (early 20s), high-bun hairstyle (updo), extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, youthful radiant beauty, wearing a stylish feminine outfit (not a caddy uniform).
 - **ManA (준호, Lead)**: Dandy Korean man, short neat hairstyle, fit athletic build. 성격: 매력적이지만 어딘가 수상한 구석이 있음.
 - **ManB (민수, Sub)**: Dandy Korean man, clean short cut, well-built physique. 성격: 권위적이지만 허점이 있음.
 

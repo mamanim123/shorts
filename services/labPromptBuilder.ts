@@ -157,36 +157,17 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
   }
 
   let newTop = top;
-  const shortSleeveKeywords = [
-    'Sleeveless',
-    'Halter-neck',
-    'Short-sleeve',
-    'Tube Top',
-    'Cap-sleeve',
-    'Off-shoulder',
-    'Cowl-neck',
-    'Twist Front',
-    'One-shoulder'
-  ];
+  const shortSleeveKeywords = ['Sleeveless', 'Halter-neck', 'Short-sleeve', 'Tube Top', 'Cap-sleeve', 'Off-shoulder'];
 
   let isChanged = false;
   shortSleeveKeywords.forEach((keyword) => {
     const regex = new RegExp(keyword, 'gi');
     if (regex.test(newTop)) {
-      // 마마님 취향의 쇄골/어깨라인 강조 스타일 가미
       const shoulderStyle = Math.random() < 0.5 ? 'Off-shoulder' : 'Cold-shoulder';
-      // 기존 명칭(Draped, Cross-wrap 등)은 유지하면서 긴팔 버전임을 명시
-      newTop = newTop.replace(regex, `${shoulderStyle} tight-fitting long-sleeve ${keyword}`);
+      newTop = newTop.replace(regex, `${shoulderStyle} tight-fitting long-sleeve`);
       isChanged = true;
     }
   });
-
-  // Deep V-neck 자동 치환 (마마님 특명: 노출 사고 방지)
-  if (newTop.toLowerCase().includes('deep v-neck')) {
-    const safeStyle = Math.random() < 0.5 ? 'Elegant Off-shoulder' : 'Classy Mock-neck';
-    newTop = newTop.replace(/deep v-neck/gi, `${safeStyle} tight-fitting long-sleeve`);
-    isChanged = true;
-  }
 
   if (!isChanged && !newTop.toLowerCase().includes('long-sleeve')) {
     const shoulderStyle = Math.random() < 0.5 ? 'Off-shoulder' : 'Cold-shoulder';

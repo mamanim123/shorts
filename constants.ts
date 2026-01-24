@@ -870,7 +870,7 @@ export const UNIFIED_OUTFIT_LIST = [
   { id: "golf-021", name: "Grey Halter-neck Tight Mini Dress (Sleek)", translation: "그레이 홀터넥 타이트 미니 드레스", categories: ["GOLF LUXURY"] },
   { id: "golf-022", name: "Peach Silk Camisole + White High-waist Micro Skirt (Soft Luxury)", translation: "피치 실크 캐미솔 + 화이트 하이웨이스트 마이크로 스커트", categories: ["GOLF LUXURY"] },
   { id: "golf-023", name: "White Long-sleeve V-neck Tight Mini Dress (Clean Sexy)", translation: "화이트 롱슬리브 V넥 타이트 미니 드레스", categories: ["GOLF LUXURY"] },
-  { id: "golf-024", name: "Grey Checkered Jacket Mini Dress (Classy Field)", translation: "그레이 체크 자켓 미니 드레스", categories: ["GOLF LUXURY"] },
+  
   { id: "golf-025", name: "Beige & White Argyle Check V-neck Set (Glitz & Glam)", translation: "베이지&화이트 아가일 체크 V넥 세트", categories: ["GOLF LUXURY"] },
   { id: "golf-026", name: "Emerald green tight bodycon golf mini dress with high mock neckline and oval cutout on side waist", translation: "에메랄드 그린 바디콘 골프 미니 드레스 (하이 목넥, 사이드 허리 컷아웃)", categories: ["GOLF LUXURY"] },
   { id: "golf-027", name: "Ivory Bodycon Blazer Mini Dress with Pleated Hem", translation: "아이보리 바디콘 블레이저 미니 드레스(플리츠 헴)", categories: ["GOLF LUXURY"] },

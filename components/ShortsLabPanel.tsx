@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -357,7 +357,7 @@ export const ShortsLabPanel: React.FC = () => {
 
     // UI 상태
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-    const [activeTab, setActiveTab] = useState<'input' | 'settings' | 'preview'>('input');
+    const [activeTab, setActiveTab] = useState<'input' | 'settings' | 'preview'>('preview');
     const [sceneTabs, setSceneTabs] = useState<Record<number, 'IMG' | 'VIDEO' | 'JSON' | 'VOICE'>>({});
     const [editingScene, setEditingScene] = useState<{ number: number; field: 'ko' | 'en' } | null>(null);
     const [editValue, setEditValue] = useState<string>('');
@@ -1556,6 +1556,18 @@ export const ShortsLabPanel: React.FC = () => {
         setEditValue('');
     };
 
+    const handleApplyWinterLook = (sceneNumber: number) => {
+        setScenes(prev => prev.map(s => {
+            if (s.number === sceneNumber) {
+                const gender = (s.lipSyncSpeaker?.toLowerCase().startsWith('man')) ? 'male' : 'female';
+                const { longPrompt, longPromptKo } = applyWinterLookToExistingPrompt(s.prompt, s.longPromptKo || '', gender);
+                return { ...s, prompt: longPrompt, longPromptKo };
+            }
+            return s;
+        }));
+        showToast(`${sceneNumber}번 장면에 겨울 룩이 적용되었습니다.`, 'success');
+    };
+
     const handleToggleSceneSelection = (sceneNumber: number) => {
         setScenes(prev => prev.map(s =>
             s.number === sceneNumber ? { ...s, isSelected: !s.isSelected } : s
@@ -2058,7 +2070,17 @@ export const ShortsLabPanel: React.FC = () => {
                                                         {/* 영어 프롬프트 */}
                                                         <div className="group/edit relative">
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">영어 프롬프트</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">영어 프롬프트</span>
+                                                                    <button
+                                                                        onClick={() => handleApplyWinterLook(scene.number)}
+                                                                        className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded text-[9px] text-blue-400 transition-all"
+                                                                        title="지능형 겨울 룩 즉시 적용 (상의 긴팔 + 악세서리)"
+                                                                    >
+                                                                        <Sparkles className="w-2.5 h-2.5" />
+                                                                        겨울 룩 적용
+                                                                    </button>
+                                                                </div>
                                                                 <button onClick={() => handleStartEdit(scene.number, 'en', scene.prompt)} className="opacity-0 group-hover/edit:opacity-100 p-1 hover:bg-slate-800 rounded transition-all"><Edit3 className="w-3 h-3 text-slate-400" /></button>
                                                             </div>
                                                             <p className="text-[11px] text-slate-400 font-mono leading-relaxed line-clamp-2 italic">{scene.prompt}</p>

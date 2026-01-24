@@ -60,6 +60,109 @@ import { DEFAULT_PROMPT_RULES } from './shortsLabPromptRulesDefaults';
 import { getShortsLabPromptRules } from './shortsLabPromptRulesManager';
 
 // ============================================
+// 겨울 테마 및 럭셔리 컬렉션 (v3.8.0)
+// ============================================
+
+const WINTER_KEYWORDS = ['눈', '겨울', 'snow', 'winter', '스키', 'ski', '썰매', 'sled', 'ice', '빙판', '얼음', 'snowy'];
+
+export const isWinterTopic = (topic: string): boolean =>
+  WINTER_KEYWORDS.some((keyword) => topic.toLowerCase().includes(keyword.toLowerCase()));
+
+export const splitOutfitTop = (outfit: string) => {
+  const separators = [' + ', ' with ', ' and '];
+  for (const separator of separators) {
+    const index = outfit.toLowerCase().indexOf(separator.toLowerCase());
+    if (index > 0) {
+      return {
+        top: outfit.slice(0, index),
+        tail: outfit.slice(index + separator.length),
+        joiner: separator
+      };
+    }
+  }
+  return { top: outfit, tail: '', joiner: '' };
+};
+
+// 럭셔리 윈터 컬렉션 v3.8.0 (45종 보강)
+const WINTER_COLLECTION = {
+  HEADWEAR: [
+    'soft cashmere beanie with an oversized real fur pom-pom',
+    'luxury faux fur headband with crystal embellishments',
+    'elegant wide-brim wool hat with fluffy fur trim',
+    'quilted designer-style winter bucket hat',
+    'sleek leather trapper hat with white sheepskin lining',
+    'angora beret with a dainty pearl brooch',
+    'cat-ear knit beanie with silver glitter threads',
+    'velvet padded headband with winter floral embroidery',
+    'mink-style fuzzy earmuff-hat hybrid',
+    'sporty white knit headband with luxury logo'
+  ],
+  EARMUFFS: [
+    'premium mink-style oversized fluffy earmuffs',
+    'velvet headband earmuffs with gold thread embroidery',
+    'heart-shaped fluffy faux fur earmuffs',
+    'pearl-decorated elegant white earmuffs',
+    'bear-ear fleece headband with ribbon bows',
+    'satin-finished luxury earmuffs with fur lining',
+    'jeweled earmuffs with shimmering rhinestones',
+    'chic black faux fur earmuffs with a leather band'
+  ],
+  SCARVES: [
+    'extravagant long faux fur stole draped over shoulders',
+    'refined cashmere wrap scarf with long fringe details',
+    'thick mohair scarf with soft pastel color gradients',
+    'sleek silk-lined fur neck collar with a ribbon',
+    'designer-patterned chunky knit infinity scarf',
+    'oversized cable knit scarf wrapped multiple times',
+    'cross-over faux fur neck warmer with a crystal button',
+    'thin cashmere muffler with metallic logo plate',
+    'hooded scarf (scoodie) with fur pom-poms'
+  ],
+  GLOVES: [
+    'luxurious oversized faux fur hand muff with a gold chain',
+    'elegant leather gloves with thick fluffy fur cuffs',
+    'long opera-length knit gloves reaching the elbows',
+    'touch-screen velvet gloves with dainty ribbon bows',
+    'cute fuzzy mittens with a connecting string',
+    'suede gloves with shearling lining and stitching',
+    'fingerless knit arm warmers with thumb holes',
+    'fur-trimmed driving gloves for a sophisticated look'
+  ],
+  LEGS: [
+    'stylish faux fur leg warmers worn over the boots',
+    'ribbed knit thigh-high leg warmers (over-the-knee)',
+    'diamond-patterned wool leg warmers with pompoms',
+    'chunky faux fur moon boots for a bold statement',
+    'classic shearling-lined boots with ribbon details',
+    'elegant knee-high suede boots with fur lining',
+    'luxury quilted snow boots with platform soles',
+    'white faux fur boot covers for a glamorous look',
+    'cable knit calf-length leg warmers',
+    'pom-pom decorated winter socks peeking over boots'
+  ]
+};
+
+/**
+ * 겨울 아우터 + 악세서리 선택 (v3.8.0)
+ */
+export const selectWinterItems = (gender: 'female' | 'male' = 'female'): { outerwear: string; accessories: string[] } => {
+  const outerwear = '';
+  let accessories: string[] = [];
+  const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+  if (gender === 'male') {
+    const pool = Math.random() < 0.5 ? WINTER_COLLECTION.HEADWEAR : WINTER_COLLECTION.SCARVES;
+    accessories = [pick(pool)];
+  } else {
+    const categories = Object.keys(WINTER_COLLECTION) as Array<keyof typeof WINTER_COLLECTION>;
+    const shuffledCats = [...categories].sort(() => 0.5 - Math.random());
+    const count = 2;
+    accessories = shuffledCats.slice(0, count).map(cat => pick(WINTER_COLLECTION[cat]));
+  }
+  return { outerwear, accessories };
+};
+
+// ============================================
 // 타입 정의
 // ============================================
 
@@ -80,6 +183,138 @@ export interface LabGenreGuideline {
 export interface LabGenreGuidelineEntry extends LabGenreGuideline {
   id: string;
 }
+
+/**
+ * 겨울용 타이트 긴팔 변환 (v3.8.0)
+ * 선택된 상의의 디자인(색상, 소재)은 유지하면서 소매만 'Tight-fitting long-sleeve'로 지능적 치환
+ * 하의(Mini Skirt, Shorts 등)는 절대 건드리지 않고 원본 그대로 유지함
+ */
+export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string => {
+  if (!outfit) return outfit;
+
+  // 상의와 하의 분리 (+, with, and 등의 구분자 사용)
+  const separators = [' + ', ' with ', ' and '];
+  let top = outfit;
+  let tail = '';
+  let joiner = '';
+
+  for (const separator of separators) {
+    const index = outfit.toLowerCase().indexOf(separator.toLowerCase());
+    if (index > 0) {
+      top = outfit.slice(0, index);
+      tail = outfit.slice(index + separator.length);
+      joiner = separator;
+      break;
+    }
+  }
+
+  let newTop = top;
+
+  // 치환할 소매 관련 키워드들 (상의에서만 치환)
+  const shortSleeveKeywords = [
+    'Sleeveless',
+    'Halter-neck',
+    'Short-sleeve',
+    'Tube Top',
+    'Cap-sleeve',
+    'Off-shoulder'
+  ];
+
+  let isChanged = false;
+  shortSleeveKeywords.forEach((keyword) => {
+    const regex = new RegExp(keyword, 'gi');
+    if (regex.test(newTop)) {
+      // 기존 스타일(예: White, Mock-neck 등)은 보존하면서 키워드만 'Tight-fitting long-sleeve'로 치환
+      newTop = newTop.replace(regex, 'Tight-fitting long-sleeve');
+      isChanged = true;
+    }
+  });
+
+  // 키워드 매칭이 안 되었더라도 겨울이면 상의 끝에 Long-sleeve 명시 (이미 있으면 제외)
+  if (!isChanged && !newTop.toLowerCase().includes('long-sleeve')) {
+    newTop = `${newTop} (Tight-fitting long-sleeve version)`;
+  }
+
+  // 상의와 하의 재결합 (하의인 tail은 원본 그대로)
+  return tail ? `${newTop}${joiner}${tail}` : newTop;
+};
+
+/**
+ * 기존 프롬프트에 지능적으로 겨울 룩을 입힘 (v3.8.1)
+ * 마마님의 고정 문구(START/END/NEGATIVE)를 절대 훼손하지 않고 정밀하게 수술함
+ */
+export const applyWinterLookToExistingPrompt = (
+  longPrompt: string,
+  longPromptKo: string,
+  gender: 'female' | 'male' = 'female'
+): { longPrompt: string; longPromptKo: string } => {
+  if (!longPrompt) return { longPrompt, longPromptKo };
+
+  const constants = getPromptConstants();
+  let newPrompt = longPrompt;
+  let newPromptKo = longPromptKo;
+
+  // 1. 고정 구간 분리 시도 (기술 태그 및 부정 프롬프트 보호)
+  // 하이패션 에디토리얼 이후는 기술 태그 구간임
+  const technicalTagMarker = 'high-fashion editorial refined';
+  const negativeMarker = 'NOT cartoon';
+  
+  let contentPart = newPrompt;
+  let technicalPart = '';
+  let negativePart = '';
+
+  if (newPrompt.includes(negativeMarker)) {
+    const parts = newPrompt.split(negativeMarker);
+    contentPart = parts[0];
+    negativePart = negativeMarker + parts.slice(1).join(negativeMarker);
+  }
+
+  if (contentPart.includes(technicalTagMarker)) {
+    const parts = contentPart.split(technicalTagMarker);
+    contentPart = parts[0];
+    technicalPart = technicalTagMarker + parts.slice(1).join(technicalTagMarker);
+  }
+
+  // 2. 의상 치환 로직 (contentPart 내에서만 수행)
+  // '+', 'wearing', 'outfit:' 등 다양한 패턴 대응
+  const outfitPattern = /([^,]+[\s\+]+[^,]+(?:Mini Skirt|Shorts|Pants|Dress|Skirt|Leggings)[^,]*)/i;
+  const match = contentPart.match(outfitPattern);
+  
+  if (match && match[1]) {
+    const originalOutfit = match[1].trim();
+    const winterOutfit = convertToTightLongSleeveWithShoulderLine(originalOutfit);
+    contentPart = contentPart.replace(originalOutfit, winterOutfit);
+  } else if (contentPart.includes('wearing')) {
+    const wearingRegex = /wearing\s+([^,.]+)/i;
+    const wMatch = contentPart.match(wearingRegex);
+    if (wMatch && wMatch[1]) {
+      const originalOutfit = wMatch[1];
+      const winterOutfit = convertToTightLongSleeveWithShoulderLine(originalOutfit);
+      contentPart = contentPart.replace(originalOutfit, winterOutfit);
+    }
+  }
+
+  // 3. 겨울 악세서리 추가 (중복 방지 및 정위치 삽입)
+  if (!contentPart.toLowerCase().includes('accessorized with') && !technicalPart.toLowerCase().includes('accessorized with')) {
+    const { accessories } = selectWinterItems(gender);
+    const accsStr = accessories.join(', ');
+    const winterAccsMsg = `, accessorized with ${accsStr}`;
+    
+    // 내용 구간 끝에 삽입 (기술 태그 시작 전)
+    contentPart = contentPart.trim().replace(/,\s*$/, '') + winterAccsMsg + ', ';
+    newPromptKo = `${newPromptKo.replace(' (겨울 룩 적용됨)', '')} (겨울 룩 적용됨: ${accsStr})`;
+  }
+
+  // 4. 배경 보정 (눈 내리는 효과 - snow 키워드 없을 때만)
+  if (!contentPart.toLowerCase().includes('snow')) {
+    contentPart = contentPart.replace(/(standing|walking|looking|sitting|background|setting)/i, `$1 in a heavy snow falling snowy background`);
+  }
+
+  // 5. 최종 재조립 (마마님의 고정 문구 순서 그대로 복구)
+  newPrompt = contentPart + technicalPart + negativePart;
+
+  return { longPrompt: newPrompt, longPromptKo: newPromptKo };
+};
 
 export interface LabScriptOptions {
   topic: string;
@@ -913,136 +1148,46 @@ export const generateRandomSeed = (): {
   };
 };
 
-// ============================================
-// 의상 선택 함수 (v3.5 - 겨울 테마 및 가슴라인 강조)
-// ============================================
+export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
+  const selectionRules = getOutfitSelectionRules();
+  const isGolf = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
 
-const WINTER_KEYWORDS = ['눈', '겨울', 'snow', 'winter', '스키', 'ski', '썰매', 'sled', 'ice', '빙판', '얼음', 'snowy'];
+  const normalizeList = (items?: string[]) =>
+    Array.isArray(items) ? items.map(item => item.trim()).filter(Boolean) : [];
+  const allowList = normalizeList(selectionRules.maleAllowList);
+  const excludeList = normalizeList(selectionRules.maleExcludeList);
+  const excludeSet = new Set([...excludeList, ...excludeOutfits]);
 
-const isWinterTopic = (topic: string): boolean =>
-  WINTER_KEYWORDS.some((keyword) => topic.toLowerCase().includes(keyword.toLowerCase()));
+  // 1차: 주제에 맞는 의상 필터링 (골프면 골프 의상만)
+  let candidates = getOutfitPool().filter(item => {
+    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+    if (allowList.length > 0 && !allowList.includes(item.name)) return false;
+    if (excludeSet.has(item.name)) return false;
+    
+    // 골프 주제인 경우 GOLF 카테고리 필수
+    if (isGolf && !item.categories.includes('GOLF')) return false;
+    
+    return true;
+  });
 
-const splitOutfitTop = (outfit: string) => {
-  const separators = [' + ', ' with ', ' and '];
-  for (const separator of separators) {
-    const index = outfit.toLowerCase().indexOf(separator);
-    if (index > 0) {
-      return {
-        top: outfit.slice(0, index),
-        tail: outfit.slice(index + separator.length),
-        joiner: separator
-      };
-    }
-  }
-  return { top: outfit, tail: '', joiner: '' };
-};
-
-// 겨울 악세서리 (모자, 귀마개, 장갑, 목도리, 신발 - 16종)
-const WINTER_ACCESSORIES = [
-  // 모자 (Beanie/Hat) - 5종
-  'cute pom-pom knit beanie',
-  'fuzzy faux fur bucket hat',
-  'faux fur trapper hat',
-  'cat ear knit beanie',
-  'angora beret with pom-pom',
-  // 귀마개 (Earmuffs) - 5종
-  'fluffy faux fur earmuffs',
-  'ribbon bow earmuffs',
-  'heart-shaped fluffy earmuffs',
-  'pearl-decorated earmuffs',
-  'bear ear fleece headband',
-  // 장갑 (Gloves/Mittens) - 3종
-  'cute fuzzy mittens',
-  'ribbon-tied knit mittens',
-  'fluffy faux fur hand muff',
-  // 목도리 (Scarf/Neck warmer) - 2종
-  'oversized chunky cable knit scarf',
-  'fuzzy faux fur neck warmer',
-  // 신발 (Boots) - 1종
-  'chunky faux fur moon boots'
-];
-
-// 겨울 아우터 (v3.7.2부터 완전 제거 - 악세서리만 사용)
-const WINTER_OUTERWEAR: string[] = [];
-
-/**
- * 겨울용 타이트 긴팔 + 어깨/쇄골 노출 변환 (v3.7.3)
- * 모든 상의를 타이트한 긴팔 + 어깨라인 드러나는 스타일로 강제 변환
- */
-export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string => {
-  let result = outfit;
-
-  // 쇄골과 어깨라인 강조 키워드
-  const shoulderExposure = 'off-shoulder tight-fitting long-sleeve';
-  const shoulderLineEmphasis = 'exposing collarbone and shoulder line';
-
-  // 1. Halter-neck → Off-shoulder tight-fitting long-sleeve
-  result = result.replace(/Halter-neck/gi, shoulderExposure);
-
-  // 2. Sleeveless → Off-shoulder tight-fitting long-sleeve
-  result = result.replace(/Sleeveless/gi, shoulderExposure);
-
-  // 3. Short-sleeve → Off-shoulder tight-fitting long-sleeve
-  result = result.replace(/Short-sleeve/gi, shoulderExposure);
-
-  // 4. Tank top → Off-shoulder tight-fitting long-sleeve top
-  result = result.replace(/Tank top/gi, `${shoulderExposure} top`);
-
-  // 5. Camisole → Off-shoulder tight-fitting long-sleeve top
-  result = result.replace(/Camisole/gi, `${shoulderExposure} top`);
-
-  // 6. Crop top → Off-shoulder tight-fitting long-sleeve crop top
-  result = result.replace(/Crop top(?! with)/gi, `${shoulderExposure} crop top`);
-
-  // 7. 일반 Knit/Top/Blouse → Off-shoulder tight-fitting long-sleeve
-  if (!result.toLowerCase().includes('long-sleeve') &&
-      !result.toLowerCase().includes('off-shoulder')) {
-    result = result.replace(/\b(Knit|Top|Blouse|Shirt|Turtleneck)\b/gi, `${shoulderExposure} $1`);
+  // 2차: 1차에서 없으면 전체 남성 의상에서 선택
+  if (candidates.length === 0) {
+    candidates = getOutfitPool().filter(item => {
+      if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+      if (allowList.length > 0 && !allowList.includes(item.name)) return false;
+      if (excludeSet.has(item.name)) return false;
+      return true;
+    });
   }
 
-  // 8. 이미 long-sleeve가 있지만 off-shoulder가 없으면 추가
-  if (result.toLowerCase().includes('long-sleeve') &&
-      !result.toLowerCase().includes('off-shoulder')) {
-    result = result.replace(/long-sleeve/gi, shoulderExposure);
-  }
+  const selectedName = candidates.length > 0
+    ? candidates[Math.floor(Math.random() * candidates.length)].name
+    : 'Navy Slim-fit Polo + White Tailored Golf Pants';
 
-  // 9. 중복 방지
-  result = result.replace(/off-shoulder\s+off-shoulder/gi, 'off-shoulder');
-  result = result.replace(/tight-fitting\s+tight-fitting/gi, 'tight-fitting');
-  result = result.replace(/long-sleeve\s+long-sleeve/gi, 'long-sleeve');
-
-  return result;
-};
-
-// 겨울 아우터 + 악세서리 한번 선택 (모든 씬 일관성용)
-// v3.7.2: 아우터 제거, 악세서리만 반환
-export const selectWinterItems = (): { outerwear: string; accessories: string[] } => {
-  const outerwear = ''; // 아우터 완전 제거
-  const shuffled = [...WINTER_ACCESSORIES].sort(() => 0.5 - Math.random());
-  const accessories = shuffled.slice(0, Math.random() < 0.5 ? 1 : 2);
-  return { outerwear, accessories };
-};
-
-// 의상에 겨울 아이템 추가 (기존 의상 유지 + 아우터 + 악세서리)
-// v3.7.2: outerwear가 빈 문자열일 때 'layered with' 구문 제거
-// v3.7.3: 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 강제 변환
-export const applyWinterItems = (
-  outfit: string,
-  outerwear: string,
-  accessories: string[]
-): string => {
-  // v3.7.3: 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 강제 변환
-  const winterStyledOutfit = convertToTightLongSleeveWithShoulderLine(outfit);
-
-  const accsStr = accessories.join(', ');
-  if (outerwear) {
-    return `${winterStyledOutfit}, layered with ${outerwear}, accessorized with ${accsStr}`;
-  }
-  return `${winterStyledOutfit}, accessorized with ${accsStr}`;
+  return adjustOutfitForSeason(selectedName, topic);
 };
 
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
-  // 이 함수는 더 이상 직접 사용하지 않음 (buildLabScriptPrompt에서 일괄 처리)
   return outfit;
 };
 
@@ -1058,23 +1203,10 @@ const isUnisexOutfit = (item: OutfitPoolItem): boolean =>
 const isGolfOutfit = (item: OutfitPoolItem): boolean =>
   item.categories.some((category) => category.toLowerCase().includes('golf'));
 
-// ============================================
-// 의상 검증 로직
-// ============================================
-
-/**
- * 의상 명칭이 유효한지 검증
- * 1. UNIFIED_OUTFIT_LIST에 존재하는지 확인
- * 2. 최대 길이 제한 (100자) 체크
- */
 export const validateOutfit = (outfit: string): boolean => {
   if (!outfit) return false;
-
   const pool = getOutfitPool();
-  const exists = pool.some(item => item.name === outfit);
-  const isValidLength = outfit.length <= 100; // 최대 100자
-
-  return exists && isValidLength;
+  return pool.some(item => item.name === outfit);
 };
 
 export const pickFemaleOutfit = (
@@ -1082,7 +1214,7 @@ export const pickFemaleOutfit = (
   topic: string = '',
   excludeOutfits: string[] = []
 ): string => {
-  const isSexyGenre = genre === 'affair-suspicion';
+  const isSexyGenre = genre === 'affair-suspicion' || genre === 'hit-twist-spicy';
   const selectionRules = getOutfitSelectionRules();
   const allowDuplicates = selectionRules.allowDuplicateFemale;
   const normalizeList = (items?: string[]) =>
@@ -1117,26 +1249,14 @@ export const pickFemaleOutfit = (
   return adjustOutfitForSeason(selectedName, topic);
 };
 
-export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
-  const selectionRules = getOutfitSelectionRules();
-  const normalizeList = (items?: string[]) =>
-    Array.isArray(items) ? items.map(item => item.trim()).filter(Boolean) : [];
-  const allowList = normalizeList(selectionRules.maleAllowList);
-  const excludeList = normalizeList(selectionRules.maleExcludeList);
-  const excludeSet = new Set([...excludeList, ...excludeOutfits]);
-
-  const candidates = getOutfitPool().filter(item => {
-    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
-    if (allowList.length > 0 && !allowList.includes(item.name)) return false;
-    if (excludeSet.has(item.name)) return false;
-    return true;
-  });
-
-  const selectedName = candidates.length > 0
-    ? candidates[Math.floor(Math.random() * candidates.length)].name
-    : 'Navy Slim-fit Polo + White Tailored Golf Pants';
-
-  return adjustOutfitForSeason(selectedName, topic);
+export const applyWinterItems = (
+  outfit: string,
+  outerwear: string,
+  accessories: string[]
+): string => {
+  const winterStyledOutfit = convertToTightLongSleeveWithShoulderLine(outfit);
+  const accsStr = accessories.join(', ');
+  return `${winterStyledOutfit}, accessorized with ${accsStr}`;
 };
 
 // ============================================
@@ -1226,6 +1346,9 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const hairSection = promptSections.hairstyleSection?.trim() || defaultHairSection;
   const characterSection = promptSections.characterSection?.trim() || defaultCharacterSection;
   const imagePromptRulesExtra = promptSections.imagePromptRulesExtra?.trim();
+
+  const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
+  const golfCaddyRule = isGolfTopic ? `\n11. **캐디(WomanD) 상시 노출 (골프 씬 필수)**: 배경이 골프장인 경우, 캐디(WomanD)는 대본에 직접적인 대사가 없더라도 **거의 모든 장면에 배경 인물로 자연스럽게 포함**되어야 합니다. 주인공의 시선이 닿지 않는 곳에서 카트를 정리하거나 지켜보는 모습으로 배치하세요.` : '';
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -1325,8 +1448,8 @@ ${characterSection}
 4. **8개 모든 씬에서 identity/hair/body/outfit 문구 100% 동일** (문자열 한 글자도 바꾸지 말 것)
 5. **캔디드 에스테틱 (Candid Aesthetic) & 카메라 시선**:
    - **Scene 1 (Hook)**: 시청자와의 연결을 위해 카메라를 정면 응시하며 미소 지을 것 (Eye contact, smiling at camera).
-   - **Scene 2~8**: 자연스러운 일상의 찰나를 포착한 **Candid Shot**이어야 함. 캐릭터는 **카메라를 절대 응시하지 말고(Looking away from camera)** 자신의 행동이나 상대방에게 집중할 것. 인위적인 포즈(Posed) 금지.
-6. **텍스트 금지**: 이미지 내에 어떠한 글자, 로고, 워터마크도 포함되지 않도록 "no text, no letters, no typography"를 강조할 것.
+    - **Scene 2~8**: 자연스러운 일상의 찰나를 포착한 **Candid Shot**이어야 함. 캐릭터는 **카메라를 절대 응시하지 말고(Looking away from camera)** 자신의 행동이나 상대방에게 집중할 것. 인위적인 포즈(Posed) 금지.${golfCaddyRule}
+  6. **텍스트 금지**: 이미지 내에 어떠한 글자, 로고, 워터마크도 포함되지 않도록 "no text, no letters, no typography"를 강조할 것.
 7. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
 8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
 9. **의상 명칭 보존 (중요)**: \`shortPrompt\`와 \`longPrompt\` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.

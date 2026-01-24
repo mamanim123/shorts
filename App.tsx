@@ -187,7 +187,7 @@ const App: React.FC = () => {
   const [showTemplateResult, setShowTemplateResult] = useState(false);
 
   // Right panel tab state
-  const [rightTab, setRightTab] = useState<'analysis' | 'shortform' | 'longform' | 'youtube-search' | 'shorts-generator' | 'ai-studio' | 'cineboard' | 'shorts-lab'>('shorts-generator');
+  const [rightTab, setRightTab] = useState<'analysis' | 'shortform' | 'longform' | 'youtube-search' | 'shorts-generator' | 'ai-studio' | 'cineboard' | 'shorts-lab'>('shorts-lab');
   const analysisTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   // Duplicate historySubTab removed
   const [templateSearch, setTemplateSearch] = useState('');

@@ -7,7 +7,7 @@
 - Immutable: API 키는 .env에만 두고 커밋 금지. Puppeteer/Playwright는 스텔스 옵션 유지, 무분별한 브라우저 세션 남기지 말 것. 파일 출력은 `generated_scripts/`, `longform_sessions/`, `style_templates/`, `server/user_data_*` 하위에만.
 - Do: 로컬/서버 간 히스토리 동기화를 깨지 않도록 `/api/history` 계약 유지. 파일·폴더 생성 시 존재 확인 후 생성. 타입 안정성 유지(typescript / 명시적 타입).
 - Don't: 하드코딩된 경로로 OS 의존 코드 추가 금지. 백엔드에서 프런트 전용 API 호출 금지. jsonrepair 없이 외부 JSON 신뢰 금지.
-- CRITICAL: OpenCode 사용 시 bun 실행 금지. 모든 실행은 npm/node 기준으로 진행.
+- CRITICAL: OpenCode 사용 시 bun 및 lsp_diagnostics(LSP) 사용 절대 금지. 현재 심각한 버그로 인해 실행 즉시 시스템이 다운됨. 모든 실행은 npm/node 기준으로, 진단은 수동 점검으로 진행.
 - Process: 모든 커뮤니케이션에서 사용자를 반드시 "마마님"으로 호칭한다.
 - CRITICAL: 모든 코드 수정(edit, write 등)은 반드시 "마마님"의 명시적 승인(예: "수정해", "ㅇㅇ", "해라")이 있은 후에만 진행한다. 승인 없는 임의 수정은 절대 금지한다.
 - 신규 `.md` 파일은 항상 작업 폴더 내에만 생성.

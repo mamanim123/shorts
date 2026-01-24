@@ -484,10 +484,35 @@ export const translateActionToEnglish = (action: string): string => {
 // ============================================
 
 export const MAMA_CHARACTER_PRESETS = {
+  FEMALE_A: {
+    identity: 'A stunning Korean woman',
+    bodyType: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
+    style: 'confident presence, well-managed sophisticated look despite age',
+    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
+  },
+  FEMALE_B: {
+    identity: 'A stunning Korean woman',
+    bodyType: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves',
+    style: 'expressive reactions, charming presence',
+    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
+  },
+  FEMALE_C: {
+    identity: 'A stunning Korean woman',
+    bodyType: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust',
+    style: 'calm observer demeanor, composed presence',
+    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
+  },
+  FEMALE_D: {
+    identity: 'A stunning Korean woman',
+    bodyType: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
+    style: 'bright cheerful professional presence, sophisticated caddy look',
+    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
+  },
+  // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
   FEMALE: {
     identity: 'A stunning Korean woman',
-    bodyType: 'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves, voluptuous chest line, emphasizing chest line',
-    style: 'well-managed sophisticated look despite age, elegant and confident presence',
+    bodyType: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
+    style: 'confident presence, well-managed sophisticated look despite age',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   MALE: {
@@ -1572,11 +1597,11 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
     "winterAccessoriesD": "${winterAccessoriesD.join(', ')}"
   },
   "characters": [
-    { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },
-    { "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "short chic bob cut", "body": "${promptConstants.FEMALE_BODY}", "outfit": "${womanBOutfit}", "outfitPrefix": "wearing" },
+    { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY_A}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },
+    { "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "short chic bob cut", "body": "${promptConstants.FEMALE_BODY_B}", "outfit": "${womanBOutfit}", "outfitPrefix": "wearing" },
     { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his ${targetAge}", "hair": "short neat hairstyle", "body": "${promptConstants.MALE_BODY}", "outfit": "${manAOutfit}", "outfitPrefix": "wearing" },
     { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${promptConstants.MALE_BODY}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
-    { "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "${promptConstants.FEMALE_BODY}", "outfit": "${womanDOutfit}", "outfitPrefix": "wearing" }
+    { "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "${promptConstants.FEMALE_BODY_D}", "outfit": "${womanDOutfit}", "outfitPrefix": "wearing" }
   ],
   "scenes": [  // 8~12개 (scriptBody 문장 수와 정확히 동일)
     {

@@ -1365,7 +1365,8 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
         : '';
 
     console.log(`[Puppeteer] 🎨 Sending prompt to Gemini ${captureLabel}...`);
-    await sendPromptToPage(scriptPage, config, `${prompt}${markerInstruction}`, serviceName);
+    const imagePrompt = `Generate this image:\n\n${prompt}${markerInstruction}`;
+    await sendPromptToPage(scriptPage, config, imagePrompt, serviceName);
     console.log("[Puppeteer] 🎨 Waiting for NEW response to appear...");
 
     const downloadMeta = await scriptPage.evaluate(({ expectedCount, knownIds, token }) => {

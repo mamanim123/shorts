@@ -880,6 +880,11 @@ export const UNIFIED_OUTFIT_LIST = [
   { id: "golf-023", name: "White Long-sleeve V-neck Tight Mini Dress (Clean Sexy)", translation: "화이트 롱슬리브 V넥 타이트 미니 드레스", categories: ["GOLF LUXURY"] },
   
   { id: "golf-025", name: "Beige & White Argyle Check V-neck Set (Glitz & Glam)", translation: "베이지&화이트 아가일 체크 V넥 세트", categories: ["GOLF LUXURY"] },
+
+  // [Style 6: Mama's Luxury Collection v3.9.6]
+  { id: "royal-050", name: "Skin-tight Liquid Silk Draped Cowl-neck Sleeveless Top + White Micro Mini Skirt", translation: "초밀착 리퀴드 실크 드레이프 카울넥 민소매 탑 + 화이트 마이크로 미니스커트", categories: ["ROYAL", "MAMA_LUXURY"] },
+  { id: "royal-051", name: "Extreme Tight-fitting Cross-wrap Twist Front Sleeveless Knit + Black Mini Skirt", translation: "익스트림 타이트 크로스 랩 트위스트 프론트 민소매 니트 + 블랙 미니스커트", categories: ["ROYAL", "MAMA_LUXURY"] },
+  { id: "royal-052", name: "Asymmetric One-shoulder Tight-fitting Silk Sleeveless Knit + White Mini Skirt", translation: "비대칭 원숄더 타이트 실크 민소매 니트 + 화이트 미니스커트", categories: ["ROYAL", "MAMA_LUXURY"] },
   { id: "golf-026", name: "Emerald green tight bodycon golf mini dress with high mock neckline and oval cutout on side waist", translation: "에메랄드 그린 바디콘 골프 미니 드레스 (하이 목넥, 사이드 허리 컷아웃)", categories: ["GOLF LUXURY"] },
   { id: "golf-027", name: "Ivory Bodycon Blazer Mini Dress with Pleated Hem", translation: "아이보리 바디콘 블레이저 미니 드레스(플리츠 헴)", categories: ["GOLF LUXURY"] },
   { id: "golf-028", name: "Champagne Satin Racerback Golf Mini Dress", translation: "샴페인 새틴 레이서백 골프 미니 드레스", categories: ["GOLF LUXURY"] },

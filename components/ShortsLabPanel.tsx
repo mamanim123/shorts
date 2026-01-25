@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -93,6 +93,15 @@ const IDENTITY_SLOTS = [
     { id: 'man-a', label: 'Man A', gender: 'male' as const, presetKey: 'man-a' as const },
     { id: 'man-b', label: 'Man B', gender: 'male' as const, presetKey: null }
 ];
+
+const MANUAL_SLOT_META: Record<string, { id: string; slotLabel: string; gender: 'female' | 'male'; hair: string; body: string }> = {
+    'Woman A': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
+    'Woman B': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
+    'Woman C': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
+    'Woman D': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
+    'Man A': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
+    'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+};
 
 const GENERAL_ACCESSORIES = [
     {
@@ -385,6 +394,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
 
@@ -598,6 +608,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [availableFolders, setAvailableFolders] = useState<Array<{ folderName: string; imageCount: number; scriptCount: number; mtimeMs: number }>>([]);
     const [isLoadingFolder, setIsLoadingFolder] = useState(false);
     const [isVideoImporting, setIsVideoImporting] = useState<number | null>(null);
+    const [favorites, setFavorites] = useState<string[]>([]);
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
     // [NEW] 최근 영상 선택 모달 상태
     const [showRecentVideoPicker, setShowRecentVideoPicker] = useState(false);
@@ -649,6 +661,22 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             }
         };
         loadState();
+    }, []);
+
+    React.useEffect(() => {
+        const loadFavorites = async () => {
+            try {
+                const response = await fetch('http://localhost:3002/api/cineboard/favorites');
+                if (response.ok) {
+                    const data = await response.json();
+                    setFavorites(data.favorites || []);
+                    console.log(`[ShortsLab] ✅ Loaded ${data.favorites?.length || 0} favorites`);
+                }
+            } catch (error) {
+                console.error('Failed to load favorites:', error);
+            }
+        };
+        loadFavorites();
     }, []);
 
     // [NEW] 상태 변경 시 localStorage 저장
@@ -1123,10 +1151,353 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, [aiTargetAge, buildIdentityLockPrompt, isIdentityLockActive, settings]);
 
     // ============================================
+    // 수동 대본 AI 씬 분해용 헬퍼
+    // ============================================
+
+    const getManualSlotMeta = useCallback((slotId: string) => {
+        return MANUAL_SLOT_META[slotId] || null;
+    }, []);
+
+    const extractManualScriptLines = useCallback((input: string) => {
+        const cleaned = input
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => line.replace(/^[\[\(]?\s*(?:씬|scene|장면)\s*\d+\s*[\]\)]?\s*[:：]?\s*/i, '').trim())
+            .filter(Boolean);
+
+        if (cleaned.length === 0 && input.trim()) {
+            return [input.trim()];
+        }
+
+        return cleaned;
+    }, []);
+
+    type ManualCharacterPrompt = {
+        id: string;
+        slotLabel: string;
+        name: string;
+        identity: string;
+        hair: string;
+        body: string;
+        outfit: string;
+        accessories: string[];
+    };
+
+    const buildManualIdentityPayload = useCallback((inputScript: string): ManualCharacterPrompt[] => {
+        if (!manualIdentityLockEnabled) return [];
+        const hasLockedSelection = manualIdentities.some(identity => identity.isLocked);
+        const winterMode = isWinterTopic(inputScript);
+
+        return manualIdentities
+            .filter(identity => identity.slotId && (identity.isLocked || !hasLockedSelection))
+            .map((identity) => {
+                const slotMeta = getManualSlotMeta(identity.slotId);
+                if (!slotMeta) return null;
+                const rawAge = identity.age || aiTargetAge || '';
+                const ageLabel = rawAge ? convertAgeToEnglish(rawAge) : '';
+                const identityText = slotMeta.gender === 'female'
+                    ? `A stunning Korean woman${ageLabel ? ` in her ${ageLabel}` : ''}`
+                    : `A handsome Korean man${ageLabel ? ` in his ${ageLabel}` : ''}`;
+                const rawOutfit = identity.outfit?.trim() || '';
+                const adjustedOutfit = slotMeta.gender === 'female' && rawOutfit && winterMode
+                    ? convertToTightLongSleeveWithShoulderLine(rawOutfit)
+                    : rawOutfit;
+                const accessories = identity.accessories
+                    ? identity.accessories.split(',').map(item => item.trim()).filter(Boolean)
+                    : [];
+
+                return {
+                    id: slotMeta.id,
+                    slotLabel: slotMeta.slotLabel,
+                    name: identity.name?.trim() || '',
+                    identity: identityText,
+                    hair: slotMeta.hair,
+                    body: slotMeta.body,
+                    outfit: adjustedOutfit,
+                    accessories
+                };
+            })
+            .filter((item): item is ManualCharacterPrompt => Boolean(item));
+    }, [aiTargetAge, getManualSlotMeta, manualIdentities, manualIdentityLockEnabled]);
+
+    const composeManualPrompt = useCallback((
+        rawPrompt: string,
+        sceneNumber: number,
+        characterIds: string[],
+        characterMap: Map<string, ManualCharacterPrompt>
+    ) => {
+        const scenePrefix = `Scene ${sceneNumber}.`;
+        let remainder = (rawPrompt || '').trim();
+        remainder = remainder.replace(/^Scene\s+\d+[.,]?\s*/i, '').trim();
+        if (remainder.includes(PROMPT_CONSTANTS.START)) {
+            remainder = remainder.replace(PROMPT_CONSTANTS.START, '').trim();
+        }
+        if (remainder.includes(PROMPT_CONSTANTS.END)) {
+            remainder = remainder.replace(PROMPT_CONSTANTS.END, '').trim();
+        }
+        remainder = remainder.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+
+        const identityBlock = characterIds
+            .map((id) => {
+                const meta = characterMap.get(id);
+                if (!meta) return '';
+                const outfitPhrase = meta.outfit
+                    ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
+                    : '';
+                const accessoryPhrase = meta.accessories.length > 0
+                    ? `accessorized with ${meta.accessories.join(', ')}`
+                    : '';
+                const descriptor = [
+                    meta.identity,
+                    meta.hair,
+                    meta.body,
+                    outfitPhrase,
+                    accessoryPhrase
+                ].filter(Boolean).join(', ');
+                const nameLabel = meta.name ? ` (${meta.name})` : '';
+                return `Slot ${meta.slotLabel}${nameLabel}: ${descriptor}`;
+            })
+            .filter(Boolean)
+            .join(' | ');
+
+        const parts = [PROMPT_CONSTANTS.START];
+        if (identityBlock) parts.push(identityBlock);
+        if (remainder) parts.push(remainder);
+        parts.push(PROMPT_CONSTANTS.END);
+
+        return `${scenePrefix} ${parts.join(', ')}`;
+    }, []);
+
+    const buildManualAiPrompt = useCallback((inputScript: string) => {
+        const scriptLines = extractManualScriptLines(inputScript);
+        const scriptBody = scriptLines.join('\n');
+        const identities = buildManualIdentityPayload(inputScript);
+        const identityLines = identities.length > 0
+            ? identities.map((identity) => {
+                const outfitLine = identity.outfit ? `outfit: ${identity.outfit}` : 'outfit: (omit if empty)';
+                const accessoryLine = identity.accessories.length > 0
+                    ? `accessories: ${identity.accessories.join(', ')}`
+                    : 'accessories: (omit if empty)';
+                const nameLabel = identity.name ? ` / name: ${identity.name}` : '';
+                return `- ${identity.id} (${identity.slotLabel}${nameLabel}): ${identity.identity}, ${identity.hair}, ${identity.body}, ${outfitLine}, ${accessoryLine}`;
+            }).join('\n')
+            : '- (no locked characters)';
+
+        return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 장면 분해 및 이미지 프롬프트 생성 전문가입니다.
+아래 "수동 대본"을 그대로 사용해 씬을 분해하고 이미지 프롬프트를 생성하세요.
+대본은 새로 쓰지 말고, 입력된 문장/순서를 그대로 유지하세요.
+
+## 필수 규칙
+1) JSON만 출력 (설명/마크다운 금지)
+2) scenes 개수 = scriptBody 문장 수 (1:1 매칭)
+3) longPrompt는 반드시 아래 절대 공식 준수:
+   - "Scene N. ${PROMPT_CONSTANTS.START}, [캐릭터 정체성], [행동/배경], ${PROMPT_CONSTANTS.END}"
+   - Scene 번호와 정체성 정보를 맨 앞에 배치
+   - characterIds에 포함된 캐릭터의 identity/hair/body/outfit/accessories를 반드시 포함
+4) 의상/악세서리는 아래 제공된 텍스트를 **그대로 복사** (변형 금지)
+5) 악세서리가 비어있으면 해당 문구를 포함하지 말 것
+6) negativePrompt는 "${PROMPT_CONSTANTS.NEGATIVE}" 사용
+
+## 수동 대본 (scriptBody)
+${scriptBody}
+
+## 대본 라인 목록
+${scriptLines.map((line, index) => `${index + 1}. ${line}`).join('\n')}
+
+## 캐릭터 고정 목록
+${identityLines}
+
+## 출력 JSON 스키마
+{
+  "title": "string",
+  "scriptBody": "라인1\\n라인2...",
+  "characters": [
+    { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her 40s", "hair": "long soft-wave hairstyle", "body": "${PROMPT_CONSTANTS.FEMALE_BODY_A}", "outfit": "EXACT outfit string", "accessories": ["item1", "item2"] }
+  ],
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "scriptLine": "라인1",
+      "summary": "장면 요약",
+      "shotType": "원샷",
+      "characterIds": ["WomanA"],
+      "shortPrompt": "short english prompt",
+      "longPrompt": "Scene 1. ${PROMPT_CONSTANTS.START}, ... ${PROMPT_CONSTANTS.END}",
+      "shortPromptKo": "한국어 요약 프롬프트",
+      "longPromptKo": "한국어 상세 프롬프트",
+      "voiceType": "narration",
+      "narration": { "text": "내레이션", "emotion": "neutral", "speed": "normal" },
+      "lipSync": { "speaker": "WomanA", "speakerName": "지영", "line": "", "emotion": "", "timing": "mid" },
+      "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}"
+    }
+  ]
+}`;
+    }, [buildManualIdentityPayload, extractManualScriptLines]);
+
+    // ============================================
     // 이벤트 핸들러
     // ============================================
 
+    const handleManualSceneGeneration = async () => {
+        if (isManualSceneParsing) return;
+        if (!scriptInput.trim()) return;
+
+        setIsManualSceneParsing(true);
+        try {
+            const prompt = buildManualAiPrompt(scriptInput);
+            const selectedService = targetService || 'GEMINI';
+
+            showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
+
+            const response = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt,
+                    maxTokens: 2000,
+                    temperature: 0.6
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 오류: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const generatedText = data.rawResponse || data.text || data.result || '';
+
+            if (data._folderName) {
+                setCurrentFolderName(data._folderName);
+            }
+
+            let finalScript = '';
+            let extractedScenes: Scene[] = [];
+
+            try {
+                let jsonClean = generatedText.trim();
+                jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
+                if (jsonClean.startsWith('```')) {
+                    jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+                }
+
+                const parsed = parseJsonFromText<any>(jsonClean, [
+                    'script',
+                    'scriptBody',
+                    'scriptLine',
+                    'shortPrompt',
+                    'shortPromptKo',
+                    'longPrompt',
+                    'longPromptKo',
+                    'title',
+                    'scenes'
+                ]);
+
+                if (!parsed) {
+                    throw new Error('JSON parse failed');
+                }
+
+                const scriptData = parsed.scripts?.[0] || parsed;
+                const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || '';
+                if (rawScript) {
+                    const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
+                    finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
+                }
+
+                const scenesSource = scriptData.scenes || parsed.scenes;
+                if (scenesSource && Array.isArray(scenesSource)) {
+                    const manualCharacters = buildManualIdentityPayload(scriptInput);
+                    const manualCharacterMap = new Map<string, ManualCharacterPrompt>();
+                    manualCharacters.forEach(character => manualCharacterMap.set(character.id, character));
+                    const fallbackCharacterIds = manualCharacters.map((character) => character.id);
+
+                    extractedScenes = scenesSource.map((scene: any, idx: number) => {
+                        const sceneNumber = scene.sceneNumber || idx + 1;
+                        const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
+                        const narrationText = typeof scene.narration === 'string'
+                            ? scene.narration
+                            : scene.narration?.text || '';
+                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
+                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
+                        const characterIds = Array.isArray(scene.characterIds) && scene.characterIds.length > 0
+                            ? scene.characterIds
+                            : fallbackCharacterIds;
+                        const rawPrompt = scene.longPrompt || scene.shortPrompt || scene.prompt || sceneText || '';
+                        const normalizedPrompt = composeManualPrompt(rawPrompt, sceneNumber, characterIds, manualCharacterMap);
+
+                        return {
+                            number: sceneNumber,
+                            text: sceneText,
+                            prompt: normalizedPrompt,
+                            imageUrl: undefined,
+                            shortPromptKo: scene.shortPromptKo || '',
+                            longPromptKo: scene.longPromptKo || '',
+                            summary: scene.summary || sceneText,
+                            camera: scene.camera || '',
+                            shotType: scene.shotType || '',
+                            age: scene.age || '',
+                            outfit: scene.outfit || '',
+                            isSelected: true,
+                            videoPrompt: scene.videoPrompt || '',
+                            dialogue: scene.dialogue || lipSyncLine || '',
+                            voiceType,
+                            narrationText: narrationText || sceneText,
+                            narrationEmotion: scene.narration?.emotion || '',
+                            narrationSpeed: scene.narration?.speed || 'normal',
+                            lipSyncSpeaker: scene.lipSync?.speaker || '',
+                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
+                            lipSyncLine: lipSyncLine || '',
+                            lipSyncEmotion: scene.lipSync?.emotion || '',
+                            lipSyncTiming: scene.lipSync?.timing || undefined
+                        };
+                    });
+                }
+            } catch (parseError) {
+                console.warn('[ShortsLab] Manual AI JSON parsing failed:', parseError);
+            }
+
+            if (!finalScript && extractedScenes.length === 0) {
+                throw new Error('씬 데이터를 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
+            }
+
+            if (finalScript) setScriptInput(finalScript.trim());
+
+            if (extractedScenes.length > 0) {
+                setScenes(normalizeSceneNumbers(extractedScenes));
+                setActiveTab('preview');
+                showToast(`✅ ${targetService || 'GEMINI'} AI로 씬 분해 완료! (${extractedScenes.length}개 씬)`, 'success');
+                return;
+            }
+
+            throw new Error('씬 데이터를 찾지 못했습니다.');
+        } catch (error) {
+            console.error('Manual scene generation failed:', error);
+            const message = error instanceof Error ? error.message : '씬 분해에 실패했습니다.';
+            showToast(message, 'error');
+
+            const fallbackParsed = parseScenes(scriptInput);
+            if (fallbackParsed.length > 0) {
+                const withPrompts = fallbackParsed.map(scene => ({
+                    ...scene,
+                    prompt: generatePrompt(scene.text)
+                }));
+                setScenes(normalizeSceneNumbers(withPrompts));
+                setActiveTab('preview');
+                showToast('AI 파싱 실패로 로컬 씬 분해를 사용했습니다.', 'warning');
+            }
+        } finally {
+            setIsManualSceneParsing(false);
+        }
+    };
+
     const handleParseScenes = () => {
+        if (activeTab === 'manual') {
+            handleManualSceneGeneration();
+            return;
+        }
         if (!validateIdentityLock()) return;
         const parsed = parseScenes(scriptInput);
         const withPrompts = parsed.map(scene => ({
@@ -1628,6 +1999,53 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 폴더 불러오기 (신규!)
     // ============================================
 
+    const displayFolders = useMemo(() => {
+        const filtered = showFavoritesOnly
+            ? availableFolders.filter(folder => favorites.includes(folder.folderName))
+            : availableFolders;
+        return [...filtered].sort((a, b) => (b.mtimeMs || 0) - (a.mtimeMs || 0));
+    }, [availableFolders, favorites, showFavoritesOnly]);
+
+    const toggleFavoritesFilter = () => {
+        setShowFavoritesOnly(!showFavoritesOnly);
+    };
+
+    const addToFavorites = async (folderName: string) => {
+        try {
+            const response = await fetch('http://localhost:3002/api/cineboard/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folderName })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setFavorites(data.favorites || []);
+                console.log(`[ShortsLab] ⭐ Added to favorites: ${folderName}`);
+            }
+        } catch (error) {
+            console.error('Failed to add favorite:', error);
+        }
+    };
+
+    const removeFromFavorites = async (folderName: string) => {
+        try {
+            const response = await fetch(`http://localhost:3002/api/cineboard/favorites/${encodeURIComponent(folderName)}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setFavorites(data.favorites || []);
+                console.log(`[ShortsLab] 🗑️ Removed from favorites: ${folderName}`);
+            }
+        } catch (error) {
+            console.error('Failed to remove favorite:', error);
+        }
+    };
+
+    const isFavorite = (folderName: string) => favorites.includes(folderName);
+
     const handleLoadFolders = async () => {
         try {
             const response = await fetch('http://localhost:3002/api/scripts/story-folders');
@@ -1977,28 +2395,58 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
             {/* 폴더 선택 모달 */}
             {showFolderPicker && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowFolderPicker(false)}
+                >
+                    <div
+                        className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xl font-bold text-emerald-400">📁 작업 폴더 선택</h3>
-                            <button onClick={() => setShowFolderPicker(false)} className="text-slate-400 hover:text-white transition">✕</button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={toggleFavoritesFilter}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition flex items-center gap-1 ${showFavoritesOnly
+                                        ? 'bg-yellow-500/20 border border-yellow-500/50 text-yellow-400'
+                                        : 'bg-slate-700 border border-slate-600 text-slate-400 hover:text-slate-300'
+                                        }`}
+                                >
+                                    <span>{showFavoritesOnly ? '⭐' : '☆'}</span>
+                                    <span>{showFavoritesOnly ? '즐겨찾기만' : '전체 보기'}</span>
+                                </button>
+                                <button onClick={() => setShowFolderPicker(false)} className="text-slate-400 hover:text-white transition">✕</button>
+                            </div>
                         </div>
                         {isLoadingFolder ? (
                             <div className="py-12 text-center">
                                 <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-emerald-500" />
                                 <p className="text-slate-400">폴더 데이터를 불러오는 중...</p>
                             </div>
-                        ) : availableFolders.length === 0 ? (
+                        ) : displayFolders.length === 0 ? (
                             <div className="py-12 text-center text-slate-500">
-                                <p>저장된 작업 폴더가 없습니다.</p>
+                                <p>
+                                    {showFavoritesOnly
+                                        ? '즐겨찾기한 폴더가 없습니다.'
+                                        : '저장된 작업 폴더가 없습니다.'
+                                    }
+                                </p>
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                {availableFolders.map((folder) => (
-                                    <button
+                                {displayFolders.map((folder) => (
+                                    <div
                                         key={folder.folderName}
                                         onClick={() => handleSelectFolder(folder.folderName)}
-                                        className="w-full p-4 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-emerald-500 transition-all text-left group"
+                                        className="w-full p-4 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-emerald-500 transition-all text-left group cursor-pointer"
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                handleSelectFolder(folder.folderName);
+                                            }
+                                        }}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
@@ -2015,9 +2463,26 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span className="text-slate-500 group-hover:text-emerald-400 transition">→</span>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        isFavorite(folder.folderName)
+                                                            ? removeFromFavorites(folder.folderName)
+                                                            : addToFavorites(folder.folderName);
+                                                    }}
+                                                    className={`p-1.5 rounded-lg transition ${isFavorite(folder.folderName)
+                                                        ? 'text-yellow-400 hover:text-yellow-300'
+                                                        : 'text-slate-500 hover:text-yellow-400'
+                                                        }`}
+                                                    title={isFavorite(folder.folderName) ? '즐겨찾기 제거' : '즐겨찾기 추가'}
+                                                >
+                                                    {isFavorite(folder.folderName) ? '⭐' : '☆'}
+                                                </button>
+                                                <span className="text-slate-500 group-hover:text-emerald-400 transition">→</span>
+                                            </div>
                                         </div>
-                                    </button>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -2182,11 +2647,20 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
                             <button
                                 onClick={handleParseScenes}
-                                disabled={!scriptInput.trim()}
+                                disabled={!scriptInput.trim() || isManualSceneParsing}
                                 className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
                             >
-                                <Scissors className="w-5 h-5" />
-                                씬 분해 & 프롬프트 생성
+                                {activeTab === 'manual' && isManualSceneParsing ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        AI 씬 분해 중...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Scissors className="w-5 h-5" />
+                                        씬 분해 & 프롬프트 생성
+                                    </>
+                                )}
                             </button>
                         </div>
 

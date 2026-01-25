@@ -876,22 +876,24 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const savedUrl = await saveOutfitPreviewImage(dataUrl, id, prompt);
       if (!savedUrl) throw new Error('이미지 저장 실패');
+      const resolvedUrl = `http://localhost:3002${savedUrl}`;
 
       if (kind === 'user') {
         const updated = outfits.map(item => (
-          item.id === id ? { ...item, imageUrl: `http://localhost:3002${savedUrl}` } : item
+          item.id === id ? { ...item, imageUrl: resolvedUrl } : item
         ));
         setOutfits(updated);
         saveOutfitsToBE(updated, outfitCategories);
       } else {
         const updatedMap = {
           ...baseOutfitPreviewMap,
-          [id]: `http://localhost:3002${savedUrl}`
+          [id]: resolvedUrl
         };
         setBaseOutfitPreviewMap(updatedMap);
         saveOutfitPreviewMap(updatedMap);
       }
 
+      setLightboxImage(resolvedUrl);
       showToast('AI로 의상 미리보기가 생성되었습니다.', 'success');
     } catch (error: any) {
       console.error('AI 의상 미리보기 생성 실패:', error);
@@ -1258,6 +1260,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   }, [baseOutfitPreviewMap]);
 
   const handleDeleteOutfit = useCallback((id: string) => {
+    const target = outfits.find(o => o.id === id);
+    if (!target) return;
+    const confirmed = window.confirm(`'${target.name}' 의상을 정말 삭제할까요?`);
+    if (!confirmed) return;
     const updated = outfits.filter(o => o.id !== id);
     setOutfits(updated);
     saveOutfitsToBE(updated, outfitCategories);

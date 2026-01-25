@@ -1,0 +1,322 @@
+backups/temp_restore/jsonParser.ts(157,30): error TS1161: Unterminated regular expression literal.
+backups/temp_restore/jsonParser.ts(158,52): error TS1005: ')' expected.
+temp_old_panel.tsx(72,46): error TS1005: ',' expected.
+temp_old_panel.tsx(72,53): error TS1005: ',' expected.
+temp_old_panel.tsx(72,59): error TS1005: ',' expected.
+temp_old_panel.tsx(72,75): error TS1005: ',' expected.
+temp_old_panel.tsx(72,84): error TS1005: ',' expected.
+temp_old_panel.tsx(72,101): error TS1005: ',' expected.
+temp_old_panel.tsx(72,111): error TS1005: ',' expected.
+temp_old_panel.tsx(72,115): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(73,5): error TS1005: ':' expected.
+temp_old_panel.tsx(73,42): error TS1005: ',' expected.
+temp_old_panel.tsx(73,47): error TS1005: ',' expected.
+temp_old_panel.tsx(73,52): error TS1005: ',' expected.
+temp_old_panel.tsx(73,64): error TS1005: ',' expected.
+temp_old_panel.tsx(73,83): error TS1005: ',' expected.
+temp_old_panel.tsx(73,98): error TS1005: ',' expected.
+temp_old_panel.tsx(73,108): error TS1005: ',' expected.
+temp_old_panel.tsx(73,112): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(74,5): error TS1005: ':' expected.
+temp_old_panel.tsx(75,5): error TS1136: Property assignment expected.
+temp_old_panel.tsx(90,38): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(91,5): error TS1005: ',' expected.
+temp_old_panel.tsx(100,38): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(101,5): error TS1005: ',' expected.
+temp_old_panel.tsx(107,76): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(108,5): error TS1005: ',' expected.
+temp_old_panel.tsx(108,79): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(109,5): error TS1005: ',' expected.
+temp_old_panel.tsx(115,65): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(116,1): error TS1005: ',' expected.
+temp_old_panel.tsx(180,59): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(181,6): error TS1005: ',' expected.
+temp_old_panel.tsx(215,1): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(357,10): error TS1005: ',' expected.
+temp_old_panel.tsx(586,30): error TS1161: Unterminated regular expression literal.
+temp_old_panel.tsx(662,13): error TS1005: ',' expected.
+temp_old_panel.tsx(662,67): error TS1005: ')' expected.
+temp_old_panel.tsx(663,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(667,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(671,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(675,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(685,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(694,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(700,5): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(700,6): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(700,31): error TS1005: ';' expected.
+temp_old_panel.tsx(992,39): error TS1005: ';' expected.
+temp_old_panel.tsx(993,22): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(1016,13): error TS1472: 'catch' or 'finally' expected.
+temp_old_panel.tsx(1047,11): error TS1005: ',' expected.
+temp_old_panel.tsx(1053,5): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(1286,30): error TS17008: JSX element 'h2' has no corresponding closing tag.
+temp_old_panel.tsx(1286,72): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1287,89): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1288,27): error TS17002: Expected corresponding JSX closing tag for 'p'.
+temp_old_panel.tsx(1327,30): error TS17008: JSX element 'button' has no corresponding closing tag.
+temp_old_panel.tsx(1327,144): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1361,46): error TS17008: JSX element 'span' has no corresponding closing tag.
+temp_old_panel.tsx(1361,125): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1394,38): error TS17008: JSX element 'label' has no corresponding closing tag.
+temp_old_panel.tsx(1394,119): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1466,21): error TS2657: JSX expressions must have one parent element.
+temp_old_panel.tsx(1469,135): error TS1003: Identifier expected.
+temp_old_panel.tsx(1469,180): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1473,141): error TS1003: Identifier expected.
+temp_old_panel.tsx(1473,194): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1482,27): error TS17002: Expected corresponding JSX closing tag for 'div'.
+temp_old_panel.tsx(1499,141): error TS1003: Identifier expected.
+temp_old_panel.tsx(1499,145): error TS1005: ':' expected.
+temp_old_panel.tsx(1499,151): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1505,27): error TS17002: Expected corresponding JSX closing tag for 'div'.
+temp_old_panel.tsx(1508,141): error TS1003: Identifier expected.
+temp_old_panel.tsx(1508,156): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1514,27): error TS17002: Expected corresponding JSX closing tag for 'div'.
+temp_old_panel.tsx(1517,135): error TS1003: Identifier expected.
+temp_old_panel.tsx(1517,151): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1525,27): error TS17002: Expected corresponding JSX closing tag for 'div'.
+temp_old_panel.tsx(1527,25): error TS1005: ')' expected.
+temp_old_panel.tsx(1532,21): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(1533,17): error TS1109: Expression expected.
+temp_old_panel.tsx(1533,18): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(1676,86): error TS1003: Identifier expected.
+temp_old_panel.tsx(1676,87): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1676,88): error TS1002: Unterminated string literal.
+temp_old_panel.tsx(1684,58): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+temp_old_panel.tsx(1699,142): error TS1109: Expression expected.
+temp_old_panel.tsx(1699,144): error TS1127: Invalid character.
+temp_old_panel.tsx(1699,153): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+temp_old_panel.tsx(1739,13): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(1764,30): error TS17008: JSX element 'button' has no corresponding closing tag.
+temp_old_panel.tsx(1764,189): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+temp_old_panel.tsx(1769,9): error TS1128: Declaration or statement expected.
+temp_old_panel.tsx(1770,5): error TS1109: Expression expected.
+temp_old_panel.tsx(1771,1): error TS1128: Declaration or statement expected.
+temp_old_server.js(58,80): error TS1002: Unterminated string literal.
+temp_old_server.js(59,1): error TS1005: ',' expected.
+temp_old_server.js(131,64): error TS1002: Unterminated string literal.
+temp_old_server.js(132,13): error TS1005: ',' expected.
+temp_old_server.js(132,24): error TS1005: ',' expected.
+temp_old_server.js(133,20): error TS1005: ',' expected.
+temp_old_server.js(134,9): error TS1005: ',' expected.
+temp_old_server.js(745,45): error TS1002: Unterminated string literal.
+temp_old_server.js(746,13): error TS1005: ')' expected.
+temp_old_server.js(773,74): error TS1002: Unterminated string literal.
+temp_old_server.js(774,13): error TS1005: ')' expected.
+temp_old_server.js(1992,22): error TS1161: Unterminated regular expression literal.
+temp_old_server.js(1994,35): error TS1005: ')' expected.
+temp_old_server.js(2574,1): error TS1005: '}' expected.
+temp_v359_labPromptBuilder.ts(157,24): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(158,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(163,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(167,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(168,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(172,24): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(173,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(173,26): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(174,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(180,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(181,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(181,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(182,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(183,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(184,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(185,20): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(186,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(186,21): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(187,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(196,44): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(197,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(197,47): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(198,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(199,78): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(200,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(200,52): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(247,30): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(248,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(248,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(249,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(249,24): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(250,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(254,24): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(262,26): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(263,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(263,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(264,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(264,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(265,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(265,25): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(270,30): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(271,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(272,19): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(273,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(283,64): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(284,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(284,60): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(285,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(285,42): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(286,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(287,56): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(288,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(288,48): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(337,19): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(338,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(339,28): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(340,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(342,29): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(343,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(345,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(346,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(350,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(351,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(352,21): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(353,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(353,23): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(354,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(357,34): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(363,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(364,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(378,58): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(379,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(381,63): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(382,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(382,49): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(383,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(383,67): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(431,20): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(432,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(433,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(434,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(434,16): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(435,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(435,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(436,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(445,22): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(446,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(446,19): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(447,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(450,27): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(451,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(469,51): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(470,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(471,46): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(472,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(472,42): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(473,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(474,47): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(475,7): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(475,48): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(493,30): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(493,34): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(493,35): error TS1127: Invalid character.
+temp_v359_labPromptBuilder.ts(493,43): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(493,57): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(494,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(494,15): error TS1127: Invalid character.
+temp_v359_labPromptBuilder.ts(494,16): error TS1137: Expression or comma expected.
+temp_v359_labPromptBuilder.ts(494,21): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(494,44): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(494,47): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(494,49): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(495,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(495,20): error TS1127: Invalid character.
+temp_v359_labPromptBuilder.ts(495,24): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(495,33): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(496,20): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(496,27): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(496,29): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(497,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(499,15): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(499,18): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(499,27): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(503,43): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(504,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(504,14): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(504,30): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(504,43): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(505,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(505,26): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(505,31): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(506,33): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(506,35): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(507,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(507,20): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(507,24): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(507,32): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(507,34): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(508,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(513,19): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(514,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(514,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(515,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(517,20): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(518,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(518,16): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(519,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(520,16): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(521,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(522,18): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(526,16): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(527,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(527,20): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(528,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(528,26): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(529,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(529,27): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(530,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(530,26): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(531,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(531,19): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(532,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(532,20): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(533,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(533,20): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(534,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(534,15): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(539,38): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(540,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(540,68): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(541,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(541,51): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(542,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(542,49): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(543,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(543,39): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(544,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(544,45): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(545,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(545,44): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(549,32): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(550,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(551,28): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(552,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(553,24): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(554,5): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,59): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,60): error TS1127: Invalid character.
+temp_v359_labPromptBuilder.ts(590,62): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,84): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,88): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,110): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,116): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,138): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,142): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,164): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,170): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(590,173): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(592,3): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(711,55): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(711,56): error TS1127: Invalid character.
+temp_v359_labPromptBuilder.ts(711,57): error TS1134: Variable declaration expected.
+temp_v359_labPromptBuilder.ts(711,59): error TS1109: Expression expected.
+temp_v359_labPromptBuilder.ts(1070,36): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(1071,3): error TS1005: ',' expected.
+temp_v359_labPromptBuilder.ts(1088,51): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(1089,5): error TS1005: ')' expected.
+temp_v359_labPromptBuilder.ts(1114,73): error TS1005: ':' expected.
+temp_v359_labPromptBuilder.ts(1114,84): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(1127,1): error TS1128: Declaration or statement expected.
+temp_v359_labPromptBuilder.ts(1135,27): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(1137,49): error TS1002: Unterminated string literal.
+temp_v359_labPromptBuilder.ts(1189,63): error TS1002: Unterminated string literal.

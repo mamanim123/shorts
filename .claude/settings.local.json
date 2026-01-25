@@ -26,7 +26,13 @@
       "Bash(cmd /c \"chcp 949 >nul && cd /d \"\"F:\\\\test\\\\쇼츠대본생성기-v3.5.3\"\" && certutil -encodehex 가져오기.bat temp_hex.txt && type temp_hex.txt\")",
       "Bash(cmd /c \"chcp 949 >nul && type \"\"F:\\\\test\\\\쇼츠대본생성기-v3.5.3\\\\temp_hex.txt\"\"\")",
       "Bash(xxd:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ts_errors.txt)",
+      "Bash(git log:*)",
+      "Bash(\"F:\\projact\\쇼츠대본생성기-v3.5.3\\services\\labPromptBuilder_RECOVERED_1798.ts\")",
+      "Bash(\"F:\\projact\\쇼츠대본생성기-v3.5.3\\temp_6b7f27d.ts\")",
+      "Bash(cp:*)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }

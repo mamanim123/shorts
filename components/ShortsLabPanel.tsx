@@ -242,19 +242,8 @@ const postProcessAiScenes = (
         );
 
         // 2. [V3.2] 신규 검증 및 자동 수정 레이어 적용
-        if (options.characters) {
-            const validation = validateAndFixPrompt(
-                processedPrompt,
-                shotType,
-                options.characters.map(c => ({
-                    identity: c.identity || '',
-                    hair: c.hair || '',
-                    body: c.body || '',
-                    outfit: c.outfit || ''
-                }))
-            );
-            processedPrompt = validation.fixedPrompt;
-        }
+        // 프롬프트 검증 및 수정
+        processedPrompt = validateAndFixPrompt(processedPrompt);
 
         // 3. 네거티브 프롬프트 분리 처리
         const extracted = extractNegativePrompt(processedPrompt);
@@ -516,8 +505,13 @@ export const ShortsLabPanel: React.FC = () => {
             if (error.message?.includes("API key")) {
                 const key = window.prompt("API Key가 필요합니다. Google Gemini API Key를 입력해주세요:");
                 if (key) {
-                    localStorage.setItem('master_studio_api_key', key);
-                    showToast("API Key가 저장되었습니다. 다시 시도해주세요.", 'success');
+                    try {
+                        localStorage.setItem('master_studio_api_key', key);
+                        showToast("API Key가 저장되었습니다. 다시 시도해주세요.", 'success');
+                    } catch (storageError) {
+                        console.error("Failed to save API key:", storageError);
+                        showToast("API Key 저장에 실패했습니다.", 'error');
+                    }
                 }
             } else {
                 showToast(`이미지 생성 실패: ${error.message || "알 수 없는 오류"}`, 'error');

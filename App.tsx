@@ -1804,7 +1804,7 @@ Long: ${s.longPrompt || ''}
           {rightTab === 'shorts-lab' && (
             <div className="h-full flex bg-white dark:bg-slate-950">
               <div className="flex-1 bg-slate-950 text-white overflow-hidden flex">
-                <ShortsLabPanel />
+                <ShortsLabPanel targetService={input.targetService} />
               </div>
             </div>
           )}

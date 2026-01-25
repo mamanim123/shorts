@@ -266,7 +266,11 @@ const postProcessAiScenes = (
 // 메인 컴포넌트
 // ============================================
 
-export const ShortsLabPanel: React.FC = () => {
+interface ShortsLabPanelProps {
+    targetService?: 'GEMINI' | 'CHATGPT' | 'CLAUDE' | 'GENSPARK';
+}
+
+export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService }) => {
     // ===========================================
     // ShortsLab Genre Manager Hook
     // ===========================================
@@ -1164,11 +1168,18 @@ export const ShortsLabPanel: React.FC = () => {
                 enableWinterAccessories
             });
 
+            // 선택된 AI 서비스 (기본값: GEMINI)
+            const selectedService = targetService || 'GEMINI';
+
+            // 사용자 피드백: 생성 시작
+            showToast(`${selectedService} AI로 대본을 생성하고 있습니다...`, 'info');
+
             // 서버 API 호출 (백엔드는 3002 포트)
             const response = await fetch('http://localhost:3002/api/generate/raw', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    service: selectedService,  // ← AI 서비스 선택 추가
                     prompt,
                     maxTokens: 2000,
                     temperature: 0.9
@@ -1298,6 +1309,10 @@ export const ShortsLabPanel: React.FC = () => {
             if (extractedScenes.length > 0) {
                 setScenes(extractedScenes);
                 setActiveTab('preview');
+
+                // 사용자 피드백: 생성 완료
+                const selectedService = targetService || 'GEMINI';
+                showToast(`✅ ${selectedService} AI로 대본이 생성되었습니다! (${extractedScenes.length}개 씬)`, 'success');
             }
 
         } catch (error) {

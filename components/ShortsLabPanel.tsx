@@ -382,7 +382,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [aiTopic, setAiTopic] = useState('');
     const [aiGenre, setAiGenre] = useState('comedy-humor');
     const [aiTargetAge, setAiTargetAge] = useState('40대');
-    // 겨울 악세서리 자동 적용 토글은 제거됨 (수동 선택만 유지)
+    // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
+    const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
@@ -2140,6 +2141,27 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                 </div>
                             </div>
 
+                            {activeTab === 'input' && (
+                                <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
+                                        <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                            enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-3">
                                 <div className="flex-1 h-px bg-slate-700" />
                                 <span className="text-xs text-slate-500">또는 직접 입력</span>
@@ -2156,153 +2178,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                 />
                             </div>
 
-                            {activeTab === 'input' && (
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-lg font-semibold text-white">Identity Lock</h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[11px] text-slate-500">
-                                                {identityLockEnabled && identityCharacters.length > 0
-                                                    ? `고정 캐릭터 ${identityCharacters.length}명`
-                                                    : '고정 캐릭터 없음'}
-                                            </span>
-                                            <button
-                                                onClick={() => setIdentityLockEnabled(!identityLockEnabled)}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                                    identityLockEnabled ? 'bg-emerald-600' : 'bg-slate-700'
-                                                }`}
-                                            >
-                                                <span
-                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                        identityLockEnabled ? 'translate-x-6' : 'translate-x-1'
-                                                    }`}
-                                                />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <button
-                                            onClick={handleAddIdentityCharacter}
-                                            className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-xs font-semibold rounded-lg"
-                                        >
-                                            + 캐릭터 추가
-                                        </button>
-                                    </div>
-
-                                    {identityCharacters.length === 0 && (
-                                        <div className="text-xs text-slate-500">캐릭터가 없습니다. 추가 버튼을 눌러주세요.</div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                        {identityCharacters.map((char, index) => {
-                                            const slotMeta = IDENTITY_SLOTS.find((slot) => slot.id === char.slotId);
-                                            return (
-                                                <div key={char.id} className="rounded-lg border border-slate-800 p-3 space-y-3 bg-slate-950/50">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="text-xs text-slate-400 font-bold">캐릭터 {index + 1}</div>
-                                                        <button
-                                                            onClick={() => handleRemoveIdentityCharacter(char.id)}
-                                                            className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-md"
-                                                            title="삭제"
-                                                        >
-                                                            <X className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <div className="col-span-2">
-                                                            <input
-                                                                type="text"
-                                                                value={char.name}
-                                                                onChange={(e) => handleUpdateIdentityCharacter(char.id, { name: e.target.value })}
-                                                                placeholder="이름"
-                                                                className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-white font-bold"
-                                                            />
-                                                        </div>
-                                                        <select
-                                                            value={char.age}
-                                                            onChange={(e) => handleUpdateIdentityCharacter(char.id, { age: e.target.value })}
-                                                            className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-slate-300"
-                                                        >
-                                                            {AGE_OPTIONS.filter(option => option.value).map((option) => (
-                                                                <option key={option.value} value={option.value}>{option.label}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <select
-                                                            value={char.slotId}
-                                                            onChange={(e) => handleUpdateIdentityCharacter(char.id, { slotId: e.target.value as IdentitySlotId })}
-                                                            className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
-                                                        >
-                                                            {IDENTITY_SLOTS.map((slot) => (
-                                                                <option key={slot.id} value={slot.id}>{slot.label}</option>
-                                                            ))}
-                                                        </select>
-                                                        <select
-                                                            value={char.outfitId}
-                                                            onChange={(e) => {
-                                                                const selected = outfitById.get(e.target.value);
-                                                                handleUpdateIdentityCharacter(char.id, {
-                                                                    outfitId: e.target.value,
-                                                                    outfitName: selected?.translation || selected?.name || '',
-                                                                    outfitPrompt: selected?.prompt || selected?.name || ''
-                                                                });
-                                                            }}
-                                                            className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
-                                                            disabled={isLoadingOutfitCatalog}
-                                                        >
-                                                            <option value="">의상 선택</option>
-                                                            {outfitOptions.sortedKeys.map((categoryId) => {
-                                                                const items = outfitOptions.grouped[categoryId] || [];
-                                                                const category = outfitOptions.categoryMap.get(categoryId);
-                                                                const label = category?.name || categoryId;
-                                                                return (
-                                                                    <optgroup key={categoryId} label={label}>
-                                                                        {items.map((item) => (
-                                                                            <option key={item.id} value={item.id}>
-                                                                                {item.translation || item.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </optgroup>
-                                                                );
-                                                            })}
-                                                        </select>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <div className="text-[10px] text-slate-500 font-semibold">일반 악세서리</div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {GENERAL_ACCESSORIES.flatMap((group) => group.items).map((item) => (
-                                                                <button
-                                                                    key={`${char.id}-${item}`}
-                                                                    onClick={() => toggleAccessory(char.id, item)}
-                                                                    className={`px-2 py-1 text-[10px] rounded-full border transition-all ${
-                                                                        char.accessories.includes(item)
-                                                                            ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
-                                                                            : 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
-                                                                    }`}
-                                                                >
-                                                                    {item}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-
-                                                    {slotMeta?.gender === 'female' ? (
-                                                        <div className="text-[10px] text-slate-500">여성 슬롯 기준</div>
-                                                    ) : (
-                                                        <div className="text-[10px] text-slate-500">남성 슬롯 기준</div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
+                            {/* 입력 탭에서는 인물 고정 UI 미표시 */}
 
                             <button
                                 onClick={handleParseScenes}

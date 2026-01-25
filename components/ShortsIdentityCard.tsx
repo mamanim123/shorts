@@ -168,6 +168,7 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
             onChange={(e) => onUpdate(identity.id, { slotId: e.target.value })}
             className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1.5 text-xs text-purple-400 font-bold outline-none focus:ring-1 focus:ring-purple-500"
           >
+            <option value="">선택안함</option>
             <option value="">캐릭터 슬롯 선택 (Woman A/B/C...)</option>
             {SLOT_OPTIONS.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
           </select>
@@ -222,6 +223,20 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
               의상 리스트 (썸네일)
             </summary>
             <div className="mt-2 grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+              <button
+                type="button"
+                onClick={() => onUpdate(identity.id, { outfit: '' })}
+                className={`flex flex-col items-start gap-1 rounded-lg border p-2 text-left transition-all ${
+                  !identity.outfit
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="w-full h-16 rounded-md border border-dashed border-slate-800 flex items-center justify-center text-[9px] text-slate-600">
+                  선택안함
+                </div>
+                <span className="text-[9px] text-slate-400 truncate w-full">의상 초기화</span>
+              </button>
               {outfitPresets.map((preset, index) => (
                 <button
                   type="button"
@@ -303,6 +318,14 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
                   겨울
                 </button>
               </div>
+
+              <button
+                type="button"
+                onClick={() => onUpdate(identity.id, { accessories: '' })}
+                className="mb-2 px-2 py-1 text-[9px] rounded-full border border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all"
+              >
+                선택안함 (초기화)
+              </button>
 
               <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                 {accessoryTab === 'general' && (

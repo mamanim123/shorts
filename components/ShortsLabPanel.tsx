@@ -11,7 +11,7 @@
  * - 이미지 생성 / AI 생성 버튼 (신규!)
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt } from '../services/labPromptBuilder';
@@ -24,6 +24,9 @@ import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
 import CharacterPanel from './CharacterPanel';
 import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
+import { buildOutfitPool, fetchOutfitCatalog } from '../services/outfitService';
+import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
+import { UNIFIED_OUTFIT_LIST } from '../constants';
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -79,6 +82,59 @@ const STYLE_PRESETS = [
     { id: 'noir', name: '누아르', prompt: 'film noir style, high contrast, dramatic shadows, moody atmosphere' },
     { id: 'fantasy', name: '감성사극', prompt: 'Korean historical drama, hanbok inspired, ethereal lighting' },
     { id: 'illustration', name: '동화 일러스트', prompt: 'fairytale illustration style, soft pastel colors, whimsical' }
+];
+
+const IDENTITY_SLOTS = [
+    { id: 'woman-a', label: 'Woman A', gender: 'female' as const, presetKey: 'woman-a' as const },
+    { id: 'woman-b', label: 'Woman B', gender: 'female' as const, presetKey: 'woman-b' as const },
+    { id: 'woman-c', label: 'Woman C', gender: 'female' as const, presetKey: null },
+    { id: 'woman-d', label: 'Woman D', gender: 'female' as const, presetKey: null },
+    { id: 'man-a', label: 'Man A', gender: 'male' as const, presetKey: 'man-a' as const },
+    { id: 'man-b', label: 'Man B', gender: 'male' as const, presetKey: null }
+];
+
+const GENERAL_ACCESSORIES = [
+    {
+        id: 'necklaces',
+        label: '목걸이',
+        items: [
+            'delicate gold necklace',
+            'pearl pendant necklace',
+            'minimalist diamond choker',
+            'fine platinum chain necklace'
+        ]
+    },
+    {
+        id: 'rings',
+        label: '반지',
+        items: [
+            'sleek platinum ring',
+            'thin diamond band ring',
+            'minimalist gold ring',
+            'luxury sapphire ring'
+        ]
+    },
+    {
+        id: 'watches',
+        label: '시계',
+        items: [
+            'luxury stainless steel watch',
+            'elegant leather-strap watch',
+            'rose-gold designer watch',
+            'minimalist ceramic watch'
+        ]
+    }
+];
+
+const WINTER_ACCESSORIES = [
+    'luxurious mink fur beanie with crystal embellishments',
+    'elegant velvet headband with pearl embroidery',
+    'premium mink-style oversized earmuffs',
+    'refined cashmere wrap scarf with velvet trim',
+    'long opera-length velvet gloves',
+    'touch-screen silk gloves with crystal ribbon bows',
+    'ribbed knit thigh-high leg warmers',
+    'elegant knee-high suede boots with fur lining'
 ];
 
 // ============================================
@@ -202,6 +258,20 @@ interface PromptSettings {
     selectedEthnicity: string;
     useStylePreset: boolean;
     selectedStyle: string;
+}
+
+type IdentitySlotId = typeof IDENTITY_SLOTS[number]['id'];
+
+interface IdentityCharacter {
+    id: string;
+    name: string;
+    slotId: IdentitySlotId;
+    age: string;
+    outfitId: string;
+    outfitName: string;
+    outfitPrompt: string;
+    accessories: string[];
+    winterAccessories: string[];
 }
 
 
@@ -342,11 +412,123 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         selectedStyle: 'cinematic'
     });
 
+    // Identity Lock (씬 분해 전 캐릭터/의상/악세서리 고정)
+    const [identityLockEnabled, setIdentityLockEnabled] = useState(false);
+    const [identityCharacters, setIdentityCharacters] = useState<IdentityCharacter[]>([]);
+    const [identityWinterEnabled, setIdentityWinterEnabled] = useState(false);
+    const [outfitCatalog, setOutfitCatalog] = useState<OutfitCatalog>({ outfits: [], categories: [] });
+    const [isLoadingOutfitCatalog, setIsLoadingOutfitCatalog] = useState(false);
+
     /**
      * 프롬프트 설정 업데이트 헬퍼
      */
     const updateSetting = useCallback(<K extends keyof PromptSettings>(key: K, value: PromptSettings[K]) => {
         setSettings(prev => ({ ...prev, [key]: value }));
+    }, []);
+
+    useEffect(() => {
+        let alive = true;
+        setIsLoadingOutfitCatalog(true);
+        fetchOutfitCatalog()
+            .then((catalog) => {
+                if (!alive) return;
+                setOutfitCatalog(catalog);
+            })
+            .finally(() => {
+                if (!alive) return;
+                setIsLoadingOutfitCatalog(false);
+            });
+        return () => {
+            alive = false;
+        };
+    }, []);
+
+    const outfitPool = useMemo(() => {
+        return buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+    }, [outfitCatalog]);
+
+    const outfitOptions = useMemo(() => {
+        const categories = outfitCatalog.categories || [];
+        const categoryMap = new Map<string, OutfitCategory>();
+        categories.forEach((category) => {
+            categoryMap.set(category.id, category);
+        });
+
+        const grouped: Record<string, OutfitPoolItem[]> = {};
+        outfitPool.forEach((item) => {
+            const categoryId = item.categories?.[0] || 'ETC';
+            if (!grouped[categoryId]) grouped[categoryId] = [];
+            grouped[categoryId].push(item);
+        });
+
+        const sortedKeys = Object.keys(grouped);
+        return {
+            grouped,
+            sortedKeys,
+            categoryMap
+        };
+    }, [outfitPool, outfitCatalog.categories]);
+
+    const outfitById = useMemo(() => {
+        const map = new Map<string, OutfitPoolItem>();
+        outfitPool.forEach((item) => {
+            map.set(item.id, item);
+        });
+        return map;
+    }, [outfitPool]);
+
+    const createIdentityCharacter = useCallback((): IdentityCharacter => ({
+        id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `identity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: '',
+        slotId: 'woman-a',
+        age: '30대',
+        outfitId: '',
+        outfitName: '',
+        outfitPrompt: '',
+        accessories: [],
+        winterAccessories: []
+    }), []);
+
+    useEffect(() => {
+        if (identityLockEnabled && identityCharacters.length === 0) {
+            setIdentityCharacters([createIdentityCharacter()]);
+        }
+    }, [createIdentityCharacter, identityCharacters.length, identityLockEnabled]);
+
+    const handleAddIdentityCharacter = useCallback(() => {
+        setIdentityCharacters((prev) => [...prev, createIdentityCharacter()]);
+    }, [createIdentityCharacter]);
+
+    const handleUpdateIdentityCharacter = useCallback((id: string, changes: Partial<IdentityCharacter>) => {
+        setIdentityCharacters((prev) => prev.map((char) => (
+            char.id === id ? { ...char, ...changes } : char
+        )));
+    }, []);
+
+    const handleRemoveIdentityCharacter = useCallback((id: string) => {
+        setIdentityCharacters((prev) => prev.filter((char) => char.id !== id));
+    }, []);
+
+    const toggleAccessory = useCallback((id: string, value: string) => {
+        setIdentityCharacters((prev) => prev.map((char) => {
+            if (char.id !== id) return char;
+            const next = char.accessories.includes(value)
+                ? char.accessories.filter((item) => item !== value)
+                : [...char.accessories, value];
+            return { ...char, accessories: next };
+        }));
+    }, []);
+
+    const toggleWinterAccessory = useCallback((id: string, value: string) => {
+        setIdentityCharacters((prev) => prev.map((char) => {
+            if (char.id !== id) return char;
+            const next = char.winterAccessories.includes(value)
+                ? char.winterAccessories.filter((item) => item !== value)
+                : [...char.winterAccessories, value];
+            return { ...char, winterAccessories: next };
+        }));
     }, []);
 
     // UI 상태
@@ -754,6 +936,56 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 프롬프트 생성 로직
     // ============================================
 
+    const isIdentityLockActive = identityLockEnabled && identityCharacters.length > 0;
+
+    const formatAgeLabel = useCallback((age: string, gender: 'female' | 'male') => {
+        const map: Record<string, string> = {
+            '10대': '10s',
+            '20대': '20s',
+            '30대': '30s',
+            '40대': '40s',
+            '50대': '50s',
+            '60대': '60s',
+            '70대': '70s'
+        };
+        const label = map[age] || age;
+        if (!label) return '';
+        return `in ${gender === 'female' ? 'her' : 'his'} ${label}`;
+    }, []);
+
+    const buildIdentityLockPrompt = useCallback(() => {
+        if (!isIdentityLockActive) return '';
+        const lines = identityCharacters.map((char) => {
+            const slotMeta = IDENTITY_SLOTS.find((slot) => slot.id === char.slotId);
+            const gender = slotMeta?.gender || 'female';
+            const slotLabel = slotMeta?.label || char.slotId;
+            const slotPrompt = slotMeta?.presetKey ? SLOT_PRESETS[slotMeta.presetKey].prompt : '';
+            const ageText = char.age ? formatAgeLabel(char.age, gender) : '';
+            const outfitText = char.outfitPrompt || char.outfitName;
+            const accessories = [
+                ...char.accessories,
+                ...(identityWinterEnabled ? char.winterAccessories : [])
+            ].filter(Boolean);
+            const accessoryText = accessories.length > 0 ? `accessorized with ${accessories.join(', ')}` : '';
+            const descriptor = [slotPrompt, ageText, outfitText ? `wearing ${outfitText}` : '', accessoryText]
+                .filter(Boolean)
+                .join(', ');
+            const nameLabel = char.name ? ` (${char.name})` : '';
+            return `Slot ${slotLabel}${nameLabel}: ${descriptor || 'character locked'}`;
+        });
+        return `Character lock: ${lines.join(' | ')}`;
+    }, [formatAgeLabel, identityCharacters, identityWinterEnabled, isIdentityLockActive]);
+
+    const validateIdentityLock = useCallback(() => {
+        if (!isIdentityLockActive) return true;
+        const missingOutfit = identityCharacters.filter((char) => !char.outfitPrompt && !char.outfitName);
+        if (missingOutfit.length > 0) {
+            showToast('Identity Lock: 의상 선택이 비어있는 캐릭터가 있습니다.', 'warning');
+            return false;
+        }
+        return true;
+    }, [identityCharacters, isIdentityLockActive]);
+
     const generatePrompt = useCallback((sceneText: string): string => {
         const parts: string[] = [];
 
@@ -766,24 +998,30 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             parts.push(`${identity} ${ageString}`);
         }
 
-        // 2. 슬롯 시스템
-        if (settings.useSlotSystem && settings.selectedSlot) {
-            parts.push(SLOT_PRESETS[settings.selectedSlot].prompt);
-        }
+        // 2. Identity Lock (캐릭터/의상/악세서리 고정)
+        if (isIdentityLockActive) {
+            const identityPrompt = buildIdentityLockPrompt();
+            if (identityPrompt) parts.push(identityPrompt);
+        } else {
+            // 2-1. 슬롯 시스템
+            if (settings.useSlotSystem && settings.selectedSlot) {
+                parts.push(SLOT_PRESETS[settings.selectedSlot].prompt);
+            }
 
-        // 3. 체형 키워드
-        if (settings.useBodyKeywords && settings.selectedBody) {
-            parts.push(settings.selectedBody);
-        }
+            // 3. 체형 키워드
+            if (settings.useBodyKeywords && settings.selectedBody) {
+                parts.push(settings.selectedBody);
+            }
 
-        // 4. 민족성 키워드
-        if (settings.useEthnicityKeywords && settings.selectedEthnicity) {
-            parts.push(settings.selectedEthnicity);
-        }
+            // 4. 민족성 키워드
+            if (settings.useEthnicityKeywords && settings.selectedEthnicity) {
+                parts.push(settings.selectedEthnicity);
+            }
 
-        // 5. 의상 키워드
-        if (settings.useOutfitKeywords && settings.selectedOutfit) {
-            parts.push(settings.selectedOutfit);
+            // 5. 의상 키워드
+            if (settings.useOutfitKeywords && settings.selectedOutfit) {
+                parts.push(settings.selectedOutfit);
+            }
         }
 
         // 6. 씬 설명 (원본 텍스트 기반)
@@ -811,13 +1049,14 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         parts.push('no text, no letters, no typography, no watermarks, no words');
 
         return parts.filter(Boolean).join(', ');
-    }, [settings, aiTargetAge]);
+    }, [aiTargetAge, buildIdentityLockPrompt, isIdentityLockActive, settings]);
 
     // ============================================
     // 이벤트 핸들러
     // ============================================
 
     const handleParseScenes = () => {
+        if (!validateIdentityLock()) return;
         const parsed = parseScenes(scriptInput);
         const withPrompts = parsed.map(scene => ({
             ...scene,
@@ -829,6 +1068,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     const handleRegeneratePrompts = () => {
         if (scenes.length === 0) return;
+        if (!validateIdentityLock()) return;
         const updated = scenes.map(scene => ({
             ...scene,
             prompt: generatePrompt(scene.text)
@@ -1856,6 +2096,187 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                     placeholder={`씬별로 대본을 입력하세요.\n\n예시:\n[씬 1] 여자가 카페에서 커피를 마시고 있다.\n[씬 2] 남자가 들어와 여자를 본다.`}
                                     className="w-full h-64 bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                                 />
+                            </div>
+
+                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-white">Identity Lock</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] text-slate-500">
+                                            {identityLockEnabled && identityCharacters.length > 0
+                                                ? `고정 캐릭터 ${identityCharacters.length}명`
+                                                : '고정 캐릭터 없음'}
+                                        </span>
+                                        <button
+                                            onClick={() => setIdentityLockEnabled(!identityLockEnabled)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                identityLockEnabled ? 'bg-emerald-600' : 'bg-slate-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    identityLockEnabled ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                        onClick={handleAddIdentityCharacter}
+                                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-xs font-semibold rounded-lg"
+                                    >
+                                        + 캐릭터 추가
+                                    </button>
+                                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                                        <span>겨울 악세서리</span>
+                                        <button
+                                            onClick={() => setIdentityWinterEnabled(!identityWinterEnabled)}
+                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                                                identityWinterEnabled ? 'bg-purple-600' : 'bg-slate-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                                    identityWinterEnabled ? 'translate-x-5' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {identityCharacters.length === 0 && (
+                                    <div className="text-xs text-slate-500">캐릭터가 없습니다. 추가 버튼을 눌러주세요.</div>
+                                )}
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                    {identityCharacters.map((char, index) => {
+                                        const slotMeta = IDENTITY_SLOTS.find((slot) => slot.id === char.slotId);
+                                        return (
+                                            <div key={char.id} className="rounded-lg border border-slate-800 p-3 space-y-3 bg-slate-950/50">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-xs text-slate-400 font-bold">캐릭터 {index + 1}</div>
+                                                    <button
+                                                        onClick={() => handleRemoveIdentityCharacter(char.id)}
+                                                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-md"
+                                                        title="삭제"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div className="col-span-2">
+                                                        <input
+                                                            type="text"
+                                                            value={char.name}
+                                                            onChange={(e) => handleUpdateIdentityCharacter(char.id, { name: e.target.value })}
+                                                            placeholder="이름"
+                                                            className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-white font-bold"
+                                                        />
+                                                    </div>
+                                                    <select
+                                                        value={char.age}
+                                                        onChange={(e) => handleUpdateIdentityCharacter(char.id, { age: e.target.value })}
+                                                        className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-slate-300"
+                                                    >
+                                                        {AGE_OPTIONS.filter(option => option.value).map((option) => (
+                                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select
+                                                        value={char.slotId}
+                                                        onChange={(e) => handleUpdateIdentityCharacter(char.id, { slotId: e.target.value as IdentitySlotId })}
+                                                        className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
+                                                    >
+                                                        {IDENTITY_SLOTS.map((slot) => (
+                                                            <option key={slot.id} value={slot.id}>{slot.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <select
+                                                        value={char.outfitId}
+                                                        onChange={(e) => {
+                                                            const selected = outfitById.get(e.target.value);
+                                                            handleUpdateIdentityCharacter(char.id, {
+                                                                outfitId: e.target.value,
+                                                                outfitName: selected?.translation || selected?.name || '',
+                                                                outfitPrompt: selected?.prompt || selected?.name || ''
+                                                            });
+                                                        }}
+                                                        className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
+                                                        disabled={isLoadingOutfitCatalog}
+                                                    >
+                                                        <option value="">의상 선택</option>
+                                                        {outfitOptions.sortedKeys.map((categoryId) => {
+                                                            const items = outfitOptions.grouped[categoryId] || [];
+                                                            const category = outfitOptions.categoryMap.get(categoryId);
+                                                            const label = category?.name || categoryId;
+                                                            return (
+                                                                <optgroup key={categoryId} label={label}>
+                                                                    {items.map((item) => (
+                                                                        <option key={item.id} value={item.id}>
+                                                                            {item.translation || item.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <div className="text-[10px] text-slate-500 font-semibold">일반 악세서리</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {GENERAL_ACCESSORIES.flatMap((group) => group.items).map((item) => (
+                                                            <button
+                                                                key={`${char.id}-${item}`}
+                                                                onClick={() => toggleAccessory(char.id, item)}
+                                                                className={`px-2 py-1 text-[10px] rounded-full border transition-all ${
+                                                                    char.accessories.includes(item)
+                                                                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                                                        : 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
+                                                                }`}
+                                                            >
+                                                                {item}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {identityWinterEnabled && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-[10px] text-slate-500 font-semibold">겨울 악세서리</div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {WINTER_ACCESSORIES.map((item) => (
+                                                                <button
+                                                                    key={`${char.id}-winter-${item}`}
+                                                                    onClick={() => toggleWinterAccessory(char.id, item)}
+                                                                    className={`px-2 py-1 text-[10px] rounded-full border transition-all ${
+                                                                        char.winterAccessories.includes(item)
+                                                                            ? 'border-purple-500 bg-purple-500/20 text-purple-200'
+                                                                            : 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
+                                                                    }`}
+                                                                >
+                                                                    {item}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {slotMeta?.gender === 'female' ? (
+                                                    <div className="text-[10px] text-slate-500">여성 슬롯 기준</div>
+                                                ) : (
+                                                    <div className="text-[10px] text-slate-500">남성 슬롯 기준</div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             <button

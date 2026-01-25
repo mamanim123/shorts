@@ -12,6 +12,7 @@ import { saveImageToDisk, deleteFileFromDisk } from './master-studio/services/se
 import Lightbox from './master-studio/Lightbox';
 import { showToast } from './Toast';
 import { fetchImageHistory, saveImageHistory } from '../services/imageHistoryService';
+import { setAppStorageValue } from '../services/appStorageService';
 
 const STORY_FILTER_ALL = 'all';
 const STORY_FILTER_ORPHANED = '__legacy__';
@@ -865,7 +866,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
         label: '편집',
         icon: <Layers size={14} />,
         onClick: () => {
-          localStorage.setItem('imageStudio_load_from_history', JSON.stringify(lightboxItem));
+          setAppStorageValue('imageStudio_load_from_history', lightboxItem);
           setIsHistoryOpen(false);
           setLightboxImageUrl(null);
           setLightboxItem(null);

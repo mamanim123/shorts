@@ -20,6 +20,7 @@ import { deleteFileFromDisk } from '../services/serverService';
 import { resolveImageHistoryUrls } from '../services/historyImageLoader';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
+import { setAppStorageValue } from '../../../services/appStorageService';
 
 const CANVAS_WIDTH = 1280;
 const CANVAS_HEIGHT = 720;
@@ -648,7 +649,7 @@ const ThumbnailStudio: React.FC = () => {
                 onToggleFavorite={toggleFavorite}
                 onEdit={(item, e) => {
                     e.stopPropagation();
-                    localStorage.setItem('imageStudio_load_from_history', JSON.stringify(item));
+                    setAppStorageValue('imageStudio_load_from_history', item);
                     setNotification({ message: '이미지 스튜디오에서 편집을 계속하세요.', type: 'success' });
                 }}
             />

@@ -1,3 +1,5 @@
+import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from '../../../services/appStorageService';
+
 export interface ApiKeyEntry {
     id: string;
     label: string;
@@ -34,6 +36,8 @@ interface UsageStore {
 const STORAGE_KEY = 'master_studio_api_usage_v2';
 const LEGACY_STORAGE_KEY = 'master_studio_api_usage';
 const DEFAULT_KEY_ID = 'default';
+
+primeAppStorageCache();
 
 const emptySnapshot: UsageSnapshot = {
     calls: 0,
@@ -119,21 +123,25 @@ const normalizeStore = (raw: any): UsageStore => {
 const loadStore = (): UsageStore => {
     if (typeof window === 'undefined') return memoryStore;
 
-    const rawNew = window.localStorage.getItem(STORAGE_KEY);
-    const rawLegacy = rawNew ? null : window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    const stored = getAppStorageCachedValue<any | null>(STORAGE_KEY, null);
+    let parsed: any = stored ?? null;
 
-    let parsed: any = null;
-    try {
-        parsed = rawNew ? JSON.parse(rawNew) : rawLegacy ? JSON.parse(rawLegacy) : null;
-    } catch {
-        parsed = null;
+    if (!parsed) {
+        const rawLegacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (rawLegacy) {
+            try {
+                parsed = JSON.parse(rawLegacy);
+            } catch {
+                parsed = null;
+            }
+        }
     }
 
     const store = normalizeStore(parsed);
     memoryStore = store;
 
     // If we loaded legacy data, persist into the new format
-    if (!rawNew) {
+    if (!stored) {
         persistStore(store);
     }
 
@@ -142,13 +150,9 @@ const loadStore = (): UsageStore => {
 
 const persistStore = (store: UsageStore, notifyKeyId?: string) => {
     memoryStore = store;
-    if (typeof window !== 'undefined') {
-        try {
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-        } catch {
-            // Ignore quota issues; keep in memory
-        }
-    }
+    setAppStorageValue(STORAGE_KEY, store).catch(() => {
+        // Ignore failures; keep in memory
+    });
 
     if (notifyKeyId) {
         const snapshot = store.snapshots[notifyKeyId];

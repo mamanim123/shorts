@@ -5,6 +5,7 @@ import { Globe, Bot, Settings2, Sliders } from 'lucide-react';
 import { genreManager } from '../services/genreGuidelines';
 import { PromptEnhancementSettings } from './PromptEnhancementSettings';
 import { ensureEngineConfigLoaded, loadEngineOptions, EngineOption } from '../services/enginePromptStore';
+import { setAppStorageValue } from '../services/appStorageService';
 
 interface ConfigPanelProps {
   input: UserInput & { onOpenYoutubeSearch?: () => void };
@@ -178,8 +179,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ input, onChange, onOpe
               onChange={(e) => {
                 const newGenre = e.target.value;
                 onChange({ ...input, shortsGenre: newGenre });
-                // ⭐ localStorage 동기화 - ShortsScriptGenerator와 연동
-                localStorage.setItem('shorts-generator-genre', newGenre);
+                // ⭐ 서버 저장소 동기화 - ShortsScriptGenerator와 연동
+                setAppStorageValue('shorts-generator-genre', newGenre);
               }}
               className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
             >

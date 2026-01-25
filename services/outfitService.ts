@@ -1,3 +1,5 @@
+import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
+
 export type OutfitCategoryGender = 'female' | 'male' | 'unisex';
 
 export interface OutfitCategory {
@@ -32,6 +34,8 @@ export interface OutfitPoolItem {
 
 const OUTFIT_CACHE_KEY = 'outfit-catalog-cache-v1';
 const CATEGORY_CACHE_KEY = 'outfit-category-cache-v1';
+
+primeAppStorageCache();
 
 const FALLBACK_CATEGORIES: OutfitCategory[] = [
   { id: 'ROYAL', name: 'ROYAL', gender: 'female' },
@@ -85,37 +89,20 @@ const mergeCategories = (
   return Array.from(map.values());
 };
 
-const getLocalStorageValue = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const setLocalStorageValue = (key: string, value: unknown) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore cache failures.
-  }
-};
+const getStorageValue = <T,>(key: string, fallback: T): T =>
+  getAppStorageCachedValue<T>(key, fallback);
 
 export const getCachedOutfitCatalog = (): OutfitCatalog => {
-  const outfits = getLocalStorageValue<OutfitItem[]>(OUTFIT_CACHE_KEY, []);
-  const categories = getLocalStorageValue<OutfitCategory[]>(CATEGORY_CACHE_KEY, FALLBACK_CATEGORIES);
+  const outfits = getStorageValue<OutfitItem[]>(OUTFIT_CACHE_KEY, []);
+  const categories = getStorageValue<OutfitCategory[]>(CATEGORY_CACHE_KEY, FALLBACK_CATEGORIES);
   const normalizedCategories = mergeCategories(categories, outfits);
   return { outfits, categories: normalizedCategories };
 };
 
 export const setCachedOutfitCatalog = (catalog: OutfitCatalog) => {
   const normalizedCategories = mergeCategories(catalog.categories, catalog.outfits);
-  setLocalStorageValue(OUTFIT_CACHE_KEY, catalog.outfits || []);
-  setLocalStorageValue(CATEGORY_CACHE_KEY, normalizedCategories);
+  setAppStorageValue(OUTFIT_CACHE_KEY, catalog.outfits || []);
+  setAppStorageValue(CATEGORY_CACHE_KEY, normalizedCategories);
 };
 
 export const fetchOutfitCatalog = async (): Promise<OutfitCatalog> => {

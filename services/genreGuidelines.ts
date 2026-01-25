@@ -4,6 +4,7 @@
  */
 
 import { apiClient, API_ENDPOINTS } from '../utils';
+import { getAppStorageCachedValue, primeAppStorageCache, removeAppStorageValue, setAppStorageValue } from './appStorageService';
 
 export interface GenreGuideline {
    id: string;
@@ -16,29 +17,24 @@ export interface GenreGuideline {
 const LEGACY_STORAGE_KEY = 'shorts-generator-custom-genres';
 const DELETED_DEFAULTS_KEY = 'shorts-genre-deleted-defaults';
 
+primeAppStorageCache();
+
 // 삭제된 기본 장르 ID 목록 관리
 const getDeletedDefaultIds = (): string[] => {
-   if (typeof window === 'undefined') return [];
-   try {
-      const stored = localStorage.getItem(DELETED_DEFAULTS_KEY);
-      return stored ? JSON.parse(stored) : [];
-   } catch {
-      return [];
-   }
+   const stored = getAppStorageCachedValue<string[] | null>(DELETED_DEFAULTS_KEY, null);
+   return stored && Array.isArray(stored) ? stored : [];
 };
 
 const addDeletedDefaultId = (id: string) => {
-   if (typeof window === 'undefined') return;
    const current = getDeletedDefaultIds();
    if (!current.includes(id)) {
       current.push(id);
-      localStorage.setItem(DELETED_DEFAULTS_KEY, JSON.stringify(current));
+      setAppStorageValue(DELETED_DEFAULTS_KEY, current);
    }
 };
 
 const clearDeletedDefaults = () => {
-   if (typeof window === 'undefined') return;
-   localStorage.removeItem(DELETED_DEFAULTS_KEY);
+   removeAppStorageValue(DELETED_DEFAULTS_KEY);
 };
 
 // 삭제되지 않은 기본 장르만 가져오기
@@ -311,23 +307,12 @@ const mergeGenres = (customGenres: GenreGuideline[]) => {
 };
 
 const readLegacyCustomGenres = (): GenreGuideline[] => {
-   if (typeof window === 'undefined') return [];
-   try {
-      const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-   } catch (e) {
-      console.warn('Failed to read legacy genre storage', e);
-      return [];
-   }
+   const stored = getAppStorageCachedValue<GenreGuideline[] | null>(LEGACY_STORAGE_KEY, null);
+   return stored && Array.isArray(stored) ? stored : [];
 };
 
 const clearLegacyCustomGenres = () => {
-   if (typeof window === 'undefined') return;
-   try {
-      localStorage.removeItem(LEGACY_STORAGE_KEY);
-   } catch (e) {
-      console.warn('Failed to clear legacy genre storage', e);
-   }
+   removeAppStorageValue(LEGACY_STORAGE_KEY);
 };
 
 const fetchCustomGenres = async (): Promise<GenreGuideline[]> => {

@@ -5,84 +5,96 @@
       "name": "추출된 의상",
       "prompt": "A high-realism portrait of a young Korean woman with a slender yet curvy hourglass figure, featuring a narrow waist and elegant posture. She is wearing a tight-fitting light gray mock-neck top made of soft, breathable cotton-stretch fabric, detailed with a small black crest embroidery on the left chest. The lower half features a high-waisted black midi pencil skirt with intricate horizontal ruching and pleated textures, hugging the hips and thighs in a sophisticated bodycon fit. The scene is illuminated by natural soft daylight, showcasing ultra-detailed skin textures, fine pores, and realistic fabric fibers. 8k UHD, cinematic lighting, sharp focus on textile details and natural human skin.",
       "category": "사용자 정의",
-      "createdAt": "2026-01-22T04:14:04.556Z"
+      "createdAt": "2026-01-22T04:14:04.556Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769055244556_2026-01-25T02-24-57-527Z.png"
     },
     {
       "id": "outfit-1769060852068",
       "name": "라이트그레이 터틀넥 + 블랙 셔링 펜슬스커트",
       "prompt": "light gray shorts-sleeved turtleneck top with embroidery on left chest, tight fitted, paired with high-waisted black mini pencil skirt with horizontal ruching and shirring details",
       "category": "ROYAL",
-      "createdAt": "2026-01-22T05:47:32.068Z"
+      "createdAt": "2026-01-22T05:47:32.068Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-01-25T02-25-05-241Z.png"
     },
     {
       "id": "outfit-1769063025448",
       "name": "라이트그레이 코튼 스포츠브라 + 라이트그레이 플레어 팬츠",
       "prompt": "light grey cotton sports bra with scoop neckline and thin spaghetti straps, paired with matching light grey high-waisted flared yoga pants, soft jersey fabric, solid pattern, tight fit",
       "category": "YOGA",
-      "createdAt": "2026-01-22T06:23:45.448Z"
+      "createdAt": "2026-01-22T06:23:45.448Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063025448_2026-01-25T02-25-13-607Z.png"
     },
     {
       "id": "outfit-1769063625325",
       "name": "그레이 비대칭 컷아웃 탑 + 그레이 레깅스",
       "prompt": "gray one-shoulder sports top with asymmetric cutout detail and double straps, matching gray high-waisted compression leggings, a gray sweatshirt tied around the waist, large gold hoop earrings",
       "category": "YOGA",
-      "createdAt": "2026-01-22T06:33:45.325Z"
+      "createdAt": "2026-01-22T06:33:45.325Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063625325_2026-01-25T02-25-23-247Z.png"
     },
     {
       "id": "outfit-1769063925853",
       "name": "핑크 테크니컬 집업 + 핑크 하이웨이스트 레깅스",
       "prompt": "vibrant pink technical zip-up athletic jacket with high neck, long sleeves, and thumbholes, paired with matching high-waisted vibrant pink compression leggings, seamless design, performance stretch fabric",
       "category": "YOGA",
-      "createdAt": "2026-01-22T06:38:45.853Z"
+      "createdAt": "2026-01-22T06:38:45.853Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063925853_2026-01-25T02-25-30-657Z.png"
     },
     {
       "id": "outfit-1769064384737",
       "name": "스카이블루 슬림핏 크롭 긴팔티 + 하이웨이스트 쇼츠",
       "prompt": "light sky blue long sleeve crop top with round neckline and thumbholes, matching high-waisted seamless athletic micro mini shorts, white crew socks with logo, white athletic sneakers",
       "category": "YOGA",
-      "createdAt": "2026-01-22T06:46:24.737Z"
+      "createdAt": "2026-01-22T06:46:24.737Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769064384737_2026-01-25T02-25-39-229Z.png"
     },
     {
       "id": "outfit-1769076817743",
       "name": "라이트 워시 데님 크롭 자켓 + 데님 마이크로 쇼츠",
       "prompt": "A coordinated denim ensemble featuring a light-wash blue denim cropped jacket with long sleeves and elasticized cinched hemline creating a voluminous puff effect. The jacket is paired with matching light-wash denim micro shorts that feature a low-rise waist, traditional five-pocket construction, and subtle distressed details on the rear pockets with white stitching accents. The shorts are skin-tight with a very short inseam and finished hems. Underneath, sheer white matte tights or stockings provide a smooth layered look, extending down to white athletic sneakers with visible white laces and a clean minimalist design. The entire outfit reflects a trendy Y2K-inspired streetwear aesthetic using medium-weight cotton denim with a classic matte texture and uniform faded blue color.",
       "category": "ROYAL",
-      "createdAt": "2026-01-22T10:13:37.743Z"
+      "createdAt": "2026-01-22T10:13:37.743Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769076817743_2026-01-25T02-25-47-129Z.png"
     },
     {
       "id": "outfit-1769079711361",
       "name": "베이지 리브드 스쿱넥 롱슬리브 티셔츠",
       "prompt": "minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use",
       "category": "ROYAL",
-      "createdAt": "2026-01-22T11:01:51.361Z"
+      "createdAt": "2026-01-22T11:01:51.361Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769079711361_2026-01-25T02-25-54-870Z.png"
     },
     {
       "id": "outfit-1769304349951",
       "name": "코랄 핑크 리브드 홀터넥 크롭 탑 + 차콜 그레이 하이웨이스트 레깅스",
       "prompt": "Athleisure outfit featuring a vibrant coral pink sleeveless halter neck crop top made of medium-weight ribbed cotton-spandex blend. The top has a high circular neckline with thick binding and vertical ribbed texture throughout, providing a snug fitted silhouette. The bottom consists of charcoal grey high-performance yoga leggings with a high-waisted wide waistband for compression and support. The leggings are made from an opaque, matte-finish technical fabric with invisible flat-lock seams and a seamless hem. The ensemble is designed for high-mobility fitness activities, showcasing a minimalist aesthetic with clean lines and no visible hardware or closures, creating a sleek pull-on athletic look.",
       "category": "YOGA",
-      "createdAt": "2026-01-25T01:25:49.951Z"
+      "createdAt": "2026-01-25T01:25:49.951Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769304349951_2026-01-25T02-26-03-538Z.png"
     },
     {
       "id": "outfit-1769304534205",
       "name": "토프 베이지 홀터넥 크롭 탑 + 하이웨이스트 바이크 쇼츠 셋업",
       "prompt": "sophisticated taupe beige athleisure set, minimalist halter neck crop top, high-neck racerback silhouette, thick ribbed binding at neckline, matching high-waisted bike shorts, compression fit, opaque matte technical spandex blend, buttery smooth texture, skin-tight bodycon silhouette, stylized silver-grey cursive logo on lower left thigh, flatlock reinforced seams, double-stitched finished hems, monochromatic coordinated activewear, performance-grade fabric.",
       "category": "YOGA",
-      "createdAt": "2026-01-25T01:28:54.205Z"
+      "createdAt": "2026-01-25T01:28:54.205Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769304534205_2026-01-25T02-26-11-616Z.png"
     },
     {
       "id": "outfit-1769305533937",
       "name": "화이트 리브드 텍스처 튜브탑 바디콘 미니 원피스",
       "prompt": "minimalist optic white strapless tube top bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing",
       "category": "GOLF LUXURY",
-      "createdAt": "2026-01-25T01:45:33.937Z"
+      "createdAt": "2026-01-25T01:45:33.937Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305533937_2026-01-25T02-26-17-824Z.png"
     },
     {
       "id": "outfit-1769305951401",
       "name": "화이트 리브드 밴두 탑 + 핑크 플리츠 테니스 스커트",
       "prompt": "Athleisure ensemble featuring a strapless white ribbed bandeau top with a horizontal fine-knit texture and elasticized opaque finish, fitted snugly to the torso. The lower garment is a vibrant candy pink high-waisted tennis skirt with structured knife pleats starting from the mid-hip to create a flared A-line silhouette. The skirt features a wide smooth waistband with visible horizontal stitching for support and a mini length. The fabrics appear to be a high-performance synthetic blend, likely a moisture-wicking polyester-spandex mix with a matte finish, designed for athletic movement and breathability.",
       "category": "GOLF LUXURY",
-      "createdAt": "2026-01-25T01:52:31.401Z"
+      "createdAt": "2026-01-25T01:52:31.401Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305951401_2026-01-25T02-26-23-865Z.png"
     }
   ],
   "categories": [

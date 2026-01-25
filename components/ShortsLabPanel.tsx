@@ -23,6 +23,7 @@ import { generateImage, generateImageWithImagen, initGeminiService } from './mas
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
 import CharacterPanel from './CharacterPanel';
+import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -374,18 +375,17 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, []);
 
     React.useEffect(() => {
-        try {
-            const savedScenes = localStorage.getItem('shorts-lab-scenes');
-            const savedFolder = localStorage.getItem('shorts-lab-folder');
-            const savedTopic = localStorage.getItem('shorts-lab-topic');
+        const loadState = async () => {
+            try {
+                const savedScenes = await getAppStorageValue<Scene[] | null>('shorts-lab-scenes', null);
+                const savedFolder = await getAppStorageValue<string | null>('shorts-lab-folder', null);
+                const savedTopic = await getAppStorageValue<string | null>('shorts-lab-topic', null);
 
-            if (savedFolder) setCurrentFolderName(savedFolder);
-            if (savedTopic) setAiTopic(savedTopic);
+                if (savedFolder) setCurrentFolderName(savedFolder);
+                if (savedTopic) setAiTopic(savedTopic);
 
-            if (savedScenes) {
-                const parsed = JSON.parse(savedScenes);
-                if (Array.isArray(parsed)) {
-                    const normalized = (parsed as Scene[]).map(scene => {
+                if (savedScenes && Array.isArray(savedScenes)) {
+                    const normalized = (savedScenes as Scene[]).map(scene => {
                         const voiceType = scene.voiceType || (scene.lipSyncLine ? 'both' : scene.narrationText ? 'narration' : 'none');
                         return {
                             ...scene,
@@ -397,33 +397,35 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     setScenes(normalized);
                     setActiveTab('preview');
                 }
-
+            } catch (error) {
+                console.warn('[ShortsLab] Failed to restore state:', error);
             }
-        } catch (error) {
-            console.warn('[ShortsLab] Failed to restore state:', error);
-        }
+        };
+        loadState();
     }, []);
 
     // [NEW] 상태 변경 시 localStorage 저장
     React.useEffect(() => {
-        if (currentFolderName) localStorage.setItem('shorts-lab-folder', currentFolderName);
-        else localStorage.removeItem('shorts-lab-folder');
+        if (currentFolderName) {
+            setAppStorageValue('shorts-lab-folder', currentFolderName);
+        } else {
+            removeAppStorageValue('shorts-lab-folder');
+        }
     }, [currentFolderName]);
 
     React.useEffect(() => {
-        if (aiTopic) localStorage.setItem('shorts-lab-topic', aiTopic);
-        else localStorage.removeItem('shorts-lab-topic');
+        if (aiTopic) {
+            setAppStorageValue('shorts-lab-topic', aiTopic);
+        } else {
+            removeAppStorageValue('shorts-lab-topic');
+        }
     }, [aiTopic]);
 
     React.useEffect(() => {
-        try {
-            if (scenes.length > 0) {
-                localStorage.setItem('shorts-lab-scenes', JSON.stringify(scenes));
-            } else {
-                localStorage.removeItem('shorts-lab-scenes');
-            }
-        } catch (storageError) {
-            console.warn('[ShortsLab] Failed to persist scenes:', storageError);
+        if (scenes.length > 0) {
+            setAppStorageValue('shorts-lab-scenes', scenes);
+        } else {
+            removeAppStorageValue('shorts-lab-scenes');
         }
     }, [scenes]);
 
@@ -927,11 +929,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const updated = [...prev];
                 const resolvedUrl = data.url ? data.url : undefined;
                 updated[sceneIndex] = { ...scene, videoUrl: resolvedUrl, isVideoGenerating: false };
-                try {
-                    localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
-                } catch (storageError) {
-                    console.warn('[ShortsLab] Failed to persist scenes:', storageError);
-                }
+                setAppStorageValue('shorts-lab-scenes', updated);
                 return updated;
             });
 
@@ -962,11 +960,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         setScenes(prev => {
             const updated = [...prev];
             updated[sceneIndex] = { ...updated[sceneIndex], isVideoGenerating: false };
-            try {
-                localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
-            } catch (storageError) {
-                console.warn('[ShortsLab] Failed to persist scenes:', storageError);
-            }
+            setAppStorageValue('shorts-lab-scenes', updated);
             return updated;
         });
         showToast('비디오 생성이 취소되었습니다.', 'info');
@@ -1069,11 +1063,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     videoUrl: `http://localhost:3002${data.url}`,
                     videoError: undefined
                 };
-                try {
-                    localStorage.setItem('shorts-lab-scenes', JSON.stringify(updated));
-                } catch (e) {
-                    console.warn('[ShortsLab] Failed to persist scenes:', e);
-                }
+                setAppStorageValue('shorts-lab-scenes', updated);
                 return updated;
             });
 

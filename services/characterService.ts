@@ -1,3 +1,5 @@
+import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
+
 export interface CharacterItem {
   id: string;
   name: string;
@@ -11,31 +13,17 @@ export interface CharacterItem {
 
 const CHARACTER_CACHE_KEY = 'character-catalog-cache-v1';
 
-const getLocalStorageValue = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-};
+primeAppStorageCache();
 
-const setLocalStorageValue = (key: string, value: unknown) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore cache failures.
-  }
+const getStorageValue = <T,>(key: string, fallback: T): T => {
+  return getAppStorageCachedValue<T>(key, fallback);
 };
 
 export const getCachedCharacters = (): CharacterItem[] =>
-  getLocalStorageValue<CharacterItem[]>(CHARACTER_CACHE_KEY, []);
+  getStorageValue<CharacterItem[]>(CHARACTER_CACHE_KEY, []);
 
 export const setCachedCharacters = (characters: CharacterItem[]) => {
-  setLocalStorageValue(CHARACTER_CACHE_KEY, characters || []);
+  setAppStorageValue(CHARACTER_CACHE_KEY, characters || []);
 };
 
 export const fetchCharacters = async (): Promise<CharacterItem[]> => {

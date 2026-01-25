@@ -9,6 +9,7 @@ import { setBlob } from './master-studio/services/dbService';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import Lightbox from './master-studio/Lightbox';
 import { showToast } from './Toast';
+import { getAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 
 type StylePreset = {
   id: 'classic' | 'kdrama' | 'noir' | 'fairytale' | 'cinematic_real' | 'oriental_myth' | 'hyper_ad';
@@ -623,31 +624,37 @@ Output ONLY a JSON array of 3 objects:
 
   // [Persistence] Save/Load from LocalStorage
   useEffect(() => {
-    const saved = localStorage.getItem('cineboard-working-state');
-    if (saved) {
-      try {
-        const state = JSON.parse(saved);
-        if (state.activeStoryId) setActiveStoryId(state.activeStoryId);
-        if (state.selectedStyle) setSelectedStyle(state.selectedStyle);
-        if (state.selectedEngine) setSelectedEngine(state.selectedEngine);
-        if (state.selectedAspect) setSelectedAspect(state.selectedAspect);
-        if (state.sceneCount) setSceneCount(state.sceneCount);
-        if (state.scriptText) setScriptText(state.scriptText);
-        if (state.characterNotes) setCharacterNotes(state.characterNotes);
-        if (state.activeView) setActiveView(state.activeView);
-      } catch (e) { console.error('Failed to restore working state', e); }
-    }
+    const loadState = async () => {
+      const saved = await getAppStorageValue<any | null>('cineboard-working-state', null);
+      if (saved) {
+        try {
+          const state = saved;
+          if (state.activeStoryId) setActiveStoryId(state.activeStoryId);
+          if (state.selectedStyle) setSelectedStyle(state.selectedStyle);
+          if (state.selectedEngine) setSelectedEngine(state.selectedEngine);
+          if (state.selectedAspect) setSelectedAspect(state.selectedAspect);
+          if (state.sceneCount) setSceneCount(state.sceneCount);
+          if (state.scriptText) setScriptText(state.scriptText);
+          if (state.characterNotes) setCharacterNotes(state.characterNotes);
+          if (state.activeView) setActiveView(state.activeView);
+        } catch (e) { console.error('Failed to restore working state', e); }
+      }
+    };
+    loadState();
   }, []);
 
   useEffect(() => {
-    try {
-      const savedDict = localStorage.getItem('cineboard-name-dictionary');
-      if (savedDict) setNameDictionary(JSON.parse(savedDict));
-      const savedCand = localStorage.getItem('cineboard-character-candidates');
-      if (savedCand) setCandidateText(savedCand);
-    } catch (e) {
-      console.error('Failed to load cineboard data', e);
-    }
+    const loadData = async () => {
+      try {
+        const savedDict = await getAppStorageValue<Record<string, string> | null>('cineboard-name-dictionary', null);
+        if (savedDict) setNameDictionary(savedDict);
+        const savedCand = await getAppStorageValue<string | null>('cineboard-character-candidates', null);
+        if (savedCand) setCandidateText(savedCand);
+      } catch (e) {
+        console.error('Failed to load cineboard data', e);
+      }
+    };
+    loadData();
   }, []);
 
   // ✅ [NEW] Load favorites from server
@@ -669,7 +676,7 @@ Output ONLY a JSON array of 3 objects:
 
   useEffect(() => {
     try {
-      localStorage.setItem('cineboard-name-dictionary', JSON.stringify(nameDictionary));
+      setAppStorageValue('cineboard-name-dictionary', nameDictionary);
       setDictionaryText(JSON.stringify(nameDictionary, null, 2));
     } catch (e) {
       console.error('Failed to save cineboard name dictionary', e);
@@ -680,7 +687,7 @@ Output ONLY a JSON array of 3 objects:
     const parsed = candidateText.split(/[\n,]/).map((v) => v.trim()).filter((v) => v.length >= 2);
     setCandidateList(parsed);
     try {
-      localStorage.setItem('cineboard-character-candidates', candidateText);
+      setAppStorageValue('cineboard-character-candidates', candidateText);
     } catch (e) {
       console.error('Failed to save candidates', e);
     }
@@ -691,7 +698,7 @@ Output ONLY a JSON array of 3 objects:
       selectedStyle, selectedEngine, selectedAspect, sceneCount,
       scriptText, characters, characterNotes, generationResult, activeView
     };
-    localStorage.setItem('cineboard-working-state', JSON.stringify(state));
+    setAppStorageValue('cineboard-working-state', state);
   }, [activeStoryId, selectedStyle, selectedEngine, selectedAspect, sceneCount, scriptText, characterNotes, activeView]);
 
   const handleStartEdit = (sceneNumber: number, field: 'ko' | 'en', currentVal: string) => {

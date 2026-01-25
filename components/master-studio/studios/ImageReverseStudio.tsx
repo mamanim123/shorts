@@ -18,6 +18,7 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import ImageHistorySidebar from '../ImageHistorySidebar';
 import { ImageHistoryItem } from '../types';
 import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
+import { setAppStorageValue } from '../../../services/appStorageService';
 import {
     ReversePromptMediaType,
     ReversePromptLanguage,
@@ -626,7 +627,7 @@ const ImageReverseStudio: React.FC = () => {
                 onToggleFavorite={toggleFavorite}
                 onEdit={(item, e) => {
                     e.stopPropagation();
-                    localStorage.setItem('imageStudio_load_from_history', JSON.stringify(item));
+                    setAppStorageValue('imageStudio_load_from_history', item);
                     setToast({ type: 'success', message: '이미지 스튜디오에서 편집을 계속하세요.' });
                 }}
             />

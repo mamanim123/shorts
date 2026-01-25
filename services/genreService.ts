@@ -1,4 +1,5 @@
 import { OutfitStyle } from '../types';
+import { getAppStorageCachedValue, primeAppStorageCache, removeAppStorageValue, setAppStorageValue } from './appStorageService';
 
 export interface Genre {
     id: string;
@@ -9,6 +10,8 @@ export interface Genre {
 
 const STORAGE_KEY = 'shorts-generator-genres';
 const DELETED_DEFAULTS_KEY = 'deleted-default-genres';
+
+primeAppStorageCache();
 
 // 기본 장르 목록 (기존 OutfitStyle enum 기반)
 const DEFAULT_GENRES: Genre[] = [
@@ -21,12 +24,8 @@ const DEFAULT_GENRES: Genre[] = [
 
 // 삭제된 기본 장르 ID 목록 가져오기
 const getDeletedDefaultIds = (): string[] => {
-    try {
-        const stored = localStorage.getItem(DELETED_DEFAULTS_KEY);
-        return stored ? JSON.parse(stored) : [];
-    } catch {
-        return [];
-    }
+    const stored = getAppStorageCachedValue<string[] | null>(DELETED_DEFAULTS_KEY, null);
+    return stored && Array.isArray(stored) ? stored : [];
 };
 
 export const genreService = {
@@ -36,9 +35,8 @@ export const genreService = {
             const deletedIds = getDeletedDefaultIds();
             const activeDefaults = DEFAULT_GENRES.filter(g => !deletedIds.includes(g.id));
 
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                const customGenres = JSON.parse(stored);
+            const customGenres = getAppStorageCachedValue<Genre[] | null>(STORAGE_KEY, null);
+            if (customGenres && Array.isArray(customGenres)) {
                 return [...activeDefaults, ...customGenres];
             }
             return activeDefaults;
@@ -57,7 +55,7 @@ export const genreService = {
             isCustom: true
         };
         const updated = [...genres, newGenre];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        setAppStorageValue(STORAGE_KEY, updated);
         return genreService.getGenres();
     },
 
@@ -71,13 +69,13 @@ export const genreService = {
             const deletedIds = getDeletedDefaultIds();
             if (!deletedIds.includes(id)) {
                 deletedIds.push(id);
-                localStorage.setItem(DELETED_DEFAULTS_KEY, JSON.stringify(deletedIds));
+                setAppStorageValue(DELETED_DEFAULTS_KEY, deletedIds);
             }
         } else {
             // 커스텀 장르는 목록에서 제거
             const genres = genreService.getCustomGenres();
             const updated = genres.filter(g => g.id !== id);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            setAppStorageValue(STORAGE_KEY, updated);
         }
 
         return genreService.getGenres();
@@ -86,8 +84,8 @@ export const genreService = {
     // 사용자 장르만 가져오기 (내부용)
     getCustomGenres: (): Genre[] => {
         try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
+            const stored = getAppStorageCachedValue<Genre[] | null>(STORAGE_KEY, null);
+            return stored && Array.isArray(stored) ? stored : [];
         } catch (e) {
             return [];
         }
@@ -95,8 +93,8 @@ export const genreService = {
 
     // 초기화 (모든 커스텀 장르 삭제 + 삭제된 기본 장르 복원)
     reset: () => {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(DELETED_DEFAULTS_KEY);
+        removeAppStorageValue(STORAGE_KEY);
+        removeAppStorageValue(DELETED_DEFAULTS_KEY);
         return DEFAULT_GENRES;
     }
 };

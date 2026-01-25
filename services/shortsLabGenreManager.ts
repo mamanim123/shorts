@@ -1,8 +1,11 @@
 import { LAB_GENRE_GUIDELINES, LabGenreGuideline, LabGenreGuidelineEntry } from './labPromptBuilder';
+import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
 
 const STORAGE_KEY = 'shorts-lab-genre-guidelines';
 const BACKUP_STORAGE_KEY = 'shorts-lab-genre-guidelines-backups';
 const MAX_BACKUPS = 5;
+
+primeAppStorageCache();
 
 const buildDefaultGenres = (): LabGenreGuidelineEntry[] =>
   Object.entries(LAB_GENRE_GUIDELINES).map(([id, guide]) => ({ id, ...guide }));
@@ -63,49 +66,27 @@ const normalizeBackup = (backup: Partial<LabGenreBackup> & { id: string }): LabG
 });
 
 const readStoredGenres = (): LabGenreGuidelineEntry[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item) => normalizeGenre(item));
-  } catch (error) {
-    console.warn('[shortsLabGenreManager] Failed to read genres:', error);
-    return [];
-  }
+  const stored = getAppStorageCachedValue<LabGenreGuidelineEntry[] | null>(STORAGE_KEY, null);
+  if (!stored || !Array.isArray(stored)) return [];
+  return stored.map((item) => normalizeGenre(item));
 };
 
 const writeStoredGenres = (genres: LabGenreGuidelineEntry[]) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(genres));
-  } catch (error) {
+  setAppStorageValue(STORAGE_KEY, genres).catch((error) => {
     console.warn('[shortsLabGenreManager] Failed to save genres:', error);
-  }
+  });
 };
 
 const readStoredBackups = (): LabGenreBackup[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(BACKUP_STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item) => normalizeBackup(item));
-  } catch (error) {
-    console.warn('[shortsLabGenreManager] Failed to read backups:', error);
-    return [];
-  }
+  const stored = getAppStorageCachedValue<LabGenreBackup[] | null>(BACKUP_STORAGE_KEY, null);
+  if (!stored || !Array.isArray(stored)) return [];
+  return stored.map((item) => normalizeBackup(item));
 };
 
 const writeStoredBackups = (backups: LabGenreBackup[]) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(backups));
-  } catch (error) {
+  setAppStorageValue(BACKUP_STORAGE_KEY, backups).catch((error) => {
     console.warn('[shortsLabGenreManager] Failed to save backups:', error);
-  }
+  });
 };
 
 const formatBackupName = (input?: string) => {

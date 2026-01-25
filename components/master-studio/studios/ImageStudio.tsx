@@ -14,6 +14,7 @@ import { saveImageToDisk, deleteFileFromDisk } from '../services/serverService';
 import ImageHistorySidebar from '../ImageHistorySidebar';
 import SaveCharacterModal from '../SaveCharacterModal';
 import { CharacterCollection } from '../../../types';
+import { getAppStorageValue, setAppStorageValue } from '../../../services/appStorageService';
 
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -310,25 +311,25 @@ const ImageStudio: React.FC = () => {
         }
     }, [cheatKeysData, categoryOrder.length]);
 
-    // Load character collection from localStorage
+    // Load character collection from server storage
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem('characterCollection');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setCharacterCollection(parsed);
+        const loadCollection = async () => {
+            try {
+                const saved = await getAppStorageValue<CharacterCollection[] | null>('characterCollection', null);
+                if (saved && Array.isArray(saved)) {
+                    setCharacterCollection(saved);
                 }
+            } catch (e) {
+                console.warn('Failed to load character collection', e);
             }
-        } catch (e) {
-            console.warn('Failed to load character collection', e);
-        }
+        };
+        loadCollection();
     }, []);
 
-    // Save character collection to localStorage whenever it changes
+    // Save character collection to server storage whenever it changes
     useEffect(() => {
         if (characterCollection.length > 0) {
-            localStorage.setItem('characterCollection', JSON.stringify(characterCollection));
+            setAppStorageValue('characterCollection', characterCollection);
         }
     }, [characterCollection]);
 
@@ -1878,7 +1879,7 @@ const ImageStudio: React.FC = () => {
                     onEdit={(item, e) => {
                         e.stopPropagation();
                         // Persist selection for Master Studio load
-                        localStorage.setItem('imageStudio_load_from_history', JSON.stringify(item));
+                        setAppStorageValue('imageStudio_load_from_history', item);
                         setIsHistoryOpen(false);
                         setNotification({ message: '이미지 스튜디오에서 편집을 계속하세요. (히스토리에서 선택됨)', type: 'success' });
                     }}

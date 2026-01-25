@@ -1,8 +1,11 @@
 import { DEFAULT_PROMPT_RULES, ShortsLabPromptRules } from './shortsLabPromptRulesDefaults';
+import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
 
 const STORAGE_KEY = 'shorts-lab-prompt-rules';
 const BACKUP_STORAGE_KEY = 'shorts-lab-prompt-rules-backups';
 const MAX_BACKUPS = 5;
+
+primeAppStorageCache();
 
 export interface ShortsLabPromptRulesBackup {
   id: string;
@@ -67,48 +70,26 @@ const normalizeBackup = (backup: Partial<ShortsLabPromptRulesBackup> & { id: str
 });
 
 const readStoredRules = (): ShortsLabPromptRules => {
-  if (typeof window === 'undefined') return DEFAULT_PROMPT_RULES;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return DEFAULT_PROMPT_RULES;
-    const parsed = JSON.parse(stored);
-    return normalizePromptRules(parsed);
-  } catch (error) {
-    console.warn('[shortsLabPromptRulesManager] Failed to read rules:', error);
-    return DEFAULT_PROMPT_RULES;
-  }
+  const stored = getAppStorageCachedValue<ShortsLabPromptRules | null>(STORAGE_KEY, null);
+  return stored ? normalizePromptRules(stored) : DEFAULT_PROMPT_RULES;
 };
 
 const writeStoredRules = (rules: ShortsLabPromptRules) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-  } catch (error) {
+  setAppStorageValue(STORAGE_KEY, rules).catch((error) => {
     console.warn('[shortsLabPromptRulesManager] Failed to save rules:', error);
-  }
+  });
 };
 
 const readStoredBackups = (): ShortsLabPromptRulesBackup[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(BACKUP_STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item) => normalizeBackup(item));
-  } catch (error) {
-    console.warn('[shortsLabPromptRulesManager] Failed to read backups:', error);
-    return [];
-  }
+  const stored = getAppStorageCachedValue<ShortsLabPromptRulesBackup[] | null>(BACKUP_STORAGE_KEY, null);
+  if (!stored || !Array.isArray(stored)) return [];
+  return stored.map((item) => normalizeBackup(item));
 };
 
 const writeStoredBackups = (backups: ShortsLabPromptRulesBackup[]) => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(backups));
-  } catch (error) {
+  setAppStorageValue(BACKUP_STORAGE_KEY, backups).catch((error) => {
     console.warn('[shortsLabPromptRulesManager] Failed to save backups:', error);
-  }
+  });
 };
 
 const formatBackupName = (input?: string) => {

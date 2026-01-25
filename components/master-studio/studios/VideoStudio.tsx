@@ -13,6 +13,7 @@ import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { ImageHistoryItem } from '../types';
 import ImageHistorySidebar from '../ImageHistorySidebar';
 import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
+import { setAppStorageValue } from '../../../services/appStorageService';
 
 const loadingMessages = [
     "시나리오를 구상하고 있습니다...", "캐릭터의 스타일을 정의하고 있습니다...", "조명을 설정하고 있습니다...", "카메라 앵글을 잡고 있습니다...", "촬영 준비 중입니다...", "첫 번째 컷을 촬영하고 있습니다...", "장면을 렌더링하고 있습니다...", "특수 효과를 추가하고 있습니다...", "사운드 디자인을 입히고 있습니다...", "최종 편집 중입니다...",
@@ -732,7 +733,7 @@ const VideoStudio: React.FC = () => {
                 onToggleFavorite={(id, e) => handleToggleFavorite(id, e)}
                 onEdit={(item, e) => {
                     e.stopPropagation();
-                    localStorage.setItem('imageStudio_load_from_history', JSON.stringify(item));
+                    setAppStorageValue('imageStudio_load_from_history', item);
                     setNotification({ message: '이미지 스튜디오에서 편집을 계속하세요.', type: 'success' });
                 }}
             />

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, RefreshCw, Filter, TrendingUp, Youtube, ExternalLink, Copy, Wand2, Loader2, PlayCircle, Eye, Users, Calendar, Clock } from 'lucide-react';
 import { YouTubeVideo } from '../types';
 import { Button } from './Button';
+import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 
 interface YoutubeSearchPanelProps {
     onGeneratePlanning: (title: string, channel: string, duration: string, viralScore: number, tags: string) => void;
@@ -43,21 +44,21 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
                 const parsed = JSON.parse(legacy);
                 const legacyResults = parsed.results || [];
                 // Default to all tab
-                localStorage.setItem('last_search_cache_all', JSON.stringify({
+                setAppStorageValue('last_search_cache_all', {
                     ...parsed,
                     results: legacyResults
-                }));
+                });
                 // Heuristic: split by duration
                 const shorts = legacyResults.filter((r: any) => (r.durationSec ?? 0) < 240);
                 const longform = legacyResults.filter((r: any) => (r.durationSec ?? 0) >= 1200);
-                localStorage.setItem('last_search_cache_shorts', JSON.stringify({
+                setAppStorageValue('last_search_cache_shorts', {
                     ...parsed,
                     results: shorts
-                }));
-                localStorage.setItem('last_search_cache_longform', JSON.stringify({
+                });
+                setAppStorageValue('last_search_cache_longform', {
                     ...parsed,
                     results: longform
-                }));
+                });
                 // Remove legacy key to avoid re-migration loops
                 localStorage.removeItem('last_search_cache');
             } catch (e) {
@@ -68,37 +69,29 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
         migrateLegacyCache();
 
         // Load per-tab cache on mount
-        (['all', 'shorts', 'longform'] as const).forEach((tab) => {
-            const cachedData = localStorage.getItem(`last_search_cache_${tab}`);
-            if (!cachedData) return;
-            try {
-                const parsed = JSON.parse(cachedData);
-                setResultsByTab((prev) => ({ ...prev, [tab]: parsed.results || [] }));
-                if (tab === 'all') {
-                    setKeyword(parsed.keyword || '');
-                    if (parsed.filters) {
-                        setApiDate(parsed.filters.apiDate);
-                        setApiDuration(parsed.filters.apiDuration);
-                        setApiOrder(parsed.filters.apiOrder);
-                        setMaxResults(parsed.filters.maxResults);
-                        setApiRegion(parsed.filters.apiRegion);
-                        setMinViewCount(parsed.filters.minViewCount || '0');
-                    }
-                }
-            } catch (e) {
-                console.error("Cache load failed", e);
-            }
-        });
-        setResults((prev) => {
-            const initial = localStorage.getItem('last_search_cache_all');
-            if (initial) {
+        (async () => {
+            for (const tab of ['all', 'shorts', 'longform'] as const) {
+                const cachedData = await getAppStorageValue<any | null>(`last_search_cache_${tab}`, null);
+                if (!cachedData) continue;
                 try {
-                    const parsed = JSON.parse(initial);
-                    return parsed.results || prev;
-                } catch { }
+                    const parsed = cachedData;
+                    setResultsByTab((prev) => ({ ...prev, [tab]: parsed.results || [] }));
+                    if (tab === 'all') {
+                        setKeyword(parsed.keyword || '');
+                        if (parsed.filters) {
+                            setApiDate(parsed.filters.apiDate);
+                            setApiDuration(parsed.filters.apiDuration);
+                            setApiOrder(parsed.filters.apiOrder);
+                            setMaxResults(parsed.filters.maxResults);
+                            setApiRegion(parsed.filters.apiRegion);
+                            setMinViewCount(parsed.filters.minViewCount || '0');
+                        }
+                    }
+                } catch (e) {
+                    console.error("Cache load failed", e);
+                }
             }
-            return prev;
-        });
+        })();
     }, []);
 
     const saveKey = () => {
@@ -184,9 +177,9 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
         try {
             // Check cache
             if (!forceRefresh) {
-                const cached = localStorage.getItem('trending_cache');
+                const cached = await getAppStorageValue<any | null>('trending_cache', null);
                 if (cached) {
-                    const data = JSON.parse(cached);
+                    const data = cached;
                     const cacheAge = Date.now() - data.timestamp;
                     if (cacheAge < 3600000 && data.region === apiRegion && data.maxResults === maxResults) {
                         setResults(data.results);
@@ -271,12 +264,12 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
 
             if (accumulatedResults.length === 0) throw new Error("조건에 맞는 트렌드 영상을 찾을 수 없습니다.");
 
-            localStorage.setItem('trending_cache', JSON.stringify({
+            setAppStorageValue('trending_cache', {
                 results: accumulatedResults,
                 timestamp: Date.now(),
                 region: apiRegion,
                 maxResults: maxResults
-            }));
+            });
 
             setResults(accumulatedResults);
 
@@ -305,9 +298,8 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
         try {
             // Check cache
             if (!forceRefresh) {
-                const cachedRaw = localStorage.getItem('last_search_cache');
-                if (cachedRaw) {
-                    const cached = JSON.parse(cachedRaw);
+                const cached = await getAppStorageValue<any | null>('last_search_cache', null);
+                if (cached) {
                     if (cached.keyword === keyword &&
                         cached.filters.apiDate === apiDate &&
                         cached.filters.apiDuration === apiDuration &&
@@ -476,13 +468,13 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
             setResultsByTab((prev) => ({ ...prev, [currentTab]: mergedResults }));
 
             // Save cache per tab
-            localStorage.setItem(`last_search_cache_${currentTab}`, JSON.stringify({
+            setAppStorageValue(`last_search_cache_${currentTab}`, {
                 keyword,
                 filters: { apiDate, apiDuration, apiOrder, apiRegion, maxResults, minViewCount },
                 currentTab,
                 results: mergedResults,
                 timestamp: Date.now()
-            }));
+            });
 
         } catch (e: any) {
             console.error(e);

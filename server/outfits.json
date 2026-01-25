@@ -14,7 +14,7 @@
       "prompt": "light gray shorts-sleeved turtleneck top with embroidery on left chest, tight fitted, paired with high-waisted black mini pencil skirt with horizontal ruching and shirring details",
       "category": "ROYAL",
       "createdAt": "2026-01-22T05:47:32.068Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-01-25T02-25-05-241Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-01-25T03-02-20-507Z.png"
     },
     {
       "id": "outfit-1769063025448",
@@ -95,6 +95,14 @@
       "category": "GOLF LUXURY",
       "createdAt": "2026-01-25T01:52:31.401Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305951401_2026-01-25T02-26-23-865Z.png"
+    },
+    {
+      "id": "outfit-1769309250240",
+      "name": "화이트 골지 민소매 탑 + 핑크 A라인 미니스커트",
+      "prompt": "minimalist summer outfit featuring a crisp white sleeveless ribbed knit tank top with a deep scoop neckline and wide straps, form-fitting silhouette highlighting the upper body, fine vertical ribbing texture throughout the fabric, paired with a soft pastel candy pink A-line mini skirt made of smooth structured cotton-twill material, high-waisted fit with visible topstitching along the waistline and vertical seams for structure, clean finished hemline, accessorized with a delicate thin gold chain necklace with a small circular pendant and subtle gold stud earrings, simple and clean aesthetic with a focus on contrasting textures between the knit top and smooth skirt",
+      "category": "ROYAL",
+      "createdAt": "2026-01-25T02:47:30.240Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769309250240_2026-01-25T03-02-56-492Z.png"
     }
   ],
   "categories": [

@@ -109,7 +109,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [selectedBaseOutfitId, setSelectedBaseOutfitId] = useState<string | null>(null);
   const [editingOutfitName, setEditingOutfitName] = useState('');
   const [editingOutfitPrompt, setEditingOutfitPrompt] = useState('');
+  const [editingBaseOutfitName, setEditingBaseOutfitName] = useState('');
+  const [editingBaseOutfitPrompt, setEditingBaseOutfitPrompt] = useState('');
   const [isGeneratingOutfitPreview, setIsGeneratingOutfitPreview] = useState(false);
+  const [isGeneratingBaseOutfitPreview, setIsGeneratingBaseOutfitPreview] = useState(false);
+  const [isGeneratingOutfitPreviewAI, setIsGeneratingOutfitPreviewAI] = useState(false);
+  const [isGeneratingBaseOutfitPreviewAI, setIsGeneratingBaseOutfitPreviewAI] = useState(false);
   const [isBatchGeneratingOutfitPreviews, setIsBatchGeneratingOutfitPreviews] = useState(false);
   const [batchTotalOutfits, setBatchTotalOutfits] = useState(0);
   const [batchCompletedOutfits, setBatchCompletedOutfits] = useState(0);
@@ -795,6 +800,107 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   }, [createOutfitPreview, isGeneratingOutfitPreview, outfitCategories, outfits, saveOutfitsToBE]);
 
+  const handleGenerateBaseOutfitPreview = useCallback(async (item: BaseOutfitItem) => {
+    if (isGeneratingBaseOutfitPreview) return;
+    setIsGeneratingBaseOutfitPreview(true);
+    try {
+      const prompt = editingBaseOutfitPrompt.trim() || item.prompt || item.name;
+      const savedUrl = await createOutfitPreview(prompt, item.id);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const updatedMap = {
+        ...baseOutfitPreviewMap,
+        [item.id]: `http://localhost:3002${savedUrl}`
+      };
+      setBaseOutfitPreviewMap(updatedMap);
+      saveOutfitPreviewMap(updatedMap);
+      showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
+    } catch (error: any) {
+      console.error('기본 의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingBaseOutfitPreview(false);
+    }
+  }, [baseOutfitPreviewMap, createOutfitPreview, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, saveOutfitPreviewMap]);
+
+  const readBlobAsDataUrl = useCallback((blob: Blob) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('이미지 읽기에 실패했습니다.'));
+      reader.readAsDataURL(blob);
+    });
+  }, []);
+
+  const handleGenerateOutfitPreviewWithAI = useCallback(async (prompt: string, id: string, kind: 'user' | 'base') => {
+    if (!prompt || !prompt.trim()) {
+      showToast('프롬프트가 없어 이미지를 생성할 수 없습니다.', 'warning');
+      return;
+    }
+
+    if (kind === 'user' ? isGeneratingOutfitPreviewAI : isGeneratingBaseOutfitPreviewAI) return;
+    kind === 'user' ? setIsGeneratingOutfitPreviewAI(true) : setIsGeneratingBaseOutfitPreviewAI(true);
+
+    try {
+      const response = await fetch('http://localhost:3002/api/image/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          storyId: 'outfit_previews',
+          sceneNumber: 1,
+          service: 'GEMINI',
+          autoCapture: true,
+          title: 'OutfitPreview'
+        })
+      });
+
+      if (!response.ok) {
+        let message = 'AI 이미지 생성에 실패했습니다.';
+        try {
+          const errorData = await response.json();
+          if (errorData?.error) message = errorData.error;
+        } catch {
+          // ignore
+        }
+        throw new Error(message);
+      }
+
+      const payload = await response.json();
+      const rawUrl = payload?.url ? `http://localhost:3002${payload.url}` : null;
+      if (!rawUrl) throw new Error('AI 이미지 URL을 받지 못했습니다.');
+
+      const imageResponse = await fetch(rawUrl);
+      if (!imageResponse.ok) throw new Error('AI 이미지 다운로드에 실패했습니다.');
+      const blob = await imageResponse.blob();
+      const dataUrl = await readBlobAsDataUrl(blob);
+
+      const savedUrl = await saveOutfitPreviewImage(dataUrl, id, prompt);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+
+      if (kind === 'user') {
+        const updated = outfits.map(item => (
+          item.id === id ? { ...item, imageUrl: `http://localhost:3002${savedUrl}` } : item
+        ));
+        setOutfits(updated);
+        saveOutfitsToBE(updated, outfitCategories);
+      } else {
+        const updatedMap = {
+          ...baseOutfitPreviewMap,
+          [id]: `http://localhost:3002${savedUrl}`
+        };
+        setBaseOutfitPreviewMap(updatedMap);
+        saveOutfitPreviewMap(updatedMap);
+      }
+
+      showToast('AI로 의상 미리보기가 생성되었습니다.', 'success');
+    } catch (error: any) {
+      console.error('AI 의상 미리보기 생성 실패:', error);
+      showToast(error.message || 'AI 이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      kind === 'user' ? setIsGeneratingOutfitPreviewAI(false) : setIsGeneratingBaseOutfitPreviewAI(false);
+    }
+  }, [baseOutfitPreviewMap, isGeneratingBaseOutfitPreviewAI, isGeneratingOutfitPreviewAI, outfitCategories, outfits, readBlobAsDataUrl, saveOutfitPreviewMap, saveOutfitsToBE]);
+
   type OutfitPreviewTarget = {
     id: string;
     prompt: string;
@@ -1146,7 +1252,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   ), [outfits]);
 
   const baseOutfitsMissingPreview = useMemo(() => {
-    const allBase = (UNIFIED_OUTFIT_LIST as BaseOutfitItem[]).filter(item => item.prompt);
+    const allBase = (UNIFIED_OUTFIT_LIST as BaseOutfitItem[])
+      .filter(item => (item.prompt || item.name));
     return allBase.filter(item => !baseOutfitPreviewMap[item.id]);
   }, [baseOutfitPreviewMap]);
 
@@ -1165,6 +1272,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     return outfits.find(outfit => outfit.id === selectedOutfitId) || null;
   }, [outfits, selectedOutfitId]);
 
+  const selectedBaseOutfit = useMemo(() => {
+    if (!selectedBaseOutfitId) return null;
+    return (UNIFIED_OUTFIT_LIST as BaseOutfitItem[]).find(item => item.id === selectedBaseOutfitId) || null;
+  }, [selectedBaseOutfitId]);
+
   const handleUpdateOutfit = useCallback(() => {
     if (!selectedOutfit) return;
     if (!editingOutfitName.trim() || !editingOutfitPrompt.trim()) {
@@ -1181,6 +1293,28 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     showToast('의상 정보가 수정되었습니다.', 'success');
   }, [editingOutfitName, editingOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
 
+  const handleSaveBaseOutfitAsCustom = useCallback(() => {
+    if (!selectedBaseOutfit) return;
+    if (!editingBaseOutfitName.trim() || !editingBaseOutfitPrompt.trim()) {
+      showToast('의상 이름과 프롬프트를 입력해주세요.', 'warning');
+      return;
+    }
+    const categoryId = selectedBaseOutfit.categories?.[0] || 'ROYAL';
+    const newOutfit: Outfit = {
+      id: `outfit-${Date.now()}`,
+      name: editingBaseOutfitName.trim(),
+      prompt: editingBaseOutfitPrompt.trim(),
+      category: categoryId,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...outfits, newOutfit];
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    setSelectedOutfitId(newOutfit.id);
+    setSelectedBaseOutfitId(null);
+    showToast('의상이 사용자 목록에 저장되었습니다.', 'success');
+  }, [editingBaseOutfitName, editingBaseOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedBaseOutfit]);
+
   const handleSelectOutfit = useCallback((outfit: Outfit) => {
     setSelectedOutfitId(outfit.id);
     setSelectedBaseOutfitId(null);
@@ -1196,6 +1330,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       setEditingOutfitPrompt('');
     }
   }, [selectedOutfit]);
+
+  useEffect(() => {
+    if (selectedBaseOutfit) {
+      setEditingBaseOutfitName(selectedBaseOutfit.translation || selectedBaseOutfit.name);
+      setEditingBaseOutfitPrompt(selectedBaseOutfit.prompt || selectedBaseOutfit.name);
+    } else {
+      setEditingBaseOutfitName('');
+      setEditingBaseOutfitPrompt('');
+    }
+  }, [selectedBaseOutfit]);
 
   // 기본 의상 선택 핸들러 (프롬프트 포함)
   const handleSelectBaseOutfit = useCallback((item: BaseOutfitItem) => {
@@ -1990,10 +2134,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       }));
                       if (includeBaseOutfitsInBatch) {
                         baseOutfitsMissingPreview.forEach(item => {
-                          if (item.prompt) {
+                          const prompt = item.prompt || item.name;
+                          if (prompt) {
                             targets.push({
                               id: item.id,
-                              prompt: item.prompt,
+                              prompt,
                               kind: 'base' as const
                             });
                           }
@@ -2021,7 +2166,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           .filter(item => batchFailedOutfitIds.includes(item.id))
                           .map(item => ({
                             id: item.id,
-                            prompt: item.prompt || '',
+                            prompt: item.prompt || item.name || '',
                             kind: 'base' as const
                           }));
                         handleBatchGenerateOutfitPreviews([...retryTargets, ...retryBaseTargets]);
@@ -2188,6 +2333,118 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   >
                     {outfitCategories.find(c => c.id === newOutfitCategory)?.emoji} {newOutfitCategory}에 저장하기
                   </button>
+                </div>
+              )}
+
+              {(selectedOutfit || selectedBaseOutfit) && (
+                <div className="p-3 bg-slate-800/60 border border-emerald-500/30 rounded-xl space-y-3 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-400">
+                      {selectedOutfit ? '선택된 의상 편집' : '기본 의상 편집'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedOutfitId(null);
+                        setSelectedBaseOutfitId(null);
+                      }}
+                      className="text-slate-500 hover:text-white"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {selectedOutfit ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingOutfitName}
+                        onChange={e => setEditingOutfitName(e.target.value)}
+                        placeholder="의상 이름"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                      />
+                      <textarea
+                        value={editingOutfitPrompt}
+                        onChange={e => setEditingOutfitPrompt(e.target.value)}
+                        placeholder="의상 프롬프트 (영어)"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleUpdateOutfit}
+                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                        >
+                          저장
+                        </button>
+                        <button
+                          onClick={() => handleGenerateOutfitPreview(selectedOutfit)}
+                          disabled={isGeneratingOutfitPreview}
+                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                        >
+                          {isGeneratingOutfitPreview ? '생성 중...' : '재생성'}
+                        </button>
+                        <button
+                          onClick={() => handleGenerateOutfitPreviewWithAI(editingOutfitPrompt.trim() || selectedOutfit.prompt, selectedOutfit.id, 'user')}
+                          disabled={isGeneratingOutfitPreviewAI}
+                          className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                        >
+                          {isGeneratingOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
+                        </button>
+                      </div>
+                      {selectedOutfit.imageUrl && (
+                        <button
+                          onClick={() => setLightboxImage(selectedOutfit.imageUrl || null)}
+                          className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all"
+                        >
+                          미리보기 확대 보기
+                        </button>
+                      )}
+                    </>
+                  ) : selectedBaseOutfit ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingBaseOutfitName}
+                        onChange={e => setEditingBaseOutfitName(e.target.value)}
+                        placeholder="의상 이름"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                      />
+                      <textarea
+                        value={editingBaseOutfitPrompt}
+                        onChange={e => setEditingBaseOutfitPrompt(e.target.value)}
+                        placeholder="의상 프롬프트 (영어)"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveBaseOutfitAsCustom}
+                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                        >
+                          사용자 의상으로 저장
+                        </button>
+                        <button
+                          onClick={() => handleGenerateBaseOutfitPreview(selectedBaseOutfit)}
+                          disabled={isGeneratingBaseOutfitPreview}
+                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                        >
+                          {isGeneratingBaseOutfitPreview ? '생성 중...' : '재생성'}
+                        </button>
+                        <button
+                          onClick={() => handleGenerateOutfitPreviewWithAI(editingBaseOutfitPrompt.trim() || selectedBaseOutfit.prompt || selectedBaseOutfit.name, selectedBaseOutfit.id, 'base')}
+                          disabled={isGeneratingBaseOutfitPreviewAI}
+                          className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                        >
+                          {isGeneratingBaseOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
+                        </button>
+                      </div>
+                      {baseOutfitPreviewMap[selectedBaseOutfit.id] && (
+                        <button
+                          onClick={() => setLightboxImage(baseOutfitPreviewMap[selectedBaseOutfit.id])}
+                          className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all"
+                        >
+                          미리보기 확대 보기
+                        </button>
+                      )}
+                    </>
+                  ) : null}
                 </div>
               )}
 
@@ -2394,55 +2651,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 })}
               </div>
 
-              {selectedOutfit && (
-                <div className="p-3 bg-slate-800/60 border border-emerald-500/30 rounded-xl space-y-3 shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-emerald-400">선택된 의상 편집</span>
-                    <button
-                      onClick={() => setSelectedOutfitId(null)}
-                      className="text-slate-500 hover:text-white"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={editingOutfitName}
-                    onChange={e => setEditingOutfitName(e.target.value)}
-                    placeholder="의상 이름"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
-                  />
-                  <textarea
-                    value={editingOutfitPrompt}
-                    onChange={e => setEditingOutfitPrompt(e.target.value)}
-                    placeholder="의상 프롬프트 (영어)"
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleUpdateOutfit}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
-                    >
-                      저장
-                    </button>
-                    <button
-                      onClick={() => handleGenerateOutfitPreview(selectedOutfit)}
-                      disabled={isGeneratingOutfitPreview}
-                      className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
-                    >
-                      {isGeneratingOutfitPreview ? '생성 중...' : '재생성'}
-                    </button>
-                  </div>
-                  {selectedOutfit.imageUrl && (
-                    <button
-                      onClick={() => setLightboxImage(selectedOutfit.imageUrl || null)}
-                      className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all"
-                    >
-                      미리보기 확대 보기
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         )}

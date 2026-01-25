@@ -1239,7 +1239,9 @@ export const pickFemaleOutfit = (
   topic: string = '',
   excludeOutfits: string[] = []
 ): string => {
-  const isSexyGenre = genre === 'affair-suspicion' || genre === 'hit-twist-spicy';
+  // SEXY 의상은 '불륜/외도' 장르만 사용
+  // '대박 반전'은 일반 의상 입고 상황이 야하게 보이는 것이므로 SEXY 의상 사용 안 함
+  const isSexyGenre = genre === 'affair-suspicion';
   const selectionRules = getOutfitSelectionRules();
   const allowDuplicates = selectionRules.allowDuplicateFemale;
   const normalizeList = (items?: string[]) =>

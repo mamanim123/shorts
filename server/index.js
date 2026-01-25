@@ -66,6 +66,9 @@ const GENRE_GUIDELINES_FILE = path.join(GENERATED_DIR, 'genre_guidelines.json');
 const FAVORITES_FILE = path.join(__dirname, './cineboard_favorites.json');
 const CHARACTERS_FILE = path.join(__dirname, './characters.json');
 const OUTFITS_FILE = path.join(__dirname, './outfits.json');
+const EXTRACTION_CACHE_DIR = path.join(__dirname, 'user_data_extractions');
+const EXTRACTION_CACHE_FILE = path.join(EXTRACTION_CACHE_DIR, 'extraction_cache.json');
+const EXTRACTION_IMAGE_DIR = path.join(EXTRACTION_CACHE_DIR, 'images');
 const DEFAULT_OUTFIT_CATEGORIES = [
     { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상', gender: 'female' },
     { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저', gender: 'female' },
@@ -104,6 +107,47 @@ if (!fs.existsSync(CHARACTERS_FILE)) {
 if (!fs.existsSync(OUTFITS_FILE)) {
     fs.writeFileSync(OUTFITS_FILE, JSON.stringify({ outfits: [], categories: DEFAULT_OUTFIT_CATEGORIES }, null, 2));
 }
+if (!fs.existsSync(EXTRACTION_CACHE_DIR)) {
+    fs.mkdirSync(EXTRACTION_CACHE_DIR, { recursive: true });
+}
+if (!fs.existsSync(EXTRACTION_IMAGE_DIR)) {
+    fs.mkdirSync(EXTRACTION_IMAGE_DIR, { recursive: true });
+}
+if (!fs.existsSync(EXTRACTION_CACHE_FILE)) {
+    fs.writeFileSync(EXTRACTION_CACHE_FILE, JSON.stringify({ cache: {} }, null, 2));
+}
+
+const EXTRACTION_CACHE_KEYS = new Set([
+    'extractedOutfit',
+    'extractedFace',
+    'extractedHair',
+    'extractedBody',
+    'generatedOutfitImage',
+    'generatedFaceImage',
+    'generatedHairImage',
+    'generatedBodyImage',
+    'lastOutfitImageData',
+    'lastFaceImageData',
+    'lastHairImageData',
+    'lastBodyImageData'
+]);
+
+const sanitizeExtractionCache = (cache = {}) => {
+    if (!cache || typeof cache !== 'object') return {};
+    const output = {};
+    for (const key of EXTRACTION_CACHE_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(cache, key)) {
+            output[key] = cache[key] ?? null;
+        }
+    }
+    return output;
+};
+
+const decodeDataUrl = (dataUrl = '') => {
+    const match = typeof dataUrl === 'string' ? dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/) : null;
+    if (!match) return null;
+    return { mime: match[1], base64: match[2] };
+};
 
 const resolveSafeStoryImagesFolder = (folderName = '') => {
     if (!folderName || typeof folderName !== 'string') return null;
@@ -1442,6 +1486,110 @@ app.post('/api/characters', (req, res) => {
         fs.writeFileSync(CHARACTERS_FILE, JSON.stringify({ characters }, null, 2));
         res.json({ success: true });
     } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 추출 결과 캐시 API
+// ---------------------------------------------------------
+app.get('/api/extraction-cache', (req, res) => {
+    try {
+        if (!fs.existsSync(EXTRACTION_CACHE_FILE)) {
+            return res.json({ cache: {} });
+        }
+        const raw = fs.readFileSync(EXTRACTION_CACHE_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        res.json({ cache: parsed?.cache || {} });
+    } catch (error) {
+        console.error('추출 캐시 로드 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/extraction-cache', (req, res) => {
+    try {
+        const { cache } = req.body || {};
+        if (!cache || typeof cache !== 'object') {
+            return res.status(400).json({ success: false, error: 'Invalid cache payload' });
+        }
+        const sanitized = sanitizeExtractionCache(cache);
+        fs.writeFileSync(EXTRACTION_CACHE_FILE, JSON.stringify({
+            cache: sanitized,
+            updatedAt: new Date().toISOString()
+        }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('추출 캐시 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/extraction-cache/reset', (req, res) => {
+    try {
+        if (fs.existsSync(EXTRACTION_IMAGE_DIR)) {
+            const files = fs.readdirSync(EXTRACTION_IMAGE_DIR);
+            files.forEach((filename) => {
+                const filePath = path.join(EXTRACTION_IMAGE_DIR, filename);
+                if (fs.statSync(filePath).isFile()) {
+                    fs.unlinkSync(filePath);
+                }
+            });
+        }
+        fs.writeFileSync(EXTRACTION_CACHE_FILE, JSON.stringify({ cache: {}, updatedAt: new Date().toISOString() }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('추출 캐시 초기화 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 추출 이미지 저장/조회 API
+// ---------------------------------------------------------
+app.post('/api/extraction-image', (req, res) => {
+    try {
+        const { imageData, type } = req.body || {};
+        if (!imageData || typeof imageData !== 'string') {
+            return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+        }
+        const decoded = decodeDataUrl(imageData);
+        if (!decoded) {
+            return res.status(400).json({ success: false, error: '잘못된 이미지 데이터입니다.' });
+        }
+        const safeType = typeof type === 'string' && type.trim() ? type.trim() : 'extraction';
+        const ext = decoded.mime.split('/')[1] || 'png';
+        const timestamp = Date.now();
+        const filename = `${safeType}_${timestamp}.${ext}`;
+        const filePath = path.join(EXTRACTION_IMAGE_DIR, filename);
+        fs.writeFileSync(filePath, decoded.base64, 'base64');
+        res.json({ success: true, filename });
+    } catch (error) {
+        console.error('추출 이미지 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/extraction-image', (req, res) => {
+    try {
+        const filename = typeof req.query.filename === 'string' ? req.query.filename : '';
+        if (!filename) {
+            return res.status(400).json({ success: false, error: 'filename이 필요합니다.' });
+        }
+        const safeName = path.basename(filename);
+        if (safeName !== filename) {
+            return res.status(400).json({ success: false, error: '잘못된 filename입니다.' });
+        }
+        const filePath = path.join(EXTRACTION_IMAGE_DIR, safeName);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, error: '파일을 찾을 수 없습니다.' });
+        }
+        const ext = path.extname(filePath).replace('.', '') || 'png';
+        const base64Data = fs.readFileSync(filePath, 'base64');
+        const imageData = `data:image/${ext};base64,${base64Data}`;
+        res.json({ success: true, imageData });
+    } catch (error) {
+        console.error('추출 이미지 로드 실패:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

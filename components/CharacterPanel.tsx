@@ -21,6 +21,8 @@ import { UNIFIED_OUTFIT_LIST } from '../constants';
 import { fetchOutfitCatalog, saveOutfitCatalog } from '../services/outfitService';
 import type { OutfitCategory, OutfitItem } from '../services/outfitService';
 import { fetchCharacters, saveCharacters } from '../services/characterService';
+import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
+import type { ExtractedOutfit, ExtractedFeature } from '../services/extractionCacheService';
 import type { CharacterItem } from '../services/characterService';
 
 // ============================================
@@ -134,45 +136,21 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     body: ''
   });
 
-  // 의상 추출 상태 (localStorage에서 복원)
+  // 의상 추출 상태 (서버 캐시에서 복원)
   const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedOutfit, setExtractedOutfit] = useState<{ name: string; en: string; ko: string } | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('extractedOutfit');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
+  const [extractedOutfit, setExtractedOutfit] = useState<ExtractedOutfit | null>(null);
 
-  // 얼굴 추출 상태 (localStorage에서 복원)
+  // 얼굴 추출 상태 (서버 캐시에서 복원)
   const [isExtractingFace, setIsExtractingFace] = useState(false);
-  const [extractedFace, setExtractedFace] = useState<{ en: string; ko: string } | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('extractedFace');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
+  const [extractedFace, setExtractedFace] = useState<ExtractedFeature | null>(null);
 
-  // 헤어 추출 상태 (localStorage에서 복원)
+  // 헤어 추출 상태 (서버 캐시에서 복원)
   const [isExtractingHair, setIsExtractingHair] = useState(false);
-  const [extractedHair, setExtractedHair] = useState<{ en: string; ko: string } | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('extractedHair');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
+  const [extractedHair, setExtractedHair] = useState<ExtractedFeature | null>(null);
 
-  // 체형 추출 상태 (localStorage에서 복원)
+  // 체형 추출 상태 (서버 캐시에서 복원)
   const [isExtractingBody, setIsExtractingBody] = useState(false);
-  const [extractedBody, setExtractedBody] = useState<{ en: string; ko: string } | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('extractedBody');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
+  const [extractedBody, setExtractedBody] = useState<ExtractedFeature | null>(null);
 
   // 자동 번역 상태
   const [isTranslatingOutfit, setIsTranslatingOutfit] = useState(false);
@@ -184,31 +162,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const hairTranslateTimer = useRef<NodeJS.Timeout | null>(null);
   const bodyTranslateTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // 이미지 생성 상태 (localStorage에서 복원)
-  const [generatedOutfitImage, setGeneratedOutfitImage] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('generatedOutfitImage') || null;
-    }
-    return null;
-  });
-  const [generatedFaceImage, setGeneratedFaceImage] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('generatedFaceImage') || null;
-    }
-    return null;
-  });
-  const [generatedHairImage, setGeneratedHairImage] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('generatedHairImage') || null;
-    }
-    return null;
-  });
-  const [generatedBodyImage, setGeneratedBodyImage] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('generatedBodyImage') || null;
-    }
-    return null;
-  });
+  // 이미지 생성 상태 (서버 캐시에서 복원)
+  const [generatedOutfitImage, setGeneratedOutfitImage] = useState<string | null>(null);
+  const [generatedFaceImage, setGeneratedFaceImage] = useState<string | null>(null);
+  const [generatedHairImage, setGeneratedHairImage] = useState<string | null>(null);
+  const [generatedBodyImage, setGeneratedBodyImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [aiForwardingType, setAiForwardingType] = useState<'outfit' | 'face' | 'hair' | 'body' | null>(null);
   const aiForwardAbortRef = useRef<AbortController | null>(null);
@@ -225,30 +183,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   // 마지막 업로드 파일 저장 (재분석용)
   const [lastFaceFile, setLastFaceFile] = useState<File | null>(null);
   const [lastOutfitFile, setLastOutfitFile] = useState<File | null>(null);
-  const [lastOutfitImageData, setLastOutfitImageData] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('lastOutfitImageData') || null;
-    }
-    return null;
-  });
-  const [lastFaceImageData, setLastFaceImageData] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('lastFaceImageData') || null;
-    }
-    return null;
-  });
-  const [lastHairImageData, setLastHairImageData] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('lastHairImageData') || null;
-    }
-    return null;
-  });
-  const [lastBodyImageData, setLastBodyImageData] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('lastBodyImageData') || null;
-    }
-    return null;
-  });
+  const [lastOutfitImageData, setLastOutfitImageData] = useState<string | null>(null);
+  const [lastFaceImageData, setLastFaceImageData] = useState<string | null>(null);
+  const [lastHairImageData, setLastHairImageData] = useState<string | null>(null);
+  const [lastBodyImageData, setLastBodyImageData] = useState<string | null>(null);
+  const [isExtractionCacheLoaded, setIsExtractionCacheLoaded] = useState(false);
+  const [isResettingExtractionCache, setIsResettingExtractionCache] = useState(false);
+  const extractionCacheSaveTimer = useRef<NodeJS.Timeout | null>(null);
 
   // 복사 상태
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
@@ -285,103 +226,77 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   }, []);
 
   // ---------------------------------------------------------
-  // 추출 결과 localStorage 저장
+  // 추출 결과 서버 캐시 로드/저장
   // ---------------------------------------------------------
   useEffect(() => {
-    if (extractedOutfit) {
-      localStorage.setItem('extractedOutfit', JSON.stringify(extractedOutfit));
-    } else {
-      localStorage.removeItem('extractedOutfit');
-    }
-  }, [extractedOutfit]);
+    let isMounted = true;
+    const loadCache = async () => {
+      const cache = await fetchExtractionCache();
+      if (!isMounted) return;
+      setExtractedOutfit(cache.extractedOutfit ?? null);
+      setExtractedFace(cache.extractedFace ?? null);
+      setExtractedHair(cache.extractedHair ?? null);
+      setExtractedBody(cache.extractedBody ?? null);
+      setGeneratedOutfitImage(cache.generatedOutfitImage ?? null);
+      setGeneratedFaceImage(cache.generatedFaceImage ?? null);
+      setGeneratedHairImage(cache.generatedHairImage ?? null);
+      setGeneratedBodyImage(cache.generatedBodyImage ?? null);
+      setLastOutfitImageData(cache.lastOutfitImageData ?? null);
+      setLastFaceImageData(cache.lastFaceImageData ?? null);
+      setLastHairImageData(cache.lastHairImageData ?? null);
+      setLastBodyImageData(cache.lastBodyImageData ?? null);
+      setIsExtractionCacheLoaded(true);
+    };
+    loadCache();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
-    if (extractedFace) {
-      localStorage.setItem('extractedFace', JSON.stringify(extractedFace));
-    } else {
-      localStorage.removeItem('extractedFace');
+    if (!isExtractionCacheLoaded) return;
+    if (extractionCacheSaveTimer.current) {
+      clearTimeout(extractionCacheSaveTimer.current);
     }
-  }, [extractedFace]);
-
-  useEffect(() => {
-    if (extractedHair) {
-      localStorage.setItem('extractedHair', JSON.stringify(extractedHair));
-    } else {
-      localStorage.removeItem('extractedHair');
-    }
-  }, [extractedHair]);
-
-  useEffect(() => {
-    if (extractedBody) {
-      localStorage.setItem('extractedBody', JSON.stringify(extractedBody));
-    } else {
-      localStorage.removeItem('extractedBody');
-    }
-  }, [extractedBody]);
-
-  useEffect(() => {
-    if (generatedOutfitImage) {
-      localStorage.setItem('generatedOutfitImage', generatedOutfitImage);
-    } else {
-      localStorage.removeItem('generatedOutfitImage');
-    }
-  }, [generatedOutfitImage]);
-
-  useEffect(() => {
-    if (generatedFaceImage) {
-      localStorage.setItem('generatedFaceImage', generatedFaceImage);
-    } else {
-      localStorage.removeItem('generatedFaceImage');
-    }
-  }, [generatedFaceImage]);
-
-  useEffect(() => {
-    if (generatedHairImage) {
-      localStorage.setItem('generatedHairImage', generatedHairImage);
-    } else {
-      localStorage.removeItem('generatedHairImage');
-    }
-  }, [generatedHairImage]);
-
-  useEffect(() => {
-    if (generatedBodyImage) {
-      localStorage.setItem('generatedBodyImage', generatedBodyImage);
-    } else {
-      localStorage.removeItem('generatedBodyImage');
-    }
-  }, [generatedBodyImage]);
-
-  useEffect(() => {
-    if (lastOutfitImageData) {
-      localStorage.setItem('lastOutfitImageData', lastOutfitImageData);
-    } else {
-      localStorage.removeItem('lastOutfitImageData');
-    }
-  }, [lastOutfitImageData]);
-
-  useEffect(() => {
-    if (lastFaceImageData) {
-      localStorage.setItem('lastFaceImageData', lastFaceImageData);
-    } else {
-      localStorage.removeItem('lastFaceImageData');
-    }
-  }, [lastFaceImageData]);
-
-  useEffect(() => {
-    if (lastHairImageData) {
-      localStorage.setItem('lastHairImageData', lastHairImageData);
-    } else {
-      localStorage.removeItem('lastHairImageData');
-    }
-  }, [lastHairImageData]);
-
-  useEffect(() => {
-    if (lastBodyImageData) {
-      localStorage.setItem('lastBodyImageData', lastBodyImageData);
-    } else {
-      localStorage.removeItem('lastBodyImageData');
-    }
-  }, [lastBodyImageData]);
+    extractionCacheSaveTimer.current = setTimeout(() => {
+      saveExtractionCache({
+        extractedOutfit,
+        extractedFace,
+        extractedHair,
+        extractedBody,
+        generatedOutfitImage,
+        generatedFaceImage,
+        generatedHairImage,
+        generatedBodyImage,
+        lastOutfitImageData,
+        lastFaceImageData,
+        lastHairImageData,
+        lastBodyImageData
+      }).catch(() => {
+        // 저장 실패는 UI 흐름을 막지 않음
+        console.warn('추출 캐시 저장 실패');
+      });
+    }, 350);
+    return () => {
+      if (extractionCacheSaveTimer.current) {
+        clearTimeout(extractionCacheSaveTimer.current);
+      }
+    };
+  }, [
+    isExtractionCacheLoaded,
+    extractedOutfit,
+    extractedFace,
+    extractedHair,
+    extractedBody,
+    generatedOutfitImage,
+    generatedFaceImage,
+    generatedHairImage,
+    generatedBodyImage,
+    lastOutfitImageData,
+    lastFaceImageData,
+    lastHairImageData,
+    lastBodyImageData
+  ]);
 
   // ---------------------------------------------------------
   // 저장 헬퍼
@@ -535,12 +450,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       
       // 새 파일이면 이전 데이터 초기화 후 새 데이터 저장
       setLastOutfitFile(file);
-      setLastOutfitImageData(base64Image);
+      const storedFilename = await saveExtractionImage(base64Image, 'outfit');
+      setLastOutfitImageData(storedFilename || base64Image);
     }
 
     // imageData만 있는 경우 (재분석)
     if (!base64Image) {
       throw new Error('이미지 데이터가 없습니다.');
+    }
+    if (!file && imageData && imageData.startsWith('data:image')) {
+      const storedFilename = await saveExtractionImage(imageData, 'outfit');
+      if (storedFilename) setLastOutfitImageData(storedFilename);
     }
 
     const response = await fetch('http://localhost:3002/api/extract-outfit', {
@@ -595,8 +515,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       if (file) {
         setLastFaceFile(file);
+        const storedFilename = await saveExtractionImage(base64Image, 'face');
+        setLastFaceImageData(storedFilename || base64Image);
       }
-      setLastFaceImageData(base64Image);
+      if (!file && imageData && imageData.startsWith('data:image')) {
+        const storedFilename = await saveExtractionImage(imageData, 'face');
+        if (storedFilename) setLastFaceImageData(storedFilename);
+      }
 
       const response = await fetch('http://localhost:3002/api/extract-face', {
         method: 'POST',
@@ -639,11 +564,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           reader.readAsDataURL(file);
         });
         base64Image = await base64Promise;
-        setLastHairImageData(base64Image);
+        const storedFilename = await saveExtractionImage(base64Image, 'hair');
+        setLastHairImageData(storedFilename || base64Image);
       }
 
       if (!base64Image) {
         throw new Error('이미지 데이터가 없습니다.');
+      }
+      if (!file && imageData && imageData.startsWith('data:image')) {
+        const storedFilename = await saveExtractionImage(imageData, 'hair');
+        if (storedFilename) setLastHairImageData(storedFilename);
       }
 
       const response = await fetch('http://localhost:3002/api/extract-hair', {
@@ -687,11 +617,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           reader.readAsDataURL(file);
         });
         base64Image = await base64Promise;
-        setLastBodyImageData(base64Image);
+        const storedFilename = await saveExtractionImage(base64Image, 'body');
+        setLastBodyImageData(storedFilename || base64Image);
       }
 
       if (!base64Image) {
         throw new Error('이미지 데이터가 없습니다.');
+      }
+      if (!file && imageData && imageData.startsWith('data:image')) {
+        const storedFilename = await saveExtractionImage(imageData, 'body');
+        if (storedFilename) setLastBodyImageData(storedFilename);
       }
 
       const response = await fetch('http://localhost:3002/api/extract-body', {
@@ -1133,37 +1068,90 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     showToast(`${character.name} 캐릭터가 저장되었습니다.`, 'success');
   }, [newCharacter, characters]);
 
-  const handleReExtractFace = useCallback(() => {
-    if (lastFaceImageData) {
-      handleExtractFace(null, lastFaceImageData);
-    } else {
-      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
-    }
-  }, [lastFaceImageData, handleExtractFace]);
+  const resolveExtractionImageData = useCallback(async (value: string | null) => {
+    if (!value) return null;
+    if (value.startsWith('data:image')) return value;
+    const fetched = await fetchExtractionImageData(value);
+    return fetched || null;
+  }, []);
 
-  const handleReExtractOutfit = useCallback(() => {
-    if (lastOutfitImageData) {
-      handleExtractOutfit(null, lastOutfitImageData);
-    } else {
+  const handleReExtractFace = useCallback(async () => {
+    if (!lastFaceImageData) {
       showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
     }
-  }, [lastOutfitImageData, handleExtractOutfit]);
+    const resolved = await resolveExtractionImageData(lastFaceImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractFace(null, resolved);
+  }, [lastFaceImageData, handleExtractFace, resolveExtractionImageData]);
 
-  const handleReExtractHair = useCallback(() => {
-    if (lastHairImageData) {
-      handleExtractHair(null, lastHairImageData);
-    } else {
+  const handleReExtractOutfit = useCallback(async () => {
+    if (!lastOutfitImageData) {
       showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
     }
-  }, [lastHairImageData, handleExtractHair]);
+    const resolved = await resolveExtractionImageData(lastOutfitImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractOutfit(null, resolved);
+  }, [lastOutfitImageData, handleExtractOutfit, resolveExtractionImageData]);
 
-  const handleReExtractBody = useCallback(() => {
-    if (lastBodyImageData) {
-      handleExtractBody(null, lastBodyImageData);
-    } else {
+  const handleReExtractHair = useCallback(async () => {
+    if (!lastHairImageData) {
       showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
     }
-  }, [lastBodyImageData, handleExtractBody]);
+    const resolved = await resolveExtractionImageData(lastHairImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractHair(null, resolved);
+  }, [lastHairImageData, handleExtractHair, resolveExtractionImageData]);
+
+  const handleReExtractBody = useCallback(async () => {
+    if (!lastBodyImageData) {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
+    }
+    const resolved = await resolveExtractionImageData(lastBodyImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractBody(null, resolved);
+  }, [lastBodyImageData, handleExtractBody, resolveExtractionImageData]);
+
+  const handleResetExtractionCache = useCallback(async () => {
+    if (isResettingExtractionCache) return;
+    setIsResettingExtractionCache(true);
+    const success = await resetExtractionCache();
+    if (success) {
+      setExtractedOutfit(null);
+      setExtractedFace(null);
+      setExtractedHair(null);
+      setExtractedBody(null);
+      setGeneratedOutfitImage(null);
+      setGeneratedFaceImage(null);
+      setGeneratedHairImage(null);
+      setGeneratedBodyImage(null);
+      setLastOutfitImageData(null);
+      setLastFaceImageData(null);
+      setLastHairImageData(null);
+      setLastBodyImageData(null);
+      setLastOutfitFile(null);
+      setLastFaceFile(null);
+      showToast('추출 캐시를 초기화했습니다.', 'success');
+    } else {
+      showToast('추출 캐시 초기화에 실패했습니다.', 'error');
+    }
+    setIsResettingExtractionCache(false);
+  }, [isResettingExtractionCache, resetExtractionCache]);
 
   // ---------------------------------------------------------
   // 렌더링
@@ -1206,6 +1194,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       {/* 탭 콘텐츠 */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className="flex justify-end pb-2">
+          <button
+            onClick={handleResetExtractionCache}
+            disabled={isResettingExtractionCache}
+            className="px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            title="추출 캐시 초기화"
+          >
+            {isResettingExtractionCache ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            캐시 초기화
+          </button>
+        </div>
         {isLoading && (
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
             <Loader2 size={24} className="animate-spin text-purple-500" />

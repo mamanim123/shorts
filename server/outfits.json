@@ -55,6 +55,27 @@
       "prompt": "minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use",
       "category": "ROYAL",
       "createdAt": "2026-01-22T11:01:51.361Z"
+    },
+    {
+      "id": "outfit-1769304349951",
+      "name": "코랄 핑크 리브드 홀터넥 크롭 탑 + 차콜 그레이 하이웨이스트 레깅스",
+      "prompt": "Athleisure outfit featuring a vibrant coral pink sleeveless halter neck crop top made of medium-weight ribbed cotton-spandex blend. The top has a high circular neckline with thick binding and vertical ribbed texture throughout, providing a snug fitted silhouette. The bottom consists of charcoal grey high-performance yoga leggings with a high-waisted wide waistband for compression and support. The leggings are made from an opaque, matte-finish technical fabric with invisible flat-lock seams and a seamless hem. The ensemble is designed for high-mobility fitness activities, showcasing a minimalist aesthetic with clean lines and no visible hardware or closures, creating a sleek pull-on athletic look.",
+      "category": "YOGA",
+      "createdAt": "2026-01-25T01:25:49.951Z"
+    },
+    {
+      "id": "outfit-1769304534205",
+      "name": "토프 베이지 홀터넥 크롭 탑 + 하이웨이스트 바이크 쇼츠 셋업",
+      "prompt": "sophisticated taupe beige athleisure set, minimalist halter neck crop top, high-neck racerback silhouette, thick ribbed binding at neckline, matching high-waisted bike shorts, compression fit, opaque matte technical spandex blend, buttery smooth texture, skin-tight bodycon silhouette, stylized silver-grey cursive logo on lower left thigh, flatlock reinforced seams, double-stitched finished hems, monochromatic coordinated activewear, performance-grade fabric.",
+      "category": "YOGA",
+      "createdAt": "2026-01-25T01:28:54.205Z"
+    },
+    {
+      "id": "outfit-1769305533937",
+      "name": "화이트 리브드 텍스처 튜브탑 바디콘 미니 원피스",
+      "prompt": "minimalist optic white strapless tube top bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-01-25T01:45:33.937Z"
     }
   ],
   "categories": [

@@ -17,6 +17,7 @@ import {
 import useLocalStorage from '../hooks/useLocalStorage';
 import ImageHistorySidebar from '../ImageHistorySidebar';
 import { ImageHistoryItem } from '../types';
+import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
 import {
     ReversePromptMediaType,
     ReversePromptLanguage,
@@ -339,32 +340,30 @@ const ImageReverseStudio: React.FC = () => {
     };
 
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem('imageHistory');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setHistoryItems(parsed);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load image history for reverse studio', error);
-        }
-
-        const handleStorage = (event: StorageEvent) => {
-            if (event.key === 'imageHistory' && event.newValue) {
-                try {
-                    const parsed = JSON.parse(event.newValue);
-                    if (Array.isArray(parsed)) {
-                        setHistoryItems(parsed);
+        const loadHistory = async () => {
+            try {
+                const legacyRaw = localStorage.getItem('imageHistory');
+                if (legacyRaw) {
+                    try {
+                        const legacy = JSON.parse(legacyRaw);
+                        if (Array.isArray(legacy) && legacy.length > 0) {
+                            await saveImageHistory(legacy);
+                        }
+                    } catch (err) {
+                        console.error('Failed to migrate legacy image history', err);
+                    } finally {
+                        localStorage.removeItem('imageHistory');
                     }
-                } catch (err) {
-                    console.error('Failed to sync image history for reverse studio', err);
                 }
+                const serverHistory = await fetchImageHistory();
+                if (Array.isArray(serverHistory)) {
+                    setHistoryItems(serverHistory);
+                }
+            } catch (error) {
+                console.error('Failed to load image history for reverse studio', error);
             }
         };
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
+        loadHistory();
     }, []);
 
     useEffect(() => {

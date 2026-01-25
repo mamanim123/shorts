@@ -774,7 +774,8 @@ async function uploadFileToPage(activePage, filePath) {
             console.log("[Puppeteer] Waiting for file chooser...");
 
             // FileChooser 대기 시작 (30초로 증가)
-            const chooserPromise = activePage.waitForFileChooser({ timeout: 30000 });
+            const chooserPromise = activePage.waitForFileChooser({ timeout: 30000 }).catch(() => null);
+            const inputPromise = activePage.waitForSelector('input[type="file"]', { timeout: 5000 }).catch(() => null);
 
             // 약간의 딜레이 후 메뉴 아이템 클릭
             await new Promise(r => setTimeout(r, 500));
@@ -817,11 +818,27 @@ async function uploadFileToPage(activePage, filePath) {
 
             console.log(`[Puppeteer] Click result: ${clickResult}`);
 
-            // FileChooser 대기
-            const fileChooser = await chooserPromise;
+            // FileChooser 대기 (input 등장과 레이스)
+            const chooserResult = await Promise.race([
+                chooserPromise.then((chooser) => ({ type: 'chooser', chooser })),
+                inputPromise.then((input) => ({ type: 'input', input }))
+            ]);
 
-            await fileChooser.accept([filePath]);
-            console.log(`[Puppeteer] File selected via chooser, waiting for upload to complete...`);
+            if (chooserResult?.type === 'input' && chooserResult.input) {
+                console.log("[Puppeteer] File input detected before chooser, uploading directly...");
+                await chooserResult.input.uploadFile(filePath);
+            } else if (chooserResult?.type === 'chooser' && chooserResult.chooser) {
+                await chooserResult.chooser.accept([filePath]);
+                console.log(`[Puppeteer] File selected via chooser, waiting for upload to complete...`);
+            } else {
+                const fallbackInput = await activePage.$('input[type="file"]');
+                if (fallbackInput) {
+                    console.log("[Puppeteer] File input found after chooser timeout, uploading directly...");
+                    await fallbackInput.uploadFile(filePath);
+                } else {
+                    throw new Error('File chooser not triggered and file input not found.');
+                }
+            }
 
             // 3. 업로드 완료 대기 (썸네일 확인) - 타임아웃 증가
             try {

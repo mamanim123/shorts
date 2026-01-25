@@ -4,6 +4,7 @@ import { ImageHistoryItem, ImageMode, CheatKey, ComboTip, CheatKeyCategoryData }
 import { generateImage, editImage, generateImageWithImagen, variationsImage, LUXURY_WARDROBE, LUXURY_WARDROBE_KR, enhancePrompt, fetchAvailableModels } from '../services/geminiService';
 import { getBlob, setBlob, deleteBlob } from '../services/dbService';
 import { fetchDiskImageList } from '../services/diskImageList';
+import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
 import { comboTips, cheatKeysData, aspectRatioPromptKeys } from './ImageStudioData';
 import Lightbox from '../Lightbox';
 import { v4 as uuidv4 } from 'uuid';
@@ -199,47 +200,38 @@ const ImageStudio: React.FC = () => {
     const isInitialized = useRef(false);
 
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem('imageHistory');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setHistoryItems(parsed);
-                }
-            }
-        } catch (err) {
-            console.error('Failed to load image history', err);
-        } finally {
-            isInitialized.current = true;
-        }
-
-        const handleStorage = (event: StorageEvent) => {
-            if (event.key === 'imageHistory' && event.newValue) {
-                try {
-                    const parsed = JSON.parse(event.newValue);
-                    if (Array.isArray(parsed)) {
-                        setHistoryItems(parsed);
+        const loadHistory = async () => {
+            try {
+                const legacyRaw = localStorage.getItem('imageHistory');
+                if (legacyRaw) {
+                    try {
+                        const legacy = JSON.parse(legacyRaw);
+                        if (Array.isArray(legacy) && legacy.length > 0) {
+                            await saveImageHistory(legacy);
+                        }
+                    } catch (err) {
+                        console.error('Failed to migrate legacy image history', err);
+                    } finally {
+                        localStorage.removeItem('imageHistory');
                     }
-                } catch (err) {
-                    console.error('Failed to sync image history', err);
                 }
+
+                const serverHistory = await fetchImageHistory();
+                if (Array.isArray(serverHistory)) {
+                    setHistoryItems(serverHistory);
+                }
+            } catch (err) {
+                console.error('Failed to load image history', err);
+            } finally {
+                isInitialized.current = true;
             }
         };
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
+        loadHistory();
     }, []);
 
     useEffect(() => {
         if (!isInitialized.current) return;
-        try {
-            localStorage.setItem('imageHistory', JSON.stringify(historyItems));
-            // console.log("Saved image history to localStorage", historyItems.length);
-        } catch (e) {
-            console.error("Failed to save image history to localStorage", e);
-            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                alert("브라우저 저장 공간이 부족하여 히스토리를 저장할 수 없습니다. 오래된 항목을 삭제해주세요.");
-            }
-        }
+        saveImageHistory(historyItems);
     }, [historyItems]);
     const [prompt, setPrompt] = useState(DEFAULT_PROMPT_TEMPLATE);
     const [negativePrompt, setNegativePrompt] = useState('');

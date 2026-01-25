@@ -19,6 +19,7 @@ import { getBlob, setBlob, deleteBlob } from '../services/dbService';
 import { deleteFileFromDisk } from '../services/serverService';
 import { resolveImageHistoryUrls } from '../services/historyImageLoader';
 import { v4 as uuidv4 } from 'uuid';
+import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
 
 const CANVAS_WIDTH = 1280;
 const CANVAS_HEIGHT = 720;
@@ -67,38 +68,37 @@ const ThumbnailStudio: React.FC = () => {
     const logoInputRef = useRef<HTMLInputElement>(null);
     const createdUrlsRef = useRef<string[]>([]);
 
-    const handleHistorySync = useCallback((items: ImageHistoryItem[]) => {
-        localStorage.setItem('imageHistory', JSON.stringify(items));
+    const handleHistorySync = useCallback(async (items: ImageHistoryItem[]) => {
+        await saveImageHistory(items);
         setHistoryItems(items);
     }, []);
 
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem('imageHistory');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setHistoryItems(parsed);
-                }
-            }
-        } catch (e) {
-            console.error('Failed to load history', e);
-        }
-
-        const handler = (event: StorageEvent) => {
-            if (event.key === 'imageHistory' && event.newValue) {
-                try {
-                    const parsed = JSON.parse(event.newValue);
-                    if (Array.isArray(parsed)) {
-                        setHistoryItems(parsed);
+        const loadHistory = async () => {
+            try {
+                const legacyRaw = localStorage.getItem('imageHistory');
+                if (legacyRaw) {
+                    try {
+                        const legacy = JSON.parse(legacyRaw);
+                        if (Array.isArray(legacy) && legacy.length > 0) {
+                            await saveImageHistory(legacy);
+                        }
+                    } catch (err) {
+                        console.error('Failed to migrate legacy history', err);
+                    } finally {
+                        localStorage.removeItem('imageHistory');
                     }
-                } catch (e) {
-                    console.error('Failed to sync history', e);
                 }
+
+                const serverHistory = await fetchImageHistory();
+                if (Array.isArray(serverHistory)) {
+                    setHistoryItems(serverHistory);
+                }
+            } catch (e) {
+                console.error('Failed to load history', e);
             }
         };
-        window.addEventListener('storage', handler);
-        return () => window.removeEventListener('storage', handler);
+        loadHistory();
     }, []);
 
     useEffect(() => {

@@ -11,6 +11,7 @@ import { fetchDiskImageList, fetchImageStoryFolders, StoryFolderInfo } from './m
 import { saveImageToDisk, deleteFileFromDisk } from './master-studio/services/serverService';
 import Lightbox from './master-studio/Lightbox';
 import { showToast } from './Toast';
+import { fetchImageHistory, saveImageHistory } from '../services/imageHistoryService';
 
 const STORY_FILTER_ALL = 'all';
 const STORY_FILTER_ORPHANED = '__legacy__';
@@ -252,29 +253,27 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
     }
   };
 
-  // Load history from shared local storage (sync with Master Studio)
+  // Load history from server storage (migrate legacy localStorage if needed)
   useEffect(() => {
     initGeminiService();
 
-    // 1. Migration: Move old base64 images to IndexedDB if they exist and haven't been migrated
-    const migrateOldHistory = async () => {
+    const loadHistory = async () => {
+      const migratedItems: ImageHistoryItem[] = [];
+
+      // 1) Migrate old shorts-image-history (base64 -> IndexedDB)
       try {
         const oldHistoryRaw = localStorage.getItem('shorts-image-history');
         if (oldHistoryRaw) {
           const oldHistory = JSON.parse(oldHistoryRaw);
           if (Array.isArray(oldHistory) && oldHistory.length > 0) {
             console.log("Migrating image history to IndexedDB...");
-            const newItems: ImageHistoryItem[] = [];
-
             for (const item of oldHistory) {
               if (item.url && item.url.startsWith('data:image')) {
-                // Extract Blob
                 const response = await fetch(item.url);
                 const blob = await response.blob();
                 const imageId = crypto.randomUUID();
                 await setBlob(imageId, blob);
-
-                newItems.push({
+                migratedItems.push({
                   id: item.id || crypto.randomUUID(),
                   prompt: item.prompt || '',
                   generatedImageId: imageId,
@@ -290,69 +289,44 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
                 });
               }
             }
-
-            // Merge with existing shared history
-            const sharedHistoryRaw = localStorage.getItem('imageHistory');
-            const sharedHistory = sharedHistoryRaw ? JSON.parse(sharedHistoryRaw) : [];
-            const merged = [...newItems, ...sharedHistory];
-
-            localStorage.setItem('imageHistory', JSON.stringify(merged));
-            localStorage.removeItem('shorts-image-history'); // Clear old storage to fix quota error/crash
-            console.log("Migration complete. Old history cleared.");
-            setImageHistory(merged);
-            return;
           }
+          localStorage.removeItem('shorts-image-history');
         }
       } catch (e) {
         console.error("Migration failed:", e);
-        // If migration fails (e.g., corrupted data), just clear it to unblock user
         localStorage.removeItem('shorts-image-history');
       }
-    };
 
-    migrateOldHistory().then(() => {
-      // 2. Load Shared History
+      // 2) Migrate legacy localStorage imageHistory
       try {
-        const saved = localStorage.getItem('imageHistory');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            // Deduplicate by ID
-            const uniqueCallback = (item: any, index: number, self: any[]) =>
-              index === self.findIndex((t) => (t.id === item.id));
-            const uniqueHistory = parsed.filter(uniqueCallback);
-
-            setImageHistory(uniqueHistory);
-
-            // Clean up storage if duplicates found
-            if (uniqueHistory.length !== parsed.length) {
-              console.log(`Removed ${parsed.length - uniqueHistory.length} duplicate items.`);
-              localStorage.setItem('imageHistory', JSON.stringify(uniqueHistory));
-            }
+        const legacyRaw = localStorage.getItem('imageHistory');
+        if (legacyRaw) {
+          const legacy = JSON.parse(legacyRaw);
+          if (Array.isArray(legacy)) {
+            migratedItems.push(...legacy);
           }
         }
+        localStorage.removeItem('imageHistory');
       } catch (e) {
-        console.warn("Failed to load image history", e);
-      } finally {
-        setIsInitialized(true);
+        console.warn("Legacy history parse failed", e);
+        localStorage.removeItem('imageHistory');
       }
-    });
 
-    // Listen for storage events to sync across tabs (Master Studio <-> OutputDisplay)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'imageHistory' && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) {
-            // Deduplicate sync data too
-            const uniqueHistory = parsed.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-            setImageHistory(uniqueHistory);
-          }
-        } catch (e) { console.error("Sync parse error", e); }
+      // 3) Load server history and merge
+      const serverHistory = await fetchImageHistory();
+      const merged = [...migratedItems, ...serverHistory];
+      const uniqueHistory = merged.filter((item, index, self) =>
+        index === self.findIndex((t) => t.id === item.id)
+      );
+
+      if (migratedItems.length > 0) {
+        await saveImageHistory(uniqueHistory);
       }
+      setImageHistory(uniqueHistory);
+      setIsInitialized(true);
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+
+    loadHistory();
   }, []);
 
   // Resolve Blob URLs for history items (align with AiStudioHost)
@@ -500,12 +474,11 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
     bootstrapFromDisk();
   }, [imageHistory.length, isInitialized]);
 
-  // Save history to shared local storage whenever it changes
+  // Save history to server whenever it changes
   useEffect(() => {
-    if (imageHistory.length > 0) {
-      localStorage.setItem('imageHistory', JSON.stringify(imageHistory));
-    }
-  }, [imageHistory]);
+    if (!isInitialized) return;
+    saveImageHistory(imageHistory);
+  }, [imageHistory, isInitialized]);
 
   const handleGenerateImage = async (prompt: string, id: string, sceneNumber?: number) => {
     if (generatingId) return;
@@ -594,7 +567,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
 
         const newHistory = [newItem, ...imageHistory];
         setImageHistory(newHistory);
-        localStorage.setItem('imageHistory', JSON.stringify(newHistory));
+        saveImageHistory(newHistory);
       } else if (result && 'generatedImages' in result && result.generatedImages?.length === 0) {
         throw new Error("이미지가 생성되지 않았습니다. (생성된 이미지 0개). 안전 정책(Safety Filter)에 의해 차단되었거나, 모델이 요청을 거부했을 수 있습니다. 프롬프트를 수정하여 다시 시도해주세요.");
       } else {
@@ -779,7 +752,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
     if (localItem) {
       const newHistory = imageHistory.filter(item => item.id !== id);
       setImageHistory(newHistory);
-      localStorage.setItem('imageHistory', JSON.stringify(newHistory));
+      saveImageHistory(newHistory);
     }
 
     if (remoteItem) {

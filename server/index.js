@@ -60,6 +60,7 @@ const SCRIPTS_BASE_DIR = path.join(GENERATED_DIR, '대본폴더'); // 대본들�
 const LONGFORM_DIR = path.join(__dirname, '../longform_sessions');
 const TEMPLATE_DIR = path.join(__dirname, '../style_templates');
 const IMAGES_DIR = path.join(GENERATED_DIR, 'images');
+const OUTFIT_PREVIEW_DIR = path.join(GENERATED_DIR, 'outfit_previews');
 const ENGINE_CONFIG_FILE = path.join(__dirname, '../engine_config.json');
 const PROMPT_PRESETS_FILE = path.join(__dirname, './prompt_presets.json');
 const GENRE_GUIDELINES_FILE = path.join(GENERATED_DIR, 'genre_guidelines.json');
@@ -69,6 +70,12 @@ const OUTFITS_FILE = path.join(__dirname, './outfits.json');
 const EXTRACTION_CACHE_DIR = path.join(__dirname, 'user_data_extractions');
 const EXTRACTION_CACHE_FILE = path.join(EXTRACTION_CACHE_DIR, 'extraction_cache.json');
 const EXTRACTION_IMAGE_DIR = path.join(EXTRACTION_CACHE_DIR, 'images');
+const OUTFIT_PREVIEW_MAP_DIR = path.join(__dirname, 'user_data_outfit_previews');
+const OUTFIT_PREVIEW_MAP_FILE = path.join(OUTFIT_PREVIEW_MAP_DIR, 'outfit_preview_map.json');
+const IMAGE_HISTORY_DIR = path.join(__dirname, 'user_data_image_history');
+const IMAGE_HISTORY_FILE = path.join(IMAGE_HISTORY_DIR, 'image_history.json');
+const APP_STORAGE_DIR = path.join(__dirname, 'user_data_app_storage');
+const APP_STORAGE_FILE = path.join(APP_STORAGE_DIR, 'app_storage.json');
 const DEFAULT_OUTFIT_CATEGORIES = [
     { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상', gender: 'female' },
     { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저', gender: 'female' },
@@ -92,6 +99,7 @@ if (!fs.existsSync(SCRIPTS_BASE_DIR)) fs.mkdirSync(SCRIPTS_BASE_DIR, { recursive
 if (!fs.existsSync(LONGFORM_DIR)) fs.mkdirSync(LONGFORM_DIR);
 if (!fs.existsSync(TEMPLATE_DIR)) fs.mkdirSync(TEMPLATE_DIR);
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+if (!fs.existsSync(OUTFIT_PREVIEW_DIR)) fs.mkdirSync(OUTFIT_PREVIEW_DIR, { recursive: true });
 if (!fs.existsSync(ENGINE_CONFIG_FILE)) {
     fs.writeFileSync(ENGINE_CONFIG_FILE, JSON.stringify({ prompts: {}, options: [] }, null, 2));
 }
@@ -115,6 +123,24 @@ if (!fs.existsSync(EXTRACTION_IMAGE_DIR)) {
 }
 if (!fs.existsSync(EXTRACTION_CACHE_FILE)) {
     fs.writeFileSync(EXTRACTION_CACHE_FILE, JSON.stringify({ cache: {} }, null, 2));
+}
+if (!fs.existsSync(OUTFIT_PREVIEW_MAP_DIR)) {
+    fs.mkdirSync(OUTFIT_PREVIEW_MAP_DIR, { recursive: true });
+}
+if (!fs.existsSync(OUTFIT_PREVIEW_MAP_FILE)) {
+    fs.writeFileSync(OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({ previews: {} }, null, 2));
+}
+if (!fs.existsSync(IMAGE_HISTORY_DIR)) {
+    fs.mkdirSync(IMAGE_HISTORY_DIR, { recursive: true });
+}
+if (!fs.existsSync(IMAGE_HISTORY_FILE)) {
+    fs.writeFileSync(IMAGE_HISTORY_FILE, JSON.stringify({ history: [] }, null, 2));
+}
+if (!fs.existsSync(APP_STORAGE_DIR)) {
+    fs.mkdirSync(APP_STORAGE_DIR, { recursive: true });
+}
+if (!fs.existsSync(APP_STORAGE_FILE)) {
+    fs.writeFileSync(APP_STORAGE_FILE, JSON.stringify({ storage: {} }, null, 2));
 }
 
 const EXTRACTION_CACHE_KEYS = new Set([
@@ -1486,6 +1512,177 @@ app.post('/api/characters', (req, res) => {
         fs.writeFileSync(CHARACTERS_FILE, JSON.stringify({ characters }, null, 2));
         res.json({ success: true });
     } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 의상 미리보기 이미지 저장 API
+// ---------------------------------------------------------
+app.post('/api/save-outfit-preview', async (req, res) => {
+    try {
+        const { imageData, outfitId, prompt } = req.body;
+        if (!imageData) return res.status(400).json({ success: false, error: '이미지 데이터가 없습니다.' });
+        const decoded = decodeDataUrl(imageData);
+        if (!decoded) return res.status(400).json({ success: false, error: '잘못된 이미지 데이터입니다.' });
+
+        const safeId = (outfitId || 'outfit').replace(/[^a-z0-9가-힣_-]/gi, '').trim().substring(0, 40) || 'outfit';
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const ext = decoded.mime.split('/')[1] || 'png';
+        const filename = `${safeId}_${timestamp}.${ext}`;
+        const filePath = path.join(OUTFIT_PREVIEW_DIR, filename);
+        fs.writeFileSync(filePath, decoded.base64, 'base64');
+
+        const fileUrl = `/generated_scripts/outfit_previews/${filename}`;
+        res.json({ success: true, url: fileUrl, filename, prompt });
+    } catch (error) {
+        console.error('의상 미리보기 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 기본 의상 미리보기 맵 저장/조회 API
+// ---------------------------------------------------------
+app.get('/api/outfit-preview-map', (req, res) => {
+    try {
+        if (!fs.existsSync(OUTFIT_PREVIEW_MAP_FILE)) {
+            return res.json({ previews: {} });
+        }
+        const raw = fs.readFileSync(OUTFIT_PREVIEW_MAP_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        res.json({ previews: parsed?.previews || {} });
+    } catch (error) {
+        console.error('의상 미리보기 맵 로드 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/outfit-preview-map', (req, res) => {
+    try {
+        const { previews } = req.body || {};
+        if (!previews || typeof previews !== 'object') {
+            return res.status(400).json({ success: false, error: 'Invalid previews payload' });
+        }
+        fs.writeFileSync(OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({
+            previews,
+            updatedAt: new Date().toISOString()
+        }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('의상 미리보기 맵 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 이미지 히스토리 저장/조회 API
+// ---------------------------------------------------------
+app.get('/api/image-history', (req, res) => {
+    try {
+        if (!fs.existsSync(IMAGE_HISTORY_FILE)) {
+            return res.json({ history: [] });
+        }
+        const raw = fs.readFileSync(IMAGE_HISTORY_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        res.json({ history: Array.isArray(parsed?.history) ? parsed.history : [] });
+    } catch (error) {
+        console.error('이미지 히스토리 로드 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/image-history', (req, res) => {
+    try {
+        const { history } = req.body || {};
+        if (!Array.isArray(history)) {
+            return res.status(400).json({ success: false, error: 'Invalid history payload' });
+        }
+        fs.writeFileSync(IMAGE_HISTORY_FILE, JSON.stringify({
+            history,
+            updatedAt: new Date().toISOString()
+        }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('이미지 히스토리 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 앱 설정/캐시 저장소 API (localStorage 대체)
+// ---------------------------------------------------------
+app.get('/api/app-storage', (req, res) => {
+    try {
+        if (!fs.existsSync(APP_STORAGE_FILE)) {
+            return res.json({ storage: {} });
+        }
+        const raw = fs.readFileSync(APP_STORAGE_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        const key = typeof req.query.key === 'string' ? req.query.key : '';
+        if (key) {
+            return res.json({ value: parsed?.storage?.[key] ?? null });
+        }
+        res.json({ storage: parsed?.storage || {} });
+    } catch (error) {
+        console.error('앱 스토리지 로드 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/app-storage', (req, res) => {
+    try {
+        const { key, value, entries } = req.body || {};
+        let storage = {};
+        if (fs.existsSync(APP_STORAGE_FILE)) {
+            try {
+                const raw = fs.readFileSync(APP_STORAGE_FILE, 'utf8');
+                const parsed = JSON.parse(raw);
+                storage = parsed?.storage || {};
+            } catch { storage = {}; }
+        }
+
+        if (entries && typeof entries === 'object') {
+            storage = { ...storage, ...entries };
+        } else if (typeof key === 'string' && key.trim()) {
+            storage[key] = value;
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid storage payload' });
+        }
+
+        fs.writeFileSync(APP_STORAGE_FILE, JSON.stringify({
+            storage,
+            updatedAt: new Date().toISOString()
+        }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('앱 스토리지 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/app-storage', (req, res) => {
+    try {
+        const { key } = req.body || {};
+        if (!key || typeof key !== 'string') {
+            return res.status(400).json({ success: false, error: 'Invalid key' });
+        }
+        let storage = {};
+        if (fs.existsSync(APP_STORAGE_FILE)) {
+            try {
+                const raw = fs.readFileSync(APP_STORAGE_FILE, 'utf8');
+                const parsed = JSON.parse(raw);
+                storage = parsed?.storage || {};
+            } catch { storage = {}; }
+        }
+        delete storage[key];
+        fs.writeFileSync(APP_STORAGE_FILE, JSON.stringify({
+            storage,
+            updatedAt: new Date().toISOString()
+        }, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('앱 스토리지 삭제 실패:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

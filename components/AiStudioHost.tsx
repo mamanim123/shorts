@@ -5,6 +5,7 @@ import { getBlob, deleteBlob, setBlob } from './master-studio/services/dbService
 import { fetchDiskImageList, fetchImageStoryFolders, StoryFolderInfo } from './master-studio/services/diskImageList';
 
 import { saveImageToDisk, deleteFileFromDisk } from './master-studio/services/serverService';
+import { fetchImageHistory, saveImageHistory } from '../services/imageHistoryService';
 import { Star, X, Copy, Loader2, RefreshCw, History as HistoryIcon } from 'lucide-react';
 
 const MAX_HISTORY = 100; // localStorage 용량 보호를 위해 히스토리 제한 (IndexedDB 사용으로 100개로 상향)
@@ -25,29 +26,27 @@ const AiStudioHost: React.FC = () => {
   const [remoteFolderImages, setRemoteFolderImages] = useState<any[]>([]);
   const [isRemoteFolderLoading, setIsRemoteFolderLoading] = useState(false);
 
-  // 초기 로드 및 스토리지 동기화
+  // 초기 로드 및 서버 히스토리 동기화
   useEffect(() => {
-    const saved = localStorage.getItem('imageHistory');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setImageHistory(parsed);
-      } catch (e) {
-        console.error('Failed to parse imageHistory', e);
-      }
-    }
-    const handleStorageSync = (event: StorageEvent) => {
-      if (event.key === 'imageHistory' && event.newValue) {
+    const bootstrapHistory = async () => {
+      // legacy localStorage migration
+      const legacyRaw = localStorage.getItem('imageHistory');
+      if (legacyRaw) {
         try {
-          const parsed = JSON.parse(event.newValue);
-          if (Array.isArray(parsed)) setImageHistory(parsed);
-        } catch (err) {
-          console.error('Failed to sync image history', err);
+          const parsed = JSON.parse(legacyRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            await saveImageHistory(parsed);
+          }
+          localStorage.removeItem('imageHistory');
+        } catch (e) {
+          console.error('Failed to migrate legacy imageHistory', e);
+          localStorage.removeItem('imageHistory');
         }
       }
+      const serverHistory = await fetchImageHistory();
+      if (Array.isArray(serverHistory)) setImageHistory(serverHistory);
     };
-    window.addEventListener('storage', handleStorageSync);
-    return () => window.removeEventListener('storage', handleStorageSync);
+    bootstrapHistory();
   }, []);
 
   const refreshStoryFolderList = useCallback(async () => {
@@ -294,7 +293,7 @@ const AiStudioHost: React.FC = () => {
     if (localItem) {
       const nextHistory = imageHistory.filter((item) => item.id !== id);
       setImageHistory(nextHistory);
-      localStorage.setItem('imageHistory', JSON.stringify(nextHistory));
+      await saveImageHistory(nextHistory);
     }
 
     if (remoteItem) {
@@ -364,13 +363,9 @@ const AiStudioHost: React.FC = () => {
       const newHistory = mergedHistory.slice(0, MAX_HISTORY);
 
       setImageHistory(newHistory);
-      try {
-        localStorage.setItem('imageHistory', JSON.stringify(newHistory));
-      } catch (e) {
-        console.error('Failed to persist imageHistory', e);
-        if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-          alert("브라우저 저장 공간이 부족합니다. (LocalStorage Quota)");
-        }
+      const saved = await saveImageHistory(newHistory);
+      if (!saved) {
+        console.error('Failed to persist imageHistory to server');
       }
       setHistoryUrls(prev => ({ ...prev, [newItem.id]: previewUrl }));
     } catch (e) {

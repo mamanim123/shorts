@@ -18,7 +18,7 @@ import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Lightbox from './master-studio/Lightbox';
 import { UNIFIED_OUTFIT_LIST } from '../constants';
-import { fetchOutfitCatalog, saveOutfitCatalog } from '../services/outfitService';
+import { fetchOutfitCatalog, fetchOutfitPreviewMap, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCategory, OutfitItem } from '../services/outfitService';
 import { fetchCharacters, saveCharacters } from '../services/characterService';
 import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
@@ -107,6 +107,15 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedOutfitId, setSelectedOutfitId] = useState<string | null>(null);
   const [selectedBaseOutfitId, setSelectedBaseOutfitId] = useState<string | null>(null);
+  const [editingOutfitName, setEditingOutfitName] = useState('');
+  const [editingOutfitPrompt, setEditingOutfitPrompt] = useState('');
+  const [isGeneratingOutfitPreview, setIsGeneratingOutfitPreview] = useState(false);
+  const [isBatchGeneratingOutfitPreviews, setIsBatchGeneratingOutfitPreviews] = useState(false);
+  const [batchTotalOutfits, setBatchTotalOutfits] = useState(0);
+  const [batchCompletedOutfits, setBatchCompletedOutfits] = useState(0);
+  const [batchFailedOutfitIds, setBatchFailedOutfitIds] = useState<string[]>([]);
+  const [baseOutfitPreviewMap, setBaseOutfitPreviewMap] = useState<Record<string, string>>({});
+  const [includeBaseOutfitsInBatch, setIncludeBaseOutfitsInBatch] = useState(false);
 
   // 의상 추가 상태
   const [showAddOutfit, setShowAddOutfit] = useState(false);
@@ -201,9 +210,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [loadedCharacters, outfitCatalog] = await Promise.all([
+        const [loadedCharacters, outfitCatalog, previewMap] = await Promise.all([
           fetchCharacters(),
-          fetchOutfitCatalog()
+          fetchOutfitCatalog(),
+          fetchOutfitPreviewMap()
         ]);
 
         if (loadedCharacters.length > 0) setCharacters(loadedCharacters);
@@ -216,6 +226,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           setOutfitCategories(outfitCatalog.categories);
           setNewOutfitCategory(outfitCatalog.categories[0].id);
         }
+        setBaseOutfitPreviewMap(previewMap);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
       } finally {
@@ -721,6 +732,126 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   }, [isGeneratingImage]);
 
+  const createOutfitPreview = useCallback(async (prompt: string, id: string) => {
+    if (!prompt?.trim()) {
+      showToast('프롬프트가 없어 이미지를 생성할 수 없습니다.', 'warning');
+      return null;
+    }
+
+    const safetySettings = [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    ];
+
+    const result: any = await generateImageWithImagen(
+      prompt,
+      "",
+      { aspectRatio: "1:1", model: "imagen-4.0-generate-001" },
+      safetySettings
+    );
+
+    let base64Image: string | null = null;
+    if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+      const generatedImage = result.generatedImages[0];
+      if (generatedImage?.image?.imageBytes) {
+        base64Image = generatedImage.image.imageBytes;
+      } else if (generatedImage?.imageBytes) {
+        base64Image = generatedImage.imageBytes;
+      }
+    } else if (result && result.images && result.images.length > 0) {
+      base64Image = result.images[0];
+    }
+
+    if (!base64Image) return null;
+
+    const savedUrl = await saveOutfitPreviewImage(
+      `data:image/png;base64,${base64Image}`,
+      id,
+      prompt
+    );
+
+    return savedUrl || null;
+  }, []);
+
+  const handleGenerateOutfitPreview = useCallback(async (outfit: Outfit) => {
+    if (isGeneratingOutfitPreview) return;
+    setIsGeneratingOutfitPreview(true);
+    try {
+      const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const updated = outfits.map(item => (
+        item.id === outfit.id ? { ...item, imageUrl: `http://localhost:3002${savedUrl}` } : item
+      ));
+      setOutfits(updated);
+      saveOutfitsToBE(updated, outfitCategories);
+      showToast('의상 미리보기가 생성되었습니다.', 'success');
+    } catch (error: any) {
+      console.error('의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingOutfitPreview(false);
+    }
+  }, [createOutfitPreview, isGeneratingOutfitPreview, outfitCategories, outfits, saveOutfitsToBE]);
+
+  type OutfitPreviewTarget = {
+    id: string;
+    prompt: string;
+    kind: 'user' | 'base';
+  };
+
+  const handleBatchGenerateOutfitPreviews = useCallback(async (targets: OutfitPreviewTarget[]) => {
+    if (isBatchGeneratingOutfitPreviews) return;
+    if (targets.length === 0) {
+      showToast('미리보기가 필요한 의상이 없습니다.', 'info');
+      return;
+    }
+    setIsBatchGeneratingOutfitPreviews(true);
+    setBatchTotalOutfits(targets.length);
+    setBatchCompletedOutfits(0);
+    setBatchFailedOutfitIds([]);
+
+    const failedIds: string[] = [];
+    const updatedOutfits = [...outfits];
+    const updatedBaseMap = { ...baseOutfitPreviewMap };
+
+    for (let i = 0; i < targets.length; i++) {
+      const outfit = targets[i];
+      try {
+        const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
+        if (!savedUrl) throw new Error('이미지 저장 실패');
+        if (outfit.kind === 'user') {
+          const index = updatedOutfits.findIndex(item => item.id === outfit.id);
+          if (index >= 0) {
+            updatedOutfits[index] = {
+              ...updatedOutfits[index],
+              imageUrl: `http://localhost:3002${savedUrl}`
+            };
+          }
+        } else {
+          updatedBaseMap[outfit.id] = `http://localhost:3002${savedUrl}`;
+        }
+      } catch (error) {
+        failedIds.push(outfit.id);
+      } finally {
+        setBatchCompletedOutfits(prev => prev + 1);
+      }
+    }
+
+    setOutfits(updatedOutfits);
+    setBaseOutfitPreviewMap(updatedBaseMap);
+    saveOutfitsToBE(updatedOutfits, outfitCategories);
+    saveOutfitPreviewMap(updatedBaseMap);
+    setBatchFailedOutfitIds(failedIds);
+    if (failedIds.length === 0) {
+      showToast('전체 의상 미리보기가 생성되었습니다.', 'success');
+    } else {
+      showToast(`${failedIds.length}개 의상 미리보기 생성에 실패했습니다.`, 'warning');
+    }
+    setIsBatchGeneratingOutfitPreviews(false);
+  }, [baseOutfitPreviewMap, createOutfitPreview, isBatchGeneratingOutfitPreviews, outfitCategories, outfits, saveOutfitPreviewMap, saveOutfitsToBE]);
+
   const cancelAiForwarding = useCallback(() => {
     if (aiForwardAbortRef.current) {
       try {
@@ -1010,6 +1141,15 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     return baseCount + userCount;
   }, [getBaseOutfitsByCategory, outfits]);
 
+  const outfitsMissingPreview = useMemo(() => (
+    outfits.filter(outfit => !outfit.imageUrl)
+  ), [outfits]);
+
+  const baseOutfitsMissingPreview = useMemo(() => {
+    const allBase = (UNIFIED_OUTFIT_LIST as BaseOutfitItem[]).filter(item => item.prompt);
+    return allBase.filter(item => !baseOutfitPreviewMap[item.id]);
+  }, [baseOutfitPreviewMap]);
+
   const handleDeleteOutfit = useCallback((id: string) => {
     const updated = outfits.filter(o => o.id !== id);
     setOutfits(updated);
@@ -1020,11 +1160,42 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   }, [outfits, selectedOutfitId, onOutfitSelect, outfitCategories, saveOutfitsToBE]);
 
+  const selectedOutfit = useMemo(() => {
+    if (!selectedOutfitId) return null;
+    return outfits.find(outfit => outfit.id === selectedOutfitId) || null;
+  }, [outfits, selectedOutfitId]);
+
+  const handleUpdateOutfit = useCallback(() => {
+    if (!selectedOutfit) return;
+    if (!editingOutfitName.trim() || !editingOutfitPrompt.trim()) {
+      showToast('의상 이름과 프롬프트를 입력해주세요.', 'warning');
+      return;
+    }
+    const updated = outfits.map(outfit => (
+      outfit.id === selectedOutfit.id
+        ? { ...outfit, name: editingOutfitName.trim(), prompt: editingOutfitPrompt.trim() }
+        : outfit
+    ));
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    showToast('의상 정보가 수정되었습니다.', 'success');
+  }, [editingOutfitName, editingOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
+
   const handleSelectOutfit = useCallback((outfit: Outfit) => {
     setSelectedOutfitId(outfit.id);
     setSelectedBaseOutfitId(null);
     onOutfitSelect?.(outfit);
   }, [onOutfitSelect]);
+
+  useEffect(() => {
+    if (selectedOutfit) {
+      setEditingOutfitName(selectedOutfit.name);
+      setEditingOutfitPrompt(selectedOutfit.prompt);
+    } else {
+      setEditingOutfitName('');
+      setEditingOutfitPrompt('');
+    }
+  }, [selectedOutfit]);
 
   // 기본 의상 선택 핸들러 (프롬프트 포함)
   const handleSelectBaseOutfit = useCallback((item: BaseOutfitItem) => {
@@ -1811,6 +1982,67 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">📋 의상 라이브러리</div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => {
+                      const targets = outfitsMissingPreview.map(outfit => ({
+                        id: outfit.id,
+                        prompt: outfit.prompt,
+                        kind: 'user' as const
+                      }));
+                      if (includeBaseOutfitsInBatch) {
+                        baseOutfitsMissingPreview.forEach(item => {
+                          if (item.prompt) {
+                            targets.push({
+                              id: item.id,
+                              prompt: item.prompt,
+                              kind: 'base' as const
+                            });
+                          }
+                        });
+                      }
+                      handleBatchGenerateOutfitPreviews(targets);
+                    }}
+                    disabled={isBatchGeneratingOutfitPreviews || (outfitsMissingPreview.length === 0 && (!includeBaseOutfitsInBatch || baseOutfitsMissingPreview.length === 0))}
+                    className="px-2 py-1 bg-emerald-700/70 hover:bg-emerald-600 text-[10px] font-bold text-emerald-100 rounded-lg transition-all disabled:opacity-40"
+                    title="미리보기 없는 의상 전체 생성"
+                  >
+                    전체 생성
+                  </button>
+                  {batchFailedOutfitIds.length > 0 && (
+                    <button
+                      onClick={() => {
+                        const retryTargets = outfits
+                          .filter(outfit => batchFailedOutfitIds.includes(outfit.id))
+                          .map(outfit => ({
+                            id: outfit.id,
+                            prompt: outfit.prompt,
+                            kind: 'user' as const
+                          }));
+                        const retryBaseTargets = baseOutfitsMissingPreview
+                          .filter(item => batchFailedOutfitIds.includes(item.id))
+                          .map(item => ({
+                            id: item.id,
+                            prompt: item.prompt || '',
+                            kind: 'base' as const
+                          }));
+                        handleBatchGenerateOutfitPreviews([...retryTargets, ...retryBaseTargets]);
+                      }}
+                      disabled={isBatchGeneratingOutfitPreviews}
+                      className="px-2 py-1 bg-amber-700/70 hover:bg-amber-600 text-[10px] font-bold text-amber-100 rounded-lg transition-all disabled:opacity-40"
+                      title="실패 항목만 재시도"
+                    >
+                      실패 재시도
+                    </button>
+                  )}
+                  <label className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={includeBaseOutfitsInBatch}
+                      onChange={e => setIncludeBaseOutfitsInBatch(e.target.checked)}
+                      className="accent-emerald-500"
+                    />
+                    기본 의상 포함
+                  </label>
+                  <button
                     onClick={() => setShowAddCategory(true)}
                     className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 rounded-lg transition-all"
                   >
@@ -1824,6 +2056,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   </button>
                 </div>
               </div>
+              {(isBatchGeneratingOutfitPreviews || batchTotalOutfits > 0) && (
+                <div className="px-1 text-[10px] text-slate-500 flex items-center gap-2">
+                  <span>미리보기 생성</span>
+                  <span className="text-emerald-400 font-bold">
+                    {batchCompletedOutfits}/{batchTotalOutfits}
+                  </span>
+                  {batchFailedOutfitIds.length > 0 && (
+                    <span className="text-amber-400">실패 {batchFailedOutfitIds.length}개</span>
+                  )}
+                </div>
+              )}
 
               {showAddCategory && (
                 <div className="p-3 bg-slate-800 border border-emerald-500/30 rounded-xl space-y-3 shadow-xl animate-in slide-in-from-top-2">
@@ -2023,13 +2266,25 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                       : 'hover:bg-slate-800/50'
                                   }`}
                                 >
-                                  <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
-                                    selectedOutfitId === outfit.id
-                                      ? 'bg-emerald-500 text-white'
-                                      : 'bg-purple-800 text-purple-400'
-                                  }`}>
-                                    <Shirt size={10} />
-                                  </div>
+                                  {outfit.imageUrl ? (
+                                    <img
+                                      src={outfit.imageUrl}
+                                      alt={outfit.name}
+                                      className="w-8 h-8 rounded object-cover border border-emerald-500/40 flex-shrink-0 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLightboxImage(outfit.imageUrl || null);
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
+                                      selectedOutfitId === outfit.id
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'bg-purple-800 text-purple-400'
+                                    }`}>
+                                      <Shirt size={10} />
+                                    </div>
+                                  )}
                                   <div className="flex-1 min-w-0">
                                     <div className={`text-[10px] font-bold truncate ${
                                       selectedOutfitId === outfit.id
@@ -2083,13 +2338,25 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                     : 'hover:bg-slate-800/30'
                                 }`}
                               >
-                                <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
-                                  selectedBaseOutfitId === item.id
-                                    ? 'bg-emerald-500 text-white'
-                                    : 'bg-slate-800 text-slate-600'
-                                }`}>
-                                  <Shirt size={10} />
-                                </div>
+                                {baseOutfitPreviewMap[item.id] ? (
+                                  <img
+                                    src={baseOutfitPreviewMap[item.id]}
+                                    alt={item.translation || item.name}
+                                    className="w-8 h-8 rounded object-cover border border-emerald-500/30 flex-shrink-0 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLightboxImage(baseOutfitPreviewMap[item.id]);
+                                    }}
+                                  />
+                                ) : (
+                                  <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
+                                    selectedBaseOutfitId === item.id
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-slate-800 text-slate-600'
+                                  }`}>
+                                    <Shirt size={10} />
+                                  </div>
+                                )}
                                 <div className="flex-1 min-w-0">
                                   <div className={`text-[10px] truncate ${
                                     selectedBaseOutfitId === item.id
@@ -2126,6 +2393,56 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   );
                 })}
               </div>
+
+              {selectedOutfit && (
+                <div className="p-3 bg-slate-800/60 border border-emerald-500/30 rounded-xl space-y-3 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-400">선택된 의상 편집</span>
+                    <button
+                      onClick={() => setSelectedOutfitId(null)}
+                      className="text-slate-500 hover:text-white"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={editingOutfitName}
+                    onChange={e => setEditingOutfitName(e.target.value)}
+                    placeholder="의상 이름"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                  />
+                  <textarea
+                    value={editingOutfitPrompt}
+                    onChange={e => setEditingOutfitPrompt(e.target.value)}
+                    placeholder="의상 프롬프트 (영어)"
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleUpdateOutfit}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={() => handleGenerateOutfitPreview(selectedOutfit)}
+                      disabled={isGeneratingOutfitPreview}
+                      className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                    >
+                      {isGeneratingOutfitPreview ? '생성 중...' : '재생성'}
+                    </button>
+                  </div>
+                  {selectedOutfit.imageUrl && (
+                    <button
+                      onClick={() => setLightboxImage(selectedOutfit.imageUrl || null)}
+                      className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all"
+                    >
+                      미리보기 확대 보기
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

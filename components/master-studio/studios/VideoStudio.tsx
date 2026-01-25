@@ -12,6 +12,7 @@ import { Film, Upload, Download, Trash2, Loader2, PlayCircle, ImagePlus, X, Spar
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { ImageHistoryItem } from '../types';
 import ImageHistorySidebar from '../ImageHistorySidebar';
+import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
 
 const loadingMessages = [
     "시나리오를 구상하고 있습니다...", "캐릭터의 스타일을 정의하고 있습니다...", "조명을 설정하고 있습니다...", "카메라 앵글을 잡고 있습니다...", "촬영 준비 중입니다...", "첫 번째 컷을 촬영하고 있습니다...", "장면을 렌더링하고 있습니다...", "특수 효과를 추가하고 있습니다...", "사운드 디자인을 입히고 있습니다...", "최종 편집 중입니다...",
@@ -107,11 +108,42 @@ const VideoStudio: React.FC = () => {
     const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
     // Image History State
-    const [imageHistory, setImageHistory] = useLocalStorage<ImageHistoryItem[]>('imageHistory', []);
+    const [imageHistory, setImageHistory] = useState<ImageHistoryItem[]>([]);
     const [historyImages, setHistoryImages] = useState<Record<string, string>>({});
     const [isImageHistoryOpen, setIsImageHistoryOpen] = useState(true);
     const createdImageHistoryUrlsRef = useRef<string[]>([]);
     const hasBootstrappedImageHistoryRef = useRef(false);
+
+    useEffect(() => {
+        const loadHistory = async () => {
+            try {
+                const legacyRaw = localStorage.getItem('imageHistory');
+                if (legacyRaw) {
+                    try {
+                        const legacy = JSON.parse(legacyRaw);
+                        if (Array.isArray(legacy) && legacy.length > 0) {
+                            await saveImageHistory(legacy);
+                        }
+                    } catch (err) {
+                        console.error('Failed to migrate legacy image history', err);
+                    } finally {
+                        localStorage.removeItem('imageHistory');
+                    }
+                }
+                const serverHistory = await fetchImageHistory();
+                if (Array.isArray(serverHistory)) {
+                    setImageHistory(serverHistory);
+                }
+            } catch (err) {
+                console.error('Failed to load image history', err);
+            }
+        };
+        loadHistory();
+    }, []);
+
+    useEffect(() => {
+        saveImageHistory(imageHistory);
+    }, [imageHistory]);
 
     const [startFrame, setStartFrame] = useState<{ file: File; url: string; base64: string } | null>(null);
     const [endFrame, setEndFrame] = useState<{ file: File; url: string; base64: string } | null>(null);

@@ -14,6 +14,7 @@ export interface OutfitItem {
   prompt: string;
   category: string;
   createdAt: string;
+  imageUrl?: string;
 }
 
 export interface OutfitCatalog {
@@ -182,4 +183,48 @@ export const buildOutfitPool = (baseOutfits: OutfitPoolItem[]): OutfitPoolItem[]
   });
 
   return Array.from(deduped.values());
+};
+
+export const saveOutfitPreviewImage = async (
+  imageData: string,
+  outfitId: string,
+  prompt?: string
+): Promise<string | null> => {
+  try {
+    const response = await fetch('http://localhost:3002/api/save-outfit-preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData, outfitId, prompt }),
+    });
+    if (!response.ok) throw new Error('failed');
+    const payload = (await response.json()) as { url?: string };
+    return payload.url || null;
+  } catch {
+    return null;
+  }
+};
+
+export const fetchOutfitPreviewMap = async (): Promise<Record<string, string>> => {
+  try {
+    const response = await fetch('http://localhost:3002/api/outfit-preview-map');
+    if (!response.ok) throw new Error('failed');
+    const payload = (await response.json()) as { previews?: Record<string, string> };
+    return payload.previews || {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveOutfitPreviewMap = async (previews: Record<string, string>): Promise<boolean> => {
+  try {
+    const response = await fetch('http://localhost:3002/api/outfit-preview-map', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ previews }),
+    });
+    if (!response.ok) throw new Error('failed');
+    return true;
+  } catch {
+    return false;
+  }
 };

@@ -26,10 +26,10 @@
  *
  * v3.7.2 업데이트 (2026-01-23):
  * - 겨울 아웃웨어 완전 제거 (패딩/재킷 없음, 악세서리만 사용)
- * - applyWinterItems 함수 수정: outerwear가 빈 문자열일 때 'layered with' 구문 제거
+ * - applyWinterItems 제거 (겨울 악세서리 자동 적용 삭제)
  *
  * v3.7.3 업데이트 (2026-01-23):
- * - 겨울 악세서리 적용 시 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환
+ * - 겨울 키워드 감지 시 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환
  * - Off-shoulder tight-fitting long-sleeve 스타일 강제 적용
  * - 쇄골과 어깨라인 강조로 여성스러움 극대화
  *
@@ -43,8 +43,7 @@
  * - 캐디(WomanD) 캐릭터 설정 추가: 밝고 세련되고 아름다운 프로페셔널 골프 캐디
  * - 헤어스타일 섹션에 캐디 추가 (high-bun hairstyle)
  * - 캐릭터 설정 섹션 신규 추가 (모든 캐릭터의 성격/특징 명시)
- * - 겨울 악세서리를 각 캐릭터마다 다르게 착용 (A, B, D 각각 다른 악세서리 선택)
- * - lockedOutfits에 winterAccessoriesA/B/D 개별 저장
+ * - 겨울 악세서리 자동 적용 제거 (수동 악세서리만 사용)
  *
  * v3.7.6 업데이트 (2026-01-24):
  * - scriptBody와 scenes 개수를 8~12개 가변으로 변경 (완전한 1:1 매칭)
@@ -1213,6 +1212,9 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
 };
 
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
+  if (topic && isWinterTopic(topic)) {
+    return convertToTightLongSleeveWithShoulderLine(outfit);
+  }
   return outfit;
 };
 
@@ -1276,22 +1278,14 @@ export const pickFemaleOutfit = (
   return adjustOutfitForSeason(selectedName, topic);
 };
 
-export const applyWinterItems = (
-  outfit: string,
-  outerwear: string,
-  accessories: string[]
-): string => {
-  const winterStyledOutfit = convertToTightLongSleeveWithShoulderLine(outfit);
-  const accsStr = accessories.join(', ');
-  return `${winterStyledOutfit}, accessorized with ${accsStr}`;
-};
+// 겨울 악세서리 자동 삽입 로직은 제거됨 (수동 악세서리만 사용)
 
 // ============================================
 // 대본 생성용 프롬프트 (v3.5 - 완전판)
 // ============================================
 
 export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
-  const { topic, genre, targetAge, gender, additionalContext, enableWinterAccessories } = options;
+  const { topic, genre, targetAge, gender, additionalContext } = options;
   const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const seed = generateRandomSeed();
 
@@ -1315,27 +1309,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
     }
   });
 
-  // v3.7.5: 겨울 악세서리 토글이 ON일 때만 겨울 아이템 적용 (각 캐릭터마다 다른 악세서리)
-  let winterOuterwear = '';
-  let winterAccessoriesA: string[] = [];
-  let winterAccessoriesB: string[] = [];
-  let winterAccessoriesD: string[] = [];
-  if (enableWinterAccessories) {
-    // 각 캐릭터마다 다른 악세서리 선택
-    const winterItemsA = selectWinterItems();
-    const winterItemsB = selectWinterItems();
-    const winterItemsD = selectWinterItems();
-
-    winterOuterwear = winterItemsA.outerwear; // 아우터는 빈 문자열 (v3.7.2)
-    winterAccessoriesA = winterItemsA.accessories;
-    winterAccessoriesB = winterItemsB.accessories;
-    winterAccessoriesD = winterItemsD.accessories;
-
-    // 여성 의상에만 겨울 아이템 적용 (각각 다른 악세서리)
-    womanAOutfit = applyWinterItems(womanAOutfit, winterOuterwear, winterAccessoriesA);
-    womanBOutfit = applyWinterItems(womanBOutfit, winterOuterwear, winterAccessoriesB);
-    womanDOutfit = applyWinterItems(womanDOutfit, winterOuterwear, winterAccessoriesD);
-  }
+  // 겨울 악세서리 자동 적용 제거 (의상은 겨울 키워드에서만 긴팔 변환)
 
   const narratorSlot = gender === 'female' ? 'Woman A (지영)' : 'Man A (준호)';
   const narratorName = gender === 'female' ? '지영' : '준호';
@@ -1592,11 +1566,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
     "womanB": "${womanBOutfit}",
     "womanD": "${womanDOutfit}",
     "manA": "${manAOutfit}",
-    "manB": "${manBOutfit}",
-    "winterOuterwear": "${winterOuterwear}",
-    "winterAccessoriesA": "${winterAccessoriesA.join(', ')}",
-    "winterAccessoriesB": "${winterAccessoriesB.join(', ')}",
-    "winterAccessoriesD": "${winterAccessoriesD.join(', ')}"
+    "manB": "${manBOutfit}"
   },
   "characters": [
     { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY_A}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },

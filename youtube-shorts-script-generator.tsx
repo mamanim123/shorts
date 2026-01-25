@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, Copy, RefreshCw, TrendingUp, Target, ArrowLeft, ChevronDown, ChevronUp, Image as ImageIcon, Loader2, X, History as HistoryIcon, Maximize, Trash2, Settings2, Sparkles as SparklesIcon, Star, Plus, Eye, Save, Layout, Zap } from 'lucide-react';
+import { Sparkles, Copy, RefreshCw, TrendingUp, Target, ArrowLeft, ChevronDown, ChevronUp, Image as ImageIcon, Loader2, X, History as HistoryIcon, Maximize, Trash2, Settings2, Sparkles as SparklesIcon, Star, Plus, Eye, Save, Layout, Zap, Lock } from 'lucide-react';
+import { ShortsIdentityCard, CharacterIdentity } from './components/ShortsIdentityCard';
 import { genreManager } from './services/genreGuidelines';
 import { previewPrompt } from './services/geminiService';
 import { showToast } from './components/Toast';
@@ -283,6 +284,105 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
   return `${mandatoryPrefix}${cleanText}`;
 };
 
+const SLOT_VISUAL_PRESETS: Record<string, string> = {
+  'Woman A': 'Long soft-wave hairstyle, voluptuous hourglass figure',
+  'Woman B': 'Short chic bob cut, petite and alluring aura',
+  'Woman C': 'Low ponytail, athletic and calm demeanor',
+  'Woman D': 'Neat ponytail, slim and professional demeanor',
+  'Man A': 'Short neat hairstyle, fit athletic build',
+  'Man B': 'Clean short cut, well-built dandy physique'
+};
+
+const normalizeSlotId = (value?: string): string => {
+  if (!value) return '';
+  const trimmed = value.trim();
+  const cleaned = trimmed.replace(/^Slot\s+/i, '').replace(/[_-]+/g, ' ');
+  const match = cleaned.match(/(Woman|Man)\s*([ABC])/i);
+  if (!match) return cleaned;
+  return `${match[1].charAt(0).toUpperCase()}${match[1].slice(1).toLowerCase()} ${match[2].toUpperCase()}`;
+};
+
+const formatIdentityAge = (label: string, gender: 'female' | 'male') => {
+  if (!label) return '';
+  if (label.includes('대')) {
+    const digits = label.match(/\d+/);
+    if (!digits) return '';
+    return `in ${gender === 'female' ? 'her' : 'his'} ${digits[0]}s`;
+  }
+  const digits = label.match(/\d+/);
+  if (!digits) return '';
+  return `in ${gender === 'female' ? 'her' : 'his'} ${digits[0]}s`;
+};
+
+const getSceneCharacterSlots = (
+  scene: any,
+  characterMap?: Record<string, any>
+): string[] => {
+  const slots = new Set<string>();
+  if (typeof scene?.characterSlot === 'string') {
+    scene.characterSlot.split(/[,\|]/).forEach((raw: string) => {
+      const normalized = normalizeSlotId(raw);
+      if (normalized) slots.add(normalized);
+    });
+  }
+  if (Array.isArray(scene?.characterIds) && characterMap) {
+    scene.characterIds.forEach((id: string) => {
+      const ch = characterMap[id];
+      const rawSlot = ch?.slot || ch?.slotId || ch?.characterSlot || '';
+      const normalized = normalizeSlotId(rawSlot);
+      if (normalized) slots.add(normalized);
+    });
+  }
+  return Array.from(slots);
+};
+
+const buildIdentityLockDescriptor = (
+  identities: CharacterIdentity[] = [],
+  sceneSlots: string[] = []
+) => {
+  const activeIdentities = identities.filter((identity) => (
+    identity.isLocked || identity.lockedFields?.size > 0
+  ));
+  if (activeIdentities.length === 0) return '';
+
+  const normalizedSceneSlots = new Set(sceneSlots.map((slot) => normalizeSlotId(slot)));
+  const scopedIdentities = normalizedSceneSlots.size > 0
+    ? activeIdentities.filter((identity) => normalizedSceneSlots.has(normalizeSlotId(identity.slotId)))
+    : activeIdentities;
+
+  if (scopedIdentities.length === 0) return '';
+
+  const lines = scopedIdentities.map((identity) => {
+    const normalizedSlot = normalizeSlotId(identity.slotId);
+    const gender: 'female' | 'male' = normalizedSlot.startsWith('Man') ? 'male' : 'female';
+    const slotPrompt = SLOT_VISUAL_PRESETS[normalizedSlot] || '';
+    const nameLabel = identity.name ? ` (${identity.name})` : '';
+    const ageText = identity.isLocked ? formatIdentityAge(identity.age, gender) : '';
+    const useOutfit = identity.isLocked || identity.lockedFields?.has('outfit');
+    const useAccessories = identity.isLocked || identity.lockedFields?.has('accessories');
+    const outfitText = useOutfit && identity.outfit ? `wearing ${identity.outfit}` : '';
+    const accessoryText = useAccessories && identity.accessories ? `accessorized with ${identity.accessories}` : '';
+    const descriptors = [slotPrompt, ageText, outfitText, accessoryText].filter(Boolean).join(', ');
+    const slotLabel = normalizedSlot ? `Slot ${normalizedSlot}` : 'Slot';
+    return `${slotLabel}${nameLabel}: ${descriptors || 'locked identity'}`;
+  });
+
+  return `Identity Lock: ${lines.join(' | ')}`;
+};
+
+const injectIdentityLock = (text: string, descriptor: string) => {
+  if (!descriptor) return text;
+  if (text.includes(descriptor) || text.includes('Identity Lock:')) return text;
+  const prefixPattern = /^(Scene \d+,\s*)?(A stunning Korean woman[^,]*,\s*)/i;
+  const match = text.match(prefixPattern);
+  if (match) {
+    const prefix = match[0];
+    const rest = text.slice(prefix.length);
+    return `${prefix}${descriptor}, ${rest}`.trim();
+  }
+  return `${descriptor}, ${text}`.trim();
+};
+
 const buildCharacterMap = (characters: any[] = []) => {
   const map: Record<string, any> = {};
   characters.forEach((ch) => {
@@ -318,6 +418,8 @@ const enhanceScenePrompt = (
     maleOutfit?: string;
     characterMap?: Record<string, any>;
     characterIds?: string[];
+    sceneCharacterSlots?: string[];
+    identities?: CharacterIdentity[];
     autoEnhance?: boolean;
     enhancementSettings?: NormalizedPromptEnhancementSettings;
   } = {}
@@ -430,6 +532,10 @@ const enhanceScenePrompt = (
   }
 
   updated = enforceKoreanIdentity(updated, (options as any).targetAgeLabel, options.sceneNumber);
+  if (options.identities && options.identities.length > 0) {
+    const descriptor = buildIdentityLockDescriptor(options.identities, options.sceneCharacterSlots || []);
+    updated = injectIdentityLock(updated, descriptor);
+  }
   return updated;
 };
 
@@ -453,6 +559,7 @@ const postProcessScripts = (
     autoEnhance?: boolean;
     enhancementSettings?: NormalizedPromptEnhancementSettings;
     targetAgeLabel?: string;
+    identities?: CharacterIdentity[];
   }
 ) => {
   if (!Array.isArray(scripts)) return [];
@@ -461,16 +568,31 @@ const postProcessScripts = (
     const characterMap = buildCharacterMap(script?.characters || []);
     const processedScenes = scenes.map((scene: any, sceneIdx: number) => {
       const sNum = scene?.sceneNumber ?? sceneIdx + 1;
+      const sceneSlots = getSceneCharacterSlots(scene, characterMap);
       return {
         ...scene,
         shortPrompt: enhanceScenePrompt(
           scene?.shortPrompt,
-          { ...outfits, sceneNumber: sNum, characterMap, characterIds: scene?.characterIds }
+          {
+            ...outfits,
+            sceneNumber: sNum,
+            characterMap,
+            characterIds: scene?.characterIds,
+            sceneCharacterSlots: sceneSlots,
+            identities: outfits.identities
+          }
         ),
         longPrompt: enforceKoreanIdentity(
           enhanceScenePrompt(
             scene?.longPrompt,
-            { ...outfits, sceneNumber: sNum, characterMap, characterIds: scene?.characterIds }
+            {
+              ...outfits,
+              sceneNumber: sNum,
+              characterMap,
+              characterIds: scene?.characterIds,
+              sceneCharacterSlots: sceneSlots,
+              identities: outfits.identities
+            }
           ),
           outfits.targetAgeLabel,
           sNum
@@ -729,6 +851,93 @@ export function ShortsScriptGenerator({
   const [selectedGenreId, setSelectedGenreId] = useState<string | null>(null);
   const [editingGenre, setEditingGenre] = useState<{ name: string; description: string; prompt: string } | null>(null);
 
+  // [NEW] Identity Lock State
+  const [identities, setIdentities] = useState<CharacterIdentity[]>([]);
+  const identityLoadedRef = useRef(false);
+  const identitySaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const loadIdentities = async () => {
+      try {
+        const response = await fetch('http://localhost:3002/api/app-storage?key=shorts-generator-identities');
+        if (!response.ok) return;
+        const data = await response.json();
+        const value = data?.value;
+        if (Array.isArray(value)) {
+          setIdentities(value.map((id: any) => ({
+            ...id,
+            lockedFields: new Set(id.lockedFields || [])
+          })));
+        }
+      } catch (error) {
+        console.warn('Failed to load identities from app storage:', error);
+      } finally {
+        identityLoadedRef.current = true;
+      }
+    };
+    loadIdentities();
+  }, []);
+
+  // Sync identities to server-side app storage (workspace file)
+  useEffect(() => {
+    if (!identityLoadedRef.current) return;
+    if (identitySaveTimerRef.current) {
+      window.clearTimeout(identitySaveTimerRef.current);
+    }
+    identitySaveTimerRef.current = window.setTimeout(async () => {
+      const toSave = identities.map(id => ({
+        ...id,
+        image: undefined,
+        lockedFields: Array.from(id.lockedFields)
+      }));
+      try {
+        await fetch('http://localhost:3002/api/app-storage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'shorts-generator-identities',
+            value: toSave
+          })
+        });
+      } catch (error) {
+        console.warn('Failed to persist identities to app storage:', error);
+      }
+    }, 400);
+  }, [identities]);
+
+  useEffect(() => {
+    return () => {
+      if (identitySaveTimerRef.current) {
+        window.clearTimeout(identitySaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleUpdateIdentity = (id: string, updates: Partial<CharacterIdentity>) => {
+    setIdentities(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const handleDeleteIdentity = (id: string) => {
+    if (confirm('이 캐릭터 설정을 삭제하시겠습니까?')) {
+      setIdentities(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
+  const handleAddIdentity = () => {
+    const newId: CharacterIdentity = {
+      id: `char-${Date.now()}`,
+      slotId: '',
+      name: '',
+      age: '',
+      outfit: '',
+      accessories: '',
+      isLocked: false,
+      lockedFields: new Set()
+    };
+    setIdentities(prev => [...prev, newId]);
+  };
+
+
   useEffect(() => {
     let isActive = true;
 
@@ -985,6 +1194,56 @@ export function ShortsScriptGenerator({
   const [enhancementSettings, setEnhancementSettings] = useState<NormalizedPromptEnhancementSettings | null>(null);
   const [viewingStory, setViewingStory] = useState<StoryResponse | null>(null);
   const activeEnhancementSettings = enhancementSettings ?? DEFAULT_PROMPT_ENHANCEMENT_SETTINGS;
+  const identitySeededRef = useRef(false);
+
+  const normalizeIdentityAgeLabel = (value?: string) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (trimmed.includes('대')) return trimmed;
+    const match = trimmed.match(/\d{2}/);
+    return match ? `${match[0]}대` : trimmed;
+  };
+
+  const shouldAutoSeedIdentities = useCallback(() => {
+    if (identitySeededRef.current) return false;
+    if (identities.length === 0) return true;
+    return !identities.some((identity) => (
+      identity.isLocked ||
+      identity.lockedFields?.size > 0 ||
+      identity.name ||
+      identity.age ||
+      identity.outfit ||
+      identity.accessories ||
+      identity.slotId
+    ));
+  }, [identities]);
+
+  const buildIdentitiesFromCharacters = useCallback((characters: any[]) => {
+    return characters.map((ch: any, index: number): CharacterIdentity => ({
+      id: `char-${Date.now()}-${index}`,
+      slotId: normalizeSlotId(ch?.slot || ch?.slotId || ch?.characterSlot || ''),
+      name: ch?.name || '',
+      age: normalizeIdentityAgeLabel(ch?.age || ch?.targetAge || ''),
+      outfit: ch?.outfit || '',
+      accessories: ch?.accessories || ch?.accessory || '',
+      isLocked: false,
+      lockedFields: new Set()
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!shouldAutoSeedIdentities()) return;
+    const scriptCharacters = scripts?.[0]?.characters;
+    if (Array.isArray(scriptCharacters) && scriptCharacters.length > 0) {
+      setIdentities(buildIdentitiesFromCharacters(scriptCharacters));
+      identitySeededRef.current = true;
+      return;
+    }
+    if (viewingStory?.characters && Array.isArray(viewingStory.characters) && viewingStory.characters.length > 0) {
+      setIdentities(buildIdentitiesFromCharacters(viewingStory.characters));
+      identitySeededRef.current = true;
+    }
+  }, [buildIdentitiesFromCharacters, scripts, shouldAutoSeedIdentities, viewingStory]);
   const [modeTemplates, setModeTemplates] = useState<ModeTemplates>(() => {
     if (typeof window === 'undefined') return getDefaultModeTemplates();
     try {
@@ -1190,6 +1449,8 @@ export function ShortsScriptGenerator({
           maleOutfit: lockedMaleOutfit || maleOutfit || undefined,
           characterMap,
           characterIds: scene.characterIds,
+          sceneCharacterSlots: getSceneCharacterSlots(scene, characterMap),
+          identities,
           autoEnhance: true, // Force enhance
           enhancementSettings: activeEnhancementSettings
         }),
@@ -1199,6 +1460,8 @@ export function ShortsScriptGenerator({
           maleOutfit: lockedMaleOutfit || maleOutfit || undefined,
           characterMap,
           characterIds: scene.characterIds,
+          sceneCharacterSlots: getSceneCharacterSlots(scene, characterMap),
+          identities,
           autoEnhance: true, // Force enhance
           enhancementSettings: activeEnhancementSettings
         })
@@ -1219,6 +1482,8 @@ export function ShortsScriptGenerator({
           maleOutfit: lockedMaleOutfit || maleOutfit || undefined,
           characterMap,
           characterIds: scene.characterIds,
+          sceneCharacterSlots: getSceneCharacterSlots(scene, characterMap),
+          identities,
           autoEnhance: true, // Force enhance
           enhancementSettings: activeEnhancementSettings
         }),
@@ -1228,6 +1493,8 @@ export function ShortsScriptGenerator({
           maleOutfit: lockedMaleOutfit || maleOutfit || undefined,
           characterMap,
           characterIds: scene.characterIds,
+          sceneCharacterSlots: getSceneCharacterSlots(scene, characterMap),
+          identities,
           autoEnhance: true, // Force enhance
           enhancementSettings: activeEnhancementSettings
         })
@@ -1251,6 +1518,8 @@ export function ShortsScriptGenerator({
         maleOutfit: lockedMaleOutfit || maleOutfit || undefined,
         characterMap,
         characterIds: targetScene.characterIds,
+        sceneCharacterSlots: getSceneCharacterSlots(targetScene, characterMap),
+        identities,
         autoEnhance: true,
         enhancementSettings: activeEnhancementSettings
       });
@@ -1271,6 +1540,8 @@ export function ShortsScriptGenerator({
         maleOutfit: lockedMaleOutfit || maleOutfit || undefined,
         characterMap,
         characterIds: targetScene.characterIds,
+        sceneCharacterSlots: getSceneCharacterSlots(targetScene, characterMap),
+        identities,
         autoEnhance: true
       });
 
@@ -1488,7 +1759,8 @@ ${sceneLines}
             maleOutfit: lockedMaleOutfit,
             autoEnhance: activeEnhancementSettings.autoEnhanceOnGeneration ?? false,
             enhancementSettings: activeEnhancementSettings,
-            targetAgeLabel: target
+            targetAgeLabel: target,
+            identities
           });
 
           // [v3.1.2 복원] 서버에 저장하고 folderName 받아오기
@@ -2169,7 +2441,8 @@ JSON 형식으로만 답변:
           maleOutfit: lockedMaleOutfit || undefined,
           autoEnhance: activeEnhancementSettings.autoEnhanceOnGeneration ?? false,
           enhancementSettings: activeEnhancementSettings,
-          targetAgeLabel: target
+          targetAgeLabel: target,
+          identities
         });
         setScripts(processed);
         if (generationMode === 'script-image') {
@@ -2769,11 +3042,49 @@ JSON 형식으로만 답변:
                 </div>
               </div>
 
-              {/* 남성 의상 섹션은 주석 상태 유지 */}
+              {/* [NEW] Identity Lock Section (Cineboard Style) */}
+              <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+                      <Lock size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">Identity Lock</h3>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">모든 장면에서 캐릭터의 시각적 일관성을 강제로 유지합니다.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleAddIdentity}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-purple-600 dark:text-purple-400 hover:border-purple-500 transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Plus size={14} /> 캐릭터 추가
+                  </button>
+                </div>
+
+                {identities.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {identities.map((identity) => (
+                      <ShortsIdentityCard
+                        key={identity.id}
+                        identity={identity}
+                        onUpdate={handleUpdateIdentity}
+                        onDelete={handleDeleteIdentity}
+                        outfitPresets={SHORTFORM_OUTFIT_LIST}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl text-center">
+                    <p className="text-sm text-slate-400">설정된 캐릭터가 없습니다. [캐릭터 추가]를 눌러 정체성을 고정하세요.</p>
+                  </div>
+                )}
+              </div>
 
               {/* 소재 입력 */}
               <div className="mt-6">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+
                   소재 / 키워드 (자극적이고 구체적일수록 좋아요!)
                 </label>
                 <input
@@ -3597,7 +3908,7 @@ JSON 형식으로만 답변:
           document.body
         )
       }
-    </div >
+    </div>
   );
 };
 

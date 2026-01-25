@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
@@ -23,8 +23,9 @@ import { generateImage, generateImageWithImagen, initGeminiService } from './mas
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
 import CharacterPanel from './CharacterPanel';
+import { ShortsIdentityCard, CharacterIdentity } from './ShortsIdentityCard';
 import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
-import { buildOutfitPool, fetchOutfitCatalog } from '../services/outfitService';
+import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
 import { UNIFIED_OUTFIT_LIST } from '../constants';
 
@@ -271,7 +272,6 @@ interface IdentityCharacter {
     outfitName: string;
     outfitPrompt: string;
     accessories: string[];
-    winterAccessories: string[];
 }
 
 
@@ -382,7 +382,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [aiTopic, setAiTopic] = useState('');
     const [aiGenre, setAiGenre] = useState('comedy-humor');
     const [aiTargetAge, setAiTargetAge] = useState('40대');
-    const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
+    // 겨울 악세서리 자동 적용 토글은 제거됨 (수동 선택만 유지)
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
@@ -415,9 +415,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // Identity Lock (씬 분해 전 캐릭터/의상/악세서리 고정)
     const [identityLockEnabled, setIdentityLockEnabled] = useState(false);
     const [identityCharacters, setIdentityCharacters] = useState<IdentityCharacter[]>([]);
-    const [identityWinterEnabled, setIdentityWinterEnabled] = useState(false);
     const [outfitCatalog, setOutfitCatalog] = useState<OutfitCatalog>({ outfits: [], categories: [] });
     const [isLoadingOutfitCatalog, setIsLoadingOutfitCatalog] = useState(false);
+    const [outfitPreviewMap, setOutfitPreviewMap] = useState<Record<string, string>>({});
+    const [manualIdentities, setManualIdentities] = useState<CharacterIdentity[]>([]);
+    const manualIdentitiesLoadedRef = useRef(false);
+    const [manualIdentityLockEnabled, setManualIdentityLockEnabled] = useState(true);
 
     /**
      * 프롬프트 설정 업데이트 헬퍼
@@ -437,6 +440,22 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             .finally(() => {
                 if (!alive) return;
                 setIsLoadingOutfitCatalog(false);
+            });
+        return () => {
+            alive = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let alive = true;
+        fetchOutfitPreviewMap()
+            .then((map) => {
+                if (!alive) return;
+                setOutfitPreviewMap(map || {});
+            })
+            .catch(() => {
+                if (!alive) return;
+                setOutfitPreviewMap({});
             });
         return () => {
             alive = false;
@@ -477,6 +496,50 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         return map;
     }, [outfitPool]);
 
+    const manualOutfitPresets = useMemo(() => {
+        return outfitPool.map((item) => {
+            const imageUrl = outfitPreviewMap[item.id]
+                || outfitPreviewMap[item.name]
+                || outfitPreviewMap[item.translation || '']
+                || '';
+            return {
+                id: item.id,
+                name: item.prompt || item.name,
+                translation: item.translation || item.name,
+                imageUrl
+            };
+        });
+    }, [outfitPool, outfitPreviewMap]);
+
+    const addManualIdentity = useCallback(() => {
+        const nextId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        setManualIdentities((prev) => ([
+            ...prev,
+            {
+                id: nextId,
+                slotId: '',
+                name: '',
+                age: '',
+                outfit: '',
+                accessories: '',
+                isLocked: false,
+                lockedFields: new Set()
+            }
+        ]));
+    }, []);
+
+    const updateManualIdentity = useCallback((id: string, updates: Partial<CharacterIdentity>) => {
+        setManualIdentities((prev) => prev.map((identity) => (
+            identity.id === id ? { ...identity, ...updates } : identity
+        )));
+    }, []);
+
+    const deleteManualIdentity = useCallback((id: string) => {
+        setManualIdentities((prev) => prev.filter((identity) => identity.id !== id));
+    }, []);
+
     const createIdentityCharacter = useCallback((): IdentityCharacter => ({
         id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
             ? crypto.randomUUID()
@@ -488,7 +551,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         outfitName: '',
         outfitPrompt: '',
         accessories: [],
-        winterAccessories: []
     }), []);
 
     useEffect(() => {
@@ -521,19 +583,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         }));
     }, []);
 
-    const toggleWinterAccessory = useCallback((id: string, value: string) => {
-        setIdentityCharacters((prev) => prev.map((char) => {
-            if (char.id !== id) return char;
-            const next = char.winterAccessories.includes(value)
-                ? char.winterAccessories.filter((item) => item !== value)
-                : [...char.winterAccessories, value];
-            return { ...char, winterAccessories: next };
-        }));
-    }, []);
 
     // UI 상태
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-    const [activeTab, setActiveTab] = useState<'input' | 'settings' | 'preview'>('preview');
+    const [activeTab, setActiveTab] = useState<'input' | 'settings' | 'preview' | 'manual'>('preview');
     const [sceneTabs, setSceneTabs] = useState<Record<number, 'IMG' | 'VIDEO' | 'JSON' | 'VOICE'>>({});
     const [editingScene, setEditingScene] = useState<{ number: number; field: 'ko' | 'en' } | null>(null);
     const [editValue, setEditValue] = useState<string>('');
@@ -562,6 +615,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const savedScenes = await getAppStorageValue<Scene[] | null>('shorts-lab-scenes', null);
                 const savedFolder = await getAppStorageValue<string | null>('shorts-lab-folder', null);
                 const savedTopic = await getAppStorageValue<string | null>('shorts-lab-topic', null);
+                const savedManualIdentities = await getAppStorageValue<any[] | null>('shorts-generator-identities', null);
 
                 if (savedFolder) setCurrentFolderName(savedFolder);
                 if (savedTopic) setAiTopic(savedTopic);
@@ -579,8 +633,18 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     setScenes(normalized);
                     setActiveTab('preview');
                 }
+
+                if (savedManualIdentities && Array.isArray(savedManualIdentities)) {
+                    setManualIdentities(savedManualIdentities.map((identity) => ({
+                        ...identity,
+                        lockedFields: new Set(identity.lockedFields || [])
+                    })));
+                    manualIdentitiesLoadedRef.current = true;
+                }
             } catch (error) {
                 console.warn('[ShortsLab] Failed to restore state:', error);
+            } finally {
+                manualIdentitiesLoadedRef.current = true;
             }
         };
         loadState();
@@ -610,6 +674,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             removeAppStorageValue('shorts-lab-scenes');
         }
     }, [scenes]);
+
+    React.useEffect(() => {
+        if (!manualIdentitiesLoadedRef.current) return;
+        const serialized = manualIdentities.map((identity) => ({
+            ...identity,
+            lockedFields: Array.from(identity.lockedFields || [])
+        }));
+        setAppStorageValue('shorts-generator-identities', serialized);
+    }, [manualIdentities]);
 
     // ============================================
     // 이미지 생성 핸들러 (신규!)
@@ -962,10 +1035,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const slotPrompt = slotMeta?.presetKey ? SLOT_PRESETS[slotMeta.presetKey].prompt : '';
             const ageText = char.age ? formatAgeLabel(char.age, gender) : '';
             const outfitText = char.outfitPrompt || char.outfitName;
-            const accessories = [
-                ...char.accessories,
-                ...(identityWinterEnabled ? char.winterAccessories : [])
-            ].filter(Boolean);
+            const accessories = [...char.accessories].filter(Boolean);
             const accessoryText = accessories.length > 0 ? `accessorized with ${accessories.join(', ')}` : '';
             const descriptor = [slotPrompt, ageText, outfitText ? `wearing ${outfitText}` : '', accessoryText]
                 .filter(Boolean)
@@ -974,7 +1044,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             return `Slot ${slotLabel}${nameLabel}: ${descriptor || 'character locked'}`;
         });
         return `Character lock: ${lines.join(' | ')}`;
-    }, [formatAgeLabel, identityCharacters, identityWinterEnabled, isIdentityLockActive]);
+    }, [formatAgeLabel, identityCharacters, isIdentityLockActive]);
 
     const validateIdentityLock = useCallback(() => {
         if (!isIdentityLockActive) return true;
@@ -1395,7 +1465,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
-                enableWinterAccessories
+                enableWinterAccessories: false
             });
 
             // 선택된 AI 서비스 (기본값: GEMINI)
@@ -1878,7 +1948,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
                     {/* 탭 버튼 */}
                     <div className="flex gap-1 bg-slate-900 rounded-lg p-1">
-                        {(['input', 'settings', 'preview'] as const).map((tab) => (
+                        {(['input', 'settings', 'preview', 'manual'] as const).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -1890,7 +1960,14 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                 {tab === 'input' && <Scissors className="w-4 h-4" />}
                                 {tab === 'settings' && <Settings2 className="w-4 h-4" />}
                                 {tab === 'preview' && <Eye className="w-4 h-4" />}
-                                {tab === 'input' ? '입력' : tab === 'settings' ? '설정' : '미리보기'}
+                                {tab === 'manual' && <Edit3 className="w-4 h-4" />}
+                                {tab === 'input'
+                                    ? '입력'
+                                    : tab === 'settings'
+                                        ? '설정'
+                                        : tab === 'preview'
+                                            ? '미리보기'
+                                            : '수동대본만들기'}
                             </button>
                         ))}
                     </div>
@@ -1949,8 +2026,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
             {/* 메인 컨텐츠 */}
             <div className="flex-1 overflow-y-auto p-4">
-                {/* 입력 탭 */}
-                {activeTab === 'input' && (
+                {/* 입력/수동 탭 */}
+                {(activeTab === 'input' || activeTab === 'manual') && (
                     <div className="flex flex-col lg:flex-row gap-6">
                         {/* 왼쪽: 대본 입력 및 생성 영역 (8/12) */}
                         <div className="flex-1 space-y-6">
@@ -2053,25 +2130,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
-                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
-                                        </div>
-                                        <button
-                                            onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                                enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
-                                            }`}
-                                        >
-                                            <span
-                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                    enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
-                                                }`}
-                                            />
-                                        </button>
-                                    </div>
-
                                     <button
                                         onClick={handleAiGenerate}
                                         disabled={isGenerating || !aiTopic.trim()}
@@ -2098,166 +2156,132 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                 />
                             </div>
 
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold text-white">Identity Lock</h3>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[11px] text-slate-500">
-                                            {identityLockEnabled && identityCharacters.length > 0
-                                                ? `고정 캐릭터 ${identityCharacters.length}명`
-                                                : '고정 캐릭터 없음'}
-                                        </span>
-                                        <button
-                                            onClick={() => setIdentityLockEnabled(!identityLockEnabled)}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                                identityLockEnabled ? 'bg-emerald-600' : 'bg-slate-700'
-                                            }`}
-                                        >
-                                            <span
-                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                    identityLockEnabled ? 'translate-x-6' : 'translate-x-1'
+                            {activeTab === 'input' && (
+                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold text-white">Identity Lock</h3>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[11px] text-slate-500">
+                                                {identityLockEnabled && identityCharacters.length > 0
+                                                    ? `고정 캐릭터 ${identityCharacters.length}명`
+                                                    : '고정 캐릭터 없음'}
+                                            </span>
+                                            <button
+                                                onClick={() => setIdentityLockEnabled(!identityLockEnabled)}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                    identityLockEnabled ? 'bg-emerald-600' : 'bg-slate-700'
                                                 }`}
-                                            />
+                                            >
+                                                <span
+                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                        identityLockEnabled ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            onClick={handleAddIdentityCharacter}
+                                            className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-xs font-semibold rounded-lg"
+                                        >
+                                            + 캐릭터 추가
                                         </button>
                                     </div>
-                                </div>
 
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                        onClick={handleAddIdentityCharacter}
-                                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-xs font-semibold rounded-lg"
-                                    >
-                                        + 캐릭터 추가
-                                    </button>
-                                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                                        <span>겨울 악세서리</span>
-                                        <button
-                                            onClick={() => setIdentityWinterEnabled(!identityWinterEnabled)}
-                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                                identityWinterEnabled ? 'bg-purple-600' : 'bg-slate-700'
-                                            }`}
-                                        >
-                                            <span
-                                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                                    identityWinterEnabled ? 'translate-x-5' : 'translate-x-1'
-                                                }`}
-                                            />
-                                        </button>
-                                    </div>
-                                </div>
+                                    {identityCharacters.length === 0 && (
+                                        <div className="text-xs text-slate-500">캐릭터가 없습니다. 추가 버튼을 눌러주세요.</div>
+                                    )}
 
-                                {identityCharacters.length === 0 && (
-                                    <div className="text-xs text-slate-500">캐릭터가 없습니다. 추가 버튼을 눌러주세요.</div>
-                                )}
-
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                    {identityCharacters.map((char, index) => {
-                                        const slotMeta = IDENTITY_SLOTS.find((slot) => slot.id === char.slotId);
-                                        return (
-                                            <div key={char.id} className="rounded-lg border border-slate-800 p-3 space-y-3 bg-slate-950/50">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="text-xs text-slate-400 font-bold">캐릭터 {index + 1}</div>
-                                                    <button
-                                                        onClick={() => handleRemoveIdentityCharacter(char.id)}
-                                                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-md"
-                                                        title="삭제"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    <div className="col-span-2">
-                                                        <input
-                                                            type="text"
-                                                            value={char.name}
-                                                            onChange={(e) => handleUpdateIdentityCharacter(char.id, { name: e.target.value })}
-                                                            placeholder="이름"
-                                                            className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-white font-bold"
-                                                        />
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                        {identityCharacters.map((char, index) => {
+                                            const slotMeta = IDENTITY_SLOTS.find((slot) => slot.id === char.slotId);
+                                            return (
+                                                <div key={char.id} className="rounded-lg border border-slate-800 p-3 space-y-3 bg-slate-950/50">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-xs text-slate-400 font-bold">캐릭터 {index + 1}</div>
+                                                        <button
+                                                            onClick={() => handleRemoveIdentityCharacter(char.id)}
+                                                            className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-md"
+                                                            title="삭제"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
                                                     </div>
-                                                    <select
-                                                        value={char.age}
-                                                        onChange={(e) => handleUpdateIdentityCharacter(char.id, { age: e.target.value })}
-                                                        className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-slate-300"
-                                                    >
-                                                        {AGE_OPTIONS.filter(option => option.value).map((option) => (
-                                                            <option key={option.value} value={option.value}>{option.label}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
 
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <select
-                                                        value={char.slotId}
-                                                        onChange={(e) => handleUpdateIdentityCharacter(char.id, { slotId: e.target.value as IdentitySlotId })}
-                                                        className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
-                                                    >
-                                                        {IDENTITY_SLOTS.map((slot) => (
-                                                            <option key={slot.id} value={slot.id}>{slot.label}</option>
-                                                        ))}
-                                                    </select>
-                                                    <select
-                                                        value={char.outfitId}
-                                                        onChange={(e) => {
-                                                            const selected = outfitById.get(e.target.value);
-                                                            handleUpdateIdentityCharacter(char.id, {
-                                                                outfitId: e.target.value,
-                                                                outfitName: selected?.translation || selected?.name || '',
-                                                                outfitPrompt: selected?.prompt || selected?.name || ''
-                                                            });
-                                                        }}
-                                                        className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
-                                                        disabled={isLoadingOutfitCatalog}
-                                                    >
-                                                        <option value="">의상 선택</option>
-                                                        {outfitOptions.sortedKeys.map((categoryId) => {
-                                                            const items = outfitOptions.grouped[categoryId] || [];
-                                                            const category = outfitOptions.categoryMap.get(categoryId);
-                                                            const label = category?.name || categoryId;
-                                                            return (
-                                                                <optgroup key={categoryId} label={label}>
-                                                                    {items.map((item) => (
-                                                                        <option key={item.id} value={item.id}>
-                                                                            {item.translation || item.name}
-                                                                        </option>
-                                                                    ))}
-                                                                </optgroup>
-                                                            );
-                                                        })}
-                                                    </select>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <div className="text-[10px] text-slate-500 font-semibold">일반 악세서리</div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {GENERAL_ACCESSORIES.flatMap((group) => group.items).map((item) => (
-                                                            <button
-                                                                key={`${char.id}-${item}`}
-                                                                onClick={() => toggleAccessory(char.id, item)}
-                                                                className={`px-2 py-1 text-[10px] rounded-full border transition-all ${
-                                                                    char.accessories.includes(item)
-                                                                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
-                                                                        : 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
-                                                                }`}
-                                                            >
-                                                                {item}
-                                                            </button>
-                                                        ))}
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div className="col-span-2">
+                                                            <input
+                                                                type="text"
+                                                                value={char.name}
+                                                                onChange={(e) => handleUpdateIdentityCharacter(char.id, { name: e.target.value })}
+                                                                placeholder="이름"
+                                                                className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-white font-bold"
+                                                            />
+                                                        </div>
+                                                        <select
+                                                            value={char.age}
+                                                            onChange={(e) => handleUpdateIdentityCharacter(char.id, { age: e.target.value })}
+                                                            className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-slate-300"
+                                                        >
+                                                            {AGE_OPTIONS.filter(option => option.value).map((option) => (
+                                                                <option key={option.value} value={option.value}>{option.label}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
-                                                </div>
 
-                                                {identityWinterEnabled && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <select
+                                                            value={char.slotId}
+                                                            onChange={(e) => handleUpdateIdentityCharacter(char.id, { slotId: e.target.value as IdentitySlotId })}
+                                                            className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
+                                                        >
+                                                            {IDENTITY_SLOTS.map((slot) => (
+                                                                <option key={slot.id} value={slot.id}>{slot.label}</option>
+                                                            ))}
+                                                        </select>
+                                                        <select
+                                                            value={char.outfitId}
+                                                            onChange={(e) => {
+                                                                const selected = outfitById.get(e.target.value);
+                                                                handleUpdateIdentityCharacter(char.id, {
+                                                                    outfitId: e.target.value,
+                                                                    outfitName: selected?.translation || selected?.name || '',
+                                                                    outfitPrompt: selected?.prompt || selected?.name || ''
+                                                                });
+                                                            }}
+                                                            className="rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] text-white outline-none"
+                                                            disabled={isLoadingOutfitCatalog}
+                                                        >
+                                                            <option value="">의상 선택</option>
+                                                            {outfitOptions.sortedKeys.map((categoryId) => {
+                                                                const items = outfitOptions.grouped[categoryId] || [];
+                                                                const category = outfitOptions.categoryMap.get(categoryId);
+                                                                const label = category?.name || categoryId;
+                                                                return (
+                                                                    <optgroup key={categoryId} label={label}>
+                                                                        {items.map((item) => (
+                                                                            <option key={item.id} value={item.id}>
+                                                                                {item.translation || item.name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </optgroup>
+                                                                );
+                                                            })}
+                                                        </select>
+                                                    </div>
+
                                                     <div className="space-y-2">
-                                                        <div className="text-[10px] text-slate-500 font-semibold">겨울 악세서리</div>
+                                                        <div className="text-[10px] text-slate-500 font-semibold">일반 악세서리</div>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {WINTER_ACCESSORIES.map((item) => (
+                                                            {GENERAL_ACCESSORIES.flatMap((group) => group.items).map((item) => (
                                                                 <button
-                                                                    key={`${char.id}-winter-${item}`}
-                                                                    onClick={() => toggleWinterAccessory(char.id, item)}
+                                                                    key={`${char.id}-${item}`}
+                                                                    onClick={() => toggleAccessory(char.id, item)}
                                                                     className={`px-2 py-1 text-[10px] rounded-full border transition-all ${
-                                                                        char.winterAccessories.includes(item)
-                                                                            ? 'border-purple-500 bg-purple-500/20 text-purple-200'
+                                                                        char.accessories.includes(item)
+                                                                            ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
                                                                             : 'border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
                                                                     }`}
                                                                 >
@@ -2266,18 +2290,19 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                                             ))}
                                                         </div>
                                                     </div>
-                                                )}
 
-                                                {slotMeta?.gender === 'female' ? (
-                                                    <div className="text-[10px] text-slate-500">여성 슬롯 기준</div>
-                                                ) : (
-                                                    <div className="text-[10px] text-slate-500">남성 슬롯 기준</div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+
+                                                    {slotMeta?.gender === 'female' ? (
+                                                        <div className="text-[10px] text-slate-500">여성 슬롯 기준</div>
+                                                    ) : (
+                                                        <div className="text-[10px] text-slate-500">남성 슬롯 기준</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <button
                                 onClick={handleParseScenes}
@@ -2290,24 +2315,88 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                         </div>
 
                         {/* 오른쪽: 캐릭터 및 의상 관리 패널 (4/12) */}
-                        <div className="w-full lg:w-[400px] flex-shrink-0">
-                            <CharacterPanel
-                                selectedSlot={settings.selectedSlot}
-                                onCharacterSelect={(char, slot) => {
-                                    if (char) {
-                                        updateSetting('selectedSlot', slot as any);
-                                        updateSetting('useSlotSystem', true);
-                                        showToast(`${char.name} 캐릭터가 ${slot} 슬롯에 설정되었습니다.`, 'success');
-                                    }
-                                }}
-                                onOutfitSelect={(outfit) => {
-                                    if (outfit) {
-                                        updateSetting('selectedOutfit', outfit.prompt);
-                                        updateSetting('useOutfitKeywords', true);
-                                        showToast(`'${outfit.name}' 의상이 설정되었습니다.`, 'success');
-                                    }
-                                }}
-                            />
+                        <div className={activeTab === 'manual'
+                            ? 'w-full flex-1 min-w-[420px]'
+                            : 'w-full lg:w-[400px] flex-shrink-0'}
+                        >
+                            {activeTab === 'manual' ? (
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-2 bg-purple-900/40 rounded-lg text-purple-300">
+                                                <Lock className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-slate-100">인물 고정</h3>
+                                                <p className="text-[10px] text-slate-400">대본 기준으로 캐릭터/의상/악세서리 고정</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                                                <span>인물 고정</span>
+                                                <button
+                                                    onClick={() => setManualIdentityLockEnabled(!manualIdentityLockEnabled)}
+                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                                                        manualIdentityLockEnabled ? 'bg-purple-600' : 'bg-slate-700'
+                                                    }`}
+                                                    title="인물 고정 토글"
+                                                >
+                                                    <span
+                                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                                            manualIdentityLockEnabled ? 'translate-x-5' : 'translate-x-1'
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                            <button
+                                                onClick={addManualIdentity}
+                                                className="px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-700 bg-slate-900 text-purple-300 hover:border-purple-500 transition-all flex items-center gap-1.5"
+                                            >
+                                                <Plus className="w-3 h-3" /> 캐릭터 추가
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {manualIdentities.length > 0 ? (
+                                        <div className={`grid grid-cols-1 xl:grid-cols-2 gap-3 ${manualIdentityLockEnabled ? '' : 'opacity-60 pointer-events-none'}`}>
+                                            {manualIdentities.map((identity) => (
+                                                <ShortsIdentityCard
+                                                    key={identity.id}
+                                                    identity={identity}
+                                                    onUpdate={updateManualIdentity}
+                                                    onDelete={deleteManualIdentity}
+                                                    outfitPresets={manualOutfitPresets}
+                                                    showOutfitGallery
+                                                    showAccessoryGallery
+                                                    accessoryGroups={GENERAL_ACCESSORIES}
+                                                    winterAccessoryOptions={WINTER_ACCESSORIES}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="border border-dashed border-slate-700 rounded-xl p-6 text-center text-xs text-slate-500">
+                                            설정된 캐릭터가 없습니다. [캐릭터 추가]를 눌러 시작하세요.
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <CharacterPanel
+                                    selectedSlot={settings.selectedSlot}
+                                    onCharacterSelect={(char, slot) => {
+                                        if (char) {
+                                            updateSetting('selectedSlot', slot as any);
+                                            updateSetting('useSlotSystem', true);
+                                            showToast(`${char.name} 캐릭터가 ${slot} 슬롯에 설정되었습니다.`, 'success');
+                                        }
+                                    }}
+                                    onOutfitSelect={(outfit) => {
+                                        if (outfit) {
+                                            updateSetting('selectedOutfit', outfit.prompt);
+                                            updateSetting('useOutfitKeywords', true);
+                                            showToast(`'${outfit.name}' 의상이 설정되었습니다.`, 'success');
+                                        }
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
                 )}

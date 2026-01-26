@@ -311,6 +311,323 @@
         }
       }
     ],
+    "id": "ef9b62ae-045e-430f-a94a-5104fe6cbd55",
+    "createdAt": 1769389672213,
+    "service": "IMPORTED",
+    "_folderName": "260126_1007_골프장에서_캐디한테_작업_걸었다가_처제_만난_썰"
+  },
+  {
+    "title": "골프장에서 캐디한테 작업 걸었다가 처제 만난 썰",
+    "titleOptions": [
+      "눈 오는 골프장에서 캐디한테 작업 걸었다가 벌어진 일",
+      "아름다운 캐디가 알고보니 처제였던 날",
+      "골프장에서 캐디 꼬시려다가 인생 망한 이야기"
+    ],
+    "scriptBody": "지난주에 친구랑 골프장 갔거든?\n근데 그날 배정된 캐디가 진짜 미쳤어.\n눈 오는 골프장에 하얀 미니스커트 입고 서있는데 화보 찍나 싶더라고.\n친구 민수는 '형님 오늘 운 좋은데요?' 이러면서 웃고.\n나도 슬쩍슬쩁 멋있는 척 하면서 스윙 자세 교정 받고 그랬지.\n'오빠 자세 진짜 좋으세요!' 이러는 거야.\n심장이 두근두근하면서 어깨에 힘이 빡 들어가더라고.\n그때 친구가 갑자기 얼굴이 하얗게 질리면서 내 팔을 확 잡는 거야.\n'형님... 저 캐디 혹시 처제님 아니에요?' 이러는데 뒤돌아보니까.\n우리 집 막내 처제가 환하게 웃으면서 '매형! 오늘 제가 담당이에요!' 하는 거지.\n얼굴이 화끈거리면서 두 손으로 얼굴을 가렸어.\n그날 저녁 처가댁 가족회의 열렸고 지금도 처제 보면 헛기침 나와.",
+    "punchline": "골프장에서 캐디 꼬시려다가 처제 만나서 가족회의 열린 남자",
+    "hook": "지난주에 친구랑 골프장 갔거든?",
+    "twist": "알고보니 아름다운 캐디가 우리 집 막내 처제였음",
+    "foreshadowing": "친구가 '형님 오늘 운 좋은데요?' 하며 의미심장하게 웃음",
+    "narrator": {
+      "slot": "ManA",
+      "name": "준호"
+    },
+    "emotionFlow": "😊 평화 → 😍 설렘 → 😎 우쭐 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음",
+    "lockedOutfits": {
+      "womanA": "Black Tight-fitting long-sleeve High-neck Top + Beige Micro Pleated Skirt",
+      "womanB": "Black Tight-fitting long-sleeve High-neck Top + Beige Micro Pleated Skirt",
+      "womanD": "Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt",
+      "manA": "Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants",
+      "manB": "Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants"
+    },
+    "characters": [
+      {
+        "id": "WomanA",
+        "name": "지영",
+        "identity": "A stunning Korean woman in her 40s",
+        "hair": "long soft-wave hairstyle",
+        "body": "Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, perfectly managed sophisticated look",
+        "outfit": "Black Tight-fitting long-sleeve High-neck Top + Beige Micro Pleated Skirt",
+        "outfitPrefix": "wearing"
+      },
+      {
+        "id": "WomanB",
+        "name": "혜경",
+        "identity": "A stunning Korean woman in her 40s",
+        "hair": "short chic bob cut",
+        "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence",
+        "outfit": "Black Tight-fitting long-sleeve High-neck Top + Beige Micro Pleated Skirt",
+        "outfitPrefix": "wearing"
+      },
+      {
+        "id": "ManA",
+        "name": "준호",
+        "identity": "A handsome Korean man in his 40s",
+        "hair": "short neat hairstyle",
+        "body": "fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes",
+        "outfit": "Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants",
+        "outfitPrefix": "wearing"
+      },
+      {
+        "id": "ManB",
+        "name": "민수",
+        "identity": "A handsome Korean man in his 40s",
+        "hair": "clean short cut",
+        "body": "fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes",
+        "outfit": "Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants",
+        "outfitPrefix": "wearing"
+      },
+      {
+        "id": "WomanD",
+        "name": "캐디",
+        "identity": "A stunning Korean woman in her early 20s",
+        "hair": "high-bun hairstyle",
+        "body": "Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence",
+        "outfit": "Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt",
+        "outfitPrefix": "wearing"
+      }
+    ],
+    "scenes": [
+      {
+        "sceneNumber": 1,
+        "shortPrompt": "Man smiling at camera in snowy golf course",
+        "shortPromptKo": "눈 오는 골프장에서 카메라 보며 미소 짓는 남성",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants, smiling at camera with bright eyes and confident expression, snowy golf course background with soft falling snow, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 모공과 자연스러운 피부 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 클로즈업 인물 샷, 40대 잘생긴 한국인 남성, 짧고 단정한 헤어스타일, 넓은 어깨의 탄탄한 운동선수 체격, 댄디하고 세련된 분위기, 잘 관리된 외모, 맞춤 슬림핏 옷, 네이비 슬림핏 폴로(타이트한 긴팔 버전) + 화이트 테일러드 골프 팬츠 착용, 밝은 눈과 자신감 넘치는 표情으로 카메라를 보며 미소, 부드럽게 내리는 눈이 있는 눈 덮인 골프장 배경",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "지난주에 친구랑 골프장 갔거든?",
+        "dialogue": "지난주에 친구랑 골프장 갔거든?",
+        "voiceType": "both",
+        "narrationMeta": {
+          "text": "지난주에 친구랑 골프장 갔거든?",
+          "emotion": "기대감",
+          "speed": "normal"
+        },
+        "lipSync": {
+          "speaker": "ManA",
+          "speakerName": "준호",
+          "line": "지난주에 친구랑 골프장 갔거든?",
+          "emotion": "excited",
+          "timing": "start"
+        }
+      },
+      {
+        "sceneNumber": 2,
+        "shortPrompt": "Two men looking at beautiful caddy at snowy golf course",
+        "shortPromptKo": "눈 오는 골프장에서 아름다운 캐디를 바라보는 두 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, wide establishing shot, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 2: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 3: A stunning Korean woman in her early 20s, high-bun hairstyle, Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence, wearing Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt] standing at distance looking toward caddy organizing golf cart, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 35mm lens, f/2.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 눈 오는 골프장 와이드 샷, 두 명의 40대 한국인 남성과 20대 초반 아름다운 한국인 여성 캐디가 멀리 보이는 구도, 캐디는 골프 카트 옆에서 장비 정리 중",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "근데 그날 배정된 캐디가 진짜 미쳤어.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "근데 그날 배정된 캐디가 진짜 미쳤어.",
+          "emotion": "놀라움",
+          "speed": "slightly-fast"
+        }
+      },
+      {
+        "sceneNumber": 3,
+        "shortPrompt": "Beautiful caddy in white mini skirt at snowy golf course",
+        "shortPromptKo": "눈 오는 골프장에서 하얀 미니스커트 입은 아름다운 캐디",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, A stunning Korean woman in her early 20s, high-bun hairstyle, Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence, wearing Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt, organizing golf clubs naturally, looking away from camera to the side with gentle smile, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 미디엄 샷, 20대 초반 아름다운 한국인 여성 캐디, 하이번 헤어스타일, 로우컷 타이트 니트 탑 + 화이트 미니스커트 착용, 골프 클럽을 정리하며 자연스럽게 옆을 바라보는 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "눈 오는 골프장에 하얀 미니스커트 입고 서있는데 화보 찍나 싶더라고.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "눈 오는 골프장에 하얀 미니스커트 입고 서있는데 화보 찍나 싶더라고.",
+          "emotion": "감탄",
+          "speed": "normal"
+        }
+      },
+      {
+        "sceneNumber": 4,
+        "shortPrompt": "Two men talking and laughing at golf course",
+        "shortPromptKo": "골프장에서 대화하며 웃는 두 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, over-the-shoulder shot, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 2: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] patting shoulder playfully and laughing, looking away from camera at each other, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 오버숄더 샷, 두 명의 40대 한국인 남성이 골프장에서 어깨를 툭 치며 장난스럽게 웃는 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "친구 민수는 형님 오늘 운 좋은데요? 이러면서 웃고.",
+        "dialogue": "형님 오늘 운 좋은데요?",
+        "voiceType": "both",
+        "narrationMeta": {
+          "text": "친구 민수는 형님 오늘 운 좋은데요? 이러면서 웃고.",
+          "emotion": "장난기",
+          "speed": "normal"
+        },
+        "lipSync": {
+          "speaker": "ManB",
+          "speakerName": "민수",
+          "line": "형님 오늘 운 좋은데요?",
+          "emotion": "playful",
+          "timing": "mid"
+        }
+      },
+      {
+        "sceneNumber": 5,
+        "shortPrompt": "Man getting golf swing correction from beautiful caddy",
+        "shortPromptKo": "아름다운 캐디에게 골프 스윙 자세 교정 받는 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 2: A stunning Korean woman in her early 20s, high-bun hairstyle, Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence, wearing Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt] correcting golf swing posture, man holding golf club with confident posture, woman standing behind adjusting his arm position, both looking away from camera at the golf ball direction, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 미디엄 샷, 40대 한국인 남성이 골프 스윙 자세를 취하고 20대 초반 여성 캐디가 뒤에서 팔 자세를 교정해주는 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "나도 슬쩍슬쩁 멋있는 척 하면서 스윙 자세 교정 받고 그랬지.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "나도 슬쩍슬쩁 멋있는 척 하면서 스윙 자세 교정 받고 그랬지.",
+          "emotion": "우쭐함",
+          "speed": "normal"
+        }
+      },
+      {
+        "sceneNumber": 6,
+        "shortPrompt": "Beautiful caddy smiling and giving thumbs up",
+        "shortPromptKo": "밝게 웃으며 엄지를 치켜드는 아름다운 캐디",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, A stunning Korean woman in her early 20s, high-bun hairstyle, Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence, wearing Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt, smiling brightly and giving thumbs up gesture, looking away from camera to the side with enthusiastic expression, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 클로즈업 인물 샷, 20대 초반 아름다운 한국인 여성 캐디가 환하게 웃으며 엄지를 치켜드는 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "오빠 자세 진짜 좋으세요! 이러는 거야.",
+        "dialogue": "오빠 자세 진짜 좋으세요!",
+        "voiceType": "both",
+        "narrationMeta": {
+          "text": "오빠 자세 진짜 좋으세요! 이러는 거야.",
+          "emotion": "밝음",
+          "speed": "slightly-fast"
+        },
+        "lipSync": {
+          "speaker": "WomanD",
+          "speakerName": "캐디",
+          "line": "오빠 자세 진짜 좋으세요!",
+          "emotion": "cheerful",
+          "timing": "mid"
+        }
+      },
+      {
+        "sceneNumber": 7,
+        "shortPrompt": "Man smiling proudly with shoulders up",
+        "shortPromptKo": "어깨에 힘 주며 자랑스럽게 미소 짓는 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants, smiling proudly with corner of mouth raised, shrugging shoulders confidently, looking away from camera to the side with proud expression, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 클로즈업 인물 샷, 40대 한국인 남성이 입꼬리를 올리며 어깨를 으쓱하는 자랑스러운 표情",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "심장이 두근두근하면서 어깨에 힘이 빡 들어가더라고.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "심장이 두근두근하면서 어깨에 힘이 빡 들어가더라고.",
+          "emotion": "우쭐함",
+          "speed": "normal"
+        }
+      },
+      {
+        "sceneNumber": 8,
+        "shortPrompt": "Man grabbing friend's arm with shocked expression",
+        "shortPromptKo": "충격받은 표정으로 친구의 팔을 잡는 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 2: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] grabbing friend's arm urgently with shocked pale expression, both looking away from camera in tense moment, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 미디엄 샷, 40대 한국인 남성이 충격받은 창백한 표정으로 친구의 팔을 급하게 잡는 긴장된 순간",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "그때 친구가 갑자기 얼굴이 하얗게 질리면서 내 팔을 확 잡는 거야.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "그때 친구가 갑자기 얼굴이 하얗게 질리면서 내 팔을 확 잡는 거야.",
+          "emotion": "긴장",
+          "speed": "slightly-fast"
+        }
+      },
+      {
+        "sceneNumber": 9,
+        "shortPrompt": "Man asking nervously with worried expression (POV shot)",
+        "shortPromptKo": "걱정스러운 표정으로 떨리며 묻는 남자 (POV 샷)",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, first-person POV shot, A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants, nervous worried expression with trembling voice gesture, looking at camera (POV target) with anxious eyes, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 1인칭 POV 샷, 40대 한국인 남성이 떨리는 목소리로 걱정스러운 표정을 지으며 카메라(POV 대상)를 불안한 눈빛으로 바라보는 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "형님 저 캐디 혹시 처제님 아니에요? 이러는데 뒤돌아보니까.",
+        "dialogue": "형님... 저 캐디 혹시 처제님 아니에요?",
+        "voiceType": "both",
+        "narrationMeta": {
+          "text": "형님 저 캐디 혹시 처제님 아니에요? 이러는데 뒤돌아보니까.",
+          "emotion": "공포",
+          "speed": "fast"
+        },
+        "lipSync": {
+          "speaker": "ManB",
+          "speakerName": "민수",
+          "line": "형님... 저 캐디 혹시 처제님 아니에요?",
+          "emotion": "nervous",
+          "timing": "mid"
+        }
+      },
+      {
+        "sceneNumber": 10,
+        "shortPrompt": "Caddy waving happily while two men look shocked",
+        "shortPromptKo": "캐디가 밝게 손 흔들고 두 남자는 충격받은 표情",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, wide shot, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 2: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 3: A stunning Korean woman in her early 20s, high-bun hairstyle, Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence, wearing Low-cut Tight Knit Top (Tight-fitting long-sleeve version) + White Micro Mini Skirt] woman waving hand happily while two men stand frozen with shocked expressions, woman looking away from camera toward men with bright smile, men looking away from camera with pale shocked faces, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 35mm lens, f/2.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 와이드 샷, 20대 초반 여성 캐디가 환하게 웃으며 손을 흔들고, 두 명의 40대 남성은 얼어붙은 충격받은 표情으로 서있는 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "우리 집 막내 처제가 환하게 웃으면서 매형 오늘 제가 담당이에요! 하는 거지.",
+        "dialogue": "매형! 오늘 제가 담당이에요!",
+        "voiceType": "both",
+        "narrationMeta": {
+          "text": "우리 집 막내 처제가 환하게 웃으면서 매형 오늘 제가 담당이에요! 하는 거지.",
+          "emotion": "충격",
+          "speed": "fast"
+        },
+        "lipSync": {
+          "speaker": "WomanD",
+          "speakerName": "캐디",
+          "line": "매형! 오늘 제가 담당이에요!",
+          "emotion": "cheerful",
+          "timing": "end"
+        }
+      },
+      {
+        "sceneNumber": 11,
+        "shortPrompt": "Man covering face with both hands in embarrassment",
+        "shortPromptKo": "민망해서 두 손으로 얼굴을 가리는 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants, covering face with both hands in extreme embarrassment, head bowed down, looking away from camera, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 클로즈업 인물 샷, 40대 한국인 남성이 극도로 민망해서 두 손으로 얼굴을 가리고 고개를 숙인 모습",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "얼굴이 화끈거리면서 두 손으로 얼굴을 가렸어.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "얼굴이 화끈거리면서 두 손으로 얼굴을 가렸어.",
+          "emotion": "민망함",
+          "speed": "normal"
+        }
+      },
+      {
+        "sceneNumber": 12,
+        "shortPrompt": "Man laughing awkwardly and coughing at golf course",
+        "shortPromptKo": "골프장에서 어색하게 웃으며 헛기침하는 남자",
+        "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants, laughing awkwardly with embarrassed smile and clearing throat nervously, scratching back of head, looking away from camera to the side with sheepish expression, snowy golf course with soft falling snow, beautiful winter landscape, high-fashion editorial refined, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+        "longPromptKo": "필터 없는 원본 사진, 8K 초사실주의, 미디엄 샷, 40대 한국인 남성이 어색하게 웃으며 헛기침을 하고 뒷머리를 긁적이는 쑥스러운 표情",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "그날 저녁 처가댁 가족회의 열렸고 지금도 처제 보면 헛기침 나와.",
+        "dialogue": "",
+        "voiceType": "narration",
+        "narrationMeta": {
+          "text": "그날 저녁 처가댁 가족회의 열렸고 지금도 처제 보면 헛기침 나와.",
+          "emotion": "자조적 웃음",
+          "speed": "normal"
+        }
+      }
+    ],
     "id": "22361f69-1b5e-4290-bdaa-139ddd0a6324",
     "createdAt": 1769388299837,
     "service": "IMPORTED",

@@ -771,32 +771,32 @@ const ensureCameraShot = (prompt: string, sceneNumber: number, characterCount: n
   if (characterCount >= 3) {
     // 3명 이상: Three-shot 우선
     cameraShots = [
-      "Three-shot framing all characters",
-      "Wide three-shot with dynamic composition",
-      "Over-the-shoulder three-shot",
-      "Medium three-shot capturing interaction",
-      "Close-up three-shot focusing on expressions",
-      "Dutch angle three-shot for tension"
+      "Wide three-shot establishing the environment",
+      "Over-the-shoulder three-shot with layered depth",
+      "Medium-wide three-shot capturing full upper bodies",
+      "Tracking three-shot following movement",
+      "Dutch angle three-shot for tension",
+      "Low-angle three-shot for dramatic emphasis"
     ];
   } else if (characterCount === 2) {
     // 2명: Two-shot 우선
     cameraShots = [
-      "Two-shot with eye contact",
-      "Over-the-shoulder two-shot",
-      "Medium two-shot capturing both characters",
-      "Close-up two-shot with physical interaction",
       "Wide two-shot showing full bodies",
-      "Dutch angle two-shot for dramatic tension"
+      "Over-the-shoulder two-shot with depth",
+      "Medium-wide two-shot capturing interaction",
+      "Tracking two-shot following movement",
+      "Low-angle two-shot for dramatic tension",
+      "Dutch angle two-shot for emotional spike"
     ];
   } else {
     // 1명: 다양한 단독 샷 (하지만 비율을 낮춤)
     cameraShots = [
-      "Medium close-up shot",
+      "Wide establishing shot with full body",
+      "Medium-wide shot with environment context",
       "Over-the-shoulder perspective",
-      "Dutch angle close-up",
-      "Extreme close-up on face",
-      "Wide shot with environment",
-      "Low angle shot for emphasis"
+      "Low angle shot for emphasis",
+      "High angle shot for vulnerability",
+      "Dutch angle close-up for tension"
     ];
   }
 

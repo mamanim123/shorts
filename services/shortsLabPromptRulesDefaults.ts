@@ -37,13 +37,13 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
       'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves, voluptuous chest line, emphasizing chest line, deep cleavage, defined chest silhouette, well-managed sophisticated look despite age, tight-fitting clothes accentuating curves naturally',
     // 캐릭터별 체형 (v3.5.4 - 마마님 커스텀)
     FEMALE_BODY_A:
-      'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, perfectly managed sophisticated look',
+      'well-proportioned figure, elegant feminine silhouette, perfectly managed sophisticated look',
     FEMALE_BODY_B:
       'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence',
     FEMALE_BODY_C:
       'Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor',
     FEMALE_BODY_D:
-      'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, bright cheerful professional presence',
+      'well-proportioned figure, elegant feminine silhouette, bright cheerful professional presence',
     MALE_BODY: 'fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes',
     END:
       'high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16',
@@ -104,20 +104,20 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
       prompt: 'wide establishing shot, full body visible, environment context, cinematic framing'
     },
     buildup: {
-      angle: 'medium',
-      prompt: 'medium shot, waist-up framing, natural pose, conversational distance'
+      angle: 'over-the-shoulder',
+      prompt: 'over-the-shoulder shot, conversational distance, layered depth, natural interaction'
     },
     climax: {
-      angle: 'close-up',
-      prompt: 'extreme close-up, intense focus on face, dramatic shallow depth of field'
+      angle: 'low-angle',
+      prompt: 'low angle shot, heightened tension, dynamic perspective, cinematic framing'
     },
     twist: {
-      angle: 'close-up',
-      prompt: 'close-up reaction shot, face filling frame, capturing micro-expressions'
+      angle: 'POV',
+      prompt: 'first-person POV shot, subjective camera angle, target looking at camera, heightened immersion'
     },
     outro: {
-      angle: 'medium',
-      prompt: 'medium shot, relaxed framing, warm natural lighting'
+      angle: 'medium-wide',
+      prompt: 'medium-wide shot, relaxed framing, full upper body visible, warm natural lighting'
     }
   },
   outfitSelection: {

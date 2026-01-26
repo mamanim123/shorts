@@ -6,7 +6,7 @@ import { genreManager } from './services/genreGuidelines';
 import { previewPrompt } from './services/geminiService';
 import { showToast } from './components/Toast';
 import { saveStoryFile } from './services/storyService';
-import { setAppStorageValue } from './services/appStorageService';
+import { getAppStorageValue, setAppStorageValue } from './services/appStorageService';
 import { useTemplateManager } from './hooks/useTemplateManager';
 import { TemplateEditorModal } from './components/TemplateEditorModal';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
@@ -840,7 +840,7 @@ export function ShortsScriptGenerator({
 
   const [generationMode, setGenerationMode] = useState<'none' | 'script-only' | 'script-image'>('script-image');
   const [customScript, setCustomScript] = useState('');
-  const [genre, setGenre] = useState(() => localStorage.getItem('shorts-generator-genre') || 'affair-suspicion');
+  const [genre, setGenre] = useState('affair-suspicion');
 
   // [NEW] Genre Management State
   const [genres, setGenres] = useState(() => genreManager.getGenres());
@@ -856,6 +856,21 @@ export function ShortsScriptGenerator({
   const [identities, setIdentities] = useState<CharacterIdentity[]>([]);
   const identityLoadedRef = useRef(false);
   const identitySaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+    getAppStorageValue<string>('shorts-generator-genre', 'affair-suspicion')
+      .then((saved) => {
+        if (!isActive) return;
+        if (typeof saved === 'string' && saved.trim()) {
+          setGenre(saved);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadIdentities = async () => {
@@ -955,7 +970,7 @@ export function ShortsScriptGenerator({
         setGenre((current) => {
           if (loaded.some((item) => item.id === current)) return current;
           const fallback = loaded[0]?.id || 'affair-suspicion';
-          localStorage.setItem('shorts-generator-genre', fallback);
+          setAppStorageValue('shorts-generator-genre', fallback);
           if (defaultSettings?.onChange) {
             defaultSettings.onChange({ ...defaultSettings, shortsGenre: fallback });
           }
@@ -1007,7 +1022,7 @@ export function ShortsScriptGenerator({
       setGenres(updated);
       setSelectedGenreId(newId);
       setGenre(newId);
-      localStorage.setItem('shorts-generator-genre', newId);
+      setAppStorageValue('shorts-generator-genre', newId);
       if (defaultSettings?.onChange) {
         defaultSettings.onChange({ ...defaultSettings, shortsGenre: newId });
       }
@@ -1047,7 +1062,7 @@ export function ShortsScriptGenerator({
         setGenres(updated);
         setSelectedGenreId(updated[0]?.id || null);
         setGenre(updated[0]?.id || 'affair-suspicion');
-        localStorage.setItem('shorts-generator-genre', updated[0]?.id || 'affair-suspicion');
+        setAppStorageValue('shorts-generator-genre', updated[0]?.id || 'affair-suspicion');
         if (defaultSettings?.onChange) {
           defaultSettings.onChange({ ...defaultSettings, shortsGenre: updated[0]?.id || 'affair-suspicion' });
         }
@@ -1072,7 +1087,7 @@ export function ShortsScriptGenerator({
       if (genre === id) {
         const fallback = updated[0]?.id || 'affair-suspicion';
         setGenre(fallback);
-        localStorage.setItem('shorts-generator-genre', fallback);
+        setAppStorageValue('shorts-generator-genre', fallback);
         if (defaultSettings?.onChange) {
           defaultSettings.onChange({ ...defaultSettings, shortsGenre: fallback });
         }
@@ -1111,23 +1126,13 @@ export function ShortsScriptGenerator({
     }
   };
   const genreOptions = getGenreOptions(); // 장르 목록
-  const [topic, setTopic] = useState(() => localStorage.getItem('shorts-generator-topic') || '');
-  const [target, setTarget] = useState(() => localStorage.getItem('shorts-generator-target') || '40대');
-  const [scripts, setScripts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('shorts-generator-scripts');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [topic, setTopic] = useState('');
+  const [target, setTarget] = useState('40대');
+  const [scripts, setScripts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [aiForwardingId, setAiForwardingId] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
-    try {
-      const saved = localStorage.getItem('shorts-generator-analysis');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualJson, setManualJson] = useState('');
   const [showImagePrompts, setShowImagePrompts] = useState<Record<number, boolean>>({});
@@ -1153,13 +1158,7 @@ export function ShortsScriptGenerator({
     });
   }
 
-  const [imageHistory, setImageHistoryState] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('imageHistory');
-      const parsed = saved ? JSON.parse(saved) : [];
-      return dedupeImageHistory(parsed);
-    } catch { return []; }
-  });
+  const [imageHistory, setImageHistoryState] = useState<any[]>([]);
 
   const updateImageHistory = (updater: ((prev: any[]) => any[]) | any[]) => {
     setImageHistoryState(prev => {
@@ -1174,6 +1173,36 @@ export function ShortsScriptGenerator({
       return normalized;
     });
   };
+
+  useEffect(() => {
+    let isActive = true;
+    const loadStorage = async () => {
+      const [
+        savedTopic,
+        savedTarget,
+        savedScripts,
+        savedAnalysis,
+        savedHistory
+      ] = await Promise.all([
+        getAppStorageValue<string>('shorts-generator-topic', ''),
+        getAppStorageValue<string>('shorts-generator-target', '40대'),
+        getAppStorageValue<any[]>('shorts-generator-scripts', []),
+        getAppStorageValue<AnalysisResult | null>('shorts-generator-analysis', null),
+        getAppStorageValue<any[]>('imageHistory', [])
+      ]);
+
+      if (!isActive) return;
+      if (typeof savedTopic === 'string') setTopic(savedTopic);
+      if (typeof savedTarget === 'string') setTarget(savedTarget);
+      if (Array.isArray(savedScripts)) setScripts(savedScripts);
+      if (savedAnalysis && typeof savedAnalysis === 'object') setAnalysis(savedAnalysis);
+      if (Array.isArray(savedHistory)) setImageHistoryState(dedupeImageHistory(savedHistory));
+    };
+    loadStorage().catch(() => undefined);
+    return () => {
+      isActive = false;
+    };
+  }, []);
   const [historyUrls, setHistoryUrls] = useState<Record<string, string>>({});
   const historyUrlsRef = useRef<Record<string, string>>({});
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
@@ -1245,36 +1274,39 @@ export function ShortsScriptGenerator({
       identitySeededRef.current = true;
     }
   }, [buildIdentitiesFromCharacters, scripts, shouldAutoSeedIdentities, viewingStory]);
-  const [modeTemplates, setModeTemplates] = useState<ModeTemplates>(() => {
-    if (typeof window === 'undefined') return getDefaultModeTemplates();
-    try {
-      const saved = localStorage.getItem(MODE_TEMPLATE_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.scriptOnly && parsed?.scriptImage) {
-          return normalizeModeTemplates({
-            scriptOnly: String(parsed.scriptOnly),
-            scriptImage: String(parsed.scriptImage),
-            scriptOnlyBackups: Array.isArray(parsed.scriptOnlyBackups) ? parsed.scriptOnlyBackups.map(String) : [],
-            scriptImageBackups: Array.isArray(parsed.scriptImageBackups) ? parsed.scriptImageBackups.map(String) : []
-          });
-        }
-      }
-    } catch (e) {
-      console.error('[ShortsGenerator] Failed to load mode templates:', e);
-    }
-    return getDefaultModeTemplates();
-  });
+  const [modeTemplates, setModeTemplates] = useState<ModeTemplates>(() => getDefaultModeTemplates());
   const [isModeTemplateModalOpen, setIsModeTemplateModalOpen] = useState(false);
 
   const persistModeTemplates = useCallback((nextTemplates: ModeTemplates) => {
     const normalized = normalizeModeTemplates(nextTemplates);
     setModeTemplates(normalized);
     try {
-      localStorage.setItem(MODE_TEMPLATE_STORAGE_KEY, JSON.stringify(normalized));
+      setAppStorageValue(MODE_TEMPLATE_STORAGE_KEY, normalized);
     } catch (e) {
       console.error('[ShortsGenerator] Failed to save mode templates:', e);
     }
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadModeTemplates = async () => {
+      const saved = await getAppStorageValue<ModeTemplates | null>(MODE_TEMPLATE_STORAGE_KEY, null);
+      if (!isActive || !saved) return;
+      if (saved.scriptOnly && saved.scriptImage) {
+        setModeTemplates(normalizeModeTemplates({
+          scriptOnly: String(saved.scriptOnly),
+          scriptImage: String(saved.scriptImage),
+          scriptOnlyBackups: Array.isArray(saved.scriptOnlyBackups) ? saved.scriptOnlyBackups.map(String) : [],
+          scriptImageBackups: Array.isArray(saved.scriptImageBackups) ? saved.scriptImageBackups.map(String) : []
+        }));
+      }
+    };
+    loadModeTemplates().catch((e) => {
+      console.error('[ShortsGenerator] Failed to load mode templates:', e);
+    });
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const resolveEffectiveOutfits = () => {
@@ -1309,18 +1341,18 @@ export function ShortsScriptGenerator({
     };
   };
 
-  // [PERSISTENCE] Save state to localStorage
+  // [PERSISTENCE] Save state to app storage
   useEffect(() => {
-    localStorage.setItem('shorts-generator-topic', topic);
-    localStorage.setItem('shorts-generator-target', target);
+    setAppStorageValue('shorts-generator-topic', topic);
+    setAppStorageValue('shorts-generator-target', target);
   }, [topic, target]);
 
   useEffect(() => {
-    localStorage.setItem('shorts-generator-scripts', JSON.stringify(scripts));
+    setAppStorageValue('shorts-generator-scripts', scripts);
   }, [scripts]);
 
   useEffect(() => {
-    localStorage.setItem('shorts-generator-analysis', JSON.stringify(analysis));
+    setAppStorageValue('shorts-generator-analysis', analysis);
   }, [analysis]);
 
   useEffect(() => {
@@ -1359,7 +1391,7 @@ export function ShortsScriptGenerator({
   useEffect(() => {
     if (defaultSettings?.shortsGenre) {
       setGenre(defaultSettings.shortsGenre);
-      localStorage.setItem('shorts-generator-genre', defaultSettings.shortsGenre);
+      setAppStorageValue('shorts-generator-genre', defaultSettings.shortsGenre);
     }
   }, [defaultSettings?.shortsGenre]);
 
@@ -2159,8 +2191,8 @@ JSON 형식으로만 답변:
         const existingIds = new Set(prev.map((item: any) => item.id));
         if (existingIds.has(newItem.id)) return prev;
         const newHistory = [newItem, ...prev].slice(0, 100);
-        // localStorage에 즉시 저장 (다른 탭과 동기화)
-        localStorage.setItem('imageHistory', JSON.stringify(newHistory));
+        // app storage에 즉시 저장 (다른 탭과 동기화)
+        setAppStorageValue('imageHistory', newHistory);
         return newHistory;
       });
 
@@ -2256,7 +2288,7 @@ JSON 형식으로만 답변:
   useEffect(() => {
     try {
       const normalized = dedupeImageHistory(imageHistory);
-      localStorage.setItem('imageHistory', JSON.stringify(normalized));
+      setAppStorageValue('imageHistory', normalized);
     } catch (e) {
       console.error('Failed to persist imageHistory', e);
     }
@@ -2590,7 +2622,7 @@ JSON 형식으로만 답변:
         label: '편집',
         icon: <ImageIcon size={14} />,
         onClick: () => {
-          localStorage.setItem('imageStudio_load_from_history', JSON.stringify(lightboxItem));
+          setAppStorageValue('imageStudio_load_from_history', lightboxItem);
           setShowImageHistory(false);
           setLightboxImageUrl(null);
           setLightboxItem(null);
@@ -2996,7 +3028,7 @@ JSON 형식으로만 답변:
                     onChange={(e) => {
                       const newGenre = e.target.value;
                       setGenre(newGenre);
-                      localStorage.setItem('shorts-generator-genre', newGenre);
+                      setAppStorageValue('shorts-generator-genre', newGenre);
                       // 양방향 동기화: 설정창도 같이 업데이트
                       if (defaultSettings?.onChange) {
                         defaultSettings.onChange({ ...defaultSettings, shortsGenre: newGenre });

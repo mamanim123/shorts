@@ -5,7 +5,7 @@ import { StoryResponse } from '../types';
 import { ImageHistoryItem } from './master-studio/types';
 import { Copy, Check, FileText, Image as ImageIcon, Layers, Video, Edit, Save, X, Loader2, Download, Maximize, History as HistoryIcon, Shield, ShieldOff, ChevronDown, ChevronUp, Sparkles, Star, RefreshCw } from 'lucide-react';
 import { Button } from './Button';
-import { generateImageWithImagen, generateImage, initGeminiService, enhancePrompt, fetchAvailableModels, makeSafePrompt } from './master-studio/services/geminiService';
+import { generateImageWithImagen, generateImage, initGeminiService, enhancePrompt, fetchAvailableModels, makeSafePrompt, setSessionApiKey } from './master-studio/services/geminiService';
 import { getBlob, setBlob, deleteBlob } from './master-studio/services/dbService';
 import { fetchDiskImageList, fetchImageStoryFolders, StoryFolderInfo } from './master-studio/services/diskImageList';
 import { saveImageToDisk, deleteFileFromDisk } from './master-studio/services/serverService';
@@ -254,75 +254,17 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
     }
   };
 
-  // Load history from server storage (migrate legacy localStorage if needed)
+  // Load history from server storage
   useEffect(() => {
     initGeminiService();
 
     const loadHistory = async () => {
-      const migratedItems: ImageHistoryItem[] = [];
-
-      // 1) Migrate old shorts-image-history (base64 -> IndexedDB)
-      try {
-        const oldHistoryRaw = localStorage.getItem('shorts-image-history');
-        if (oldHistoryRaw) {
-          const oldHistory = JSON.parse(oldHistoryRaw);
-          if (Array.isArray(oldHistory) && oldHistory.length > 0) {
-            console.log("Migrating image history to IndexedDB...");
-            for (const item of oldHistory) {
-              if (item.url && item.url.startsWith('data:image')) {
-                const response = await fetch(item.url);
-                const blob = await response.blob();
-                const imageId = crypto.randomUUID();
-                await setBlob(imageId, blob);
-                migratedItems.push({
-                  id: item.id || crypto.randomUUID(),
-                  prompt: item.prompt || '',
-                  generatedImageId: imageId,
-                  settings: {
-                    mode: 'Generate',
-                    aspectRatio: '9:16',
-                    activeCheatKeys: [],
-                    noGuard: false,
-                    enhanceBackground: false,
-                    removeBackground: false,
-                    creativity: 0.8
-                  }
-                });
-              }
-            }
-          }
-          localStorage.removeItem('shorts-image-history');
-        }
-      } catch (e) {
-        console.error("Migration failed:", e);
-        localStorage.removeItem('shorts-image-history');
-      }
-
-      // 2) Migrate legacy localStorage imageHistory
-      try {
-        const legacyRaw = localStorage.getItem('imageHistory');
-        if (legacyRaw) {
-          const legacy = JSON.parse(legacyRaw);
-          if (Array.isArray(legacy)) {
-            migratedItems.push(...legacy);
-          }
-        }
-        localStorage.removeItem('imageHistory');
-      } catch (e) {
-        console.warn("Legacy history parse failed", e);
-        localStorage.removeItem('imageHistory');
-      }
-
-      // 3) Load server history and merge
+      // Load server history
       const serverHistory = await fetchImageHistory();
-      const merged = [...migratedItems, ...serverHistory];
-      const uniqueHistory = merged.filter((item, index, self) =>
+      const uniqueHistory = serverHistory.filter((item, index, self) =>
         index === self.findIndex((t) => t.id === item.id)
       );
 
-      if (migratedItems.length > 0) {
-        await saveImageHistory(uniqueHistory);
-      }
       setImageHistory(uniqueHistory);
       setIsInitialized(true);
     };
@@ -449,7 +391,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
   // Fallback: if no history items, pull disk images list to display legacy files (limited)
   useEffect(() => {
     const bootstrapFromDisk = async () => {
-      if (!isInitialized) return; // Wait for localStorage load
+      if (!isInitialized) return; // Wait for history load
       if (imageHistory.length > 0) return;
       const files = await fetchDiskImageList();
       if (files.length === 0) return;
@@ -580,8 +522,8 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
       if (error.message?.includes("API key")) {
         const key = window.prompt("API Key가 필요합니다. Google Gemini API Key를 입력해주세요:");
         if (key) {
-          localStorage.setItem('master_studio_api_key', key);
-          showToast("API Key가 저장되었습니다. 다시 시도해주세요.", 'success');
+          setSessionApiKey(key);
+          showToast("API Key가 세션에 적용되었습니다. 다시 시도해주세요.", 'success');
         }
       } else {
         showToast(`이미지 생성 실패: ${error.message || "알 수 없는 오류"}`, 'error');

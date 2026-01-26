@@ -11,6 +11,7 @@ import { TemplateResultDisplay } from './components/TemplateResultDisplay';
 import { UserInput, StoryResponse, OutfitStyle, ScenarioMode, Dialect, ChapterSummary, StyleTemplate, Scene, TargetService } from './types';
 import { generateStory } from './services/geminiService';
 import { requestLongformSummary, requestLongformChapterContent, saveLongformSession, listLongformSessions, loadLongformSession } from './services/longformService';
+import { getAppStorageValue, setAppStorageValue } from './services/appStorageService';
 import { analyzeScriptTemplate, fetchTemplates, deleteTemplate, saveTemplate, parseFromText } from './services/templateService';
 import { Wand2, LayoutList, Settings2, AlertCircle, Sparkles, Star, Trash2, Sun, Moon, Zap } from 'lucide-react';
 import { jsonrepair } from 'jsonrepair';
@@ -149,16 +150,8 @@ const App: React.FC = () => {
     shortsGenre: 'none', // Default genre: 선택 안 함
   });
 
-  // 2. Stories History State (Loaded from LocalStorage)
-  const [stories, setStories] = useState<StoryResponse[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Failed to load history", e);
-      return [];
-    }
-  });
+  // 2. Stories History State (Loaded from App Storage)
+  const [stories, setStories] = useState<StoryResponse[]>([]);
 
   // 3. UI State
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
@@ -209,14 +202,15 @@ const App: React.FC = () => {
   // --- Effects ---
 
   // [PERFORMANCE] Debounced history save - 500ms delay to prevent excessive saves
-  const debouncedSaveToLocalStorage = useDebounce((storiesToSave: StoryResponse[]) => {
+  const debouncedSaveToAppStorage = useDebounce(async (storiesToSave: StoryResponse[]) => {
     if (storageErrorRef.current) return;
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storiesToSave));
-      console.log('[Performance] Saved', storiesToSave.length, 'stories to localStorage');
+      const ok = await setAppStorageValue(LOCAL_STORAGE_KEY, storiesToSave);
+      if (!ok) throw new Error('app storage failed');
+      console.log('[Performance] Saved', storiesToSave.length, 'stories to app storage');
     } catch (e) {
       storageErrorRef.current = true;
-      console.error("Failed to persist history to localStorage:", e);
+      console.error("Failed to persist history to app storage:", e);
       setError("히스토리 저장 공간이 부족합니다. 보관함을 정리한 뒤 다시 시도해주세요.");
     }
   }, 500);
@@ -236,7 +230,7 @@ const App: React.FC = () => {
 
   // Trigger debounced saves when stories change
   useEffect(() => {
-    debouncedSaveToLocalStorage(stories);
+    debouncedSaveToAppStorage(stories);
     debouncedSaveToServer(stories);
   }, [stories]);
 
@@ -247,11 +241,11 @@ const App: React.FC = () => {
     console.log('[Performance] saveHistory called - debounced save will handle this');
   }, []);
 
-  // [PERFORMANCE] Load history once on mount - localStorage first, server sync in background
+  // [PERFORMANCE] Load history once on mount - app storage first, server sync in background
   useEffect(() => {
     let isMounted = true;
 
-    const syncHistory = async () => {
+    const syncHistory = async (localStories: StoryResponse[]) => {
       try {
         const res = await fetch('http://localhost:3002/api/history');
         if (res.ok && isMounted) {
@@ -259,7 +253,7 @@ const App: React.FC = () => {
           console.log('[Performance] Server sync:', serverHistory.length, 'items');
 
           // Only update if server has more recent data (compare timestamps)
-          const localTimestamp = stories.length > 0 ? Math.max(...stories.map(s => s.createdAt)) : 0;
+          const localTimestamp = localStories.length > 0 ? Math.max(...localStories.map(s => s.createdAt)) : 0;
           const serverTimestamp = serverHistory.length > 0 ? Math.max(...serverHistory.map(s => s.createdAt)) : 0;
 
           if (serverTimestamp > localTimestamp) {
@@ -274,14 +268,28 @@ const App: React.FC = () => {
       }
     };
 
-    // Auto-select most recent story
-    if (stories.length > 0 && !selectedStoryId) {
-      const mostRecent = stories.reduce((prev, current) => (prev.createdAt > current.createdAt) ? prev : current);
-      setSelectedStoryId(mostRecent.id);
-    }
+    const loadHistory = async () => {
+      try {
+        const saved = await getAppStorageValue<StoryResponse[]>(LOCAL_STORAGE_KEY, []);
+        if (!isMounted) return;
+        const normalized = Array.isArray(saved) ? saved : [];
+        setStories(normalized);
 
-    // Sync with server in background (non-blocking)
-    syncHistory();
+        // Auto-select most recent story
+        if (normalized.length > 0 && !selectedStoryId) {
+          const mostRecent = normalized.reduce((prev, current) => (prev.createdAt > current.createdAt) ? prev : current);
+          setSelectedStoryId(mostRecent.id);
+        }
+
+        // Sync with server in background (non-blocking)
+        syncHistory(normalized);
+      } catch (e) {
+        console.error('[Performance] Failed to load history from app storage:', e);
+        syncHistory([]);
+      }
+    };
+
+    loadHistory();
 
     return () => { isMounted = false; };
   }, []); // Only run once on mount

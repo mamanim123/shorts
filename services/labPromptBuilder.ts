@@ -485,7 +485,7 @@ export const translateActionToEnglish = (action: string): string => {
 export const MAMA_CHARACTER_PRESETS = {
   FEMALE_A: {
     identity: 'A stunning Korean woman',
-    bodyType: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
+    bodyType: 'well-proportioned figure, elegant feminine silhouette',
     style: 'perfectly managed sophisticated look, confident presence',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
@@ -503,14 +503,14 @@ export const MAMA_CHARACTER_PRESETS = {
   },
   FEMALE_D: {
     identity: 'A stunning Korean woman',
-    bodyType: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
+    bodyType: 'well-proportioned figure, elegant feminine silhouette',
     style: 'bright cheerful professional presence, sophisticated and beautiful caddy look',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
   FEMALE: {
     identity: 'A stunning Korean woman',
-    bodyType: 'Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure',
+    bodyType: 'well-proportioned figure, elegant feminine silhouette',
     style: 'perfectly managed sophisticated look, confident presence',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },

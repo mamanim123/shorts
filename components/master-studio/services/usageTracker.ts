@@ -57,8 +57,7 @@ let memoryStore: UsageStore = {
 };
 
 const getLegacyMasterKey = (): string => {
-    if (typeof window === 'undefined') return '';
-    return window.localStorage.getItem('master_studio_api_key') || '';
+    return '';
 };
 
 const ensureSnapshot = (store: UsageStore, keyId: string): UsageSnapshot => {
@@ -126,17 +125,6 @@ const loadStore = (): UsageStore => {
     const stored = getAppStorageCachedValue<any | null>(STORAGE_KEY, null);
     let parsed: any = stored ?? null;
 
-    if (!parsed) {
-        const rawLegacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (rawLegacy) {
-            try {
-                parsed = JSON.parse(rawLegacy);
-            } catch {
-                parsed = null;
-            }
-        }
-    }
-
     const store = normalizeStore(parsed);
     memoryStore = store;
 
@@ -150,7 +138,14 @@ const loadStore = (): UsageStore => {
 
 const persistStore = (store: UsageStore, notifyKeyId?: string) => {
     memoryStore = store;
-    setAppStorageValue(STORAGE_KEY, store).catch(() => {
+    const sanitized: UsageStore = {
+        ...store,
+        keys: store.keys.map((key) => ({
+            ...key,
+            value: '',
+        })),
+    };
+    setAppStorageValue(STORAGE_KEY, sanitized).catch(() => {
         // Ignore failures; keep in memory
     });
 
@@ -164,12 +159,7 @@ const persistStore = (store: UsageStore, notifyKeyId?: string) => {
 };
 
 const syncMasterKeyStorage = (value: string) => {
-    if (typeof window === 'undefined') return;
-    try {
-        window.localStorage.setItem('master_studio_api_key', value || '');
-    } catch {
-        // ignore
-    }
+    // API 키는 .env 또는 세션 메모리에서만 관리한다.
 };
 
 const extractUsageRecord = (response: any, context?: string): UsageRecord | null => {

@@ -8,7 +8,7 @@ import { saveImageToDisk, deleteFileFromDisk } from './master-studio/services/se
 import { fetchImageHistory, saveImageHistory } from '../services/imageHistoryService';
 import { Star, X, Copy, Loader2, RefreshCw, History as HistoryIcon } from 'lucide-react';
 
-const MAX_HISTORY = 100; // localStorage 용량 보호를 위해 히스토리 제한 (IndexedDB 사용으로 100개로 상향)
+const MAX_HISTORY = 100; // 히스토리 제한 (IndexedDB 사용으로 100개로 상향)
 const STORY_FILTER_ALL = 'all';
 const STORY_FILTER_ORPHANED = '__legacy__';
 
@@ -29,20 +29,6 @@ const AiStudioHost: React.FC = () => {
   // 초기 로드 및 서버 히스토리 동기화
   useEffect(() => {
     const bootstrapHistory = async () => {
-      // legacy localStorage migration
-      const legacyRaw = localStorage.getItem('imageHistory');
-      if (legacyRaw) {
-        try {
-          const parsed = JSON.parse(legacyRaw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            await saveImageHistory(parsed);
-          }
-          localStorage.removeItem('imageHistory');
-        } catch (e) {
-          console.error('Failed to migrate legacy imageHistory', e);
-          localStorage.removeItem('imageHistory');
-        }
-      }
       const serverHistory = await fetchImageHistory();
       if (Array.isArray(serverHistory)) setImageHistory(serverHistory);
     };
@@ -348,7 +334,7 @@ const AiStudioHost: React.FC = () => {
         id: crypto.randomUUID(),
         prompt,
         generatedImageId: imageId,
-        // dataUrl 제거: localStorage 용량 확보를 위해 더 이상 저장하지 않음
+        // dataUrl 제거: 저장 용량 확보를 위해 더 이상 저장하지 않음
         // dataUrl, 
         favorite: false,
         localFilename: savedFilename, // 디스크 파일명 저장

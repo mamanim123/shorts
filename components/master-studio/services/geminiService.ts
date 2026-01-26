@@ -12,9 +12,24 @@ import {
 // LUXURY_WARDROBE와 LUXURY_WARDROBE_KR를 재export하여 다른 파일들이 import할 수 있도록 함
 export { LUXURY_WARDROBE, LUXURY_WARDROBE_KR } from '../../../constants';
 
+let sessionApiKey = '';
+
+export const setSessionApiKey = (value: string) => {
+    sessionApiKey = (value || '').trim();
+    if (sessionApiKey) {
+        const keys = getApiKeys();
+        const shouldActivate = keys.length === 0 || (keys.length === 1 && !keys[0].value);
+        try {
+            addApiKey(sessionApiKey, '세션 키', { activate: shouldActivate });
+        } catch (e) {
+            // ignore key tracking failures
+        }
+    }
+};
+
 export const initGeminiService = async () => {
-    // Check if key exists in local storage
-    if (typeof window !== 'undefined' && window.localStorage.getItem('master_studio_api_key')) {
+    // Check if key exists in session
+    if (sessionApiKey) {
         return;
     }
 
@@ -23,10 +38,7 @@ export const initGeminiService = async () => {
         if (response.ok) {
             const data = await response.json();
             if (data.key) {
-                window.localStorage.setItem('master_studio_api_key', data.key);
-                const keys = getApiKeys();
-                const shouldActivate = keys.length === 0 || (keys.length === 1 && !keys[0].value);
-                addApiKey(data.key, '서버 키', { activate: shouldActivate });
+                setSessionApiKey(data.key);
                 console.log("Master Studio API Key initialized from server.");
             }
         }
@@ -36,11 +48,8 @@ export const initGeminiService = async () => {
 };
 
 export const getApiKey = () => {
-    // 1. Try localStorage
-    let key = '';
-    if (typeof window !== 'undefined') {
-        key = window.localStorage.getItem('master_studio_api_key') || '';
-    }
+    // 1. Try session key
+    let key = sessionApiKey || '';
 
     // 2. Try Vite env
     if (!key) {

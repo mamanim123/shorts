@@ -203,20 +203,6 @@ const ImageStudio: React.FC = () => {
     useEffect(() => {
         const loadHistory = async () => {
             try {
-                const legacyRaw = localStorage.getItem('imageHistory');
-                if (legacyRaw) {
-                    try {
-                        const legacy = JSON.parse(legacyRaw);
-                        if (Array.isArray(legacy) && legacy.length > 0) {
-                            await saveImageHistory(legacy);
-                        }
-                    } catch (err) {
-                        console.error('Failed to migrate legacy image history', err);
-                    } finally {
-                        localStorage.removeItem('imageHistory');
-                    }
-                }
-
                 const serverHistory = await fetchImageHistory();
                 if (Array.isArray(serverHistory)) {
                     setHistoryItems(serverHistory);
@@ -1072,14 +1058,14 @@ const ImageStudio: React.FC = () => {
     const handleSaveCharacterConfirm = async (name: string, description: string) => {
         if (!selectedItemForCharacter) return;
 
-        // Note: We don't store thumbnail in localStorage to avoid quota issues
+        // Note: We don't store thumbnail to avoid storage quota issues
         // The image can be loaded later using generatedImageId from IndexedDB
 
         const newCharacter: CharacterCollection = {
             id: uuidv4(),
             name,
             description,
-            // thumbnail is omitted to save localStorage space
+            // thumbnail is omitted to save storage space
             generatedImageId: selectedItemForCharacter.generatedImageId
         };
 

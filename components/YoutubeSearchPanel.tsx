@@ -10,7 +10,7 @@ interface YoutubeSearchPanelProps {
 
 export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGeneratePlanning }) => {
     // --- State ---
-    const [apiKey, setApiKey] = useState(localStorage.getItem('yt_api_key_v3') || '');
+    const [apiKey, setApiKey] = useState('');
     const [keyword, setKeyword] = useState('');
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<YouTubeVideo[]>([]);
@@ -36,38 +36,6 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
 
     // --- Effects ---
     useEffect(() => {
-        // Migration: old cache -> new per-tab caches (runs once)
-        const migrateLegacyCache = () => {
-            const legacy = localStorage.getItem('last_search_cache');
-            if (!legacy) return;
-            try {
-                const parsed = JSON.parse(legacy);
-                const legacyResults = parsed.results || [];
-                // Default to all tab
-                setAppStorageValue('last_search_cache_all', {
-                    ...parsed,
-                    results: legacyResults
-                });
-                // Heuristic: split by duration
-                const shorts = legacyResults.filter((r: any) => (r.durationSec ?? 0) < 240);
-                const longform = legacyResults.filter((r: any) => (r.durationSec ?? 0) >= 1200);
-                setAppStorageValue('last_search_cache_shorts', {
-                    ...parsed,
-                    results: shorts
-                });
-                setAppStorageValue('last_search_cache_longform', {
-                    ...parsed,
-                    results: longform
-                });
-                // Remove legacy key to avoid re-migration loops
-                localStorage.removeItem('last_search_cache');
-            } catch (e) {
-                console.error("Legacy cache migration failed", e);
-            }
-        };
-
-        migrateLegacyCache();
-
         // Load per-tab cache on mount
         (async () => {
             for (const tab of ['all', 'shorts', 'longform'] as const) {
@@ -96,12 +64,10 @@ export const YoutubeSearchPanel: React.FC<YoutubeSearchPanelProps> = ({ onGenera
 
     const saveKey = () => {
         if (!apiKey.trim()) return alert("API Key를 입력하세요.");
-        localStorage.setItem('yt_api_key_v3', apiKey);
-        alert("API Key가 저장되었습니다.");
+        alert("API Key는 보안상 세션에만 유지됩니다. 영구 사용은 .env에 설정해주세요.");
     };
 
     const clearKey = () => {
-        localStorage.removeItem('yt_api_key_v3');
         setApiKey('');
     };
 

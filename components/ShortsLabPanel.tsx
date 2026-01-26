@@ -15,12 +15,12 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene } from '../services/labPromptBuilder';
-import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
+import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildManualSceneDecompositionPrompt, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
-import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
+import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
 import CharacterPanel from './CharacterPanel';
@@ -102,6 +102,51 @@ const MANUAL_SLOT_META: Record<string, { id: string; slotLabel: string; gender: 
     'Woman D': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
     'Man A': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
     'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+};
+
+const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: string; body: string }> = {
+    WomanA: { gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
+    WomanB: { gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
+    WomanC: { gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
+    WomanD: { gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
+    ManA: { gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
+    ManB: { gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+};
+
+const normalizeShotType = (shotType?: string, characterIds?: string[]): '원샷' | '투샷' | '쓰리샷' => {
+    if (shotType === '원샷' || shotType === '투샷' || shotType === '쓰리샷') return shotType;
+    const count = Array.isArray(characterIds) ? characterIds.length : 0;
+    if (count >= 3) return '쓰리샷';
+    if (count === 2) return '투샷';
+    return '원샷';
+};
+
+const buildFallbackIdentity = (gender: 'female' | 'male', targetAgeLabel?: string) => {
+    const age = convertAgeToEnglish(targetAgeLabel || '');
+    if (gender === 'female') {
+        return age ? `A stunning Korean woman in her ${age}` : 'A stunning Korean woman';
+    }
+    return age ? `A handsome Korean man in his ${age}` : 'A handsome Korean man';
+};
+
+const buildCharacterInfoMap = (characters: any[] | undefined, targetAgeLabel?: string) => {
+    const map = new Map<string, CharacterInfo>();
+    if (Array.isArray(characters)) {
+        characters.forEach((ch) => {
+            const id = String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim();
+            if (!id) return;
+            const defaults = DEFAULT_CHARACTER_META[id];
+            const gender = defaults?.gender || (id.toLowerCase().includes('man') ? 'male' : 'female');
+            const identity = ch.identity || buildFallbackIdentity(gender, targetAgeLabel);
+            map.set(id, {
+                identity,
+                hair: ch.hair || defaults?.hair || '',
+                body: ch.body || defaults?.body || '',
+                outfit: ch.outfit || ''
+            });
+        });
+    }
+    return map;
 };
 
 const GENERAL_ACCESSORIES = [
@@ -332,15 +377,17 @@ const postProcessAiScenes = (
         characters?: any[]; // [NEW] 캐릭터 정보 추가
         genre?: string;     // [v3.6] 장르 정보 추가
         totalScenes?: number; // [v3.6] 전체 장면 수 추가
+        enableWinterAccessories?: boolean;
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
     
     const totalScenes = options.totalScenes || scenes.length || 12;
+    const characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
 
     return scenes.map((scene: any, idx: number) => {
         const sceneNumber = scene.sceneNumber || idx + 1;
-        const shotType = (scene.shotType || '원샷') as '원샷' | '투샷' | '쓰리샷';
+        const shotType = normalizeShotType(scene.shotType, scene.characterIds);
 
         // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
         let processedPrompt = enhanceScenePrompt(
@@ -358,11 +405,25 @@ const postProcessAiScenes = (
 
         // 2. [V3.2] 신규 검증 및 자동 수정 레이어 적용
         // 프롬프트 검증 및 수정
-        processedPrompt = validateAndFixPrompt(processedPrompt);
+        const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
+        const characterInfos = characterIds
+            .map((id: string) => characterInfoMap.get(id))
+            .filter(Boolean) as CharacterInfo[];
+        const fallbackCharacters = characterInfos.length > 0
+            ? characterInfos
+            : Array.from(characterInfoMap.values()).slice(0, 3);
+        const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters);
+        processedPrompt = validation.fixedPrompt;
 
         // 3. 네거티브 프롬프트 분리 처리
         const extracted = extractNegativePrompt(processedPrompt);
         processedPrompt = extracted.cleaned;
+        if (options.enableWinterAccessories) {
+            const genderForWinter = options.gender || 'female';
+            const winterApplied = applyWinterLookToExistingPrompt(processedPrompt, scene.longPromptKo || '', genderForWinter);
+            processedPrompt = winterApplied.longPrompt;
+            scene.longPromptKo = winterApplied.longPromptKo || scene.longPromptKo;
+        }
         const negativePrompt = scene.negativePrompt || extracted.negative || '';
 
         return {
@@ -738,7 +799,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         loadFavorites();
     }, []);
 
-    // [NEW] 상태 변경 시 localStorage 저장
+    // [NEW] 상태 변경 시 app storage 저장
     React.useEffect(() => {
         if (currentFolderName) {
             setAppStorageValue('shorts-lab-folder', currentFolderName);
@@ -864,8 +925,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const key = window.prompt("API Key가 필요합니다. Google Gemini API Key를 입력해주세요:");
                 if (key) {
                     try {
-                        localStorage.setItem('master_studio_api_key', key);
-                        showToast("API Key가 저장되었습니다. 다시 시도해주세요.", 'success');
+                        setSessionApiKey(key);
+                        showToast("API Key가 세션에 적용되었습니다. 다시 시도해주세요.", 'success');
                     } catch (storageError) {
                         console.error("Failed to save API key:", storageError);
                         showToast("API Key 저장에 실패했습니다.", 'error');
@@ -1244,6 +1305,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     type ManualCharacterPrompt = {
         id: string;
         slotLabel: string;
+        gender: 'female' | 'male';
         name: string;
         identity: string;
         hair: string;
@@ -1278,6 +1340,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 return {
                     id: slotMeta.id,
                     slotLabel: slotMeta.slotLabel,
+                    gender: slotMeta.gender,
                     name: identity.name?.trim() || '',
                     identity: identityText,
                     hair: slotMeta.hair,
@@ -1422,11 +1485,32 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                         manualCharacterMap,
                         { expression, camera: cameraPrompt }
                     );
+                    const characterInfos = characterIds
+                        .map((id) => manualCharacterMap.get(id))
+                        .filter(Boolean)
+                        .map((item) => ({
+                            identity: item!.identity,
+                            hair: item!.hair,
+                            body: item!.body,
+                            outfit: item!.outfit
+                        })) as CharacterInfo[];
+                    const fixed = validateAndFixPrompt(
+                        normalizedPrompt,
+                        normalizeShotType(scene.shotType, characterIds),
+                        characterInfos
+                    );
+                    const winterGender =
+                        characterIds
+                            .map((id) => manualCharacterMap.get(id))
+                            .find((meta) => meta?.gender)?.gender || 'female';
+                    const winterApplied = enableWinterAccessories
+                        ? applyWinterLookToExistingPrompt(fixed.fixedPrompt, '', winterGender)
+                        : null;
 
                     return {
                         number: sceneNumber,
                         text: sceneText,
-                        prompt: normalizedPrompt,
+                        prompt: winterApplied?.longPrompt || fixed.fixedPrompt,
                         imageUrl: undefined,
                         shortPromptKo: '',
                         longPromptKo: '',
@@ -1922,7 +2006,7 @@ ${scriptInput}
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
-                enableWinterAccessories: false
+                enableWinterAccessories: enableWinterAccessories
             });
 
             // 선택된 AI 서비스 (기본값: GEMINI)
@@ -1998,7 +2082,8 @@ ${scriptInput}
                         gender: settings.koreanGender,
                         characters: scriptData.characters || parsed.characters, // 캐릭터 정보 전달
                         genre: aiGenre,                    // v3.6: 장르 정보 전달
-                        totalScenes: scenesSource.length   // v3.6: 전체 장면 수 전달
+                        totalScenes: scenesSource.length,   // v3.6: 전체 장면 수 전달
+                        enableWinterAccessories
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {

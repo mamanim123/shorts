@@ -118,19 +118,6 @@ const VideoStudio: React.FC = () => {
     useEffect(() => {
         const loadHistory = async () => {
             try {
-                const legacyRaw = localStorage.getItem('imageHistory');
-                if (legacyRaw) {
-                    try {
-                        const legacy = JSON.parse(legacyRaw);
-                        if (Array.isArray(legacy) && legacy.length > 0) {
-                            await saveImageHistory(legacy);
-                        }
-                    } catch (err) {
-                        console.error('Failed to migrate legacy image history', err);
-                    } finally {
-                        localStorage.removeItem('imageHistory');
-                    }
-                }
                 const serverHistory = await fetchImageHistory();
                 if (Array.isArray(serverHistory)) {
                     setImageHistory(serverHistory);
@@ -431,8 +418,7 @@ const VideoStudio: React.FC = () => {
             // Using the new prioritized key access from geminiService might be tricky here directly via process.env
             // Ideally we should use a service method to get the key, but the fetch usually requires the key.
             // Let's assume geminiService ensures process.env.API_KEY is populated or we need another way.
-            // Wait, I modified geminiService to SET process.env.API_KEY if found in localStorage/meta.env.
-            // So process.env.API_KEY should be safe to use here.
+            // geminiService uses session/env keys; ensure API key is available before download.
 
             const apiKey = getApiKey();
 

@@ -19,6 +19,7 @@ import ImageHistorySidebar from '../ImageHistorySidebar';
 import { ImageHistoryItem } from '../types';
 import { fetchImageHistory, saveImageHistory } from '../../../services/imageHistoryService';
 import { setAppStorageValue } from '../../../services/appStorageService';
+import { setSessionApiKey } from '../services/geminiService';
 import {
     ReversePromptMediaType,
     ReversePromptLanguage,
@@ -260,7 +261,7 @@ const ImageReverseStudio: React.FC = () => {
     const openFileDialog = () => fileInputRef.current?.click();
 
     const keyModalOpen = () => {
-        setKeyInput(localStorage.getItem('master_studio_api_key') || '');
+        setKeyInput('');
         setKeyStatus('idle');
         setShowKeyModal(true);
     };
@@ -273,7 +274,7 @@ const ImageReverseStudio: React.FC = () => {
         setKeyStatus('testing');
         const isValid = await validateGeminiKey(keyInput.trim());
         if (isValid) {
-            localStorage.setItem('master_studio_api_key', keyInput.trim());
+            setSessionApiKey(keyInput.trim());
             setKeyStatus('valid');
             setTimeout(() => setShowKeyModal(false), 800);
         } else {
@@ -282,7 +283,6 @@ const ImageReverseStudio: React.FC = () => {
     };
 
     const removeKey = () => {
-        localStorage.removeItem('master_studio_api_key');
         setKeyInput('');
         setKeyStatus('idle');
     };
@@ -343,19 +343,6 @@ const ImageReverseStudio: React.FC = () => {
     useEffect(() => {
         const loadHistory = async () => {
             try {
-                const legacyRaw = localStorage.getItem('imageHistory');
-                if (legacyRaw) {
-                    try {
-                        const legacy = JSON.parse(legacyRaw);
-                        if (Array.isArray(legacy) && legacy.length > 0) {
-                            await saveImageHistory(legacy);
-                        }
-                    } catch (err) {
-                        console.error('Failed to migrate legacy image history', err);
-                    } finally {
-                        localStorage.removeItem('imageHistory');
-                    }
-                }
                 const serverHistory = await fetchImageHistory();
                 if (Array.isArray(serverHistory)) {
                     setHistoryItems(serverHistory);

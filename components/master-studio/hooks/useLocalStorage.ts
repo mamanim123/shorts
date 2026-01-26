@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAppStorageValue, setAppStorageValue } from '../../../services/appStorageService';
 
-// A custom hook for persisting state to localStorage
+// A custom hook for persisting state to app storage
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
     const [storedValue, setStoredValue] = useState<T>(initialValue);
 

@@ -77,20 +77,6 @@ const ThumbnailStudio: React.FC = () => {
     useEffect(() => {
         const loadHistory = async () => {
             try {
-                const legacyRaw = localStorage.getItem('imageHistory');
-                if (legacyRaw) {
-                    try {
-                        const legacy = JSON.parse(legacyRaw);
-                        if (Array.isArray(legacy) && legacy.length > 0) {
-                            await saveImageHistory(legacy);
-                        }
-                    } catch (err) {
-                        console.error('Failed to migrate legacy history', err);
-                    } finally {
-                        localStorage.removeItem('imageHistory');
-                    }
-                }
-
                 const serverHistory = await fetchImageHistory();
                 if (Array.isArray(serverHistory)) {
                     setHistoryItems(serverHistory);

@@ -665,7 +665,7 @@ app.post('/api/launch', async (req, res) => {
 
 // --- Script Generation API ---
 app.post('/api/generate/raw', async (req, res) => {
-    const { service, prompt } = req.body;
+    const { service, prompt, folderName: requestedFolderName } = req.body;
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });
     }
@@ -738,9 +738,19 @@ app.post('/api/generate/raw', async (req, res) => {
 
         // 폴더 생성 (어떤 경우에도 title은 최소한 무제로 확보됨)
         try {
-            const { safeId } = createStoryFolderFromTitle(title);
-            folderName = safeId;
-            console.log(`[Server] 📁 Story folder ensured: ${folderName}`);
+            const normalizedFolderName = typeof requestedFolderName === 'string'
+                ? sanitizeFolderName(requestedFolderName)
+                : '';
+
+            if (normalizedFolderName) {
+                const ensured = ensureStoryImageDirectory(normalizedFolderName);
+                folderName = ensured.safeId;
+                console.log(`[Server] 📁 Story folder ensured (reuse): ${folderName}`);
+            } else {
+                const { safeId } = createStoryFolderFromTitle(title);
+                folderName = safeId;
+                console.log(`[Server] 📁 Story folder ensured: ${folderName}`);
+            }
 
             // 대본 파일 저장
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

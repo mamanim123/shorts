@@ -1,161 +1,246 @@
-1. 첫번째 대본 생성을 위한 llm 에게 보낸 프롬프트
-
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
+
+
 당신은 유튜브 쇼츠 대본 전문 작가입니다.
+
 아래 주제/장르/연령에 맞는 대본만 생성하세요.
+
 이미지 프롬프트나 scenes는 절대 생성하지 않습니다.
 
-주제: 골프장에 눈이오면 생기는일
+
+
+주제: 눈오는 골프장에 아름다운 여성들
+
 장르: 코미디 / 유머
+
 타겟 연령: 40s
 
+
+
 출력은 반드시 아래 JSON 형식 하나만:
+
 {
-  "title": "제목",
-  "titleOptions": ["옵션1", "옵션2", "옵션3"],
-  "scriptBody": "문장1\n문장2... (8~12개 문장)",
-  "punchline": "펀치라인",
-  "hook": "HOOK 문장",
-  "twist": "TWIST 문장",
-  "foreshadowing": "복선 문장",
-  "narrator": { "slot": "WomanA", "name": "지영" },
-  "emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음"
+
+"title": "제목",
+
+"titleOptions": ["옵션1", "옵션2", "옵션3"],
+
+"scriptBody": "문장1\n문장2... (8~12개 문장)",
+
+"punchline": "펀치라인",
+
+"hook": "HOOK 문장",
+
+"twist": "TWIST 문장",
+
+"foreshadowing": "복선 문장",
+
+"narrator": { "slot": "ManA", "name": "준호" },
+
+"emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음"
+
 }
 
+
+
 규칙:
+
 1) scriptBody는 8~12문장 (줄바꿈으로 구분)
-2) 대사는 자연스러운 구어체 한국어
-3) scenes/longPrompt/shortPrompt 절대 포함 금지
-4) 마크다운 금지, JSON만 출력
+
+2) 1문장 = 훅(강한 시작)
+
+3) 2~3문장 = 배경/상황 설명
+
+4) 4~7문장 = 전개/행동
+
+5) 8~10문장 = 반전/결말
+
+6) 대사는 자연스러운 구어체 한국어
+
+7) scenes/longPrompt/shortPrompt 절대 포함 금지
+
+8) 마크다운 금지, JSON만 출력
+
+
 
 [Request ID: [object Object]]
 
- llm에게 받은 대본
-
-{
-  "title": "골프장에 눈이 오면 생기는 일",
-  "titleOptions": [
-    "골프장 폭설 사건의 전말",
-    "골프 치다가 스키 타게 된 썰",
-    "눈 온 날 골프장의 충격적인 진실"
-  ],
-  "scriptBody": "어제 골프장 예약해놨는데 아침에 일어나니까 눈이 펑펑 오는 거야.\n근데 골프장에서 문자가 온 거지. '오픈합니다' 이러면서.\n아니 눈이 이렇게 오는데 골프를 치라고? 했는데 취소하면 위약금이라는 거야.\n그래서 뭐 어쩔 수 없이 갔지. 도착했는데 코스가 온통 새하얀 거야.\n캐디님이 주황색 골프공을 건네주시더라고. '오늘은 이거 쓰셔야 찾습니다' 하면서.\n1번홀 티샷을 날렸는데, 공이 눈 위에서 통통 튀면서 평소보다 30미터를 더 가는 거야.\n아 이거 오늘 드라이버 폼 미쳤다 싶었는데, 그냥 눈 위에서 미끄러진 거더라고.\n그린에서는 퍼팅할 때 공이 눈 때문에 중간에 멈춰버리고.\n캐디님이 '오늘은 그냥 눈사람 만드시는 게 나을 것 같습니다' 하시더라.\n결국 9홀만 돌고 클럽하우스에서 소주나 마셨지 뭐야.\n근데 신기한 건 나 말고도 이 날씨에 온 사람이 세 팀이나 더 있더라고.\n다들 위약금이 아까워서 온 거래. 우리 진짜 돈 아끼려다가 폐렴 걸리겠더라.",
-  "punchline": "다들 위약금이 아까워서 온 거래. 우리 진짜 돈 아끼려다가 폐렴 걸리겠더라.",
-  "hook": "어제 골프장 예약해놨는데 아침에 일어나니까 눈이 펑펑 오는 거야.",
-  "twist": "근데 신기한 건 나 말고도 이 날씨에 온 사람이 세 팀이나 더 있더라고.",
-  "foreshadowing": "근데 골프장에서 문자가 온 거지. '오픈합니다' 이러면서.",
-  "narrator": {
-    "slot": "WomanA",
-    "name": "지영"
-  },
-  "emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음"
-}
-
-
-
-
-2. 대본과 이미지프롬프트 만들때 llm 에게 보낸 프롬프트
+{ "title": "설원 위의 백조들, 알고 보니 펭귄?", "titleOptions": ["눈오는 날 라운딩의 진실", "골프 여신들의 눈물 겨운 샷", "화이트 골프장의 미스터리"], "scriptBody": "여러분, 겨울 골프의 꽃은 역시 눈 내리는 필드 아니겠어요?\n여기 설원을 배경으로 화보 찍으러 온 골프 여신들이 떴습니다.\n하얀 눈 위에서 컬러볼 딱 놓고 폼 잡는데, 정말 CF의 한 장면이네요.\n비싼 방한복에 털모자까지 풀세팅하고 우아하게 티박스에 올라갑니다.\n자, 드디어 회심의 드라이버 샷! 깡 하는 소리와 함께 눈꽃이 흩날려요.\n근데 공은 어디 갔냐고요? 저기 앞 3미터 지점 눈 속에 박혔네요.\n언니 한 분이 공 찾는다고 눈밭을 헤치는데, 이건 뭐 거의 해병대 훈련급이에요.\n겨우 찾아서 치려는데 발이 미끄덩! 나이스 샷 대신 나이스 엉덩방아!\n옷은 이미 다 젖어서 흙탕물 범벅이고, 화장은 눈물인지 콧물인지 다 번졌어요.\n결국 9홀도 못 돌고 클럽하우스로 도망치듯 뛰어갑니다.\n역시 겨울엔 골프채 대신 붕어빵이나 들고 있는 게 정답인가 봐요.\n오늘 스코어는 묻지 마세요, 영하 10도니까 그냥 100타라고 칩시다!", "punchline": "공은 못 굴려도 엉덩방아는 기가 막히게 굴리시네요!", "hook": "눈오는 골프장, 영화처럼 예쁠 줄 알았죠? 현실은 생존 게임입니다.", "twist": "화보 찍으러 왔다가 해병대 극기훈련 찍고 가는 언니들.", "foreshadowing": "오늘 의상 콘셉트는 백조라는데, 걸음걸이가 심상치 않네요.", "narrator": { "slot": "ManA", "name": "준호" }, "emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음" }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
-당신은 장면 분해 전문가입니다. 아래 "대본 라인"을 그대로 유지하면서 씬 정보를 구조화하세요.
-대본을 새로 쓰거나 요약해서 scriptLine을 바꾸지 마세요.
 
-## 필수 규칙
-1) JSON만 출력 (설명/마크다운 금지)
-2) scenes 개수 = 대본 라인 수 (1:1 매칭)
-3) scriptLine은 대본 라인을 **그대로 복사**
-4) characterIds는 아래 목록의 ID만 사용 (없으면 빈 배열 [])
-5) summary/action/background는 짧고 명확한 영어 묘사로 작성
+
+당신은 등장인물 추출 전문가입니다. 아래 대본 라인에서 등장인물과 각 라인에 등장하는 인물 목록을 추출하세요.
+
+대본을 변경하지 말고, 등장인물 이름만 추출하세요. 주인공이 이름 없이 "나/내가"로 표현되면 이름은 "주인공"으로 표기하세요.
+
+성별이 불명확한 경우 gender는 "unknown"으로 두고, 주인공의 경우 기본 성별을 따르세요.
+
+복수 지칭(예: "얘들아", "언니들", "친구들")이 있으면 최소 2명 이상의 인물로 분리하세요.
+
+이름이 없는 조연은 "지인1", "지인2"처럼 구분해 작성하세요.
+
+
+
+기본 성별: male
+
+
 
 ## 대본 라인
-1. 어제 골프장 예약해놨는데 아침에 일어나니까 눈이 펑펑 오는 거야.
-2. 근데 골프장에서 문자가 온 거지. '오픈합니다' 이러면서.
-3. 아니 눈이 이렇게 오는데 골프를 치라고? 했는데 취소하면 위약금이라는 거야.
-4. 그래서 뭐 어쩔 수 없이 갔지. 도착했는데 코스가 온통 새하얀 거야.
-5. 캐디님이 주황색 골프공을 건네주시더라고. '오늘은 이거 쓰셔야 찾습니다' 하면서.
-6. 1번홀 티샷을 날렸는데, 공이 눈 위에서 통통 튀면서 평소보다 30미터를 더 가는 거야.
-7. 아 이거 오늘 드라이버 폼 미쳤다 싶었는데, 그냥 눈 위에서 미끄러진 거더라고.
-8. 그린에서는 퍼팅할 때 공이 눈 때문에 중간에 멈춰버리고.
-9. 캐디님이 '오늘은 그냥 눈사람 만드시는 게 나을 것 같습니다' 하시더라.
-10. 결국 9홀만 돌고 클럽하우스에서 소주나 마셨지 뭐야.
-11. 근데 신기한 건 나 말고도 이 날씨에 온 사람이 세 팀이나 더 있더라고.
-12. 다들 위약금이 아까워서 온 거래. 우리 진짜 돈 아끼려다가 폐렴 걸리겠더라.
 
-## 캐릭터 ID 목록
-- WomanA (지영) / Woman A
-- WomanB (혜경) / Woman B
-- ManA (준호) / Man A
-- ManB (민수) / Man B
-- WomanD (지우) / Woman D
+1. 여러분, 겨울 골프의 꽃은 역시 눈 내리는 필드 아니겠어요?
+
+2. 여기 설원을 배경으로 화보 찍으러 온 골프 여신들이 떴습니다.
+
+3. 하얀 눈 위에서 컬러볼 딱 놓고 폼 잡는데, 정말 CF의 한 장면이네요.
+
+4. 비싼 방한복에 털모자까지 풀세팅하고 우아하게 티박스에 올라갑니다.
+
+5. 자, 드디어 회심의 드라이버 샷! 깡 하는 소리와 함께 눈꽃이 흩날려요.
+
+6. 근데 공은 어디 갔냐고요? 저기 앞 3미터 지점 눈 속에 박혔네요.
+
+7. 언니 한 분이 공 찾는다고 눈밭을 헤치는데, 이건 뭐 거의 해병대 훈련급이에요.
+
+8. 겨우 찾아서 치려는데 발이 미끄덩! 나이스 샷 대신 나이스 엉덩방아!
+
+9. 옷은 이미 다 젖어서 흙탕물 범벅이고, 화장은 눈물인지 콧물인지 다 번졌어요.
+
+10. 결국 9홀도 못 돌고 클럽하우스로 도망치듯 뛰어갑니다.
+
+11. 역시 겨울엔 골프채 대신 붕어빵이나 들고 있는 게 정답인가 봐요.
+
+12. 오늘 스코어는 묻지 마세요, 영하 10도니까 그냥 100타라고 칩시다!
+
+
 
 ## 출력 JSON 스키마
+
 {
-  "title": "string",
-  "scenes": [
-    {
-      "sceneNumber": 1,
-      "scriptLine": "원문 그대로",
-      "summary": "short english summary",
-      "action": "short english action",
-      "background": "short english background",
-      "shotType": "원샷/투샷/쓰리샷",
-      "characterIds": ["WomanA"]
-    }
-  ]
+
+"characters": [
+
+{ "name": "주인공", "gender": "male", "role": "narrator" }
+
+],
+
+"lineCharacterNames": [
+
+{ "line": 1, "characters": ["주인공"] }
+
+]
+
 }
 
-
-받은 대본
+{ "characters": [ { "name": "주인공", "gender": "male", "role": "narrator" }, { "name": "지인1", "gender": "female", "role": "supporting" }, { "name": "지인2", "gender": "female", "role": "supporting" } ], "lineCharacterNames": [ { "line": 1, "characters": ["주인공"] }, { "line": 2, "characters": ["주인공", "지인1", "지인2"] }, { "line": 3, "characters": ["지인1", "지인2"] }, { "line": 4, "characters": ["지인1", "지인2"] }, { "line": 5, "characters": ["지인1", "지인2"] }, { "line": 6, "characters": ["주인공"] }, { "line": 7, "characters": ["지인1"] }, { "line": 8, "characters": ["지인1"] }, { "line": 9, "characters": ["지인1", "지인2"] }, { "line": 10, "characters": ["지인1", "지인2"] }, { "line": 11, "characters": ["주인공"] }, { "line": 12, "characters": ["주인공"] } ] }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
+
+
 당신은 장면 분해 전문가입니다. 아래 "대본 라인"을 그대로 유지하면서 씬 정보를 구조화하세요.
+
 대본을 새로 쓰거나 요약해서 scriptLine을 바꾸지 마세요.
 
+
+
 ## 필수 규칙
+
 1) JSON만 출력 (설명/마크다운 금지)
+
 2) scenes 개수 = 대본 라인 수 (1:1 매칭)
+
 3) scriptLine은 대본 라인을 **그대로 복사**
+
 4) characterIds는 아래 목록의 ID만 사용 (없으면 빈 배열 [])
+
 5) summary/action/background는 짧고 명확한 영어 묘사로 작성
 
+6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
+
+7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
+
+
+
 ## 대본 라인
-1. 어제 골프장 예약해놨는데 아침에 일어나니까 눈이 펑펑 오는 거야.
-2. 근데 골프장에서 문자가 온 거지. '오픈합니다' 이러면서.
-3. 아니 눈이 이렇게 오는데 골프를 치라고? 했는데 취소하면 위약금이라는 거야.
-4. 그래서 뭐 어쩔 수 없이 갔지. 도착했는데 코스가 온통 새하얀 거야.
-5. 캐디님이 주황색 골프공을 건네주시더라고. '오늘은 이거 쓰셔야 찾습니다' 하면서.
-6. 1번홀 티샷을 날렸는데, 공이 눈 위에서 통통 튀면서 평소보다 30미터를 더 가는 거야.
-7. 아 이거 오늘 드라이버 폼 미쳤다 싶었는데, 그냥 눈 위에서 미끄러진 거더라고.
-8. 그린에서는 퍼팅할 때 공이 눈 때문에 중간에 멈춰버리고.
-9. 캐디님이 '오늘은 그냥 눈사람 만드시는 게 나을 것 같습니다' 하시더라.
-10. 결국 9홀만 돌고 클럽하우스에서 소주나 마셨지 뭐야.
-11. 근데 신기한 건 나 말고도 이 날씨에 온 사람이 세 팀이나 더 있더라고.
-12. 다들 위약금이 아까워서 온 거래. 우리 진짜 돈 아끼려다가 폐렴 걸리겠더라.
+
+1. 여러분, 겨울 골프의 꽃은 역시 눈 내리는 필드 아니겠어요?
+
+2. 여기 설원을 배경으로 화보 찍으러 온 골프 여신들이 떴습니다.
+
+3. 하얀 눈 위에서 컬러볼 딱 놓고 폼 잡는데, 정말 CF의 한 장면이네요.
+
+4. 비싼 방한복에 털모자까지 풀세팅하고 우아하게 티박스에 올라갑니다.
+
+5. 자, 드디어 회심의 드라이버 샷! 깡 하는 소리와 함께 눈꽃이 흩날려요.
+
+6. 근데 공은 어디 갔냐고요? 저기 앞 3미터 지점 눈 속에 박혔네요.
+
+7. 언니 한 분이 공 찾는다고 눈밭을 헤치는데, 이건 뭐 거의 해병대 훈련급이에요.
+
+8. 겨우 찾아서 치려는데 발이 미끄덩! 나이스 샷 대신 나이스 엉덩방아!
+
+9. 옷은 이미 다 젖어서 흙탕물 범벅이고, 화장은 눈물인지 콧물인지 다 번졌어요.
+
+10. 결국 9홀도 못 돌고 클럽하우스로 도망치듯 뛰어갑니다.
+
+11. 역시 겨울엔 골프채 대신 붕어빵이나 들고 있는 게 정답인가 봐요.
+
+12. 오늘 스코어는 묻지 마세요, 영하 10도니까 그냥 100타라고 칩시다!
+
+
 
 ## 캐릭터 ID 목록
-- WomanA (지영) / Woman A
-- WomanB (혜경) / Woman B
-- ManA (준호) / Man A
-- ManB (민수) / Man B
-- WomanD (지우) / Woman D
+
+- WomanA / Woman A
+
+- WomanB / Woman B
+
+- WomanD / Woman D
+
+- ManA / Man A
+
+
 
 ## 출력 JSON 스키마
+
 {
-  "title": "string",
-  "scenes": [
-    {
-      "sceneNumber": 1,
-      "scriptLine": "원문 그대로",
-      "summary": "short english summary",
-      "action": "short english action",
-      "background": "short english background",
-      "shotType": "원샷/투샷/쓰리샷",
-      "characterIds": ["WomanA"]
-    }
-  ]
+
+"title": "string",
+
+"scenes": [
+
+{
+
+"sceneNumber": 1,
+
+"scriptLine": "원문 그대로",
+
+"summary": "short english summary",
+
+"action": "short english action",
+
+"background": "short english background",
+
+"shotType": "원샷/투샷/쓰리샷",
+
+"cameraAngle": "close-up | wide | medium | canted (dutch) | over-the-shoulder | POV | low-angle | high-angle",
+
+"characterIds": ["WomanA"],
+
+"shortPrompt": "short image prompt",
+
+"longPrompt": "detailed image prompt",
+
+"negativePrompt": "NOT cartoon, NOT anime, ..."
+
 }
 
+]
+
+}
+
+{ "title": "설원 위의 백조들, 알고 보니 펭귄?", "scenes": [ { "sceneNumber": 1, "scriptLine": "여러분, 겨울 골프의 꽃은 역시 눈 내리는 필드 아니겠어요?", "summary": "Narrator introduces the winter golf course scene", "action": "Man smiling at camera with a snowy golf course behind him", "background": "Luxurious golf course covered in pristine white snow", "shotType": "원샷", "cameraAngle": "medium", "characterIds": ["ManA"], "shortPrompt": "A handsome Korean man in winter golf wear smiling at camera, snowy golf course background", "longPrompt": "A handsome Korean man in high-end winter golf apparel smiling warmly at the camera, standing in front of a vast, luxurious golf course covered in thick white snow, soft snowflakes falling, cinematic lighting, high resolution, 8k", "negativePrompt": "NOT cartoon, NOT anime, NOT low quality, blurry, distorted face" }, { "sceneNumber": 2, "scriptLine": "여기 설원을 배경으로 화보 찍으러 온 골프 여신들이 떴습니다.", "summary": "Beautiful women walking onto the snowy field", "action": "Two stylish women walking gracefully onto the snow-covered field", "background": "Open snowy golf fairway with pine trees", "shotType": "투샷", "cameraAngle": "wide", "characterIds": ["WomanA", "WomanB"], "shortPrompt": "Two beautiful Korean women in stylish winter golf outfits walking on snow", "longPrompt": "Two beautiful Korean women wearing trendy, expensive winter golf outfits and fur hats walking gracefully across a pure white snow-covered fairway, looking like models, cinematic wide shot, winter wonderland aesthetic", "negativePrompt": "NOT cartoon, NOT anime, messy, ugly, distorted limbs" }, { "sceneNumber": 3, "scriptLine": "하얀 눈 위에서 컬러볼 딱 놓고 폼 잡는데, 정말 CF의 한 장면이네요.", "summary": "Woman posing with a colorful golf ball on snow", "action": "Woman putting a bright pink golf ball on a tee in the snow", "background": "Close-up of white snow and a bright tee", "shotType": "원샷", "cameraAngle": "low-angle", "characterIds": ["WomanA"], "shortPrompt": "Close up of a pink golf ball on a tee in white snow, woman posing behind", "longPrompt": "A low-angle close-up shot of a vibrant pink golf ball perched on a tee in deep white snow, a beautiful woman in the background striking a professional golf pose, soft focus on background, high contrast, commercial style", "negativePrompt": "NOT cartoon, NOT anime, dirty snow, dull colors" }, { "sceneNumber": 4, "scriptLine": "비싼 방한복에 털모자까지 풀세팅하고 우아하게 티박스에 올라갑니다.", "summary": "Woman in full winter gear stepping onto the tee box", "action": "Woman in luxurious fur-trimmed golf wear stepping confidently", "background": "Elevated tee box overlooking a snowy valley", "shotType": "원샷", "cameraAngle": "medium", "characterIds": ["WomanB"], "shortPrompt": "Elegant Korean woman in luxury fur golf wear walking onto a tee box", "longPrompt": "An elegant Korean woman wearing a luxury fur-trimmed winter golf jacket and a matching fur hat, walking confidently onto a snowy tee box, holding a driver club, high-end fashion vibe, snowy mountains in the distance", "negativePrompt": "NOT cartoon, NOT anime, cheap clothes, poor lighting" }, { "sceneNumber": 5, "scriptLine": "자, 드디어 회심의 드라이버 샷! 깡 하는 소리와 함께 눈꽃이 흩날려요.", "summary": "Powerful driver swing scattering snow", "action": "Woman swinging a driver club, snow spraying into the air", "background": "Tee box with snow-covered trees", "shotType": "원샷", "cameraAngle": "canted (dutch)", "characterIds": ["WomanA"], "shortPrompt": "Action shot of a woman swinging a golf club, snow splashing in the air", "longPrompt": "A dynamic action shot of a woman in winter gear performing a powerful driver swing, white snow splashing and glittering in the air like dust, canted angle to enhance energy, professional golf form, 8k resolution", "negativePrompt": "NOT cartoon, NOT anime, static, no snow splash, bad form" }, { "sceneNumber": 6, "scriptLine": "근데 공은 어디 갔냐고요? 저기 앞 3미터 지점 눈 속에 박혔네요.", "summary": "The golf ball buried in the snow nearby", "action": "Camera looking down at a golf ball barely visible in deep snow", "background": "Deep snow just a few meters from the tee", "shotType": "원샷", "cameraAngle": "POV", "characterIds": [], "shortPrompt": "A golf ball buried deep in a hole in the snow, close-up POV", "longPrompt": "A first-person view (POV) looking down at a golf ball nearly completely buried in a deep hole in the white snow, only 3 meters away from the starting point, humorous disappointment, crisp textures of snow", "negativePrompt": "NOT cartoon, NOT anime, grass visible, multiple balls" }, { "sceneNumber": 7, "scriptLine": "언니 한 분이 공 찾는다고 눈밭을 헤치는데, 이건 뭐 거의 해병대 훈련급이에요.", "summary": "Woman struggling through deep snow to find her ball", "action": "Woman knee-deep in snow, looking exhausted and desperate", "background": "A rough area of the course with very deep snow", "shotType": "원샷", "cameraAngle": "wide", "characterIds": ["WomanA"], "shortPrompt": "Woman struggling to walk through knee-deep snow on a golf course", "longPrompt": "A wide shot of a woman in high-end golf clothes now looking disheveled, struggling to walk through knee-deep snow in the rough, hunting for her ball, humorous struggle, like military training, vast snowy landscape", "negativePrompt": "NOT cartoon, NOT anime, easy walking, smiling" }, { "sceneNumber": 8, "scriptLine": "겨우 찾아서 치려는데 발이 미끄덩! 나이스 샷 대신 나이스 엉덩방아!", "summary": "Woman slips and falls on her bottom", "action": "Woman falling backwards in the snow with golf club in hand", "background": "Icy patch on the snowy fairway", "shotType": "원샷", "cameraAngle": "medium", "characterIds": ["WomanA"], "shortPrompt": "Woman slipping and falling on her butt in the snow, funny action", "longPrompt": "A medium shot of a woman in golf wear mid-air as she slips on a hidden ice patch, falling onto her bottom in the deep snow, legs up, funny expression, golf club flying slightly, comedic timing", "negativePrompt": "NOT cartoon, NOT anime, graceful, standing" }, { "sceneNumber": 9, "scriptLine": "옷은 이미 다 젖어서 흙탕물 범벅이고, 화장은 눈물인지 콧물인지 다 번졌어요.", "summary": "Close-up of the woman's ruined makeup and wet clothes", "action": "Woman with smudged mascara and muddy clothes looking at camera", "background": "Snowy background with bits of mud showing", "shotType": "원샷", "cameraAngle": "close-up", "characterIds": ["WomanA"], "shortPrompt": "Close up of a woman with smudged makeup and muddy clothes, looking tired", "longPrompt": "A dramatic close-up of a woman's face, her mascara is smudged from melting snow/tears, her expensive jacket is stained with muddy slush, looking hilariously miserable and exhausted, high detail on face", "negativePrompt": "NOT cartoon, NOT anime, clean makeup, perfect hair" }, { "sceneNumber": 10, "scriptLine": "결국 9홀도 못 돌고 클럽하우스로 도망치듯 뛰어갑니다.", "summary": "The women running away toward the building", "action": "Two women running clumsily through the snow toward a building", "background": "Clubhouse building in the distance across a snowy field", "shotType": "투샷", "cameraAngle": "over-the-shoulder", "characterIds": ["WomanA", "WomanB"], "shortPrompt": "Two women running through snow toward a golf clubhouse in distance", "longPrompt": "An over-the-shoulder shot looking past a golf cart at two women running clumsily and hurriedly through deep snow toward a warm golf clubhouse, leaving a trail of messy footprints, retreating in defeat", "negativePrompt": "NOT cartoon, NOT anime, slow walking, staying on field" }, { "sceneNumber": 11, "scriptLine": "역시 겨울엔 골프채 대신 붕어빵이나 들고 있는 게 정답인가 봐요.", "summary": "Transition back to narrator holding winter snacks", "action": "Man holding a bag of hot Bungeo-ppang (fish-shaped pastry)", "background": "Warm indoor clubhouse setting with a window view of snow", "shotType": "원샷", "cameraAngle": "medium", "characterIds": ["ManA"], "shortPrompt": "Korean man holding a bag of hot fish-shaped pastries indoors", "longPrompt": "A medium shot of a Korean man inside a cozy clubhouse, smiling and holding a steaming paper bag of Bungeo-ppang (Korean fish-shaped pastries), steam rising, snowy window in the background, warm interior lighting", "negativePrompt": "NOT cartoon, NOT anime, outdoors, cold lighting" }, { "sceneNumber": 12, "scriptLine": "오늘 스코어는 묻지 마세요, 영하 10도니까 그냥 100타라고 칩시다!", "summary": "Narrator laughing and gesturing to the camera", "action": "Man laughing and waving off the camera with a '100' sign on screen", "background": "Cozy clubhouse lounge", "shotType": "원샷", "cameraAngle": "close-up", "characterIds": ["ManA"], "shortPrompt": "Man laughing at camera, waving hand as if to say 'no more'", "longPrompt": "A close-up shot of the man laughing heartily, waving his hand at the camera as if dismissing the score, friendly and humorous expression, high-quality digital cinematography, blurred clubhouse background", "negativePrompt": "NOT cartoon, NOT anime, angry, serious" } ] }
 

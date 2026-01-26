@@ -13,12 +13,94 @@ export type ManualSceneSummary = {
   action?: string;
   background?: string;
   shotType?: string;
+  cameraAngle?: string;
+  longPrompt?: string;
+  shortPrompt?: string;
+  negativePrompt?: string;
   characterIds?: string[];
 };
 
 export type ManualSceneParseResult = {
   title?: string;
   scenes: ManualSceneSummary[];
+};
+
+export type CharacterExtractionResult = {
+  characters: Array<{
+    name: string;
+    gender: 'female' | 'male' | 'unknown';
+    role?: string;
+  }>;
+  lineCharacterNames: Array<{
+    line: number;
+    characters: string[];
+  }>;
+};
+
+export const buildCharacterExtractionPrompt = (options: {
+  scriptLines: string[];
+  defaultGender: 'female' | 'male';
+}) => {
+  const { scriptLines, defaultGender } = options;
+  const lines = scriptLines.filter(Boolean);
+
+  return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 등장인물 추출 전문가입니다. 아래 대본 라인에서 등장인물과 각 라인에 등장하는 인물 목록을 추출하세요.
+대본을 변경하지 말고, 등장인물 이름만 추출하세요. 주인공이 이름 없이 "나/내가"로 표현되면 이름은 "주인공"으로 표기하세요.
+성별이 불명확한 경우 gender는 "unknown"으로 두고, 주인공의 경우 기본 성별을 따르세요.
+복수 지칭(예: "얘들아", "언니들", "친구들")이 있으면 최소 2명 이상의 인물로 분리하세요.
+이름이 없는 조연은 "지인1", "지인2"처럼 구분해 작성하세요.
+
+기본 성별: ${defaultGender}
+
+## 대본 라인
+${lines.map((line, index) => `${index + 1}. ${line}`).join('\n')}
+
+## 출력 JSON 스키마
+{
+  "characters": [
+    { "name": "주인공", "gender": "${defaultGender}", "role": "narrator" }
+  ],
+  "lineCharacterNames": [
+    { "line": 1, "characters": ["주인공"] }
+  ]
+}`;
+};
+
+export const parseCharacterExtractionResponse = (rawText: string): CharacterExtractionResult => {
+  if (!rawText) return { characters: [], lineCharacterNames: [] };
+  let jsonClean = rawText.trim();
+  jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
+  if (jsonClean.startsWith('```')) {
+    jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+  }
+
+  const parsed = parseJsonFromText<any>(jsonClean, ['characters', 'lineCharacterNames']);
+  if (!parsed) return { characters: [], lineCharacterNames: [] };
+
+  const characters = Array.isArray(parsed.characters)
+    ? parsed.characters
+        .map((item: any) => ({
+          name: String(item?.name || '').trim(),
+          gender: item?.gender === 'female' || item?.gender === 'male' ? item.gender : 'unknown',
+          role: item?.role ? String(item.role) : undefined
+        }))
+        .filter((item: any) => item.name)
+    : [];
+
+  const lineCharacterNames = Array.isArray(parsed.lineCharacterNames)
+    ? parsed.lineCharacterNames
+        .map((item: any) => ({
+          line: Number(item?.line || 0),
+          characters: Array.isArray(item?.characters)
+            ? item.characters.map((name: any) => String(name || '').trim()).filter(Boolean)
+            : []
+        }))
+        .filter((item: any) => item.line > 0)
+    : [];
+
+  return { characters, lineCharacterNames };
 };
 
 export const buildManualSceneDecompositionPrompt = (options: {
@@ -48,6 +130,8 @@ export const buildManualSceneDecompositionPrompt = (options: {
 3) scriptLine은 대본 라인을 **그대로 복사**
 4) characterIds는 아래 목록의 ID만 사용 (없으면 빈 배열 [])
 5) summary/action/background는 짧고 명확한 영어 묘사로 작성
+6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
+7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
 
 ## 대본 라인
 ${lines.map((line, index) => `${index + 1}. ${line}`).join('\n')}
@@ -66,7 +150,11 @@ ${characterLines}
       "action": "short english action",
       "background": "short english background",
       "shotType": "원샷/투샷/쓰리샷",
-      "characterIds": ["WomanA"]
+      "cameraAngle": "close-up | wide | medium | canted (dutch) | over-the-shoulder | POV | low-angle | high-angle",
+      "characterIds": ["WomanA"],
+      "shortPrompt": "short image prompt",
+      "longPrompt": "detailed image prompt",
+      "negativePrompt": "NOT cartoon, NOT anime, ..."
     }
   ]
 }`;
@@ -89,7 +177,11 @@ export const parseManualSceneDecompositionResponse = (rawText: string): ManualSc
     'action',
     'background',
     'shotType',
-    'characterIds'
+    'characterIds',
+    'cameraAngle',
+    'shortPrompt',
+    'longPrompt',
+    'negativePrompt'
   ]);
 
   if (!parsed) return { scenes: [] };
@@ -104,6 +196,10 @@ export const parseManualSceneDecompositionResponse = (rawText: string): ManualSc
     action: scene.action || '',
     background: scene.background || '',
     shotType: scene.shotType || '',
+    cameraAngle: scene.cameraAngle || '',
+    shortPrompt: scene.shortPrompt || scene.short_prompt || '',
+    longPrompt: scene.longPrompt || scene.long_prompt || '',
+    negativePrompt: scene.negativePrompt || scene.negative_prompt || '',
     characterIds: Array.isArray(scene.characterIds) ? scene.characterIds : []
   }));
 

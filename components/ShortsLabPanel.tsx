@@ -14,12 +14,12 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { parseJsonFromText } from '../services/jsonParse';
-import { buildManualSceneDecompositionPrompt, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
+import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
@@ -101,7 +101,13 @@ const MANUAL_SLOT_META: Record<string, { id: string; slotLabel: string; gender: 
     'Woman C': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
     'Woman D': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
     'Man A': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+    'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
+    'WomanA': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
+    'WomanB': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
+    'WomanC': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
+    'WomanD': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
+    'ManA': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
+    'ManB': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
 };
 
 const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: string; body: string }> = {
@@ -113,10 +119,247 @@ const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: 
     ManB: { gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
 };
 
+const SLOT_ORDER = ['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB'];
+const CAMERA_ANGLE_KEYWORDS = [
+    'close-up',
+    'close up',
+    'medium',
+    'wide',
+    'canted',
+    'over-the-shoulder',
+    'ots',
+    'pov',
+    'low-angle',
+    'high-angle',
+    'bird\'s-eye',
+    'overhead',
+    'tracking',
+    'handheld'
+];
+const CAMERA_PROMPT_FALLBACKS: Record<string, string> = {
+    'close-up': 'close-up portrait shot, face in focus, shallow depth of field',
+    'close up': 'close-up portrait shot, face in focus, shallow depth of field',
+    medium: 'medium shot, waist-up framing, natural pose',
+    wide: 'wide establishing shot, full body visible, environment context',
+    canted: 'canted (dutch) angle shot, dynamic framing',
+    'over-the-shoulder': 'over-the-shoulder shot, perspective view',
+    ots: 'over-the-shoulder shot, perspective view',
+    pov: 'first-person POV shot, subjective camera angle',
+    'low-angle': 'low-angle shot, dramatic perspective',
+    'high-angle': 'high-angle shot, overhead perspective',
+    'bird\'s-eye': 'bird\'s-eye view shot, elevated perspective',
+    overhead: 'overhead shot, top-down composition',
+    tracking: 'tracking shot, subject in motion, dynamic framing',
+    handheld: 'handheld candid shot, subtle motion blur'
+};
+const CANDID_ACTION_FLAVORS = [
+    'candid action shot, mid-motion, natural movement',
+    'dynamic pose, hair in motion, spontaneous gesture',
+    'playful movement, caught mid-step, lively energy',
+    'energetic action, subtle motion blur, candid vibe',
+    'cinematic candid shot, authentic body language'
+];
+const WINTER_ACCESSORY_SET = new Set(getWinterAccessoryPool());
+
 const getCharacterGender = (id: string): 'female' | 'male' => {
     const meta = DEFAULT_CHARACTER_META[id];
     if (meta) return meta.gender;
     return id.toLowerCase().includes('man') ? 'male' : 'female';
+};
+
+const normalizeSlotToken = (value: string) => value.replace(/[\s_]+/g, '').trim();
+
+const normalizeSlotId = (value: string): string => {
+    const normalized = normalizeSlotToken(value);
+    if (!normalized) return '';
+    const key = normalized.toLowerCase();
+    const canonical: Record<string, string> = {
+        womana: 'WomanA',
+        womanb: 'WomanB',
+        womanc: 'WomanC',
+        womand: 'WomanD',
+        mana: 'ManA',
+        manb: 'ManB'
+    };
+    return canonical[key] || '';
+};
+
+const mapAliasToSlot = (value: string, defaultGender: 'female' | 'male'): string => {
+    const lower = value.toLowerCase();
+    if (/(주인공|나|내가|narrator|protagonist|character1|character_1)/i.test(lower)) {
+        return defaultGender === 'male' ? 'ManA' : 'WomanA';
+    }
+    if (/캐디|caddy/i.test(lower)) return 'WomanD';
+    return '';
+};
+
+const inferGenderFromText = (text: string, fallback: 'female' | 'male') => {
+    const lower = (text || '').toLowerCase();
+    const femaleHints = /(여성|여자|여신|언니|언니들|여성들|미녀|걸|girl|woman|ladies|her)/i;
+    const maleHints = /(남성|남자|오빠|형|bro|boy|man|men|his)/i;
+    if (femaleHints.test(lower) && !maleHints.test(lower)) return 'female';
+    if (maleHints.test(lower) && !femaleHints.test(lower)) return 'male';
+    return fallback;
+};
+
+const pickUniqueItems = (pool: string[], used: Set<string>, count: number) => {
+    const available = pool.filter((item) => !used.has(item));
+    const picks: string[] = [];
+    while (picks.length < count && available.length > 0) {
+        const index = Math.floor(Math.random() * available.length);
+        const [picked] = available.splice(index, 1);
+        if (picked) picks.push(picked);
+    }
+    if (picks.length < count) {
+        const fallbackPool = pool.filter((item) => !picks.includes(item));
+        while (picks.length < count && fallbackPool.length > 0) {
+            const index = Math.floor(Math.random() * fallbackPool.length);
+            const [picked] = fallbackPool.splice(index, 1);
+            if (picked) picks.push(picked);
+        }
+    }
+    picks.forEach((item) => used.add(item));
+    return picks;
+};
+
+const buildWinterAccessoryMap = (characterIds: string[]) => {
+    const pool = getWinterAccessoryPool();
+    const used = new Set<string>();
+    const map = new Map<string, string[]>();
+    characterIds.forEach((id) => {
+        if (getCharacterGender(id) !== 'female') {
+            map.set(id, []);
+            return;
+        }
+        const picks = pickUniqueItems(pool, used, 2);
+        map.set(id, picks);
+    });
+    return map;
+};
+
+const normalizeSlotList = (slotIds: string[], defaultGender: 'female' | 'male', hasCaddy: boolean) => {
+    const normalized = slotIds
+        .map((id) => normalizeSlotId(id))
+        .filter(Boolean);
+    if (hasCaddy) normalized.push('WomanD');
+    const unique = new Set(normalized);
+    const ordered = SLOT_ORDER.filter((id) => unique.has(id));
+    if (ordered.length === 0) {
+        return [defaultGender === 'male' ? 'ManA' : 'WomanA'];
+    }
+    return ordered;
+};
+
+const normalizeSceneCharacterIds = (
+    rawIds: string[],
+    slotMap: Map<string, string>,
+    defaultGender: 'female' | 'male',
+    hasCaddy: boolean
+) => {
+    const resolved: string[] = [];
+    const seen = new Set<string>();
+    rawIds.forEach((raw) => {
+        const trimmed = String(raw || '').trim();
+        if (!trimmed) return;
+        const direct = normalizeSlotId(trimmed);
+        const mapped = slotMap.get(trimmed) || slotMap.get(normalizeSlotToken(trimmed));
+        const alias = mapAliasToSlot(trimmed, defaultGender);
+        const slot = direct || mapped || alias;
+        if (!slot) return;
+        if (!seen.has(slot)) {
+            seen.add(slot);
+            resolved.push(slot);
+        }
+    });
+    if (hasCaddy && !seen.has('WomanD')) {
+        resolved.push('WomanD');
+    }
+    if (resolved.length === 0) {
+        resolved.push(defaultGender === 'male' ? 'ManA' : 'WomanA');
+    }
+    return normalizeSlotList(resolved, defaultGender, hasCaddy);
+};
+
+const stripLongPromptMarkers = (prompt: string) => {
+    let cleaned = (prompt || '').trim();
+    if (!cleaned) return '';
+    cleaned = cleaned.replace(/^Scene\s+\d+[.,]?\s*/i, '');
+    if (cleaned.includes(PROMPT_CONSTANTS.START)) {
+        cleaned = cleaned.replace(PROMPT_CONSTANTS.START, '').trim();
+    }
+    if (cleaned.includes(PROMPT_CONSTANTS.END)) {
+        cleaned = cleaned.replace(PROMPT_CONSTANTS.END, '').trim();
+    }
+    cleaned = cleaned.replace(/Slot\s+[^:]+:/gi, '').trim();
+    cleaned = cleaned.replace(/^,\s*/g, '').replace(/,\s*$/g, '').trim();
+    return cleaned;
+};
+
+const stripCameraPrefix = (prompt: string) => {
+    const keywordPattern = CAMERA_ANGLE_KEYWORDS.map((item) => item.replace('-', '\\-')).join('|');
+    const regex = new RegExp(`^\\s*(?:${keywordPattern})[^,]*,?\\s*`, 'i');
+    return prompt.replace(regex, '').trim();
+};
+
+const mergeNarrativeParts = (parts: string[]) => {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    parts.forEach((part) => {
+        const trimmed = (part || '').trim();
+        if (!trimmed) return;
+        const key = trimmed.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        merged.push(trimmed);
+    });
+    return merged.join(', ');
+};
+
+const detectCameraKeyword = (prompt: string) => {
+    const lower = (prompt || '').toLowerCase();
+    return CAMERA_ANGLE_KEYWORDS.find((keyword) => lower.includes(keyword)) || '';
+};
+
+const pickRotatingCandidate = (candidates: string[], index: number, lastValue?: string) => {
+    const filtered = candidates.map((item) => (item || '').trim()).filter(Boolean);
+    if (filtered.length === 0) return '';
+    let pick = filtered[index % filtered.length];
+    if (lastValue && pick.toLowerCase() === lastValue.toLowerCase() && filtered.length > 1) {
+        pick = filtered[(index + 1) % filtered.length];
+    }
+    return pick;
+};
+
+const getExpressionCandidates = (genre: string, storyStage: string) => {
+    const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/[\/\\]/g, '-');
+    const expressionMap = getExpressionKeywordMap();
+    const expressions = expressionMap[genreKey] || expressionMap['default'] || {};
+    const candidate = (expressions as Record<string, unknown>)[storyStage];
+    if (Array.isArray(candidate)) return candidate.filter((item) => typeof item === 'string') as string[];
+    const base: string[] = typeof candidate === 'string' ? [candidate] : [];
+    const fallback = (expressionMap['default'] || {})[storyStage];
+    if (typeof fallback === 'string' && fallback && !base.includes(fallback)) {
+        base.push(fallback);
+    }
+    return base;
+};
+
+const pickCameraPrompt = (basePrompt: string, sceneIndex: number, lastKeyword?: string) => {
+    const baseKeyword = detectCameraKeyword(basePrompt);
+    const shouldRotate = !baseKeyword || baseKeyword === 'medium' || baseKeyword === 'close-up' || baseKeyword === 'close up';
+    let keyword = shouldRotate
+        ? CAMERA_ANGLE_KEYWORDS[(sceneIndex + 1) % CAMERA_ANGLE_KEYWORDS.length]
+        : baseKeyword;
+    const normalizedKeyword = keyword.toLowerCase();
+    if (lastKeyword && normalizedKeyword === lastKeyword.toLowerCase()) {
+        const currentIndex = CAMERA_ANGLE_KEYWORDS.findIndex((item) => item === normalizedKeyword);
+        const nextIndex = currentIndex >= 0
+            ? (currentIndex + 1) % CAMERA_ANGLE_KEYWORDS.length
+            : (sceneIndex + 1) % CAMERA_ANGLE_KEYWORDS.length;
+        keyword = CAMERA_ANGLE_KEYWORDS[nextIndex];
+        return CAMERA_PROMPT_FALLBACKS[keyword] || basePrompt;
+    }
+    return basePrompt;
 };
 
 const buildAccessoryMap = (
@@ -146,6 +389,7 @@ const buildAccessoryMap = (
             : [];
         ids.forEach((id) => {
             const gender = getCharacterGender(id);
+            if (gender === 'male') return;
             let accessories: string[] = [];
             let attempts = 0;
             while (attempts < 5 && accessories.length === 0) {
@@ -225,8 +469,8 @@ const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
     const femaleCandidates = outfitPool.filter(item => !item.categories.includes('MALE'));
     const maleCandidates = outfitPool.filter(item => item.categories.includes('MALE') || item.categories.includes('UNISEX'));
 
-    const usedFemale = new Set<string>();
-    const usedMale = new Set<string>();
+    const usedFemale = new Set<OutfitPoolItem>();
+    const usedMale = new Set<OutfitPoolItem>();
     const outfitMap = new Map<string, string>();
 
     characterIds.forEach((id) => {
@@ -249,6 +493,10 @@ const buildRandomAccessoriesByCharacter = (characterIds: string[], enableWinter?
 
     characterIds.forEach((id) => {
         const gender = getCharacterGender(id);
+        if (gender === 'male') {
+            map.set(id, []);
+            return;
+        }
         const basePool = GENERAL_ACCESSORIES.flatMap(group => group.items);
         const basePick = basePool.length > 0 ? basePool[Math.floor(Math.random() * basePool.length)] : '';
         const baseAccessories = basePick ? [basePick] : [];
@@ -317,6 +565,75 @@ const normalizeShotType = (shotType?: string, characterIds?: string[]): '원샷'
     if (count >= 3) return '쓰리샷';
     if (count === 2) return '투샷';
     return '원샷';
+};
+
+const enforceShotTypeMix = (
+    shotType: '원샷' | '투샷' | '쓰리샷',
+    characterIds: string[],
+    sceneIndex: number,
+    totalScenes: number
+): '원샷' | '투샷' | '쓰리샷' => {
+    const hasTwo = characterIds.length >= 2;
+    const hasThree = characterIds.length >= 3;
+
+    if (hasThree && (sceneIndex === totalScenes - 1 || sceneIndex % 7 === 0)) {
+        return '쓰리샷';
+    }
+    if (hasTwo && (sceneIndex % 2 === 1)) {
+        return '투샷';
+    }
+    return shotType;
+};
+
+const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: string; role?: string }>) => {
+    const mapping = new Map<string, string>();
+    const hasCaddy = characters.some((char) => {
+        const name = (char.name || '').trim();
+        return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
+    });
+    const femaleSlots = hasCaddy
+        ? ['WomanA', 'WomanB', 'WomanC']
+        : ['WomanA', 'WomanB', 'WomanC', 'WomanD'];
+    const maleSlots = ['ManA', 'ManB'];
+    let femaleIndex = 0;
+    let maleIndex = 0;
+
+    characters.forEach((char) => {
+        const name = char.name.trim();
+        if (!name) return;
+        const isCaddy = /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
+        if (isCaddy) {
+            mapping.set(name, 'WomanD');
+            return;
+        }
+        if (char.gender === 'male') {
+            const slot = maleSlots[maleIndex] || maleSlots[maleSlots.length - 1];
+            mapping.set(name, slot);
+            maleIndex += 1;
+            return;
+        }
+        const slot = femaleSlots[femaleIndex] || femaleSlots[femaleSlots.length - 1];
+        mapping.set(name, slot);
+        femaleIndex += 1;
+    });
+
+    return mapping;
+};
+
+const mapLineCharactersToSlots = (
+    lineCharacterNames: Array<{ line: number; characters: string[] }>,
+    slotMap: Map<string, string>
+) => {
+    const lineMap = new Map<number, string[]>();
+    lineCharacterNames.forEach((item) => {
+        const slots = item.characters
+            .map((name) => slotMap.get(name) || '')
+            .filter(Boolean);
+        if (slots.length > 0) {
+            lineMap.set(item.line, Array.from(new Set(slots)));
+        }
+    });
+    return lineMap;
 };
 
 const buildFallbackIdentity = (gender: 'female' | 'male', targetAgeLabel?: string) => {
@@ -582,9 +899,12 @@ const postProcessAiScenes = (
     
     const totalScenes = options.totalScenes || scenes.length || 12;
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
-    const accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
+    let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
 
     if (options.enableWinterAccessories) {
+        if (accessoryMap.size === 0 && characterInfoMap.size > 0) {
+            accessoryMap = buildWinterAccessoryMap(Array.from(characterInfoMap.keys()));
+        }
         const winterized = new Map<string, CharacterInfo>();
         characterInfoMap.forEach((info, id) => {
             const gender = getCharacterGender(id);
@@ -598,7 +918,8 @@ const postProcessAiScenes = (
 
     return scenes.map((scene: any, idx: number) => {
         const sceneNumber = scene.sceneNumber || idx + 1;
-        const shotType = normalizeShotType(scene.shotType, scene.characterIds);
+        const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
+        const shotType = normalizeShotType(scene.shotType, characterIds);
 
         // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
         const sceneGender = characterIds.length === 1
@@ -623,7 +944,6 @@ const postProcessAiScenes = (
 
         // 2. [V3.2] 신규 검증 및 자동 수정 레이어 적용
         // 프롬프트 검증 및 수정
-        const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
         const characterInfos = characterIds
             .map((id: string) => characterInfoMap.get(id))
             .filter(Boolean) as CharacterInfo[];
@@ -636,9 +956,14 @@ const postProcessAiScenes = (
         // 3. 네거티브 프롬프트 분리 처리
         const extracted = extractNegativePrompt(processedPrompt);
         processedPrompt = extracted.cleaned;
-        if (options.enableWinterAccessories && characterIds.length <= 1) {
+        if (options.enableWinterAccessories) {
             const genderForWinter = sceneGender || 'female';
-            const winterApplied = applyWinterLookToExistingPrompt(processedPrompt, scene.longPromptKo || '', genderForWinter);
+            const winterApplied = applyWinterLookToExistingPrompt(
+                processedPrompt,
+                scene.longPromptKo || '',
+                genderForWinter,
+                { applyAccessories: false }
+            );
             processedPrompt = winterApplied.longPrompt;
             scene.longPromptKo = winterApplied.longPromptKo || scene.longPromptKo;
         }
@@ -1581,6 +1906,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             .map((id) => {
                 const meta = characterMap.get(id);
                 if (!meta) return '';
+                const fallbackHair = meta.hair || DEFAULT_CHARACTER_META[meta.id]?.hair || '';
+                const fallbackBody = meta.body
+                    || DEFAULT_CHARACTER_META[meta.id]?.body
+                    || (meta.gender === 'female' ? PROMPT_CONSTANTS.FEMALE_BODY_A : '');
                 const outfitPhrase = meta.outfit
                     ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
                     : '';
@@ -1589,8 +1918,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     : '';
                 const descriptor = [
                     meta.identity,
-                    meta.hair,
-                    meta.body,
+                    fallbackHair,
+                    fallbackBody,
                     outfitPhrase,
                     accessoryPhrase
                 ].filter(Boolean).join(', ');
@@ -2426,6 +2755,7 @@ ${scriptInput}
         setGenerationError(null);
 
         try {
+            const inferredTopicGender = inferGenderFromText(aiTopic, settings.koreanGender);
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
             const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
                 ? {
@@ -2447,7 +2777,7 @@ ${scriptInput}
                 topic: aiTopic,
                 genre: aiGenre,
                 targetAge: aiTargetAge,
-                gender: settings.koreanGender,
+                gender: inferredTopicGender,
                 genreGuideOverride,
                 enableWinterAccessories
             });
@@ -2472,6 +2802,10 @@ ${scriptInput}
 
             const scriptData = await scriptResponse.json();
             const scriptText = scriptData.rawResponse || scriptData.text || scriptData.result || '';
+            const scriptFolderName = scriptData._folderName;
+            if (scriptFolderName) {
+                setCurrentFolderName(scriptFolderName);
+            }
 
             let jsonClean = scriptText.trim();
             jsonClean = jsonClean.replace(/^(JSON|json)\s+/, "").trim();
@@ -2493,14 +2827,47 @@ ${scriptInput}
             setScriptInput(finalScript);
 
             const scriptLines = extractManualScriptLines(finalScript);
-            const hasCaddy = /캐디|caddy|골프|golf/i.test(finalScript) || /골프|golf/i.test(aiTopic);
-            const characterList = [
-                { id: 'WomanA', name: '지영', slotLabel: 'Woman A' },
-                { id: 'WomanB', name: '혜경', slotLabel: 'Woman B' },
-                { id: 'ManA', name: '준호', slotLabel: 'Man A' },
-                { id: 'ManB', name: '민수', slotLabel: 'Man B' },
-                ...(hasCaddy ? [{ id: 'WomanD', name: '지우', slotLabel: 'Woman D' }] : [])
-            ];
+            const inferredScriptGender = inferGenderFromText(`${aiTopic} ${finalScript}`, inferredTopicGender);
+
+            const characterExtractPrompt = buildCharacterExtractionPrompt({
+                scriptLines,
+                defaultGender: inferredScriptGender
+            });
+
+            const characterResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: characterExtractPrompt,
+                    maxTokens: 1200,
+                    temperature: 0.2
+                })
+            });
+
+            if (!characterResponse.ok) {
+                throw new Error(`API 오류: ${characterResponse.status}`);
+            }
+
+            const characterData = await characterResponse.json();
+            const characterText = characterData.rawResponse || characterData.text || characterData.result || '';
+            const extractedCharacters = parseCharacterExtractionResponse(characterText);
+
+            const slotMap = buildCharacterSlotMapping(extractedCharacters.characters);
+            const lineCharacterMap = mapLineCharactersToSlots(extractedCharacters.lineCharacterNames, slotMap);
+
+            const uniqueSlotIds = Array.from(new Set(Array.from(slotMap.values())));
+            const hasCaddy = extractedCharacters.characters.some((char) => {
+                const name = (char.name || '').trim();
+                return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
+            });
+            const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
+
+            const characterList = allSlotIds.map((slotId) => ({
+                id: slotId,
+                name: '',
+                slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man ')
+            }));
 
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
@@ -2514,6 +2881,7 @@ ${scriptInput}
                 body: JSON.stringify({
                     service: selectedService,
                     prompt: scenePrompt,
+                    folderName: scriptFolderName,
                     maxTokens: 2000,
                     temperature: 0.6
                 })
@@ -2538,23 +2906,76 @@ ${scriptInput}
             }
 
             const characterIds = characterList.map(item => item.id);
-            const autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
+            if (enableWinterAccessories) {
+                const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
+                const updated = new Map<string, ManualCharacterPrompt>();
+                autoCharacterMap.forEach((meta, id) => {
+                    const winterOutfit = meta.gender === 'female' && meta.outfit
+                        ? convertToTightLongSleeveWithShoulderLine(meta.outfit)
+                        : meta.outfit;
+                    if (meta.gender !== 'female') {
+                        updated.set(id, { ...meta, outfit: winterOutfit });
+                        return;
+                    }
+                    const winterAccessories = winterAccessoryMap.get(id) || [];
+                    const accessories = Array.from(new Set([...meta.accessories, ...winterAccessories]));
+                    updated.set(id, { ...meta, outfit: winterOutfit, accessories });
+                });
+                autoCharacterMap = updated;
+            }
             const totalScenes = scenesSource.length || scriptLines.length || 8;
+            let lastExpressionKeyword = '';
+            let lastCameraKeyword = '';
+            let lastActionFlavor = '';
 
             const newScenes = scenesSource.map((scene, idx) => {
                 const sceneNumber = scene.sceneNumber || idx + 1;
                 const sceneText = scene.scriptLine || `장면 ${idx + 1}`;
-                const sceneCharacterIds = Array.isArray(scene.characterIds) && scene.characterIds.length > 0
-                    ? scene.characterIds
-                    : [characterIds[0]];
+                const lineSlots = normalizeSceneCharacterIds(
+                    lineCharacterMap.get(sceneNumber) || [],
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                const normalizedSceneIds = normalizeSceneCharacterIds(
+                    Array.isArray(scene.characterIds) ? scene.characterIds : [],
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                const sceneCharacterIds = lineSlots.length > 0
+                    ? lineSlots
+                    : (normalizedSceneIds.length > 0 ? normalizedSceneIds : [characterIds[0]]);
+                let shotType = normalizeShotType(scene.shotType, sceneCharacterIds);
+                shotType = enforceShotTypeMix(shotType, sceneCharacterIds, idx, totalScenes);
                 const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
-                const expression = getExpressionForScene(aiGenre, storyStage);
-                const cameraPrompt = getCameraPromptForScene(storyStage);
-                const narrativeParts = [
+                const expressionCandidates = getExpressionCandidates(aiGenre, storyStage);
+                let expression = pickRotatingCandidate(expressionCandidates, idx, lastExpressionKeyword);
+                if (!expression) {
+                    expression = 'candid, off-guard';
+                } else if (lastExpressionKeyword && expression.toLowerCase() === lastExpressionKeyword.toLowerCase()) {
+                    if (!expression.toLowerCase().includes('candid')) {
+                        expression = `${expression}, candid, off-guard`;
+                    }
+                }
+                const baseCameraPrompt = scene.cameraAngle || getCameraPromptForScene(storyStage);
+                const cameraPrompt = pickCameraPrompt(baseCameraPrompt, idx, lastCameraKeyword);
+                lastExpressionKeyword = expression;
+                const cameraKeyword = detectCameraKeyword(cameraPrompt);
+                if (cameraKeyword) {
+                    lastCameraKeyword = cameraKeyword;
+                }
+                const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
+                lastActionFlavor = actionFlavor;
+                const cleanedLongPrompt = stripCameraPrefix(stripLongPromptMarkers(scene.longPrompt || ''));
+                const narrativeParts = mergeNarrativeParts([
                     scene.summary,
                     scene.action,
-                    scene.background
-                ].filter(Boolean).join(', ');
+                    scene.background,
+                    actionFlavor,
+                    cleanedLongPrompt
+                ]);
                 const normalizedPrompt = composeManualPrompt(
                     narrativeParts || sceneText,
                     sceneNumber,
@@ -2571,22 +2992,46 @@ ${scriptInput}
                         body: item!.body,
                         outfit: item!.outfit
                     })) as CharacterInfo[];
+                const fallbackCharacters = characterInfos.length > 0
+                    ? characterInfos
+                    : Array.from(autoCharacterMap.values())
+                        .slice(0, 3)
+                        .map((item) => ({
+                            identity: item.identity,
+                            hair: item.hair,
+                            body: item.body,
+                            outfit: item.outfit
+                        }));
                 const fixed = validateAndFixPrompt(
                     normalizedPrompt,
-                    normalizeShotType(scene.shotType, sceneCharacterIds),
-                    characterInfos
+                    shotType,
+                    fallbackCharacters
                 );
+                let mergedPrompt = fixed.fixedPrompt;
+                if (enableWinterAccessories) {
+                    const winterGender = sceneCharacterIds.some((id) => getCharacterGender(id) === 'female')
+                        ? 'female'
+                        : 'male';
+                    const winterApplied = applyWinterLookToExistingPrompt(mergedPrompt, '', winterGender, { applyAccessories: false });
+                    mergedPrompt = winterApplied.longPrompt;
+                }
+                const accessoryMap = new Map<string, string[]>();
+                sceneCharacterIds.forEach((id) => {
+                    const meta = autoCharacterMap.get(id);
+                    accessoryMap.set(id, meta?.accessories || []);
+                });
+                const promptWithAccessories = applyAccessoriesToPrompt(mergedPrompt, sceneCharacterIds, accessoryMap);
 
                 return {
                     number: sceneNumber,
                     text: sceneText,
-                    prompt: fixed.fixedPrompt,
+                    prompt: promptWithAccessories,
                     imageUrl: undefined,
                     shortPromptKo: '',
                     longPromptKo: '',
                     summary: scene.summary || sceneText,
                     camera: scene.background || '',
-                    shotType: scene.shotType || '',
+                    shotType,
                     age: '',
                     outfit: '',
                     isSelected: true,
@@ -2599,7 +3044,7 @@ ${scriptInput}
                     lipSyncSpeaker: '',
                     lipSyncLine: '',
                     lipSyncEmotion: '',
-                    lipSyncTiming: '',
+                    lipSyncTiming: undefined,
                     characterIds: sceneCharacterIds
                 } as Scene;
             });

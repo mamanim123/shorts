@@ -161,6 +161,10 @@ export const selectWinterItems = (gender: 'female' | 'male' = 'female'): { outer
   return { outerwear, accessories };
 };
 
+export const getWinterAccessoryPool = (): string[] => {
+  return Object.values(WINTER_COLLECTION).flat();
+};
+
 // ============================================
 // 타입 정의
 // ============================================
@@ -216,15 +220,26 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
     'Short-sleeve',
     'Tube Top',
     'Cap-sleeve',
-    'Off-shoulder'
+    'Off-shoulder',
+    'Cowl-neck',
+    'Twist Front',
+    'One-shoulder'
   ];
 
   let isChanged = false;
+  const deepVNeckRegex = /deep\s*v[-\s]?neck(?:line)?/gi;
+  const deepNeckRegex = /deep\s*neck(?:line)?/gi;
+  if (deepVNeckRegex.test(newTop) || deepNeckRegex.test(newTop)) {
+    newTop = newTop
+      .replace(deepVNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve')
+      .replace(deepNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve');
+    isChanged = true;
+  }
   shortSleeveKeywords.forEach((keyword) => {
     const regex = new RegExp(keyword, 'gi');
     if (regex.test(newTop)) {
       // 기존 스타일(예: White, Mock-neck 등)은 보존하면서 키워드만 'Tight-fitting long-sleeve'로 치환
-      newTop = newTop.replace(regex, 'Tight-fitting long-sleeve');
+      newTop = newTop.replace(regex, 'Off-shoulder tight-fitting long-sleeve');
       isChanged = true;
     }
   });
@@ -245,7 +260,8 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
 export const applyWinterLookToExistingPrompt = (
   longPrompt: string,
   longPromptKo: string,
-  gender: 'female' | 'male' = 'female'
+  gender: 'female' | 'male' = 'female',
+  options?: { applyAccessories?: boolean; accessories?: string[] }
 ): { longPrompt: string; longPromptKo: string } => {
   if (!longPrompt) return { longPrompt, longPromptKo };
 
@@ -294,9 +310,13 @@ export const applyWinterLookToExistingPrompt = (
   }
 
   // 3. 겨울 악세서리 추가 (기존 accessorized with가 있어도 병합)
-  const { accessories } = selectWinterItems(gender);
+  const applyAccessories = options?.applyAccessories !== false;
+  const providedAccessories = options?.accessories || [];
+  const { accessories } = providedAccessories.length > 0
+    ? { accessories: providedAccessories }
+    : selectWinterItems(gender);
   const accsStr = accessories.join(', ');
-  if (accsStr) {
+  if (applyAccessories && accsStr) {
     const lowerContent = contentPart.toLowerCase();
     if (lowerContent.includes('accessorized with')) {
       // 기존 accessorized with 뒤에 겨울 악세서리 추가
@@ -381,9 +401,13 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
 
 규칙:
 1) scriptBody는 8~12문장 (줄바꿈으로 구분)
-2) 대사는 자연스러운 구어체 한국어
-3) scenes/longPrompt/shortPrompt 절대 포함 금지
-4) 마크다운 금지, JSON만 출력
+2) 1문장 = 훅(강한 시작)
+3) 2~3문장 = 배경/상황 설명
+4) 4~7문장 = 전개/행동
+5) 8~10문장 = 반전/결말
+6) 대사는 자연스러운 구어체 한국어
+7) scenes/longPrompt/shortPrompt 절대 포함 금지
+8) 마크다운 금지, JSON만 출력
 
 [Request ID: ${seed}]`;
 };
@@ -397,9 +421,9 @@ const getPromptConstants = () =>
   getActivePromptRules().promptConstants || DEFAULT_PROMPT_RULES.promptConstants;
 const getNoTextTag = () => getActivePromptRules().noTextTag || DEFAULT_PROMPT_RULES.noTextTag;
 const shouldEnforceKoreanIdentity = () => getActivePromptRules().enforceKoreanIdentity !== false;
-const getExpressionKeywordMap = () =>
+export const getExpressionKeywordMap = () =>
   getActivePromptRules().expressionKeywords || DEFAULT_PROMPT_RULES.expressionKeywords;
-const getCameraMapping = () =>
+export const getCameraMapping = () =>
   getActivePromptRules().cameraMapping || DEFAULT_PROMPT_RULES.cameraMapping;
 const getOutfitSelectionRules = () =>
   getActivePromptRules().outfitSelection || DEFAULT_PROMPT_RULES.outfitSelection;
@@ -1781,6 +1805,24 @@ export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '�
       if (character.identity && !fixedPrompt.includes(character.identity)) {
         issues.push('캐릭터 정체성 정보를 보정했습니다.');
         fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.identity},`);
+      }
+      if (character.hair && !fixedPrompt.includes(character.hair)) {
+        issues.push('캐릭터 헤어 정보를 보정했습니다.');
+        if (character.identity && fixedPrompt.includes(character.identity)) {
+          fixedPrompt = fixedPrompt.replace(character.identity, `${character.identity}, ${character.hair}`);
+        } else {
+          fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.hair},`);
+        }
+      }
+      if (character.body && !fixedPrompt.includes(character.body)) {
+        issues.push('캐릭터 체형 정보를 보정했습니다.');
+        if (character.hair && fixedPrompt.includes(character.hair)) {
+          fixedPrompt = fixedPrompt.replace(character.hair, `${character.hair}, ${character.body}`);
+        } else if (character.identity && fixedPrompt.includes(character.identity)) {
+          fixedPrompt = fixedPrompt.replace(character.identity, `${character.identity}, ${character.body}`);
+        } else {
+          fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.body},`);
+        }
       }
       if (character.outfit && !fixedPrompt.includes(character.outfit)) {
         issues.push('캐릭터 의상 정보를 보정했습니다.');

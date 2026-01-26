@@ -14,11 +14,12 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { parseJsonFromText } from '../services/jsonParse';
+import { buildManualSceneDecompositionPrompt, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService } from './master-studio/services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
@@ -211,6 +212,40 @@ const getVoiceBadge = (scene: Scene) => {
     }
 };
 
+const PARTICLE_REGEX = /(은|는|이|가|을|를|와|과|도|에|에서|으로|로|에게|께|한테|까지|부터|만|의)$/;
+const STOP_WORDS = new Set([
+    '그', '그녀', '그는', '그가', '그를', '그녀를', '여자', '남자', '사람', '주인공', '친구', '상대', '상황', '오늘',
+    '지금', '저', '나', '우리', '너', '너희', '말', '대사', '장면', '씬', '장소', '마음', '생각', '느낌'
+]);
+
+const normalizeToken = (token: string): string => token.replace(PARTICLE_REGEX, '');
+
+const extractCandidateNames = (script: string, candidates: string[]): string[] => {
+    const tokens = script.match(/[가-힣]{2,5}/g) ?? [];
+    const frequency = new Map<string, number>();
+    const normalizedCandidates = candidates
+        .map((candidate) => normalizeToken(candidate.trim()))
+        .filter((candidate) => candidate.length >= 2 && !STOP_WORDS.has(candidate));
+
+    normalizedCandidates.forEach((candidate) => {
+        if (script.includes(candidate)) {
+            frequency.set(candidate, (frequency.get(candidate) ?? 0) + 5);
+        }
+    });
+
+    tokens.forEach((token) => {
+        const normalized = normalizeToken(token);
+        if (!normalized || normalized.length < 2) return;
+        if (STOP_WORDS.has(normalized)) return;
+        const count = frequency.get(normalized) ?? 0;
+        frequency.set(normalized, count + 1);
+    });
+
+    return [...frequency.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name]) => name);
+};
 const normalizeSceneNumbers = (items: Scene[]): Scene[] =>
     items.map((scene, index) => ({
         ...scene,
@@ -432,6 +467,11 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [manualIdentities, setManualIdentities] = useState<CharacterIdentity[]>([]);
     const manualIdentitiesLoadedRef = useRef(false);
     const [manualIdentityLockEnabled, setManualIdentityLockEnabled] = useState(true);
+    const [manualCandidateText, setManualCandidateText] = useState('');
+    const [manualCandidateList, setManualCandidateList] = useState<string[]>([]);
+    const [manualMissingNotice, setManualMissingNotice] = useState('');
+    const [manualExtractionNotice, setManualExtractionNotice] = useState('');
+    const [manualAnalyzing, setManualAnalyzing] = useState(false);
 
     /**
      * 프롬프트 설정 업데이트 헬퍼
@@ -541,6 +581,23 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         ]));
     }, []);
 
+    const createManualIdentity = useCallback((overrides: Partial<CharacterIdentity> = {}): CharacterIdentity => {
+        const nextId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        return {
+            id: nextId,
+            slotId: '',
+            name: '',
+            age: '',
+            outfit: '',
+            accessories: '',
+            isLocked: true,
+            lockedFields: new Set(),
+            ...overrides
+        };
+    }, []);
+
     const updateManualIdentity = useCallback((id: string, updates: Partial<CharacterIdentity>) => {
         setManualIdentities((prev) => prev.map((identity) => (
             identity.id === id ? { ...identity, ...updates } : identity
@@ -629,9 +686,11 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const savedFolder = await getAppStorageValue<string | null>('shorts-lab-folder', null);
                 const savedTopic = await getAppStorageValue<string | null>('shorts-lab-topic', null);
                 const savedManualIdentities = await getAppStorageValue<any[] | null>('shorts-generator-identities', null);
+                const savedManualCandidates = await getAppStorageValue<string | null>('shorts-lab-manual-candidates', null);
 
                 if (savedFolder) setCurrentFolderName(savedFolder);
                 if (savedTopic) setAiTopic(savedTopic);
+                if (savedManualCandidates) setManualCandidateText(savedManualCandidates);
 
                 if (savedScenes && Array.isArray(savedScenes)) {
                     const normalized = (savedScenes as Scene[]).map(scene => {
@@ -712,6 +771,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         }));
         setAppStorageValue('shorts-generator-identities', serialized);
     }, [manualIdentities]);
+
+    React.useEffect(() => {
+        const parsed = manualCandidateText
+            .split(/[\n,]/)
+            .map((value) => value.trim())
+            .filter((value) => value.length >= 2);
+        setManualCandidateList(parsed);
+        setAppStorageValue('shorts-lab-manual-candidates', manualCandidateText);
+    }, [manualCandidateText]);
 
     // ============================================
     // 이미지 생성 핸들러 (신규!)
@@ -1225,7 +1293,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         rawPrompt: string,
         sceneNumber: number,
         characterIds: string[],
-        characterMap: Map<string, ManualCharacterPrompt>
+        characterMap: Map<string, ManualCharacterPrompt>,
+        guidance?: { expression?: string; camera?: string }
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
         let remainder = (rawPrompt || '').trim();
@@ -1263,6 +1332,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
         const parts = [PROMPT_CONSTANTS.START];
         if (identityBlock) parts.push(identityBlock);
+        if (guidance?.expression) parts.push(`[${guidance.expression}]`);
+        if (guidance?.camera) parts.push(guidance.camera);
         if (remainder) parts.push(remainder);
         parts.push(PROMPT_CONSTANTS.END);
 
@@ -1271,70 +1342,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     const buildManualAiPrompt = useCallback((inputScript: string) => {
         const scriptLines = extractManualScriptLines(inputScript);
-        const scriptBody = scriptLines.join('\n');
         const identities = buildManualIdentityPayload(inputScript);
-        const identityLines = identities.length > 0
-            ? identities.map((identity) => {
-                const outfitLine = identity.outfit ? `outfit: ${identity.outfit}` : 'outfit: (omit if empty)';
-                const accessoryLine = identity.accessories.length > 0
-                    ? `accessories: ${identity.accessories.join(', ')}`
-                    : 'accessories: (omit if empty)';
-                const nameLabel = identity.name ? ` / name: ${identity.name}` : '';
-                return `- ${identity.id} (${identity.slotLabel}${nameLabel}): ${identity.identity}, ${identity.hair}, ${identity.body}, ${outfitLine}, ${accessoryLine}`;
-            }).join('\n')
-            : '- (no locked characters)';
-
-        return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
-
-당신은 장면 분해 및 이미지 프롬프트 생성 전문가입니다.
-아래 "수동 대본"을 그대로 사용해 씬을 분해하고 이미지 프롬프트를 생성하세요.
-대본은 새로 쓰지 말고, 입력된 문장/순서를 그대로 유지하세요.
-
-## 필수 규칙
-1) JSON만 출력 (설명/마크다운 금지)
-2) scenes 개수 = scriptBody 문장 수 (1:1 매칭)
-3) longPrompt는 반드시 아래 절대 공식 준수:
-   - "Scene N. ${PROMPT_CONSTANTS.START}, [캐릭터 정체성], [행동/배경], ${PROMPT_CONSTANTS.END}"
-   - Scene 번호와 정체성 정보를 맨 앞에 배치
-   - characterIds에 포함된 캐릭터의 identity/hair/body/outfit/accessories를 반드시 포함
-4) 의상/악세서리는 아래 제공된 텍스트를 **그대로 복사** (변형 금지)
-5) 악세서리가 비어있으면 해당 문구를 포함하지 말 것
-6) negativePrompt는 "${PROMPT_CONSTANTS.NEGATIVE}" 사용
-
-## 수동 대본 (scriptBody)
-${scriptBody}
-
-## 대본 라인 목록
-${scriptLines.map((line, index) => `${index + 1}. ${line}`).join('\n')}
-
-## 캐릭터 고정 목록
-${identityLines}
-
-## 출력 JSON 스키마
-{
-  "title": "string",
-  "scriptBody": "라인1\\n라인2...",
-  "characters": [
-    { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her 40s", "hair": "long soft-wave hairstyle", "body": "${PROMPT_CONSTANTS.FEMALE_BODY_A}", "outfit": "EXACT outfit string", "accessories": ["item1", "item2"] }
-  ],
-  "scenes": [
-    {
-      "sceneNumber": 1,
-      "scriptLine": "라인1",
-      "summary": "장면 요약",
-      "shotType": "원샷",
-      "characterIds": ["WomanA"],
-      "shortPrompt": "short english prompt",
-      "longPrompt": "Scene 1. ${PROMPT_CONSTANTS.START}, ... ${PROMPT_CONSTANTS.END}",
-      "shortPromptKo": "한국어 요약 프롬프트",
-      "longPromptKo": "한국어 상세 프롬프트",
-      "voiceType": "narration",
-      "narration": { "text": "내레이션", "emotion": "neutral", "speed": "normal" },
-      "lipSync": { "speaker": "WomanA", "speakerName": "지영", "line": "", "emotion": "", "timing": "mid" },
-      "negativePrompt": "${PROMPT_CONSTANTS.NEGATIVE}"
-    }
-  ]
-}`;
+        return buildManualSceneDecompositionPrompt({
+            scriptLines,
+            characters: identities.map((identity) => ({
+                id: identity.id,
+                name: identity.name,
+                slotLabel: identity.slotLabel
+            }))
+        });
     }, [buildManualIdentityPayload, extractManualScriptLines]);
 
     // ============================================
@@ -1374,105 +1390,75 @@ ${identityLines}
                 setCurrentFolderName(data._folderName);
             }
 
-            let finalScript = '';
             let extractedScenes: Scene[] = [];
+            const parsedResult = parseManualSceneDecompositionResponse(generatedText);
+            const scenesSource = parsedResult.scenes || [];
 
-            try {
-                let jsonClean = generatedText.trim();
-                jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
-                if (jsonClean.startsWith('```')) {
-                    jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-                }
+            if (scenesSource.length > 0) {
+                const manualCharacters = buildManualIdentityPayload(scriptInput);
+                const manualCharacterMap = new Map<string, ManualCharacterPrompt>();
+                manualCharacters.forEach(character => manualCharacterMap.set(character.id, character));
+                const fallbackCharacterIds = manualCharacters.map((character) => character.id);
+                const totalScenes = scenesSource.length || manualCharacters.length || 8;
 
-                const parsed = parseJsonFromText<any>(jsonClean, [
-                    'script',
-                    'scriptBody',
-                    'scriptLine',
-                    'shortPrompt',
-                    'shortPromptKo',
-                    'longPrompt',
-                    'longPromptKo',
-                    'title',
-                    'scenes'
-                ]);
+                extractedScenes = scenesSource.map((scene, idx) => {
+                    const sceneNumber = scene.sceneNumber || idx + 1;
+                    const sceneText = scene.scriptLine || `장면 ${idx + 1}`;
+                    const characterIds = Array.isArray(scene.characterIds) && scene.characterIds.length > 0
+                        ? scene.characterIds
+                        : fallbackCharacterIds;
+                    const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
+                    const expression = getExpressionForScene(aiGenre, storyStage);
+                    const cameraPrompt = getCameraPromptForScene(storyStage);
+                    const narrativeParts = [
+                        scene.summary,
+                        scene.action,
+                        scene.background
+                    ].filter(Boolean).join(', ');
+                    const normalizedPrompt = composeManualPrompt(
+                        narrativeParts || sceneText,
+                        sceneNumber,
+                        characterIds,
+                        manualCharacterMap,
+                        { expression, camera: cameraPrompt }
+                    );
 
-                if (!parsed) {
-                    throw new Error('JSON parse failed');
-                }
-
-                const scriptData = parsed.scripts?.[0] || parsed;
-                const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || '';
-                if (rawScript) {
-                    const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
-                    finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
-                }
-
-                const scenesSource = scriptData.scenes || parsed.scenes;
-                if (scenesSource && Array.isArray(scenesSource)) {
-                    const manualCharacters = buildManualIdentityPayload(scriptInput);
-                    const manualCharacterMap = new Map<string, ManualCharacterPrompt>();
-                    manualCharacters.forEach(character => manualCharacterMap.set(character.id, character));
-                    const fallbackCharacterIds = manualCharacters.map((character) => character.id);
-
-                    extractedScenes = scenesSource.map((scene: any, idx: number) => {
-                        const sceneNumber = scene.sceneNumber || idx + 1;
-                        const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
-                        const narrationText = typeof scene.narration === 'string'
-                            ? scene.narration
-                            : scene.narration?.text || '';
-                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
-                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
-                        const characterIds = Array.isArray(scene.characterIds) && scene.characterIds.length > 0
-                            ? scene.characterIds
-                            : fallbackCharacterIds;
-                        const rawPrompt = scene.longPrompt || scene.shortPrompt || scene.prompt || sceneText || '';
-                        const normalizedPrompt = composeManualPrompt(rawPrompt, sceneNumber, characterIds, manualCharacterMap);
-
-                        return {
-                            number: sceneNumber,
-                            text: sceneText,
-                            prompt: normalizedPrompt,
-                            imageUrl: undefined,
-                            shortPromptKo: scene.shortPromptKo || '',
-                            longPromptKo: scene.longPromptKo || '',
-                            summary: scene.summary || sceneText,
-                            camera: scene.camera || '',
-                            shotType: scene.shotType || '',
-                            age: scene.age || '',
-                            outfit: scene.outfit || '',
-                            isSelected: true,
-                            videoPrompt: scene.videoPrompt || '',
-                            dialogue: scene.dialogue || lipSyncLine || '',
-                            voiceType,
-                            narrationText: narrationText || sceneText,
-                            narrationEmotion: scene.narration?.emotion || '',
-                            narrationSpeed: scene.narration?.speed || 'normal',
-                            lipSyncSpeaker: scene.lipSync?.speaker || '',
-                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
-                            lipSyncLine: lipSyncLine || '',
-                            lipSyncEmotion: scene.lipSync?.emotion || '',
-                            lipSyncTiming: scene.lipSync?.timing || undefined
-                        };
-                    });
-                }
-            } catch (parseError) {
-                console.warn('[ShortsLab] Manual AI JSON parsing failed:', parseError);
+                    return {
+                        number: sceneNumber,
+                        text: sceneText,
+                        prompt: normalizedPrompt,
+                        imageUrl: undefined,
+                        shortPromptKo: '',
+                        longPromptKo: '',
+                        summary: scene.summary || sceneText,
+                        camera: scene.background || '',
+                        shotType: scene.shotType || '',
+                        age: '',
+                        outfit: '',
+                        isSelected: true,
+                        videoPrompt: '',
+                        dialogue: '',
+                        voiceType: 'narration',
+                        narrationText: sceneText,
+                        narrationEmotion: '',
+                        narrationSpeed: 'normal',
+                        lipSyncSpeaker: '',
+                        lipSyncSpeakerName: '',
+                        lipSyncLine: '',
+                        lipSyncEmotion: '',
+                        lipSyncTiming: undefined
+                    };
+                });
             }
 
-            if (!finalScript && extractedScenes.length === 0) {
+            if (extractedScenes.length === 0) {
                 throw new Error('씬 데이터를 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
             }
 
-            if (finalScript) setScriptInput(finalScript.trim());
-
-            if (extractedScenes.length > 0) {
-                setScenes(normalizeSceneNumbers(extractedScenes));
-                setActiveTab('preview');
-                showToast(`✅ ${targetService || 'GEMINI'} AI로 씬 분해 완료! (${extractedScenes.length}개 씬)`, 'success');
-                return;
-            }
-
-            throw new Error('씬 데이터를 찾지 못했습니다.');
+            setScenes(normalizeSceneNumbers(extractedScenes));
+            setActiveTab('preview');
+            showToast(`✅ ${targetService || 'GEMINI'} AI로 씬 분해 완료! (${extractedScenes.length}개 씬)`, 'success');
+            return;
         } catch (error) {
             console.error('Manual scene generation failed:', error);
             const message = error instanceof Error ? error.message : '씬 분해에 실패했습니다.';
@@ -1490,6 +1476,105 @@ ${identityLines}
             }
         } finally {
             setIsManualSceneParsing(false);
+        }
+    };
+
+    // ============================================
+    // 수동대본 인물 분석/누락 찾기
+    // ============================================
+
+    const handleManualAICharacterAnalysis = async () => {
+        if (!scriptInput.trim() || manualAnalyzing) return;
+        setManualAnalyzing(true);
+        setManualExtractionNotice('AI 인물 분석 중...');
+        setManualMissingNotice('');
+
+        try {
+            const prompt = `
+[TASK: CHARACTER ANALYSIS]
+Analyze the following script and extract key characters with their detailed visual profiles and personalities.
+Output ONLY a JSON array of character objects.
+
+[SCRIPT]
+${scriptInput}
+
+[OUTPUT FORMAT]
+[
+  {
+    "name": "Character Name",
+    "role": "Role in the story",
+    "personality": "Psychological traits, vibes, tone of voice",
+    "visualProfile": {
+      "hair": "Detailed hairstyle and color (English)",
+      "eyes": "Eye shape and mood (English)",
+      "bodyType": "Body shape, height, posture (English)",
+      "distinctFeatures": "Scars, beauty marks, tattoos, unique accessories (English)",
+      "visualVibe": "Overall visual atmosphere (English)"
+    }
+  }
+]
+`;
+            const response = await fetch('http://localhost:3002/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: targetService ?? 'GEMINI',
+                    prompt
+                })
+            });
+
+            if (!response.ok) throw new Error('AI 분석 실패');
+            const data = await response.json();
+            const analyzed = Array.isArray(data) ? data : (data.characters || []);
+
+            if (analyzed.length === 0) {
+                setManualExtractionNotice('AI 분석 결과가 없습니다.');
+                return;
+            }
+
+            const slotSequence = ['Woman A', 'Woman B', 'Woman C', 'Woman D', 'Man A', 'Man B'];
+            const newIdentities = analyzed.map((char: any, index: number) => {
+                const slotId = slotSequence[index % slotSequence.length];
+                return createManualIdentity({
+                    slotId,
+                    name: char.name || '',
+                    accessories: '',
+                    isLocked: true
+                });
+            });
+
+            setManualIdentities(newIdentities);
+            setManualExtractionNotice(`AI 분석 완료 · ${newIdentities.length}명 추출됨`);
+        } catch (error) {
+            console.error('Manual AI character analysis failed:', error);
+            setManualExtractionNotice('AI 분석 실패');
+        } finally {
+            setManualAnalyzing(false);
+        }
+    };
+
+    const handleManualFindMissing = () => {
+        if (!scriptInput.trim()) {
+            setManualMissingNotice('대본이 비어 있습니다.');
+            return;
+        }
+        const currentNames = new Set(manualIdentities.map((identity) => identity.name).filter(Boolean));
+        const candidates = manualCandidateList.length > 0
+            ? manualCandidateList
+            : extractCandidateNames(scriptInput, []);
+        const missing = candidates.filter((name) => scriptInput.includes(name) && !currentNames.has(name));
+
+        if (missing.length > 0) {
+            const slotSequence = ['Woman A', 'Woman B', 'Woman C', 'Woman D', 'Man A', 'Man B'];
+            const newIdentities = missing.map((name, index) => createManualIdentity({
+                slotId: slotSequence[(manualIdentities.length + index) % slotSequence.length],
+                name,
+                isLocked: true
+            }));
+            setManualIdentities((prev) => [...prev, ...newIdentities]);
+            setManualMissingNotice(`새로운 인물 ${missing.length}명을 찾았습니다: ${missing.join(', ')}`);
+        } else {
+            setManualMissingNotice('누락된 인물을 찾지 못했습니다.');
         }
     };
 
@@ -2678,7 +2763,8 @@ ${identityLines}
                                             </div>
                                             <div>
                                                 <h3 className="text-sm font-bold text-slate-100">인물 고정</h3>
-                                                <p className="text-[10px] text-slate-400">대본 기준으로 캐릭터/의상/악세서리 고정</p>
+                                                <p className="text-[10px] text-slate-400">수동대본 = 캐릭터/의상/악세 고정형 씬 분해</p>
+                                                <p className="text-[10px] text-slate-500">선택한 값만 프롬프트에 반영, 미선택은 제외됩니다.</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -2706,6 +2792,40 @@ ${identityLines}
                                             </button>
                                         </div>
                                     </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            onClick={handleManualAICharacterAnalysis}
+                                            disabled={!scriptInput.trim() || manualAnalyzing}
+                                            className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-purple-500/50 bg-purple-900/40 text-purple-200 hover:border-purple-400 transition-all disabled:opacity-50"
+                                        >
+                                            {manualAnalyzing ? 'AI 인물 분석 중...' : 'AI 인물 분석'}
+                                        </button>
+                                        <button
+                                            onClick={handleManualFindMissing}
+                                            disabled={!scriptInput.trim()}
+                                            className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 transition-all disabled:opacity-50"
+                                        >
+                                            누락 인물 찾기
+                                        </button>
+                                        <div className="text-[10px] text-slate-500">
+                                            후보명 목록(선택): {manualCandidateList.length > 0 ? `${manualCandidateList.length}개` : '없음'}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2">
+                                        <div className="text-[10px] text-slate-500 mb-1">인물 후보 리스트 (쉼표/줄바꿈)</div>
+                                        <textarea
+                                            value={manualCandidateText}
+                                            onChange={(e) => setManualCandidateText(e.target.value)}
+                                            placeholder="예: 지영, 혜경, 준호\n캐디, 민수"
+                                            className="w-full h-16 bg-slate-900 border border-slate-800 rounded-md p-2 text-[10px] text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+                                        />
+                                        {manualExtractionNotice && (
+                                            <div className="mt-1 text-[10px] text-purple-300">{manualExtractionNotice}</div>
+                                        )}
+                                        {manualMissingNotice && (
+                                            <div className="mt-1 text-[10px] text-amber-300">{manualMissingNotice}</div>
+                                        )}
+                                    </div>
                                     {manualIdentities.length > 0 ? (
                                         <div className={`grid grid-cols-1 xl:grid-cols-2 gap-3 ${manualIdentityLockEnabled ? '' : 'opacity-60 pointer-events-none'}`}>
                                             {manualIdentities.map((identity) => (
@@ -2719,6 +2839,7 @@ ${identityLines}
                                                     showAccessoryGallery
                                                     accessoryGroups={GENERAL_ACCESSORIES}
                                                     winterAccessoryOptions={WINTER_ACCESSORIES}
+                                                    showLockControls={false}
                                                 />
                                             ))}
                                         </div>

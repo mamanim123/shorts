@@ -56,7 +56,7 @@ const SERVICES = {
             input: 'textarea.search-input, .j-search-input, textarea[placeholder]',
             // Found via agent: element 27 (textarea) -> element 28 (div button)
             sendBtn: '.j-search-input + div, textarea.search-input + div, div[class*="send-button"], button[aria-label="Send"]',
-            response: '.markdown-body, .message-content, div[class*="answer"], div[class*="model-response"]',
+            response: '.markdown-body, .message-content, div[class*="answer"], div[class*="model-response"], .prose, div[class*="response"], div[class*="content"], div[class*="result"], div[class*="output"]',
         }
     },
     DEEPSEEK: {

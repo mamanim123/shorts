@@ -6,6 +6,7 @@ import { genreManager } from './services/genreGuidelines';
 import { previewPrompt } from './services/geminiService';
 import { showToast } from './components/Toast';
 import { saveStoryFile } from './services/storyService';
+import { setAppStorageValue } from './services/appStorageService';
 import { useTemplateManager } from './hooks/useTemplateManager';
 import { TemplateEditorModal } from './components/TemplateEditorModal';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
@@ -2416,7 +2417,7 @@ JSON 형식으로만 답변:
     await bootstrapFromDisk(true);
   };
 
-  const handleManualImport = () => {
+  const handleManualImport = async () => {
     try {
       if (!manualJson.trim()) {
         showToast('JSON 텍스트를 입력해주세요.', 'warning');
@@ -2444,10 +2445,75 @@ JSON 형식으로만 답변:
           targetAgeLabel: target,
           identities
         });
-        setScripts(processed);
+        // 수동 JSON도 저장 로직을 태워 쇼츠랩 불러오기와 동일하게 동작하도록 처리
+        const savedScripts = await Promise.all(processed.map(async (script: any, idx: number) => {
+          const scriptTitle = script.title || `Script ${idx + 1}`;
+          const payload = {
+            title: scriptTitle,
+            content: formatScriptContent(script),
+            service: defaultSettings?.targetService || 'GEMINI',
+            folderName: script._folderName
+          };
+          try {
+            const saveResult = await saveStoryFile(payload);
+            return {
+              ...script,
+              _folderName: saveResult.folderName || script._folderName
+            };
+          } catch (saveError) {
+            console.warn('Failed to save manual JSON script file:', saveError);
+            return script;
+          }
+        }));
+        setScripts(savedScripts);
+        try {
+          const primaryScript = savedScripts[0];
+          if (primaryScript?.scenes && Array.isArray(primaryScript.scenes)) {
+            const labScenes = primaryScript.scenes.map((scene: any, idx: number) => {
+              const sceneNumber = scene.sceneNumber || idx + 1;
+              const narrationText = typeof scene.narration === 'string'
+                ? scene.narration
+                : scene.narration?.text || '';
+              const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
+              const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
+              return {
+                number: sceneNumber,
+                text: scene.scriptLine || scene.summary || scene.text || `장면 ${sceneNumber}`,
+                prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || '',
+                imageUrl: undefined,
+                shortPromptKo: scene.shortPromptKo || '',
+                longPromptKo: scene.longPromptKo || '',
+                summary: scene.summary || scene.scriptLine || '',
+                camera: scene.camera || '',
+                shotType: scene.shotType || '',
+                age: scene.age || '',
+                outfit: scene.outfit || '',
+                isSelected: true,
+                videoPrompt: scene.videoPrompt || '',
+                dialogue: scene.dialogue || lipSyncLine || '',
+                voiceType,
+                narrationText: narrationText || scene.scriptLine || '',
+                narrationEmotion: scene.narration?.emotion || '',
+                narrationSpeed: scene.narration?.speed || 'normal',
+                lipSyncSpeaker: scene.lipSync?.speaker || '',
+                lipSyncSpeakerName: scene.lipSync?.speakerName || '',
+                lipSyncLine: lipSyncLine || '',
+                lipSyncEmotion: scene.lipSync?.emotion || '',
+                lipSyncTiming: scene.lipSync?.timing || undefined
+              };
+            });
+
+            await setAppStorageValue('shorts-lab-scenes', labScenes);
+            await setAppStorageValue('shorts-lab-folder', primaryScript._folderName || '');
+            await setAppStorageValue('shorts-lab-topic', primaryScript.title || '');
+            window.dispatchEvent(new CustomEvent('open-shorts-lab'));
+          }
+        } catch (e) {
+          console.warn('Failed to sync manual JSON to ShortsLab:', e);
+        }
         if (generationMode === 'script-image') {
           const expanded: Record<number, boolean> = {};
-          processed.forEach((_: any, idx: number) => {
+          savedScripts.forEach((_: any, idx: number) => {
             expanded[idx] = true;
           });
           setShowImagePrompts(expanded);

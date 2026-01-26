@@ -28,6 +28,7 @@ interface ShortsIdentityCardProps {
   winterAccessoryOptions?: string[];
   showAccessoryGallery?: boolean;
   showOutfitGallery?: boolean;
+  showLockControls?: boolean;
 }
 
 const SLOT_OPTIONS = [
@@ -50,6 +51,7 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
   winterAccessoryOptions = [],
   showAccessoryGallery = false,
   showOutfitGallery = false,
+  showLockControls = true,
 }) => {
   const toggleFieldLock = (field: string) => {
     const newLockedFields = new Set(identity.lockedFields);
@@ -101,15 +103,17 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer">
-            <input
-              type="checkbox"
-              checked={identity.isLocked}
-              onChange={(e) => onUpdate(identity.id, { isLocked: e.target.checked })}
-              className="rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-purple-600 focus:ring-purple-500"
-            />
-            <span className={identity.isLocked ? 'text-purple-400' : 'text-slate-500'}>인물 고정</span>
-          </label>
+          {showLockControls && (
+            <label className="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer">
+              <input
+                type="checkbox"
+                checked={identity.isLocked}
+                onChange={(e) => onUpdate(identity.id, { isLocked: e.target.checked })}
+                className="rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-purple-600 focus:ring-purple-500"
+              />
+              <span className={identity.isLocked ? 'text-purple-400' : 'text-slate-500'}>인물 고정</span>
+            </label>
+          )}
           <button
             onClick={() => onDelete(identity.id)}
             className="text-slate-500 hover:text-red-400 transition-colors p-1"
@@ -183,12 +187,14 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
             <span className="text-slate-400">의상 설정</span>
             <div className="flex items-center gap-2">
               <span className="truncate max-w-[160px]">{identity.outfit || '미선택'}</span>
-              <button
-                onClick={() => toggleFieldLock('outfit')}
-                className={`p-1 rounded-lg transition-colors ${isFieldLocked('outfit') ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-              >
-                {isFieldLocked('outfit') ? <Lock size={12} /> : <Unlock size={12} />}
-              </button>
+              {showLockControls && (
+                <button
+                  onClick={() => toggleFieldLock('outfit')}
+                  className={`p-1 rounded-lg transition-colors ${isFieldLocked('outfit') ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                >
+                  {isFieldLocked('outfit') ? <Lock size={12} /> : <Unlock size={12} />}
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -208,12 +214,14 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
                 ))}
               </datalist>
             </div>
-            <button
-              onClick={() => toggleFieldLock('outfit')}
-              className={`p-1.5 rounded-lg transition-colors ${isFieldLocked('outfit') ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-            >
-              {isFieldLocked('outfit') ? <Lock size={14} /> : <Unlock size={14} />}
-            </button>
+            {showLockControls && (
+              <button
+                onClick={() => toggleFieldLock('outfit')}
+                className={`p-1.5 rounded-lg transition-colors ${isFieldLocked('outfit') ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                {isFieldLocked('outfit') ? <Lock size={14} /> : <Unlock size={14} />}
+              </button>
+            )}
           </div>
         )}
 
@@ -277,12 +285,14 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
             placeholder="악세서리 (예: 다이아몬드 시계)"
             className="flex-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-1.5 text-xs text-slate-300 outline-none focus:ring-1 focus:ring-purple-500"
           />
-          <button
-            onClick={() => toggleFieldLock('accessories')}
-            className={`p-1.5 rounded-lg transition-colors ${isFieldLocked('accessories') ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-          >
-            {isFieldLocked('accessories') ? <Lock size={14} /> : <Unlock size={14} />}
-          </button>
+          {showLockControls && (
+            <button
+              onClick={() => toggleFieldLock('accessories')}
+              className={`p-1.5 rounded-lg transition-colors ${isFieldLocked('accessories') ? 'text-purple-400 bg-purple-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+            >
+              {isFieldLocked('accessories') ? <Lock size={14} /> : <Unlock size={14} />}
+            </button>
+          )}
         </div>
 
         {showAccessoryGallery && (accessoryGroups.length > 0 || winterAccessoryOptions.length > 0) && (

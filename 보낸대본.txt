@@ -1,17 +1,78 @@
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
-[TASK: VIRTUAL CASTING CONCEPTS]
-Based on the character profile, generate 3 distinct visual concepts for AI image generation.
-Each concept should have a short English prompt focused on facial features and hairstyle to ensure consistency.
-Character: 주인공 (핵심 인물)
-Personality: undefined
-Hair: undefined
-Eyes: undefined
-Body: undefined
-Distinct Features: undefined
+당신은 장면 분해 및 이미지 프롬프트 생성 전문가입니다.
+아래 "수동 대본"을 그대로 사용해 씬을 분해하고 이미지 프롬프트를 생성하세요.
+대본은 새로 쓰지 말고, 입력된 문장/순서를 그대로 유지하세요.
 
-Output ONLY a JSON array of 3 objects:
-[
-  {"id": "1", "description": "Concept description 1", "prompt": "Visual prompt 1 (English)"},
-  {"id": "2", "description": "Concept description 2", "prompt": "Visual prompt 2 (English)"},
-  {"id": "3", "description": "Concept description 3", "prompt": "Visual prompt 3 (English)"}
-]
+## 필수 규칙
+1) JSON만 출력 (설명/마크다운 금지)
+2) scenes 개수 = scriptBody 문장 수 (1:1 매칭)
+3) scriptLine은 scriptBody 각 문장을 **그대로 복사** (의미/어휘 변경 금지)
+4) longPrompt는 반드시 아래 절대 공식 준수:
+   - "Scene N. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [캐릭터 정체성], [표정], [카메라], [행동/배경], high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16"
+   - Scene 번호와 정체성 정보를 맨 앞에 배치
+   - characterIds에 포함된 캐릭터의 identity/hair/body/outfit/accessories를 반드시 포함
+   - [표정]은 감정 키워드, [카메라]는 close-up/medium/wide/over-shoulder/POV 등으로 시작
+   - characterIds는 아래 "캐릭터 고정 목록"의 ID만 사용 (목록이 비어있으면 빈 배열 [])
+5) 의상/악세서리는 아래 제공된 텍스트를 **그대로 복사** (변형 금지)
+6) 악세서리가 비어있으면 해당 문구를 포함하지 말 것
+7) negativePrompt는 "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" 사용
+
+## 수동 대본 (scriptBody)
+폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.
+저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.
+'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.
+일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.
+'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.
+캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.
+심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.
+근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.
+'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'
+알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.
+순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.
+결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.
+
+## 대본 라인 목록
+1. 폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.
+2. 저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.
+3. '오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.
+4. 일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.
+5. '이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.
+6. 캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.
+7. 심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.
+8. 근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.
+9. '어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'
+10. 알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.
+11. 순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.
+12. 결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.
+
+## 캐릭터 고정 목록
+- ManA (Man A / name: 나 (형부)): A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, outfit: (omit if empty), accessories: Neatly groomed side-part hairstyle with wax, slightly disheveled by the wind (English), Mischievous and expressive eyes that widen in panic, reddish face and ears (English), Average build with a rigid, self-conscious posture, trying to look broad-shouldered (English), Holding a hotel parking ticket with a clumsy wink, wearing stylish but slightly excessive golf attire (English), A mix of a polished businessman and a comedic, flustered blunderer (English)
+- WomanB (Woman B / name: 막내 처제 (캐디)): A stunning Korean woman in her 20s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence, outfit: Navy Tight-fitting long-sleeve Tight Knit + White Micro Mini Skirt, accessories: Long hair tied back in a neat ponytail under a golf cap (English), Large, clear, and expressive eyes showing shock and recognition (English), Slender and athletic, professional posture in a functional caddie uniform (English), Biting her lower lip in disbelief, wearing a crisp caddie outfit against a snowy background (English), Bright, fresh, and strikingly beautiful with a sharp, surprised expression (English), long opera-length velvet gloves
+- WomanC (Woman C / name: 혜경): A stunning Korean woman in her 40s, low ponytail hairstyle, Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor, outfit: Coral Halter Crop Top (Tight-fitting long-sleeve version) + Grey High-waist Tight Leggings, accessories: Short bob or tied-back hair suitable for sports (English), Judgmental and squinting eyes, staring intently at the protagonist (English), Stable and composed golf stance (English), Folded arms or a skeptical facial expression (English), Realistic and cynical observer (English), long opera-length velvet gloves
+
+## 출력 JSON 스키마
+{
+  "title": "string",
+  "scriptBody": "라인1\n라인2...",
+  "characters": [
+    { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her 40s", "hair": "long soft-wave hairstyle", "body": "Extraordinarily high-projection perky bust with high-seated chest line, voluptuous hourglass figure, perfectly managed sophisticated look", "outfit": "EXACT outfit string", "accessories": ["item1", "item2"] }
+  ],
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "scriptLine": "라인1",
+      "summary": "장면 요약",
+      "shotType": "원샷",
+      "characterIds": ["WomanA"],
+      "shortPrompt": "short english prompt",
+      "longPrompt": "Scene 1. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [expression], [camera], ... high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "shortPromptKo": "한국어 요약 프롬프트",
+      "longPromptKo": "한국어 상세 프롬프트",
+      "voiceType": "narration",
+      "narration": { "text": "내레이션", "emotion": "neutral", "speed": "normal" },
+      "lipSync": { "speaker": "WomanA", "speakerName": "지영", "line": "", "emotion": "", "timing": "mid" },
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing"
+    }
+  ]
+}

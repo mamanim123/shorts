@@ -197,6 +197,14 @@ const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [shortsAutoTrigger, setShortsAutoTrigger] = useState<ShortsGenerationTrigger | null>(null);
 
+  useEffect(() => {
+    const handleOpenShortsLab = () => {
+      setRightTab('shorts-lab');
+    };
+    window.addEventListener('open-shorts-lab', handleOpenShortsLab);
+    return () => window.removeEventListener('open-shorts-lab', handleOpenShortsLab);
+  }, []);
+
 
   // --- Effects ---
 

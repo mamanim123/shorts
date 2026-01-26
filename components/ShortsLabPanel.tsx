@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -111,6 +111,95 @@ const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: 
     WomanD: { gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
     ManA: { gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
     ManB: { gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+};
+
+const getCharacterGender = (id: string): 'female' | 'male' => {
+    const meta = DEFAULT_CHARACTER_META[id];
+    if (meta) return meta.gender;
+    return id.toLowerCase().includes('man') ? 'male' : 'female';
+};
+
+const buildAccessoryMap = (
+    characters: any[] | undefined,
+    enableWinterAccessories?: boolean
+) => {
+    const map = new Map<string, string[]>();
+    const usedAccessories = new Set<string>();
+
+    if (Array.isArray(characters)) {
+        characters.forEach((ch) => {
+            const id = String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim();
+            if (!id) return;
+            const baseAccessories = (ch.accessories || ch.accessory || '')
+                .split(',')
+                .map((item: string) => item.trim())
+                .filter(Boolean);
+            map.set(id, baseAccessories);
+        });
+    }
+
+    if (enableWinterAccessories) {
+        const ids = Array.isArray(characters)
+            ? characters
+                  .map((ch) => String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim())
+                  .filter(Boolean)
+            : [];
+        ids.forEach((id) => {
+            const gender = getCharacterGender(id);
+            let accessories: string[] = [];
+            let attempts = 0;
+            while (attempts < 5 && accessories.length === 0) {
+                const pick = selectWinterItems(gender).accessories;
+                const unique = pick.filter((item) => !usedAccessories.has(item));
+                accessories = unique.length > 0 ? unique : pick;
+                attempts += 1;
+            }
+            accessories.forEach((item) => usedAccessories.add(item));
+            const current = map.get(id) || [];
+            const merged = Array.from(new Set([...current, ...accessories]));
+            map.set(id, merged);
+        });
+    }
+
+    return map;
+};
+
+const applyAccessoriesToPrompt = (
+    prompt: string,
+    characterIds: string[],
+    accessoryMap: Map<string, string[]>
+) => {
+    let updated = prompt;
+    const hasPersonMarkers = /\[Person\s+\d+:/i.test(updated);
+
+    characterIds.forEach((id, index) => {
+        const accessories = accessoryMap.get(id) || [];
+        if (accessories.length === 0) return;
+        const accsStr = accessories.join(', ');
+        const markerRegex = new RegExp(`\\[Person\\s+${index + 1}:[^\\]]*\\]`, 'i');
+
+        if (markerRegex.test(updated)) {
+            updated = updated.replace(markerRegex, (match) => {
+                if (/accessorized with/i.test(match)) {
+                    return match.replace(/accessorized with\s*([^\\]]+)/i, (innerMatch, existing) => {
+                        const existingItems = existing
+                            .split(',')
+                            .map((item: string) => item.trim())
+                            .filter(Boolean);
+                        const merged = Array.from(new Set([...existingItems, ...accessories]));
+                        return `accessorized with ${merged.join(', ')}`;
+                    });
+                }
+                return match.replace(']', `, accessorized with ${accsStr}]`);
+            });
+        } else if (!hasPersonMarkers && characterIds.length === 1) {
+            if (!/accessorized with/i.test(updated)) {
+                updated = updated.replace(/,\s*$/, '') + `, accessorized with ${accsStr}`;
+            }
+        }
+    });
+
+    return updated;
 };
 
 const normalizeShotType = (shotType?: string, characterIds?: string[]): '원샷' | '투샷' | '쓰리샷' => {
@@ -383,21 +472,41 @@ const postProcessAiScenes = (
     if (!Array.isArray(scenes)) return [];
     
     const totalScenes = options.totalScenes || scenes.length || 12;
-    const characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
+    let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
+    const accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
+
+    if (options.enableWinterAccessories) {
+        const winterized = new Map<string, CharacterInfo>();
+        characterInfoMap.forEach((info, id) => {
+            const gender = getCharacterGender(id);
+            const outfit = (gender === 'female' && info.outfit)
+                ? convertToTightLongSleeveWithShoulderLine(info.outfit)
+                : info.outfit;
+            winterized.set(id, { ...info, outfit });
+        });
+        characterInfoMap = winterized;
+    }
 
     return scenes.map((scene: any, idx: number) => {
         const sceneNumber = scene.sceneNumber || idx + 1;
         const shotType = normalizeShotType(scene.shotType, scene.characterIds);
 
         // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
+        const sceneGender = characterIds.length === 1
+            ? getCharacterGender(characterIds[0])
+            : options.gender;
+        const sceneOutfit = characterIds.length === 1
+            ? characterInfoMap.get(characterIds[0])?.outfit
+            : undefined;
+
         let processedPrompt = enhanceScenePrompt(
             scene.longPrompt || scene.shortPrompt || '',
             {
                 sceneNumber,
-                femaleOutfit: options.femaleOutfit,
-                maleOutfit: options.maleOutfit,
+                femaleOutfit: sceneGender === 'female' ? sceneOutfit : undefined,
+                maleOutfit: sceneGender === 'male' ? sceneOutfit : undefined,
                 targetAgeLabel: options.targetAgeLabel,
-                gender: options.gender,
+                gender: sceneGender,
                 genre: options.genre,         // v3.6
                 totalScenes: totalScenes      // v3.6
             }
@@ -413,13 +522,13 @@ const postProcessAiScenes = (
             ? characterInfos
             : Array.from(characterInfoMap.values()).slice(0, 3);
         const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters);
-        processedPrompt = validation.fixedPrompt;
+        processedPrompt = applyAccessoriesToPrompt(validation.fixedPrompt, characterIds, accessoryMap);
 
         // 3. 네거티브 프롬프트 분리 처리
         const extracted = extractNegativePrompt(processedPrompt);
         processedPrompt = extracted.cleaned;
-        if (options.enableWinterAccessories) {
-            const genderForWinter = options.gender || 'female';
+        if (options.enableWinterAccessories && characterIds.length <= 1) {
+            const genderForWinter = sceneGender || 'female';
             const winterApplied = applyWinterLookToExistingPrompt(processedPrompt, scene.longPromptKo || '', genderForWinter);
             processedPrompt = winterApplied.longPrompt;
             scene.longPromptKo = winterApplied.longPromptKo || scene.longPromptKo;

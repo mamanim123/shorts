@@ -33,18 +33,6 @@ const notifyBackupListeners = (backups: ShortsLabPromptRulesBackup[]) => {
 
 const normalizePromptRules = (input?: Partial<ShortsLabPromptRules>): ShortsLabPromptRules => {
   const source = input || {};
-  const sanitizeBodyText = (value?: string) => {
-    if (!value) return value || '';
-    let next = value;
-    next = next.replace(
-      /Extraordinarily high-projection perky bust with high-seated chest line/gi,
-      'well-proportioned figure'
-    );
-    next = next.replace(/voluptuous hourglass figure/gi, 'elegant feminine silhouette');
-    next = next.replace(/,\s*,/g, ', ').trim();
-    next = next.replace(/^,\s*|\s*,\s*$/g, '').trim();
-    return next;
-  };
   const looksLegacyCameraMapping = (mapping?: ShortsLabPromptRules['cameraMapping']) => {
     if (!mapping) return false;
     return (
@@ -66,17 +54,9 @@ const normalizePromptRules = (input?: Partial<ShortsLabPromptRules>): ShortsLabP
     ...DEFAULT_PROMPT_RULES.promptConstants,
     ...(source.promptConstants || {})
   };
-  const sanitizedPromptConstants = {
-    ...mergedPromptConstants,
-    FEMALE_BODY: sanitizeBodyText(mergedPromptConstants.FEMALE_BODY),
-    FEMALE_BODY_A: sanitizeBodyText(mergedPromptConstants.FEMALE_BODY_A),
-    FEMALE_BODY_B: sanitizeBodyText(mergedPromptConstants.FEMALE_BODY_B),
-    FEMALE_BODY_C: sanitizeBodyText(mergedPromptConstants.FEMALE_BODY_C),
-    FEMALE_BODY_D: sanitizeBodyText(mergedPromptConstants.FEMALE_BODY_D)
-  };
 
   return {
-    promptConstants: sanitizedPromptConstants,
+    promptConstants: mergedPromptConstants,
     noTextTag: typeof source.noTextTag === 'string' ? source.noTextTag : DEFAULT_PROMPT_RULES.noTextTag,
     enforceKoreanIdentity:
       source.enforceKoreanIdentity !== undefined

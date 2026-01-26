@@ -63,7 +63,7 @@ const BODY_PRESETS = [
   { id: 'slim-hourglass', name: '슬림 모래시계', prompt: 'slim hourglass figure with toned body, elegant posture' },
   { id: 'petite-glamour', name: '아담 글래머', prompt: 'petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves' },
   { id: 'athletic', name: '건강미 탄탄', prompt: 'gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust' },
-  { id: 'curvy', name: '볼륨 글래머', prompt: 'well-proportioned figure, elegant feminine silhouette' },
+  { id: 'curvy', name: '볼륨 글래머', prompt: 'high-seated chest line' },
 ];
 
 const DEFAULT_OUTFITS: Outfit[] = [];

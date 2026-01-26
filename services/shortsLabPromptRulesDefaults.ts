@@ -37,13 +37,13 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
       'slim hourglass figure with toned body, curvy feminine figure, glamorous silhouette, elegant feminine curves, voluptuous chest line, emphasizing chest line, deep cleavage, defined chest silhouette, well-managed sophisticated look despite age, tight-fitting clothes accentuating curves naturally',
     // 캐릭터별 체형 (v3.5.4 - 마마님 커스텀)
     FEMALE_BODY_A:
-      'well-proportioned figure, elegant feminine silhouette, perfectly managed sophisticated look',
+      'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     FEMALE_BODY_B:
-      'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence',
+      'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence, high-seated chest line',
     FEMALE_BODY_C:
-      'Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor',
+      'Gracefully toned and slim athletic body, expertly managed sleek silhouette, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, calm observer demeanor',
     FEMALE_BODY_D:
-      'well-proportioned figure, elegant feminine silhouette, bright cheerful professional presence',
+      'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     MALE_BODY: 'fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes',
     END:
       'high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16',

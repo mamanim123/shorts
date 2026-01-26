@@ -293,14 +293,26 @@ export const applyWinterLookToExistingPrompt = (
     }
   }
 
-  // 3. 겨울 악세서리 추가 (중복 방지 및 정위치 삽입)
-  if (!contentPart.toLowerCase().includes('accessorized with') && !technicalPart.toLowerCase().includes('accessorized with')) {
-    const { accessories } = selectWinterItems(gender);
-    const accsStr = accessories.join(', ');
-    const winterAccsMsg = `, accessorized with ${accsStr}`;
-    
-    // 내용 구간 끝에 삽입 (기술 태그 시작 전)
-    contentPart = contentPart.trim().replace(/,\s*$/, '') + winterAccsMsg + ', ';
+  // 3. 겨울 악세서리 추가 (기존 accessorized with가 있어도 병합)
+  const { accessories } = selectWinterItems(gender);
+  const accsStr = accessories.join(', ');
+  if (accsStr) {
+    const lowerContent = contentPart.toLowerCase();
+    if (lowerContent.includes('accessorized with')) {
+      // 기존 accessorized with 뒤에 겨울 악세서리 추가
+      contentPart = contentPart.replace(/accessorized with\s*([^,]*)(,?)/i, (match, existing, tail) => {
+        const existingItems = existing
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean);
+        const merged = Array.from(new Set([...existingItems, ...accessories]));
+        return `accessorized with ${merged.join(', ')}${tail || ','}`;
+      });
+    } else {
+      const winterAccsMsg = `, accessorized with ${accsStr}`;
+      // 내용 구간 끝에 삽입 (기술 태그 시작 전)
+      contentPart = contentPart.trim().replace(/,\s*$/, '') + winterAccsMsg + ', ';
+    }
     newPromptKo = `${newPromptKo.replace(' (겨울 룩 적용됨)', '')} (겨울 룩 적용됨: ${accsStr})`;
   }
 
@@ -485,32 +497,32 @@ export const translateActionToEnglish = (action: string): string => {
 export const MAMA_CHARACTER_PRESETS = {
   FEMALE_A: {
     identity: 'A stunning Korean woman',
-    bodyType: 'well-proportioned figure, elegant feminine silhouette',
+    bodyType: 'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     style: 'perfectly managed sophisticated look, confident presence',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   FEMALE_B: {
     identity: 'A stunning Korean woman',
-    bodyType: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves',
+    bodyType: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line',
     style: 'charming presence, expressive and lively reactions',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   FEMALE_C: {
     identity: 'A stunning Korean woman',
-    bodyType: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust',
+    bodyType: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     style: 'composed and calm observer demeanor, elegant presence',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   FEMALE_D: {
     identity: 'A stunning Korean woman',
-    bodyType: 'well-proportioned figure, elegant feminine silhouette',
+    bodyType: 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     style: 'bright cheerful professional presence, sophisticated and beautiful caddy look',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },
   // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
   FEMALE: {
     identity: 'A stunning Korean woman',
-    bodyType: 'well-proportioned figure, elegant feminine silhouette',
+    bodyType: 'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     style: 'perfectly managed sophisticated look, confident presence',
     outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
   },

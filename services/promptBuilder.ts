@@ -139,10 +139,10 @@ export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
 - 문장 수에 집착하지 말고 8~15문장 사이에서 최고의 몰입감을 만드세요.
 
 [2. CHARACTER SLOT SYSTEM - 외형 및 성격 고정]
-- **WomanA (지영, Main)**: Stunning Korean woman in her {{TARGET_LABEL}}, well-proportioned figure, elegant feminine silhouette, perfectly managed sophisticated look, long soft-wave hairstyle.
-- **WomanB (혜경, Sub)**: Stunning Korean woman, petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, short chic bob cut, sensual and alluring aura.
-- **WomanC (미숙, Observer)**: Stunning Korean woman, gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, low ponytail, calm yet provocative demeanor.
-- **WomanD (Caddy)**: Stunning young Korean woman (early 20s), high-bun hairstyle (updo), well-proportioned figure, elegant feminine silhouette, youthful radiant beauty.
+- **WomanA (지영, Main)**: Stunning Korean woman in her {{TARGET_LABEL}}, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, long soft-wave hairstyle.
+- **WomanB (혜경, Sub)**: Stunning Korean woman, petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, short chic bob cut, sensual and alluring aura.
+- **WomanC (미숙, Observer)**: Stunning Korean woman, gracefully toned and slim athletic body, expertly managed sleek silhouette, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, low ponytail, calm yet provocative demeanor.
+- **WomanD (Caddy)**: Stunning young Korean woman (early 20s), high-bun hairstyle (updo), high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, youthful radiant beauty.
 - **ManA (준호, Lead)**: Dandy Korean man, short neat hairstyle, fit athletic build.
 - **ManB (민수, Sub)**: Dandy Korean man, clean short cut, well-built physique.
 

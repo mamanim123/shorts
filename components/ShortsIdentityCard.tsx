@@ -32,7 +32,7 @@ interface ShortsIdentityCardProps {
 }
 
 const SLOT_OPTIONS = [
-  { id: 'Woman A', label: 'Woman A (긴 웨이브, 글래머)', desc: 'Long soft-wave hairstyle, elegant feminine silhouette' },
+  { id: 'Woman A', label: 'Woman A (긴 웨이브, 글래머)', desc: 'Long soft-wave hairstyle, voluptuous hourglass figure' },
   { id: 'Woman B', label: 'Woman B (숏컷/단발, 슬림)', desc: 'Short chic bob cut, petite and alluring aura' },
   { id: 'Woman C', label: 'Woman C (포니테일, 스포티)', desc: 'Low ponytail, athletic and calm demeanor' },
   { id: 'Woman D', label: 'Woman D (캐디, 단정)', desc: 'Neat ponytail, slim and professional demeanor' },

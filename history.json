@@ -1,1 +1,289 @@
-[]
+[
+  {
+    "title": "폭설 속의 골프장, 그리고 뜻밖의 재회",
+    "titleOptions": [
+      "연예인 뺨치는 캐디의 정체",
+      "호텔 주차권 팁의 최후",
+      "처제에게 딱 걸린 형부의 외출"
+    ],
+    "scriptBody": "폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.\n저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.\n'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.\n일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.\n'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.\n캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.\n심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.\n근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.\n'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'\n알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.\n순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.\n결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.",
+    "punchline": "결국 그날 라운딩도 못 끝내!",
+    "characters": [
+      {
+        "id": "WomanA",
+        "name": "지영(처제)",
+        "role": "Caddie/Sister-in-law",
+        "outfit": "Pink Sleeveless Polo + White Tight Wrap Mini Skirt",
+        "hair": "Long soft-wave hairstyle",
+        "gender": "FEMALE"
+      },
+      {
+        "id": "WomanB",
+        "name": "혜경",
+        "role": "Friend",
+        "outfit": "White Lace Crop Top + Deep Blue Satin Micro Mini Skirt",
+        "hair": "Short chic bob cut",
+        "gender": "FEMALE"
+      },
+      {
+        "id": "ManA",
+        "name": "성진(형부)",
+        "role": "Protagonist",
+        "outfit": "Black Slim-fit Golf Polo + Gray Tailored Slacks",
+        "hair": "Short neat hairstyle",
+        "gender": "MALE"
+      }
+    ],
+    "scenes": [
+      {
+        "sceneNumber": 1,
+        "characterIds": [
+          "ManA",
+          "WomanB"
+        ],
+        "shortPrompt": "Wide two-shot showing full bodies, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, Scene 1. A handsome Korean man in his 40s, ManA, Short neat hairstyle, Fit and athletic build, Dandy presence, leaning forward with curiosity around the snowy field with friends, alongside a stunning Korean woman in her 40s, WomanB, Short chic bob cut, Petite and slim frame. Background is a heavy snow falling golf course, winter atmosphere. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt.  8K cinematic photograph,  --q 2 , short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "함박눈이 내리는 골프장에서 40대 남성과 여성이 라운딩을 준비하는 모습.",
+        "longPrompt": "Wide two-shot showing full bodies, Scene 1. A handsome Korean man in his 40s, biting lips nervously, ManA, Short neat hairstyle, Fit and athletic build, Dandy presence, leaning forward with curiosity around the snowy field with friends, alongside a stunning Korean woman in her 40s, WomanB, Short chic bob cut, Petite and slim frame. Background is a heavy snow falling golf course, winter atmosphere. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt.  8K cinematic photograph,  --q 2, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "함박눈이 쏟아지는 골프장 배경, 40대 남성 성진(ManA)과 친구 혜경(WomanB)이 눈꽃 사이를 바라보며 서 있는 모습. 성진은 깔끔한 블랙 골프 폴로와 그레이 슬랙스를 입고 있으며, 혜경은 화이트 레이스 크롭탑과 딥블루 새틴 스커트를 입고 있습니다. 8K 시네마틱 품질.",
+        "soraPrompt": "Cinematic tracking shot of a handsome Korean man and a woman walking onto a snow-covered golf course during a heavy blizzard, laughter and anticipation in the air. Raw footage, Arri Alexa, ProRes 422.",
+        "soraPromptKo": "폭설이 내리는 눈 덮인 골프장으로 걸어 들어가는 한국인 남녀의 시네마틱 트래킹 샷. 웃음과 기대감이 서려 있는 분위기."
+      },
+      {
+        "sceneNumber": 2,
+        "characterIds": [
+          "WomanA",
+          "ManA",
+          "WomanB"
+        ],
+        "shortPrompt": "Over-the-shoulder three-shot with layered depth, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, in her 50s, Scene 2. Candid group shot of three stunning Korean people in their 40s. Slot Woman A, stunning Korean woman, long soft-wave hairstyle, extraordinarily high-projection perky bust, high-seated chest line, crossing arms defensively through snow-covered field towards ManA and WomanB. Woman A Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Sunset winter sky, playful movement.  8K,  --q 2 , Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "눈 덮인 골프장에서 세 명의 인물이 모여 있는 캔디드 단체샷, 아름다운 캐디가 다가오는 장면.",
+        "longPrompt": "in her 40s, Over-the-shoulder three-shot with layered depth, furrowed brows with concern, Scene 2. Candid group shot of three stunning Korean people in their 40s. Slot Woman A, stunning Korean woman, long soft-wave hairstyle, extraordinarily high-projection perky bust, high-seated chest line, crossing arms defensively through snow-covered field towards ManA and WomanB. Woman A Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Sunset winter sky, playful movement.  8K,  --q 2 , Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "눈부신 미모의 40대 한국인 여성 지영(WomanA)이 긴 웨이브 머리를 휘날리며 성진과 혜경에게 다가오는 캔디드 단체샷. 지영은 핑크 민소매 폴로와 화이트 랩 미니스커트를 입고 있으며, 노을 지는 겨울 하늘 배경입니다.",
+        "soraPrompt": "A stunning Korean caddie walking gracefully through falling snow towards two golfers, her long hair swaying in the winter wind. Consistent identity, High-end camera work.",
+        "soraPromptKo": "떨어지는 눈 사이로 두 명의 골퍼에게 우아하게 다가오는 아름다운 한국인 캐디. 겨울 바람에 긴 머리카락이 흔들리는 모습."
+      },
+      {
+        "sceneNumber": 3,
+        "characterIds": [
+          "ManA"
+        ],
+        "shortPrompt": "Over-the-shoulder perspective, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, Scene 3. A handsome Korean man in his 40s, gesturing expressively with hands, ManA, Short neat hairstyle, fit and athletic build, straightening his shoulders with a confident and smug expression. He is trying to look sophisticated on a snowy golf course. Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. Accessories: Luxury watch. , .  --q 2 , short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "40대 한국인 남성이 자신감 넘치는 표정으로 어깨를 펴는 모습.",
+        "longPrompt": "Over-the-shoulder perspective, Scene 3. A handsome Korean man in his 40s, gesturing expressively with hands, ManA, Short neat hairstyle, fit and athletic build, straightening his shoulders with a confident and smug expression. He is trying to look sophisticated on a snowy golf course. Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. Accessories: Luxury watch. , .  --q 2, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "40대 남성 성진(ManA)이 잘생긴 외모를 뽐내며 어깨에 힘을 빡 주고 자신감 있는 표정을 짓고 있는 단독 샷. 블랙 골프 폴로와 럭셔리 시계가 돋보이며 배경은 겨울 골프장입니다.",
+        "soraPrompt": "Medium shot of a dandy Korean man confidently adjusting his posture and smiling, trying to impress someone off-camera in a wintry setting. Raw footage, Crystal clear focus.",
+        "soraPromptKo": "자신감 있게 자세를 고쳐 잡고 미소 짓는 40대 남성의 미디엄 샷. 누군가에게 잘 보이려는 듯한 연출."
+      },
+      {
+        "sceneNumber": 4,
+        "characterIds": [
+          "ManA",
+          "WomanA"
+        ],
+        "shortPrompt": "Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, Scene 4. A handsome Korean man in his 40s, ManA, taking off a golf glove and handing a hotel parking ticket to a stunning Korean woman in her 40s, WomanA. ManA is winking confidently. WomanA has a long soft-wave hairstyle, tilting head in confusion the ticket. WomanA Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. Close-up shot, snowy background.  --q 2 , short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "남성이 여성에게 윙크를 하며 호텔 주차권을 건네는 장면.",
+        "longPrompt": "Scene 4. A handsome Korean man in his 40s, ManA, taking off a golf glove and handing a hotel parking ticket to a stunning Korean woman in her 40s, WomanA. ManA is winking confidently. WomanA has a long soft-wave hairstyle, tilting head in confusion the ticket. WomanA Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. Close-up shot, snowy background.  --q 2, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "성진(ManA)이 골프 장갑을 벗으며 지영(WomanA)에게 호텔 주차권을 멋지게 건네는 클로즈업 샷. 성진은 자신만만하게 윙크를 하고 있고, 지영은 그 주차권을 바라보고 있습니다.",
+        "soraPrompt": "Close-up of a hand handing over a card with a playful wink from a man, the snowy atmosphere blurring in the background. High-end visuals.",
+        "soraPromptKo": "남성이 장난스러운 윙크와 함께 카드를 건네는 손 클로즈업 샷. 눈 내리는 배경은 부드럽게 보케 처리됨."
+      },
+      {
+        "sceneNumber": 5,
+        "characterIds": [
+          "WomanB"
+        ],
+        "shortPrompt": "High angle shot for vulnerability, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, Scene 5. A stunning Korean woman in her 40s, stepping back in surprise, WomanB, Short chic bob cut, Petite and slim frame, staring fixedly at ManA with a skeptical and observant expression. Background is the snowy golf course. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Accessories: Heart-shaped fluffy earmuffs. Candid shot, .  --q 2 , Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "단발머리 한국인 여성이 의심스러운 표정으로 남성을 빤히 쳐다보는 모습.",
+        "longPrompt": "High angle shot for vulnerability, Scene 5. A stunning Korean woman in her 40s, stepping back in surprise, WomanB, Short chic bob cut, Petite and slim frame, staring fixedly at ManA with a skeptical and observant expression. Background is the snowy golf course. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Accessories: Heart-shaped fluffy earmuffs. Candid shot, .  --q 2 , Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "친구 혜경(WomanB)이 옆에서 성진을 한심하다는 듯, 혹은 의심스러운 눈초리로 빤히 쳐다보고 있는 장면. 하트 모양 귀도리를 착용하고 있으며 눈 덮인 필드가 배경입니다.",
+        "soraPrompt": "A woman with a chic bob cut looks on with a suspicious facial expression, her eyes narrowed as she observes a funny situation. Pan to her reaction.",
+        "soraPromptKo": "시크한 단발머리 여성이 의심스러운 표정으로 상황을 지켜보는 모습. 그녀의 리액션을 따라가는 팬 샷."
+      },
+      {
+        "sceneNumber": 6,
+        "characterIds": [
+          "WomanA"
+        ],
+        "shortPrompt": "Dutch angle close-up for tension, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, Scene 6. A stunning Korean woman in her 40s, reaching out tentatively, WomanA, Long soft-wave hairstyle, extraordinarily high-projection perky bust, biting her lip with a trembling expression of shock and disbelief. Her eyes are wide as she looks at the ticket. Background: Snowy golf course. Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. Accessories: Luxury stainless steel watch.  quality.  --q 2 , Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "아름다운 한국인 여성이 입술을 깨물며 충격받은 듯 떨리는 표정을 짓는 모습.",
+        "longPrompt": "Dutch angle close-up for tension, Scene 6. A stunning Korean woman in her 40s, reaching out tentatively, WomanA, Long soft-wave hairstyle, extraordinarily high-projection perky bust, biting her lip with a trembling expression of shock and disbelief. Her eyes are wide as she looks at the ticket. Background: Snowy golf course. Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. Accessories: Luxury stainless steel watch.  quality.  --q 2 , Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "지영(WomanA)이 주차권을 확인하고 충격에 빠진 듯 입술을 바짝 깨물며 경악하는 표정의 클로즈업 샷. 눈이 동그래진 상태로 성진을 바라보고 있으며 핑크색 폴로 셔츠를 입고 있습니다.",
+        "soraPrompt": "Macro shot of a beautiful woman's face as her expression shifts from professional to complete shock, her lips trembling slightly. ProRes 422.",
+        "soraPromptKo": "전문적인 표정에서 완전한 충격으로 변하는 여인의 얼굴 매크로 샷. 입술이 미세하게 떨리는 디테일."
+      },
+      {
+        "sceneNumber": 7,
+        "characterIds": [
+          "ManA"
+        ],
+        "shortPrompt": "Wide establishing shot with full body, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, Scene 7. A handsome Korean man in his 40s, ManA, turning away in frustration frozen and breathless with embarrassment. He is pretending to cough awkwardly (fake cough) with an elegant and tense facial expression. Background: Heavy snow, winter atmosphere. Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. High-end luxury golf aesthetic, candid moment.  --q 2 , short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "남성이 당황해서 얼어붙은 채 귀가 빨개져 헛기침을 하는 모습.",
+        "longPrompt": "Wide establishing shot with full body, Scene 7. A handsome Korean man in his 40s, smirking confidently, ManA, turning away in frustration frozen and breathless with embarrassment. He is pretending to cough awkwardly (fake cough) with an elegant and tense facial expression. Background: Heavy snow, winter atmosphere. Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. High-end luxury golf aesthetic, candid moment.  --q 2, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "성진(ManA)이 모든 사실이 들통나 얼어붙은 채 당황한 기색이 역력한 표정. 헛기침을 하며 시선을 피하는 우아하지만 긴장된 표정을 묘사. 8K 품질.",
+        "soraPrompt": "A man looking suddenly panicked, clearing his throat and looking away as his confident demeanor crumbles instantly in the snow. Drone orbit shot.",
+        "soraPromptKo": "갑자기 패닉에 빠진 남성이 헛기침을 하며 시선을 돌리는 모습. 자신만만하던 태도가 순식간에 무너지는 것을 보여주는 드론 궤도 샷."
+      },
+      {
+        "sceneNumber": 8,
+        "characterIds": [
+          "ManA",
+          "WomanA",
+          "WomanB"
+        ],
+        "shortPrompt": "Over-the-shoulder three-shot with layered depth, Confident Korean women in her 40s, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty, in her 50s, Scene 8. A wide cinematic shot of a handsome Korean man, ManA, laughing while covering mouth defeated and slumping his shoulders as he walks away from the snowy golf course exit. WomanA and WomanB are in the background. Sunset winter sky, heavy snow on ground. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanA Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt.  8K, .  --q 2 , short yet tight couture silhouettes, well-maintained timeless glamour, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "남성이 패배한 듯한 모습으로 눈 덮인 골프장에서 끌려 나가는 장면.",
+        "longPrompt": "in her 40s, Over-the-shoulder three-shot with layered depth, pouting playfully, Scene 8. A wide cinematic shot of a handsome Korean man, ManA, laughing while covering mouth defeated and slumping his shoulders as he walks away from the snowy golf course exit. WomanA and WomanB are in the background. Sunset winter sky, heavy snow on ground. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanA Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt.  8K, .  --q 2, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "성진(ManA)이 축 처진 어깨로 골프장 출구를 향해 걸어가는 마지막 장면. 뒤에는 지영과 혜경이 서 있고, 노을 지는 겨울 하늘과 눈 덮인 대지가 시네마틱하게 펼쳐집니다.",
+        "soraPrompt": "A man walking away into the distance across a vast white golf course under a sunset sky, looking lonely and regretful. Wide cinematic finish.",
+        "soraPromptKo": "노을지는 하늘 아래 드넓은 하얀 골프장을 가로질러 멀어지는 남자의 뒷모습. 외롭고 후회 섞인 시네마틱 엔딩."
+      }
+    ],
+    "scripts": [
+      {
+        "title": "폭설 속의 골프장, 그리고 뜻밖의 재회",
+        "titleOptions": [
+          "연예인 뺨치는 캐디의 정체",
+          "호텔 주차권 팁의 최후",
+          "처제에게 딱 걸린 형부의 외출"
+        ],
+        "scriptBody": "폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.\n저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.\n'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.\n일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.\n'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.\n캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.\n심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.\n근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.\n'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'\n알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.\n순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.\n결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.",
+        "punchline": "결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.",
+        "characters": [
+          {
+            "id": "WomanA",
+            "name": "지영(처제)",
+            "role": "Caddie/Sister-in-law",
+            "outfit": "Pink Sleeveless Polo + White Tight Wrap Mini Skirt",
+            "hair": "Long soft-wave hairstyle",
+            "gender": "FEMALE"
+          },
+          {
+            "id": "WomanB",
+            "name": "혜경",
+            "role": "Friend",
+            "outfit": "White Lace Crop Top + Deep Blue Satin Micro Mini Skirt",
+            "hair": "Short chic bob cut",
+            "gender": "FEMALE"
+          },
+          {
+            "id": "ManA",
+            "name": "성진(형부)",
+            "role": "Protagonist",
+            "outfit": "Black Slim-fit Golf Polo + Gray Tailored Slacks",
+            "hair": "Short neat hairstyle",
+            "gender": "MALE"
+          }
+        ],
+        "scenes": [
+          {
+            "sceneNumber": 1,
+            "characterIds": [
+              "ManA",
+              "WomanB"
+            ],
+            "shortPrompt": "Handsome Korean man in his 40s and woman in her 40s standing on a snowy golf course, winter atmosphere.",
+            "shortPromptKo": "함박눈이 내리는 골프장에서 40대 남성과 여성이 라운딩을 준비하는 모습.",
+            "longPrompt": "A handsome Korean man in his 40s, ManA, Short neat hairstyle, Fit and athletic build, Dandy presence, looking around the snowy field with friends, alongside a stunning Korean woman in her 40s, WomanB, Short chic bob cut, Petite and slim frame. Background is a heavy snow falling golf course, winter atmosphere. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, --ar 9:16 --q 2 --style raw",
+            "longPromptKo": "함박눈이 쏟아지는 골프장 배경, 40대 남성 성진(ManA)과 친구 혜경(WomanB)이 눈꽃 사이를 바라보며 서 있는 모습. 성진은 깔끔한 블랙 골프 폴로와 그레이 슬랙스를 입고 있으며, 혜경은 화이트 레이스 크롭탑과 딥블루 새틴 스커트를 입고 있습니다. 8K 시네마틱 품질.",
+            "soraPrompt": "Cinematic tracking shot of a handsome Korean man and a woman walking onto a snow-covered golf course during a heavy blizzard, laughter and anticipation in the air. Raw footage, Arri Alexa, ProRes 422.",
+            "soraPromptKo": "폭설이 내리는 눈 덮인 골프장으로 걸어 들어가는 한국인 남녀의 시네마틱 트래킹 샷. 웃음과 기대감이 서려 있는 분위기."
+          },
+          {
+            "sceneNumber": 2,
+            "characterIds": [
+              "WomanA",
+              "ManA",
+              "WomanB"
+            ],
+            "shortPrompt": "Candid group shot of three people on a snowy golf course, a beautiful caddie approaching.",
+            "shortPromptKo": "눈 덮인 골프장에서 세 명의 인물이 모여 있는 캔디드 단체샷, 아름다운 캐디가 다가오는 장면.",
+            "longPrompt": "Candid group shot of three stunning Korean people in their 40s. Slot Woman A, stunning Korean woman, long soft-wave hairstyle, extraordinarily high-projection perky bust, high-seated chest line, walking through snow-covered field towards ManA and WomanB. Woman A Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Sunset winter sky, playful movement. Hyper-realistic 8K, --ar 9:16 --q 2 --style raw, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene.",
+            "longPromptKo": "눈부신 미모의 40대 한국인 여성 지영(WomanA)이 긴 웨이브 머리를 휘날리며 성진과 혜경에게 다가오는 캔디드 단체샷. 지영은 핑크 민소매 폴로와 화이트 랩 미니스커트를 입고 있으며, 노을 지는 겨울 하늘 배경입니다.",
+            "soraPrompt": "A stunning Korean caddie walking gracefully through falling snow towards two golfers, her long hair swaying in the winter wind. Consistent identity, High-end camera work.",
+            "soraPromptKo": "떨어지는 눈 사이로 두 명의 골퍼에게 우아하게 다가오는 아름다운 한국인 캐디. 겨울 바람에 긴 머리카락이 흔들리는 모습."
+          },
+          {
+            "sceneNumber": 3,
+            "characterIds": [
+              "ManA"
+            ],
+            "shortPrompt": "Dandy Korean man in his 40s straightening his shoulders, looking confident.",
+            "shortPromptKo": "40대 한국인 남성이 자신감 넘치는 표정으로 어깨를 펴는 모습.",
+            "longPrompt": "A handsome Korean man in his 40s, ManA, Short neat hairstyle, fit and athletic build, straightening his shoulders with a confident and smug expression. He is trying to look sophisticated on a snowy golf course. Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. Accessories: Luxury watch. Cinematic lighting, professional photography. --ar 9:16 --q 2 --style raw",
+            "longPromptKo": "40대 남성 성진(ManA)이 잘생긴 외모를 뽐내며 어깨에 힘을 빡 주고 자신감 있는 표정을 짓고 있는 단독 샷. 블랙 골프 폴로와 럭셔리 시계가 돋보이며 배경은 겨울 골프장입니다.",
+            "soraPrompt": "Medium shot of a dandy Korean man confidently adjusting his posture and smiling, trying to impress someone off-camera in a wintry setting. Raw footage, Crystal clear focus.",
+            "soraPromptKo": "자신감 있게 자세를 고쳐 잡고 미소 짓는 40대 남성의 미디엄 샷. 누군가에게 잘 보이려는 듯한 연출."
+          },
+          {
+            "sceneNumber": 4,
+            "characterIds": [
+              "ManA",
+              "WomanA"
+            ],
+            "shortPrompt": "Man handing a hotel parking ticket to a woman with a wink.",
+            "shortPromptKo": "남성이 여성에게 윙크를 하며 호텔 주차권을 건네는 장면.",
+            "longPrompt": "A handsome Korean man in his 40s, ManA, taking off a golf glove and handing a hotel parking ticket to a stunning Korean woman in her 40s, WomanA. ManA is winking confidently. WomanA has a long soft-wave hairstyle, looking at the ticket. WomanA Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. Close-up shot, snowy background. --ar 9:16 --q 2 --style raw",
+            "longPromptKo": "성진(ManA)이 골프 장갑을 벗으며 지영(WomanA)에게 호텔 주차권을 멋지게 건네는 클로즈업 샷. 성진은 자신만만하게 윙크를 하고 있고, 지영은 그 주차권을 바라보고 있습니다.",
+            "soraPrompt": "Close-up of a hand handing over a card with a playful wink from a man, the snowy atmosphere blurring in the background. High-end visuals.",
+            "soraPromptKo": "남성이 장난스러운 윙크와 함께 카드를 건네는 손 클로즈업 샷. 눈 내리는 배경은 부드럽게 보케 처리됨."
+          },
+          {
+            "sceneNumber": 5,
+            "characterIds": [
+              "WomanB"
+            ],
+            "shortPrompt": "Short-haired Korean woman looking skeptical and staring at the man.",
+            "shortPromptKo": "단발머리 한국인 여성이 의심스러운 표정으로 남성을 빤히 쳐다보는 모습.",
+            "longPrompt": "A stunning Korean woman in her 40s, WomanB, Short chic bob cut, Petite and slim frame, staring fixedly at ManA with a skeptical and observant expression. Background is the snowy golf course. WomanB Outfit: White Lace Crop Top + Deep Blue Satin Micro Mini Skirt. Accessories: Heart-shaped fluffy earmuffs. Candid shot, depth of field. --ar 9:16 --q 2 --style raw, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene.",
+            "longPromptKo": "친구 혜경(WomanB)이 옆에서 성진을 한심하다는 듯, 혹은 의심스러운 눈초리로 빤히 쳐다보고 있는 장면. 하트 모양 귀도리를 착용하고 있으며 눈 덮인 필드가 배경입니다.",
+            "soraPrompt": "A woman with a chic bob cut looks on with a suspicious facial expression, her eyes narrowed as she observes a funny situation. Pan to her reaction.",
+            "soraPromptKo": "시크한 단발머리 여성이 의심스러운 표정으로 상황을 지켜보는 모습. 그녀의 리액션을 따라가는 팬 샷."
+          },
+          {
+            "sceneNumber": 6,
+            "characterIds": [
+              "WomanA"
+            ],
+            "shortPrompt": "Stunning Korean woman biting her lip with a trembling expression of shock.",
+            "shortPromptKo": "아름다운 한국인 여성이 입술을 깨물며 충격받은 듯 떨리는 표정을 짓는 모습.",
+            "longPrompt": "A stunning Korean woman in her 40s, WomanA, Long soft-wave hairstyle, extraordinarily high-projection perky bust, biting her lip with a trembling expression of shock and disbelief. Her eyes are wide as she looks at the ticket. Background: Snowy golf course. Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. Accessories: Luxury stainless steel watch. Masterpiece quality. --ar 9:16 --q 2 --style raw, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene.",
+            "longPromptKo": "지영(WomanA)이 주차권을 확인하고 충격에 빠진 듯 입술을 바짝 깨물며 경악하는 표정의 클로즈업 샷. 눈이 동그래진 상태로 성진을 바라보고 있으며 핑크색 폴로 셔츠를 입고 있습니다.",
+            "soraPrompt": "Macro shot of a beautiful woman's face as her expression shifts from professional to complete shock, her lips trembling slightly. ProRes 422.",
+            "soraPromptKo": "전문적인 표정에서 완전한 충격으로 변하는 여인의 얼굴 매크로 샷. 입술이 미세하게 떨리는 디테일."
+          },
+          {
+            "sceneNumber": 7,
+            "characterIds": [
+              "ManA"
+            ],
+            "shortPrompt": "Man looking frozen and embarrassed, ears turning red, coughing awkwardly.",
+            "shortPromptKo": "남성이 당황해서 얼어붙은 채 귀가 빨개져 헛기침을 하는 모습.",
+            "longPrompt": "A handsome Korean man in his 40s, ManA, looking frozen and breathless with embarrassment. He is pretending to cough awkwardly (fake cough) with an elegant and tense facial expression. Background: Heavy snow, winter atmosphere. Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. High-end luxury golf aesthetic, candid moment. --ar 9:16 --q 2 --style raw",
+            "longPromptKo": "성진(ManA)이 모든 사실이 들통나 얼어붙은 채 당황한 기색이 역력한 표정. 헛기침을 하며 시선을 피하는 우아하지만 긴장된 표정을 묘사. 8K 품질.",
+            "soraPrompt": "A man looking suddenly panicked, clearing his throat and looking away as his confident demeanor crumbles instantly in the snow. Drone orbit shot.",
+            "soraPromptKo": "갑자기 패닉에 빠진 남성이 헛기침을 하며 시선을 돌리는 모습. 자신만만하던 태도가 순식간에 무너지는 것을 보여주는 드론 궤도 샷."
+          },
+          {
+            "sceneNumber": 8,
+            "characterIds": [
+              "ManA",
+              "WomanA",
+              "WomanB"
+            ],
+            "shortPrompt": "A man being led away from a snowy golf course, looking defeated.",
+            "shortPromptKo": "남성이 패배한 듯한 모습으로 눈 덮인 골프장에서 끌려 나가는 장면.",
+            "longPrompt": "A wide cinematic shot of a handsome Korean man, ManA, looking defeated and slumping his shoulders as he walks away from the snowy golf course exit. WomanA and WomanB are in the background. Sunset winter sky, heavy snow on ground. ManA Outfit: Black Slim-fit Golf Polo + Gray Tailored Slacks. WomanA Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt. Hyper-realistic 8K, cinematic lighting. --ar 9:16 --q 2 --style raw",
+            "longPromptKo": "성진(ManA)이 축 처진 어깨로 골프장 출구를 향해 걸어가는 마지막 장면. 뒤에는 지영과 혜경이 서 있고, 노을 지는 겨울 하늘과 눈 덮인 대지가 시네마틱하게 펼쳐집니다.",
+            "soraPrompt": "A man walking away into the distance across a vast white golf course under a sunset sky, looking lonely and regretful. Wide cinematic finish.",
+            "soraPromptKo": "노을지는 하늘 아래 드넓은 하얀 골프장을 가로질러 멀어지는 남자의 뒷모습. 외롭고 후회 섞인 시네마틱 엔딩."
+          }
+        ],
+        "_folderName": "260127_0737_폭설_속의_골프장,_그리고_뜻밖의_재회"
+      }
+    ],
+    "id": "21bf2e5e-0734-4a25-949f-f9df6d787d51",
+    "createdAt": 1769467029167,
+    "service": "GEMINI",
+    "_folderName": "260127_073709_폭설_속의_골프장,_그리고_뜻밖의_재회"
+  }
+]

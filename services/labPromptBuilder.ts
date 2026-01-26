@@ -1747,98 +1747,54 @@ export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '�
 
   // 1. 필수 시작 문구 확인
   if (!longPrompt.includes('unfiltered raw photograph')) {
-    fixedPrompt = `${promptConstants.START}, ${fixedPrompt}`;
-  }
-
-  const needsPersonMarkers = shotType === '투샷' || shotType === '쓰리샷';
-
-  if (needsPersonMarkers) {
-    const requiredCount = shotType === '투샷' ? 2 : 3;
-    
-    // [V3.5.3 개선] 기존 마커가 있는지 확인하고, 있으면 내용을 교체, 없으면 새로 생성
-    for (let i = 1; i <= requiredCount; i++) {
-      const markerRegex = new RegExp(`\\[Person\\s+${i}:[^\\]]*\\]`, 'gi');
-      const character = characters[i - 1];
-      if (!character) continue;
-
-      const goldenContent = [
-        character.identity,
-        character.hair,
-        character.body,
-        character.outfit ? `wearing ${character.outfit.replace(/^wearing\s+/i, '')}` : ''
-      ].filter(Boolean).join(', ');
-      
-      const goldenMarker = `[Person ${i}: ${goldenContent}]`;
-
-      if (markerRegex.test(fixedPrompt)) {
-        // 기존 마커가 있으면 강제 교체 (일관성 보장)
-        fixedPrompt = fixedPrompt.replace(markerRegex, goldenMarker);
-      } else {
-        // 마커가 없으면 적절한 위치에 삽입 (시작 문구 뒤)
-        issues.push(`${shotType} 프롬프트에 [Person ${i}] 마커가 누락되어 추가했습니다.`);
-        if (i === 1) {
-          const startPrefix = promptConstants.START;
-          if (fixedPrompt.includes(startPrefix)) {
-            const remainder = fixedPrompt.replace(startPrefix, '').trim().replace(/^,\s*/, '');
-            fixedPrompt = `${startPrefix}, ${goldenMarker}${remainder ? `, ${remainder}` : ''}`;
-          } else {
-            fixedPrompt = `${goldenMarker}, ${fixedPrompt}`;
-          }
-        } else {
-          // Person 1 뒤에 삽입
-          const prevMarker = `[Person ${i-1}:`;
-          const parts = fixedPrompt.split(prevMarker);
-          if (parts.length > 1) {
-            const firstPart = parts[0] + prevMarker + parts[1].split(']')[0] + ']';
-            const secondPart = fixedPrompt.substring(firstPart.length);
-            fixedPrompt = `${firstPart} ${goldenMarker}${secondPart.startsWith(',') ? '' : ','}${secondPart}`;
-          } else {
-            fixedPrompt += `, ${goldenMarker}`;
-          }
-        }
-      }
-    }
   } else {
-    // 원샷인 경우에도 캐릭터 정보 강제 동기화
+    // One-shot synchronization and de-duplication
     const character = characters[0];
     if (character) {
-      if (character.identity && !fixedPrompt.includes(character.identity)) {
-        issues.push('캐릭터 정체성 정보를 보정했습니다.');
-        fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.identity},`);
+      const traitPrefix = promptConstants.START;
+      const traits = [character.identity, character.hair, character.body].filter(Boolean);
+      
+      // Remove existing traits to avoid duplicates
+      traits.forEach(trait => {
+          const regex = new RegExp(`,?\\s*${trait.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'gi');
+          fixedPrompt = fixedPrompt.replace(regex, '');
+      });
+      
+      // Re-insert standard traits at the beginning after prefix
+      const goldenTraits = traits.join(', ');
+      if (fixedPrompt.includes(traitPrefix)) {
+          fixedPrompt = fixedPrompt.replace(traitPrefix, `${traitPrefix}, ${goldenTraits}`);
+      } else {
+          fixedPrompt = `${traitPrefix}, ${goldenTraits}, ${fixedPrompt}`;
       }
-      if (character.hair && !fixedPrompt.includes(character.hair)) {
-        issues.push('캐릭터 헤어 정보를 보정했습니다.');
-        if (character.identity && fixedPrompt.includes(character.identity)) {
-          fixedPrompt = fixedPrompt.replace(character.identity, `${character.identity}, ${character.hair}`);
-        } else {
-          fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.hair},`);
-        }
-      }
-      if (character.body && !fixedPrompt.includes(character.body)) {
-        issues.push('캐릭터 체형 정보를 보정했습니다.');
-        if (character.hair && fixedPrompt.includes(character.hair)) {
-          fixedPrompt = fixedPrompt.replace(character.hair, `${character.hair}, ${character.body}`);
-        } else if (character.identity && fixedPrompt.includes(character.identity)) {
-          fixedPrompt = fixedPrompt.replace(character.identity, `${character.identity}, ${character.body}`);
-        } else {
-          fixedPrompt = fixedPrompt.replace(/(unfiltered raw photograph,[^,]*),/i, `$1, ${character.body},`);
-        }
-      }
-      if (character.outfit && !fixedPrompt.includes(character.outfit)) {
-        issues.push('캐릭터 의상 정보를 보정했습니다.');
-        const wearingRegex = /wearing\s+[^,]+/i;
-        if (wearingRegex.test(fixedPrompt)) {
-          fixedPrompt = fixedPrompt.replace(wearingRegex, `wearing ${character.outfit.replace(/^wearing\s+/i, '')}`);
-        } else {
-          fixedPrompt = fixedPrompt.replace(/([^,]+,)\s*([배경|장소|at|in|on])/i, `$1 wearing ${character.outfit}, $2`);
-        }
+
+      // Outfit sync
+      if (character.outfit) {
+          const outfitClean = character.outfit.replace(/^wearing\s+/i, '');
+          const wearingRegex = /wearing\s+[^,]+/i;
+          if (wearingRegex.test(fixedPrompt)) {
+              fixedPrompt = fixedPrompt.replace(wearingRegex, `wearing ${outfitClean}`);
+          } else {
+              const qualityIdx = fixedPrompt.indexOf(', photorealistic');
+              if (qualityIdx !== -1) {
+                  fixedPrompt = fixedPrompt.slice(0, qualityIdx) + `, wearing ${outfitClean}` + fixedPrompt.slice(qualityIdx);
+              } else {
+                  fixedPrompt += `, wearing ${outfitClean}`;
+              }
+          }
       }
     }
   }
+
+  // Final cleanup
+  fixedPrompt = fixedPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
+  const womanPattern = /A stunning Korean woman,\s*A stunning Korean woman/gi;
+  fixedPrompt = fixedPrompt.replace(womanPattern, 'A stunning Korean woman');
 
   return { isValid: issues.length === 0, issues, fixedPrompt };
 };
 
+// ... (Restoring lost outfit functions)
 export const pickRandomOutfit = (gender: 'female' | 'male', category: string): string => {
   if (gender === 'male') return pickMaleOutfit('', []);
   return pickFemaleOutfit('comedy-humor', '', []);

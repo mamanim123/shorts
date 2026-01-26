@@ -466,20 +466,23 @@ const pickRandomFromList = <T,>(items: T[], exclude: Set<T>): T | null => {
 
 const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
     const outfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+    // Filter out female candidates (not MALE) and male candidates (MALE or UNISEX)
     const femaleCandidates = outfitPool.filter(item => !item.categories.includes('MALE'));
     const maleCandidates = outfitPool.filter(item => item.categories.includes('MALE') || item.categories.includes('UNISEX'));
 
-    const usedFemale = new Set<OutfitPoolItem>();
-    const usedMale = new Set<OutfitPoolItem>();
+    const usedOutfits = new Set<string>();
     const outfitMap = new Map<string, string>();
 
+    // Sort to ensure deterministic behavior or just process as is
     characterIds.forEach((id) => {
         const gender = getCharacterGender(id);
         const candidates = gender === 'male' ? maleCandidates : femaleCandidates;
-        const used = gender === 'male' ? usedMale : usedFemale;
-        const picked = pickRandomFromList(candidates, used);
+        
+        // Find a candidate that hasn't been used yet
+        const picked = candidates.find(item => !usedOutfits.has(item.name)) || candidates[0];
+        
         if (picked) {
-            used.add(picked);
+            usedOutfits.add(picked.name);
             outfitMap.set(id, picked.name);
         }
     });
@@ -1893,6 +1896,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
         let remainder = (rawPrompt || '').trim();
+        
+        // Clean up common AI prefixes
         remainder = remainder.replace(/^Scene\s+\d+[.,]?\s*/i, '').trim();
         if (remainder.includes(PROMPT_CONSTANTS.START)) {
             remainder = remainder.replace(PROMPT_CONSTANTS.START, '').trim();
@@ -1902,20 +1907,27 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         }
         remainder = remainder.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
 
+        // [v3.5.3] De-duplication Logic: 
+        // If AI already wrote a long prompt, we want to replace its generic character descriptions
+        // with our specific [Person X] markers to ensure consistency while avoiding "A stunning Korean woman" appearing twice.
+        
         const identityBlock = characterIds
-            .map((id) => {
+            .map((id, index) => {
                 const meta = characterMap.get(id);
                 if (!meta) return '';
+                
                 const fallbackHair = meta.hair || DEFAULT_CHARACTER_META[meta.id]?.hair || '';
                 const fallbackBody = meta.body
                     || DEFAULT_CHARACTER_META[meta.id]?.body
                     || (meta.gender === 'female' ? PROMPT_CONSTANTS.FEMALE_BODY_A : '');
+                
                 const outfitPhrase = meta.outfit
                     ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
                     : '';
                 const accessoryPhrase = meta.accessories.length > 0
                     ? `accessorized with ${meta.accessories.join(', ')}`
                     : '';
+                
                 const descriptor = [
                     meta.identity,
                     fallbackHair,
@@ -1923,17 +1935,36 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     outfitPhrase,
                     accessoryPhrase
                 ].filter(Boolean).join(', ');
-                const nameLabel = meta.name ? ` (${meta.name})` : '';
-                return `Slot ${meta.slotLabel}${nameLabel}: ${descriptor}`;
+                
+                // Use Person index for the marker
+                return `[Person ${index + 1}: ${descriptor}]`;
             })
             .filter(Boolean)
-            .join(' | ');
+            .join(', ');
 
+        // Try to find where the AI described characters and replace or suppress
+        // For now, let's keep it simple: Start with our identity markers, then add the rest.
         const parts = [PROMPT_CONSTANTS.START];
+        
+        if (guidance?.camera) parts.push(guidance.camera);
         if (identityBlock) parts.push(identityBlock);
         if (guidance?.expression) parts.push(`[${guidance.expression}]`);
-        if (guidance?.camera) parts.push(guidance.camera);
-        if (remainder) parts.push(remainder);
+        
+        // Suppress AI's attempt to REDESCRIBE characters if we already have the block
+        // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
+        let cleanedRemainder = remainder;
+        characterIds.forEach((id) => {
+            const meta = characterMap.get(id);
+            if (!meta) return;
+            // Remove things like "A stunning Korean woman", "Woman A", "Slot Woman A"
+            const namePattern = new RegExp(`(A\\s+stunning\\s+Korean\\s+woman|A\\s+handsome\\s+Korean\\s+man|Slot\\s+${meta.slotLabel}|${meta.slotLabel})`, 'gi');
+            cleanedRemainder = cleanedRemainder.replace(namePattern, '').trim();
+        });
+        
+        // Clean up messy commas from replacement
+        cleanedRemainder = cleanedRemainder.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+
+        if (cleanedRemainder) parts.push(cleanedRemainder);
         parts.push(PROMPT_CONSTANTS.END);
 
         return `${scenePrefix} ${parts.join(', ')}`;

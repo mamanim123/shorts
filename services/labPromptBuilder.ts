@@ -348,6 +348,46 @@ export interface LabImagePromptOptions {
   includeAspectRatio: boolean;
 }
 
+export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
+  const { topic, genre, targetAge, gender } = options;
+  const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
+  const seed = generateRandomSeed();
+  const narratorName = gender === 'female' ? '지영' : '준호';
+  const narratorSlot = gender === 'female' ? 'WomanA' : 'ManA';
+  const emotionFlow = genreGuide?.emotionCurve || '';
+
+  return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 유튜브 쇼츠 대본 전문 작가입니다.
+아래 주제/장르/연령에 맞는 대본만 생성하세요.
+이미지 프롬프트나 scenes는 절대 생성하지 않습니다.
+
+주제: ${topic}
+장르: ${genreGuide?.name || genre}
+타겟 연령: ${targetAge}
+
+출력은 반드시 아래 JSON 형식 하나만:
+{
+  "title": "제목",
+  "titleOptions": ["옵션1", "옵션2", "옵션3"],
+  "scriptBody": "문장1\\n문장2... (8~12개 문장)",
+  "punchline": "펀치라인",
+  "hook": "HOOK 문장",
+  "twist": "TWIST 문장",
+  "foreshadowing": "복선 문장",
+  "narrator": { "slot": "${narratorSlot}", "name": "${narratorName}" },
+  "emotionFlow": "${emotionFlow}"
+}
+
+규칙:
+1) scriptBody는 8~12문장 (줄바꿈으로 구분)
+2) 대사는 자연스러운 구어체 한국어
+3) scenes/longPrompt/shortPrompt 절대 포함 금지
+4) 마크다운 금지, JSON만 출력
+
+[Request ID: ${seed}]`;
+};
+
 // ============================================
 // v3.6 - 장르별 표정 키워드 & 카메라 앵글 (규칙 파일 연동)
 // ============================================

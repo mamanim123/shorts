@@ -1,1 +1,395 @@
-{ "title": "처제와의 골프장 만남", "scriptBody": "폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.\n저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.\n'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.\n일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.\n'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.\n캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.\n심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.\n근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.\n'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'\n알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.\n순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.\n결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.", "characters": [ { "id": "ManA", "name": "나 (형부)", "identity": "A handsome Korean man in his 40s", "hair": "short neat hairstyle", "body": "fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes", "outfit": "stylish but slightly excessive golf attire", "accessories": [ "Neatly groomed side-part hairstyle with wax, slightly disheveled by the wind", "Mischievous and expressive eyes that widen in panic, reddish face and ears", "Average build with a rigid, self-conscious posture, trying to look broad-shouldered", "Holding a hotel parking ticket with a clumsy wink", "A mix of a polished businessman and a comedic, flustered blunderer" ] }, { "id": "WomanB", "name": "막내 처제 (캐디)", "identity": "A stunning Korean woman in her 20s", "hair": "short chic bob cut", "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence", "outfit": "Navy Tight-fitting long-sleeve Tight Knit + White Micro Mini Skirt", "accessories": [ "Long hair tied back in a neat ponytail under a golf cap", "Large, clear, and expressive eyes showing shock and recognition", "Slender and athletic, professional posture in a functional caddie uniform", "Biting her lower lip in disbelief, wearing a crisp caddie outfit against a snowy background", "Bright, fresh, and strikingly beautiful with a sharp, surprised expression", "long opera-length velvet gloves" ] }, { "id": "WomanC", "name": "혜경", "identity": "A stunning Korean woman in her 40s", "hair": "low ponytail hairstyle", "body": "Gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust, calm observer demeanor", "outfit": "Coral Halter Crop Top (Tight-fitting long-sleeve version) + Grey High-waist Tight Leggings", "accessories": [ "Short bob or tied-back hair suitable for sports", "Judgmental and squinting eyes, staring intently at the protagonist", "Stable and composed golf stance", "Folded arms or a skeptical facial expression", "Realistic and cynical observer", "long opera-length velvet gloves" ] } ], "scenes": [ { "sceneNumber": 1, "scriptLine": "폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.", "summary": "눈 내리는 골프장에서 라운딩을 즐기는 모습", "shotType": "익스트림 롱샷", "characterIds": ["ManA"], "shortPrompt": "A man in golf attire on a snowy golf course during a heavy snowstorm.", "longPrompt": "Scene 1. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A handsome Korean man in his 40s, short neat hairstyle, [excited and adventurous expression], [wide establishing shot], [standing on a snowy green with golf clubs, heavy snow falling], stylish but slightly excessive golf attire, Neatly groomed side-part hairstyle with wax, slightly disheveled by the wind, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "폭설이 내리는 골프장에서 골프복을 입고 라운딩 중인 남자.", "longPromptKo": "장면 1. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 40대 미남 한국인 남성, 짧고 깔끔한 헤어스타일, [흥분되고 모험적인 표정], [와이드 샷], [폭설이 내리는 눈 덮인 그린 위에서 골프채를 들고 서 있음], 세련됐지만 약간 과한 골프 복장, 왁스로 깔끔하게 정리되었으나 바람에 약간 헝클어진 옆가르마 헤어스타일, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.", "emotion": "cheerful", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 2, "scriptLine": "저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.", "summary": "눈꽃 사이로 걸어오는 아름다운 캐디", "shotType": "미디엄 롱샷", "characterIds": ["WomanB"], "shortPrompt": "A stunning young female caddie walking through falling snow.", "longPrompt": "Scene 2. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A stunning Korean woman in her 20s, short chic bob cut, [bright and fresh expression], [medium-full shot], [walking gracefully through snowflakes on a golf course], Navy Tight-fitting long-sleeve Tight Knit + White Micro Mini Skirt, Long hair tied back in a neat ponytail under a golf cap, long opera-length velvet gloves, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "눈발을 헤치며 우아하게 걸어오는 아름다운 젊은 여성 캐디.", "longPromptKo": "장면 2. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 20대 미모의 한국인 여성, 시크한 단발 컷, [밝고 신선한 표정], [미디엄 풀샷], [골프장에서 눈송이 사이를 우아하게 걷는 모습], 네이비 타이트 롱슬리브 니트와 화이트 마이크로 미니스커트, 골프 캡 아래로 묶은 포니테일, 긴 벨벳 장갑, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.", "emotion": "amazed", "speed": "normal" }, "lipSync": { "speaker": "WomanB", "speakerName": "막내 처제 (캐디)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 3, "scriptLine": "'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.", "summary": "어깨에 힘을 주며 자신감 넘치는 포즈를 취하는 주인공", "shotType": "미디엄 샷", "characterIds": ["ManA"], "shortPrompt": "A man squaring his shoulders with a self-assured expression.", "longPrompt": "Scene 3. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A handsome Korean man in his 40s, short neat hairstyle, [proud and self-assured expression], [medium shot], [posing with chest out and shoulders squared, trying to look broad-shouldered], stylish but slightly excessive golf attire, Neatly groomed side-part hairstyle with wax, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "자신만만한 표정으로 어깨를 펴고 포즈를 취하는 남자.", "longPromptKo": "장면 3. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 40대 미남 한국인 남성, 짧고 깔끔한 헤어스타일, [자랑스럽고 자신만만한 표정], [미디엄 샷], [가슴을 펴고 어깨를 넓게 보이려 노력하는 포즈], 세련됐지만 약간 과한 골프 복장, 왁스로 깔끔하게 정리된 옆가르마, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.", "emotion": "confident", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 4, "scriptLine": "일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.", "summary": "장갑을 벗으며 지갑에서 주차권을 꺼내는 모습", "shotType": "클로즈업", "characterIds": ["ManA"], "shortPrompt": "A man's hands taking a hotel parking ticket out of a wallet.", "longPrompt": "Scene 4. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A handsome Korean man in his 40s, short neat hairstyle, [smug and cool expression], [close-up], [taking off a golf glove and holding a hotel parking ticket taken from a wallet], stylish but slightly excessive golf attire, Neatly groomed side-part hairstyle with wax, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "골프 장갑을 벗으며 지갑에서 호텔 주차권을 꺼내 드는 남자의 손.", "longPromptKo": "장면 4. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 40대 미남 한국인 남성, 짧고 깔끔한 헤어스타일, [우쭐하고 멋진 표정], [클로즈업], [골프 장갑을 벗고 지갑에서 꺼낸 호텔 주차권을 들고 있는 모습], 세련됐지만 약간 과한 골프 복장, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.", "emotion": "smug", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 5, "scriptLine": "'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.", "summary": "윙크하는 주인공과 그를 한심하게 쳐다보는 혜경", "shotType": "투샷", "characterIds": ["ManA", "WomanC"], "shortPrompt": "A man winking clumsily while a woman stares at him skeptically.", "longPrompt": "Scene 5. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [ManA] A handsome Korean man in his 40s, [WomanC] A stunning Korean woman in her 40s, [ManA winking clumsily, WomanC staring intently with judgmental eyes], [medium two-shot], [ManA holding the ticket toward the camera, WomanC in the background with folded arms], stylish but slightly excessive golf attire, Coral Halter Crop Top + Grey High-waist Tight Leggings, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "서투르게 윙크하는 남자와 그를 비판적인 시선으로 쳐다보는 여자.", "longPromptKo": "장면 5. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, [ManA] 40대 미남 한국인 남성, [WomanC] 40대 미모의 한국인 여성, [서투르게 윙크하는 남자와 한심한 듯 쳐다보는 여자], [미디엄 투샷], [남자는 주차권을 내밀고 여자는 뒤에서 팔짱을 끼고 있음], 세련된 골프복과 코랄색 홀터 크롭탑, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.", "emotion": "playful", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "'이거 나중에 팁 대신 쓰세요'", "emotion": "flirty", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 6, "scriptLine": "캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.", "summary": "주차권을 보고 눈이 휘둥그레진 캐디", "shotType": "클로즈업", "characterIds": ["WomanB"], "shortPrompt": "A young woman's face with wide eyes showing extreme surprise.", "longPrompt": "Scene 6. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A stunning Korean woman in her 20s, short chic bob cut, [shocked and wide-eyed expression], [close-up], [staring intensely at the parking ticket and then at the man], Navy Tight-fitting long-sleeve Tight Knit, Long hair tied back in a neat ponytail under a golf cap, biting her lower lip in disbelief, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "주차권을 보고 소스라치게 놀라 눈을 크게 뜬 젊은 여성.", "longPromptKo": "장면 6. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 20대 미모의 한국인 여성, 시크한 단발 컷, [충격받아 눈을 크게 뜬 표정], [클로즈업], [주차권을 보다가 남자를 빤히 쳐다보는 모습], 네이비 타이트 니트, 골프 캡 아래 묶은 머리, 믿기지 않는 듯 입술을 깨무는 표정, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.", "emotion": "surprised", "speed": "normal" }, "lipSync": { "speaker": "WomanB", "speakerName": "막내 처제 (캐디)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 7, "scriptLine": "심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.", "summary": "착각에 빠져 긴장과 설렘이 교차하는 주인공", "shotType": "클로즈업", "characterIds": ["ManA"], "shortPrompt": "A man with a nervous but hopeful, expectant facial expression.", "longPrompt": "Scene 7. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A handsome Korean man in his 40s, short neat hairstyle, [nervous yet expectant and hopeful expression], [close-up], [swallowing hard with a slight blush on his face], stylish but slightly excessive golf attire, Neatly groomed side-part hairstyle with wax, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "긴장되면서도 기대에 찬 표정을 짓는 남자.", "longPromptKo": "장면 7. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 40대 미남 한국인 남성, 짧고 깔끔한 헤어스타일, [긴장하면서도 기대에 부푼 표정], [클로즈업], [얼굴을 약간 붉히며 침을 삼키는 모습], 세련됐지만 약간 과한 골프 복장, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.", "emotion": "anxious", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 8, "scriptLine": "근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.", "summary": "입술을 깨물며 말을 꺼내려는 캐디", "shotType": "익스트림 클로즈업", "characterIds": ["WomanB"], "shortPrompt": "A woman biting her lip, preparing to speak with a trembling voice.", "longPrompt": "Scene 8. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A stunning Korean woman in her 20s, short chic bob cut, [serious and trembling expression], [extreme close-up], [biting her lower lip and opening her mouth to speak], Navy Tight-fitting long-sleeve Tight Knit, biting her lower lip in disbelief, long opera-length velvet gloves, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "입술을 깨물며 떨리는 목소리로 말을 걸려는 여자.", "longPromptKo": "장면 8. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 20대 미모의 한국인 여성, 시크한 단발 컷, [진지하고 떨리는 표정], [익스트림 클로즈업], [아랫입술을 깨물고 말을 하기 위해 입을 떼는 순간], 네이비 타이트 니트, 믿기지 않는 듯 입술을 깨무는 표정, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.", "emotion": "tense", "speed": "normal" }, "lipSync": { "speaker": "WomanB", "speakerName": "막내 처제 (캐디)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 9, "scriptLine": "'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'", "summary": "당황하며 형부를 알아보는 처제", "shotType": "미디엄 샷", "characterIds": ["WomanB"], "shortPrompt": "A woman looking at the camera with a look of recognition and shock.", "longPrompt": "Scene 9. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A stunning Korean woman in her 20s, short chic bob cut, [shocked and questioning expression], [medium shot], [gesturing with her hands while speaking to someone off-camera], Navy Tight-fitting long-sleeve Tight Knit + White Micro Mini Skirt, Large, clear, and expressive eyes showing shock and recognition, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "충격받은 표정으로 상대를 다그치는 여자.", "longPromptKo": "장면 9. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 20대 미모의 한국인 여성, 시크한 단발 컷, [충격받고 의아해하는 표정], [미디엄 샷], [화면 밖의 누군가에게 말하며 손짓하는 모습], 네이비 타이트 니트와 화이트 마이크로 미니스커트, 놀라움과 알아차림이 묻어나는 큰 눈, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "character", "narration": { "text": "'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'", "emotion": "shocked", "speed": "normal" }, "lipSync": { "speaker": "WomanB", "speakerName": "막내 처제 (캐디)", "line": "'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'", "emotion": "surprised", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 10, "scriptLine": "알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.", "summary": "캐디가 처제였음을 깨닫는 순간", "shotType": "투샷", "characterIds": ["ManA", "WomanB"], "shortPrompt": "A man and a caddie looking at each other in an awkward situation.", "longPrompt": "Scene 10. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [ManA] A handsome Korean man in his 40s, [WomanB] A stunning Korean woman in her 20s, [ManA frozen in shock, WomanB looking at him with disbelief], [medium two-shot], [standing on the snowy golf course, the realization dawning on the man], stylish but slightly excessive golf attire, Navy Tight-fitting long-sleeve Tight Knit + White Micro Mini Skirt, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "서로를 보고 얼어붙은 남자와 캐디.", "longPromptKo": "장면 10. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, [ManA] 40대 미남 한국인 남성, [WomanB] 20대 미모의 한국인 여성, [충격으로 얼어붙은 남자와 믿을 수 없다는 듯 쳐다보는 여자], [미디엄 투샷], [눈 덮인 골프장에서 서로 마주 선 모습], 과한 골프복과 네이비 니트 복장, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.", "emotion": "realizing", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 11, "scriptLine": "순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.", "summary": "얼굴이 빨개져서 당황해하는 주인공", "shotType": "클로즈업", "characterIds": ["ManA"], "shortPrompt": "A man with a bright red face and ears, coughing nervously.", "longPrompt": "Scene 11. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A handsome Korean man in his 40s, short neat hairstyle, [extremely embarrassed and flustered expression], [close-up], [reddish face and ears, covering mouth with hand and coughing], stylish but slightly excessive golf attire, Mischievous and expressive eyes that widen in panic, A mix of a polished businessman and a comedic, flustered blunderer, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "얼굴과 귀가 새빨개져서 당황하며 헛기침을 하는 남자.", "longPromptKo": "장면 11. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 40대 미남 한국인 남성, 짧고 깔끔한 헤어스타일, [매우 창피하고 당황한 표정], [클로즈업], [얼굴과 귀가 붉어진 채 손으로 입을 가리고 헛기침하는 모습], 공포로 커진 눈, 세련된 비즈니스맨과 코믹하게 당황한 실수투성이의 혼합된 모습, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.", "emotion": "embarrassed", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" }, { "sceneNumber": 12, "scriptLine": "결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.", "summary": "집에서 아내에게 혼나며 반성하는 모습", "shotType": "미디엄 샷", "characterIds": ["ManA"], "shortPrompt": "A man kneeling on the floor in a living room, looking apologetic.", "longPrompt": "Scene 12. unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, A handsome Korean man in his 40s, short neat hairstyle, [extremely apologetic and miserable expression], [medium shot], [kneeling on the floor in a modern living room, looking down at the ground], stylish but slightly excessive golf attire, rigid, self-conscious posture, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "shortPromptKo": "거실 바닥에 무릎을 꿇고 반성하는 기색이 역력한 남자.", "longPromptKo": "장면 12. 필터 없는 생생한 사진, 8k 초고해상도, 모공과 자연스러운 결점이 보이는 초정밀 피부 질감, 전문적인 시네마틱 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 40대 미남 한국인 남성, 짧고 깔끔한 헤어스타일, [매우 미안해하고 비참한 표정], [미디엄 샷], [현대적인 거실 바닥에 무릎을 꿇고 땅을 내려다보는 모습], 세련됐지만 과한 골프복, 경직되고 자의식 강한 자세, 하이패션 에디토리얼 스타일, 피사계 심도, 85mm 렌즈, f/1.8, 사실적인 부드러운 피부, 8k ultra-hd, 텍스트 없음, --ar 9:16", "voiceType": "narration", "narration": { "text": "결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.", "emotion": "regretful", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "나 (형부)", "line": "", "emotion": "", "timing": "mid" }, "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing" } ] }
+Copy
+{
+  "title": "눈 오는 골프장에서 캐디한테 작업 걸었다가 집에서 난리 난 썰",
+  "titleOptions": [
+    "골프장 캐디가 우리 조카였던 날의 충격",
+    "눈 오는 골프장에서 젊은 캐디한테 헛소리 했다가 집안 망신",
+    "캐디한테 멋진 척 하다가 가족 단톡방에 올라간 썰"
+  ],
+  "scriptBody": "지난주에 친구 혜경이랑 남편들이랑 넷이서 골프장 갔거든.\n그날 진짜 눈이 펑펑 내리는데 분위기가 너무 로맨틱한 거야.\n근데 우리 라운드 담당 캐디가 20대 초반쯤 돼 보이는 예쁜 언니였어.\n남편 준호가 티샷 치는데 캐디가 옆에서 자세 교정해주더라고.\n혜경이 남편 민수도 '와, 요즘 캐디 진짜 프로페셔널하다' 이러면서 감탄하고.\n나도 슬쩍 캐디한테 '언니 정말 일 잘하시네요, 어디서 배우셨어요?' 물어봤지.\n그랬더니 캐디가 빙그레 웃으면서 '고모, 저 지우예요' 하는 거야.\n순간 머리가 새하얘지면서 '어? 지우? 우리 막내 조카 지우?' 했어.\n알고 보니 얘가 대학 방학 동안 아르바이트로 캐디 하고 있었던 거지.\n그 뒤로 라운드 내내 남편이랑 민수가 나 놀리면서 '캐디 언니한테 존댓말 쓰더니' 하고 난리였어.\n집에 오자마자 시동생한테 전화 와서 '누나, 지우가 골프장에서 누나 봤대요' 하더라고.\n지금도 가족 모임 때마다 그 얘기 나오면 얼굴이 화끈거려.",
+  "punchline": "지금도 가족 모임 때마다 그 얘기 나오면 얼굴이 화끈거려.",
+  "hook": "지난주에 친구 혜경이랑 남편들이랑 넷이서 골프장 갔거든.",
+  "twist": "알고 보니 얘가 대학 방학 동안 아르바이트로 캐디 하고 있었던 거지.",
+  "foreshadowing": "캐디가 빙그레 웃으면서 뭔가 아는 표정을 지음",
+  "narrator": {
+    "slot": "WomanA",
+    "name": "지영"
+  },
+  "emotionFlow": "😊 설렘 → 😌 여유 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음",
+  "lockedOutfits": {
+    "womanA": "Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt",
+    "womanB": "White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt",
+    "womanD": "minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing",
+    "manA": "Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants",
+    "manB": "White Performance Polo (Tight-fitting long-sleeve version) + Beige Chino Golf Pants"
+  },
+  "characters": [
+    {
+      "id": "WomanA",
+      "name": "지영",
+      "identity": "A stunning Korean woman in her 40s",
+      "hair": "long soft-wave hairstyle",
+      "body": "perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves",
+      "outfit": "Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "WomanB",
+      "name": "혜경",
+      "identity": "A stunning Korean woman in her 40s",
+      "hair": "short chic bob cut",
+      "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence, high-seated chest line",
+      "outfit": "White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "ManA",
+      "name": "준호",
+      "identity": "A handsome Korean man in his 40s",
+      "hair": "short neat hairstyle",
+      "body": "fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes",
+      "outfit": "Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "ManB",
+      "name": "민수",
+      "identity": "A handsome Korean man in her 40s",
+      "hair": "clean short cut",
+      "body": "fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes",
+      "outfit": "White Performance Polo (Tight-fitting long-sleeve version) + Beige Chino Golf Pants",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "WomanD",
+      "name": "지우(캐디)",
+      "identity": "A stunning Korean woman in her early 20s",
+      "hair": "high-bun hairstyle",
+      "body": "bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves",
+      "outfit": "minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing",
+      "outfitPrefix": "wearing"
+    }
+  ],
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "cameraAngle": "close-up",
+      "characterSlot": "WomanA",
+      "shotType": "원샷",
+      "emotionBeat": "설렘과 기대",
+      "summary": "지영이 골프장 가는 이야기 시작",
+      "scriptLine": "지난주에 친구 혜경이랑 남편들이랑 넷이서 골프장 갔거든.",
+      "action": "카메라를 보며 환하게 미소 지으며 이야기 시작",
+      "emotion": "기대 → 설렘",
+      "voiceType": "narration",
+      "narration": {
+        "text": "지난주에 친구 혜경이랑 남편들이랑 넷이서 골프장 갔거든.",
+        "emotion": "밝고 경쾌함",
+        "speed": "normal"
+      },
+      "lipSync": null,
+      "shortPrompt": "Korean woman in 40s smiling at camera, snowy golf course background",
+      "shortPromptKo": "40대 한국 여성이 카메라 보며 미소, 눈 내리는 골프장 배경",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt, smiling warmly at camera with bright eyes, gentle snow falling in background, premium golf course setting visible behind, soft natural daylight, shallow depth of field, high-fashion editorial refined, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 모공과 자연스러운 피부 결이 보이는 초정밀 피부 텍스처, 전문가급 영화 조명, RAW 사진, 실제 인간 피부 질감, 캔디드 사진 스타일, 클로즈업 인물샷, 얼굴 포커스, 40대 아름다운 한국 여성, 긴 소프트 웨이브 헤어스타일, 완벽하게 관리된 세련된 외모, 높은 가슴선, 놀랍도록 볼륨감 있는 높은 투사 가슴, 놀라운 탄력적인 곡선, 로열 블루 타이트한 긴소매 터틀넥 + 화이트 마이크로 미니 스커트 착용, 밝은 눈으로 카메라를 향해 따뜻하게 미소, 배경에 부드럽게 떨어지는 눈, 뒤에 보이는 프리미엄 골프장 세팅, 부드러운 자연광, 얕은 피사계 심도, 하이패션 에디토리얼 세련됨, 85mm 렌즈로 촬영, f/1.8, 사실적인 부드러운 피부, 8K 초고화질, 텍스트 없음, 캡션 없음, 타이포그래피 없음",
+      "videoPrompt": "[한국어] 40대 한국인 여성이 카메라를 향해 따뜻하게 미소 지으며 이야기 시작, 부드럽게 떨어지는 눈 배경, 자연스러운 클로즈업, 밝고 경쾌한 분위기"
+    },
+    {
+      "sceneNumber": 2,
+      "cameraAngle": "wide",
+      "characterSlot": "WomanA, WomanB, ManA, ManB, WomanD",
+      "shotType": "쓰리샷+",
+      "emotionBeat": "로맨틱한 설렘",
+      "summary": "눈 내리는 골프장의 로맨틱한 분위기",
+      "scriptLine": "그날 진짜 눈이 펑펑 내리는데 분위기가 너무 로맨틱한 거야.",
+      "action": "네 명이 골프장을 걸으며 눈을 맞고 있고, 캐디가 뒤에서 카트 옆에 서 있음",
+      "emotion": "평화 → 설렘",
+      "voiceType": "narration",
+      "narration": {
+        "text": "그날 진짜 눈이 펑펑 내리는데 분위기가 너무 로맨틱한 거야.",
+        "emotion": "감탄하는 목소리",
+        "speed": "normal"
+      },
+      "lipSync": null,
+      "shortPrompt": "Four people walking on snowy golf course, caddy in background, romantic snowy atmosphere",
+      "shortPromptKo": "네 명이 눈 내리는 골프장 걷는 모습, 캐디가 배경에, 로맨틱한 눈 내리는 분위기",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, wide establishing shot, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence, high-seated chest line, wearing White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt] [Person 3: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 4: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing White Performance Polo (Tight-fitting long-sleeve version) + Beige Chino Golf Pants] walking together on snowy golf course fairway, looking away from camera, casual conversation, [Background: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing, standing by golf cart in background], heavy snowfall, pristine white snow-covered golf course, pine trees in distance, romantic winter atmosphere, natural overcast lighting, depth of field, shot on 35mm lens, f/2.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 네 명이 눈 덮인 골프장 페어웨이를 함께 걷는 모습, 카메라에서 시선을 돌리고 편안한 대화 중, 배경에 캐디가 골프 카트 옆에 서 있음, 폭설, 깨끗한 하얀 눈으로 덮인 골프장, 멀리 소나무들, 로맨틱한 겨울 분위기, 자연스러운 흐린 날 조명",
+      "videoPrompt": "[한국어] 40대 한국인 남녀 네 명이 눈 내리는 골프장을 함께 걸으며 대화하고, 캐디가 배경에서 카트를 지키고 있는 모습, 와이드 앵글, 로맨틱한 폭설, 부드러운 자연광"
+    },
+    {
+      "sceneNumber": 3,
+      "cameraAngle": "medium",
+      "characterSlot": "WomanD, ManA",
+      "shotType": "투샷",
+      "emotionBeat": "프로페셔널한 분위기",
+      "summary": "캐디가 준호의 자세를 교정해주는 장면",
+      "scriptLine": "근데 우리 라운드 담당 캐디가 20대 초반쯤 돼 보이는 예쁜 언니였어.",
+      "action": "캐디가 준호의 골프 자세를 교정해주고 있고, 캐디의 프로페셔널한 모습 강조",
+      "emotion": "관심 → 호기심",
+      "voiceType": "narration",
+      "narration": {
+        "text": "근데 우리 라운드 담당 캐디가 20대 초반쯤 돼 보이는 예쁜 언니였어.",
+        "emotion": "관심 있는 목소리",
+        "speed": "normal"
+      },
+      "lipSync": null,
+      "shortPrompt": "Young female caddy helping man with golf posture, professional scene",
+      "shortPromptKo": "젊은 여성 캐디가 남성의 골프 자세 교정, 프로페셔널한 장면",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, waist-up framing, [Person 1: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants], caddy adjusting man's golf swing posture professionally, looking away from camera, focused on instruction, snowy golf course background, gentle snowfall, professional golf instruction moment, natural winter daylight, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 20대 초반 아름다운 한국 여성 캐디가 40대 남성의 골프 스윙 자세를 프로페셔널하게 교정하는 모습, 카메라에서 시선을 돌리고 지도에 집중, 눈 내리는 골프장 배경, 부드러운 눈 내림, 프로페셔널한 골프 레슨 순간",
+      "videoPrompt": "[한국어] 20대 초반 한국인 여성 캐디가 40대 남성의 골프 자세를 프로페셔널하게 교정해주는 모습, 미디엄샷, 눈 내리는 골프장, 집중된 분위기"
+    },
+    {
+      "sceneNumber": 4,
+      "cameraAngle": "over-shoulder",
+      "characterSlot": "ManB, WomanD",
+      "shotType": "투샷",
+      "emotionBeat": "감탄",
+      "summary": "민수가 캐디의 프로페셔널함에 감탄",
+      "scriptLine": "남편 준호가 티샷 치는데 캐디가 옆에서 자세 교정해주더라고.",
+      "action": "어깨 너머로 민수가 캐디를 보며 감탄하는 표정, 캐디는 골프 클럽 정리 중",
+      "emotion": "관찰 → 감탄",
+      "voiceType": "narration",
+      "narration": {
+        "text": "남편 준호가 티샷 치는데 캐디가 옆에서 자세 교정해주더라고.",
+        "emotion": "설명하는 톤",
+        "speed": "normal"
+      },
+      "lipSync": null,
+      "shortPrompt": "Over-shoulder view of man watching caddy organize golf clubs",
+      "shortPromptKo": "남성 어깨 너머로 캐디가 골프 클럽 정리하는 모습",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, over-the-shoulder shot, [Person 1: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing White Performance Polo (Tight-fitting long-sleeve version) + Beige Chino Golf Pants] seen from behind, shoulder and back of head visible in foreground, [Person 2: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing] organizing golf clubs professionally in focus, looking away from camera, concentrated on work, snowy golf course setting, gentle snowfall, professional caddy service moment, natural winter lighting, depth of field with foreground blur, shot on 50mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 어깨 너머 샷, 40대 남성의 뒤에서 어깨와 뒷머리가 전경에 보이고, 20대 초반 여성 캐디가 골프 클럽을 프로페셔널하게 정리하는 모습에 초점, 카메라에서 시선을 돌리고 일에 집중, 눈 내리는 골프장 세팅",
+      "videoPrompt": "[한국어] 40대 남성의 어깨 너머로 20대 초반 여성 캐디가 골프 클럽을 정리하는 모습, 오버숄더샷, 캐디에게 포커스, 눈 내리는 골프장, 프로페셔널한 분위기"
+    },
+    {
+      "sceneNumber": 5,
+      "cameraAngle": "medium",
+      "characterSlot": "WomanB, ManB",
+      "shotType": "투샷",
+      "emotionBeat": "감탄과 칭찬",
+      "summary": "혜경의 남편 민수가 캐디를 칭찬",
+      "scriptLine": "혜경이 남편 민수도 '와, 요즘 캐디 진짜 프로페셔널하다' 이러면서 감탄하고.",
+      "action": "민수가 혜경에게 말하며 감탄하는 표정, 혜경은 고개를 끄덕이며 동의",
+      "emotion": "감탄 → 동의",
+      "voiceType": "both",
+      "narration": {
+        "text": "혜경이 남편 민수도 이러면서 감탄하고.",
+        "emotion": "설명하는 톤",
+        "speed": "normal"
+      },
+      "lipSync": {
+        "speaker": "ManB",
+        "speakerName": "민수",
+        "line": "와, 요즘 캐디 진짜 프로페셔널하다",
+        "emotion": "impressed",
+        "timing": "mid"
+      },
+      "shortPrompt": "Man speaking to woman admiringly, both looking pleased, snowy golf course",
+      "shortPromptKo": "남성이 여성에게 감탄하며 말하고, 둘 다 만족스러운 표정, 눈 내리는 골프장",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, waist-up framing, [Person 1: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing White Performance Polo (Tight-fitting long-sleeve version) + Beige Chino Golf Pants] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence, high-seated chest line, wearing White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt], man speaking with impressed expression gesturing, woman nodding in agreement, looking away from camera, natural conversation, snowy golf course background, gentle snowfall, relaxed atmosphere, natural winter daylight, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 40대 남성이 감탄하는 표정으로 제스처하며 말하고, 40대 여성이 동의하며 고개를 끄덕이는 모습, 카메라에서 시선을 돌리고 자연스러운 대화, 눈 내리는 골프장 배경",
+      "videoPrompt": "[한국어] 40대 한국인 남성이 40대 여성에게 감탄하며 말하고 여성이 고개를 끄덕이며 동의하는 모습, 미디엄샷, 눈 내리는 골프장, 편안한 분위기"
+    },
+    {
+      "sceneNumber": 6,
+      "cameraAngle": "medium",
+      "characterSlot": "WomanA, WomanD",
+      "shotType": "투샷",
+      "emotionBeat": "호기심과 친근함",
+      "summary": "지영이 캐디에게 질문",
+      "scriptLine": "나도 슬쩍 캐디한테 '언니 정말 일 잘하시네요, 어디서 배우셨어요?' 물어봤지.",
+      "action": "지영이 캐디에게 다가가 친근하게 말을 걸고, 캐디는 밝게 대응",
+      "emotion": "호기심 → 친근함",
+      "voiceType": "both",
+      "narration": {
+        "text": "나도 슬쩍 캐디한테 물어봤지.",
+        "emotion": "밝은 톤",
+        "speed": "normal"
+      },
+      "lipSync": {
+        "speaker": "WomanA",
+        "speakerName": "지영",
+        "line": "언니 정말 일 잘하시네요, 어디서 배우셨어요?",
+        "emotion": "friendly",
+        "timing": "mid"
+      },
+      "shortPrompt": "Woman in blue asking young caddy question friendly, both smiling",
+      "shortPromptKo": "파란 옷 여성이 젊은 캐디에게 친근하게 질문, 둘 다 미소",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, waist-up framing, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt] [Person 2: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing], older woman speaking to younger woman with friendly curious expression, younger woman responding with bright smile, looking away from camera, natural friendly interaction, snowy golf course background, gentle snowfall, warm conversational moment, natural winter daylight, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 40대 여성이 20대 초반 여성에게 친근하고 호기심 어린 표정으로 말하고, 젊은 여성이 밝은 미소로 대응하는 모습, 카메라에서 시선을 돌리고 자연스러운 친근한 상호작용",
+      "videoPrompt": "[한국어] 40대 한국인 여성이 20대 초반 캐디에게 친근하게 질문하고 캐디가 밝게 대응하는 모습, 미디엄샷, 눈 내리는 골프장, 따뜻한 대화 분위기"
+    },
+    {
+      "sceneNumber": 7,
+      "cameraAngle": "close-up",
+      "characterSlot": "WomanD",
+      "shotType": "원샷",
+      "emotionBeat": "밝은 미소와 복선",
+      "summary": "캐디가 빙그레 웃으며 반전의 힌트",
+      "scriptLine": "그랬더니 캐디가 빙그레 웃으면서 '고모, 저 지우예요' 하는 거야.",
+      "action": "캐디가 카메라를 향해 밝게 미소 지으며 말함",
+      "emotion": "미소 → 장난기",
+      "voiceType": "both",
+      "narration": {
+        "text": "그랬더니 캐디가 빙그레 웃으면서 하는 거야.",
+        "emotion": "놀란 톤",
+        "speed": "slightly-fast"
+      },
+      "lipSync": {
+        "speaker": "WomanD",
+        "speakerName": "지우",
+        "line": "고모, 저 지우예요",
+        "emotion": "cheerful",
+        "timing": "mid"
+      },
+      "shortPrompt": "Young caddy smiling brightly speaking to camera, playful expression",
+      "shortPromptKo": "젊은 캐디가 밝게 웃으며 카메라에 말하는, 장난스러운 표정",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, face in focus, A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing, smiling brightly with playful knowing expression, looking at camera with warm eyes, gentle snow falling in background, snowy golf course setting visible behind, soft natural daylight, shallow depth of field, high-fashion editorial refined, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 클로즈업 인물샷, 얼굴에 포커스, 20대 초반 아름다운 한국 여성이 장난스럽고 아는 듯한 표정으로 밝게 미소 지으며 따뜻한 눈빛으로 카메라를 바라보는 모습, 배경에 부드럽게 떨어지는 눈",
+      "videoPrompt": "[한국어] 20대 초반 한국인 여성 캐디가 장난스럽고 밝은 표정으로 미소 지으며 말하는 모습, 클로즈업, 따뜻한 눈빛, 눈 내리는 골프장 배경"
+    },
+    {
+      "sceneNumber": 8,
+      "cameraAngle": "close-up",
+      "characterSlot": "WomanA",
+      "shotType": "원샷",
+      "emotionBeat": "충격과 당황",
+      "summary": "지영이 조카임을 깨닫고 충격",
+      "scriptLine": "순간 머리가 새하얘지면서 '어? 지우? 우리 막내 조카 지우?' 했어.",
+      "action": "입을 벌리고 눈을 크게 뜨며 충격받은 표정",
+      "emotion": "평온 → 충격",
+      "voiceType": "both",
+      "narration": {
+        "text": "순간 머리가 새하얘지면서 했어.",
+        "emotion": "충격받은 목소리",
+        "speed": "fast"
+      },
+      "lipSync": {
+        "speaker": "WomanA",
+        "speakerName": "지영",
+        "line": "어? 지우? 우리 막내 조카 지우?",
+        "emotion": "shocked",
+        "timing": "mid"
+      },
+      "shortPrompt": "Woman in 40s with shocked expression, mouth open, eyes wide",
+      "shortPromptKo": "40대 여성의 충격받은 표정, 입 벌리고 눈 크게 뜬",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt, shocked expression with mouth slightly open, wide eyes showing surprise, looking away from camera in disbelief, snowflakes visible on hair and shoulders, snowy golf course background blurred, dramatic moment, natural winter daylight, shallow depth of field, high-fashion editorial refined, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 클로즈업 인물샷, 얼굴에 포커스, 40대 아름다운 한국 여성이 입을 약간 벌리고 놀라움을 보이는 큰 눈으로 충격받은 표정, 믿을 수 없다는 듯이 카메라에서 시선을 돌림, 머리와 어깨에 보이는 눈송이",
+      "videoPrompt": "[한국어] 40대 한국인 여성이 충격받은 표정으로 입을 벌리고 눈을 크게 뜨는 모습, 클로즈업, 드라마틱한 순간, 눈 내리는 골프장 배경"
+    },
+    {
+      "sceneNumber": 9,
+      "cameraAngle": "medium",
+      "characterSlot": "WomanA, WomanD",
+      "shotType": "투샷",
+      "emotionBeat": "깨달음과 민망함",
+      "summary": "조카가 아르바이트 중이었음을 알게 됨",
+      "scriptLine": "알고 보니 얘가 대학 방학 동안 아르바이트로 캐디 하고 있었던 거지.",
+      "action": "지영이 머리를 감싸 쥐고, 캐디(지우)는 밝게 웃으며 서 있음",
+      "emotion": "당황 → 민망함",
+      "voiceType": "narration",
+      "narration": {
+        "text": "알고 보니 얘가 대학 방학 동안 아르바이트로 캐디 하고 있었던 거지.",
+        "emotion": "한숨 섞인 목소리",
+        "speed": "normal"
+      },
+      "lipSync": null,
+      "shortPrompt": "Older woman holding head embarrassed, young caddy smiling cheerfully",
+      "shortPromptKo": "나이 든 여성이 민망해서 머리를 감싸고, 젊은 캐디가 밝게 웃는",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, medium shot, waist-up framing, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt] [Person 2: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing minimalist optic white strapless Tight-fitting long-sleeve bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing], older woman holding her head with both hands in embarrassment, younger woman standing cheerfully with bright smile, looking away from camera, awkward realization moment, snowy golf course background, gentle snowfall, natural winter daylight, depth of field, shot on 50mm lens, f/2.0, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 40대 여성이 민망함에 두 손으로 머리를 감싸고, 20대 초반 여성이 밝은 미소로 명랑하게 서 있는 모습, 카메라에서 시선을 돌리고 어색한 깨달음의 순간",
+      "videoPrompt": "[한국어] 40대 한국인 여성이 민망해하며 머리를 감싸고, 20대 초반 조카가 밝게 웃으며 서 있는 모습, 미디엄샷, 눈 내리는 골프장, 어색한 분위기"
+    },
+    {
+      "sceneNumber": 10,
+      "cameraAngle": "wide",
+      "characterSlot": "WomanA, WomanB, ManA, ManB",
+      "shotType": "쓰리샷+",
+      "emotionBeat": "놀림받는 민망함",
+      "summary": "라운드 내내 놀림받는 지영",
+      "scriptLine": "그 뒤로 라운드 내내 남편이랑 민수가 나 놀리면서 '캐디 언니한테 존댓말 쓰더니' 하고 난리였어.",
+      "action": "준호와 민수가 웃으며 지영을 놀리고, 지영과 혜경은 어색하게 웃음",
+      "emotion": "민망함 → 자조적 웃음",
+      "voiceType": "both",
+      "narration": {
+        "text": "그 뒤로 라운드 내내 남편이랑 민수가 나 놀리면서 하고 난리였어.",
+        "emotion": "자조적인 목소리",
+        "speed": "slightly-fast"
+      },
+      "lipSync": {
+        "speaker": "ManA",
+        "speakerName": "준호",
+        "line": "캐디 언니한테 존댓말 쓰더니",
+        "emotion": "teasing",
+        "timing": "mid"
+      },
+      "shortPrompt": "Four people on golf course, two men laughing teasing, women smiling awkwardly",
+      "shortPromptKo": "골프장의 네 명, 두 남성이 웃으며 놀리고, 여성들이 어색하게 웃는",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, wide shot, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, charming presence, high-seated chest line, wearing White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt] [Person 3: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants] [Person 4: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing White Performance Polo (Tight-fitting long-sleeve version) + Beige Chino Golf Pants], two men laughing and teasing gesturing animatedly, two women smiling awkwardly with embarrassed expressions, looking away from camera, playful group dynamic, snowy golf course fairway, heavy snowfall, fun teasing moment, natural winter daylight, depth of field, shot on 35mm lens, f/2.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 와이드샷, 전신 보이는, 두 남성이 웃으며 활기차게 제스처하며 놀리고, 두 여성이 민망한 표정으로 어색하게 미소 짓는 모습, 카메라에서 시선을 돌리고 장난스러운 그룹 역학",
+      "videoPrompt": "[한국어] 40대 한국인 남녀 네 명이 골프장에서, 두 남성이 웃으며 놀리고 두 여성이 어색하게 웃는 모습, 와이드샷, 폭설, 장난스러운 분위기"
+    },
+    {
+      "sceneNumber": 11,
+      "cameraAngle": "POV",
+      "characterSlot": "ManA",
+      "shotType": "원샷",
+      "emotionBeat": "전화 받는 당황함",
+      "summary": "집에 와서 시동생에게 전화 옴",
+      "scriptLine": "집에 오자마자 시동생한테 전화 와서 '누나, 지우가 골프장에서 누나 봤대요' 하더라고.",
+      "action": "준호가 전화기를 들고 놀란 표정으로 지영을 바라보는 POV 샷",
+      "emotion": "평온 → 당황",
+      "voiceType": "narration",
+      "narration": {
+        "text": "집에 오자마자 시동생한테 전화 와서 '누나, 지우가 골프장에서 누나 봤대요' 하더라고.",
+        "emotion": "당황한 목소리",
+        "speed": "slightly-fast"
+      },
+      "lipSync": null,
+      "shortPrompt": "POV shot of man holding phone with surprised expression looking at camera",
+      "shortPromptKo": "남성이 전화기를 들고 놀란 표정으로 카메라를 보는 POV 샷",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, first-person POV shot, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes, wearing Navy Slim-fit Polo (Tight-fitting long-sleeve version) + White Tailored Golf Pants, holding smartphone to ear with surprised expression, looking at camera (POV target) with wide eyes and concerned face, standing in modern living room interior, warm indoor lighting, natural realistic moment, depth of field, shot on 50mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 1인칭 POV 샷, 40대 잘생긴 한국 남성이 스마트폰을 귀에 대고 놀란 표정으로 큰 눈과 걱정스러운 얼굴로 카메라(POV 대상)를 바라보는 모습, 현대적인 거실 인테리어에 서 있음",
+      "videoPrompt": "[한국어] 40대 한국인 남성이 스마트폰을 귀에 대고 놀란 표정으로 카메라를 바라보는 1인칭 시점, POV 샷, 거실 배경, 따뜻한 실내 조명"
+    },
+    {
+      "sceneNumber": 12,
+      "cameraAngle": "close-up",
+      "characterSlot": "WomanA",
+      "shotType": "원샷",
+      "emotionBeat": "자조적인 웃음",
+      "summary": "가족 모임 때마다 놀림받는 후일담",
+      "scriptLine": "지금도 가족 모임 때마다 그 얘기 나오면 얼굴이 화끈거려.",
+      "action": "두 손으로 얼굴을 가리며 자조적으로 웃음",
+      "emotion": "민망함 → 체념의 웃음",
+      "voiceType": "narration",
+      "narration": {
+        "text": "지금도 가족 모임 때마다 그 얘기 나오면 얼굴이 화끈거려.",
+        "emotion": "자조적인 웃음",
+        "speed": "normal"
+      },
+      "lipSync": null,
+      "shortPrompt": "Woman covering face with both hands laughing self-deprecatingly",
+      "shortPromptKo": "여성이 두 손으로 얼굴을 가리며 자조적으로 웃는",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Royal Blue Tight-fitting long-sleeve Turtleneck + White Micro Mini Skirt, covering face with both hands, laughing self-deprecatingly with embarrassed smile visible between fingers, looking away from camera, relatable embarrassed moment, modern living room interior background slightly blurred, warm indoor lighting, natural candid expression, shallow depth of field, high-fashion editorial refined, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "자연스러운 날것의 사진, 8K 초사실 포토리얼리즘, 클로즈업 인물샷, 얼굴에 포커스, 40대 아름다운 한국 여성이 두 손으로 얼굴을 가리고, 손가락 사이로 보이는 민망한 미소로 자조적으로 웃는 모습, 카메라에서 시선을 돌림, 공감 가는 민망한 순간",
+      "videoPrompt": "[한국어] 40대 한국인 여성이 두 손으로 얼굴을 가리며 자조적으로 웃는 모습, 클로즈업, 손가락 사이로 민망한 미소, 거실 배경, 따뜻한 실내 조명"
+    }
+  ]
+}
+
+Copy

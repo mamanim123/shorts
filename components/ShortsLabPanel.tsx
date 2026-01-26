@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -200,6 +200,115 @@ const applyAccessoriesToPrompt = (
     });
 
     return updated;
+};
+
+type ManualCharacterPrompt = {
+    id: string;
+    slotLabel: string;
+    gender: 'female' | 'male';
+    name: string;
+    identity: string;
+    hair: string;
+    body: string;
+    outfit: string;
+    accessories: string[];
+};
+
+const pickRandomFromList = <T,>(items: T[], exclude: Set<T>): T | null => {
+    const filtered = items.filter(item => !exclude.has(item));
+    if (filtered.length === 0) return null;
+    return filtered[Math.floor(Math.random() * filtered.length)];
+};
+
+const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
+    const outfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+    const femaleCandidates = outfitPool.filter(item => !item.categories.includes('MALE'));
+    const maleCandidates = outfitPool.filter(item => item.categories.includes('MALE') || item.categories.includes('UNISEX'));
+
+    const usedFemale = new Set<string>();
+    const usedMale = new Set<string>();
+    const outfitMap = new Map<string, string>();
+
+    characterIds.forEach((id) => {
+        const gender = getCharacterGender(id);
+        const candidates = gender === 'male' ? maleCandidates : femaleCandidates;
+        const used = gender === 'male' ? usedMale : usedFemale;
+        const picked = pickRandomFromList(candidates, used);
+        if (picked) {
+            used.add(picked);
+            outfitMap.set(id, picked.name);
+        }
+    });
+
+    return outfitMap;
+};
+
+const buildRandomAccessoriesByCharacter = (characterIds: string[], enableWinter?: boolean) => {
+    const map = new Map<string, string[]>();
+    const used = new Set<string>();
+
+    characterIds.forEach((id) => {
+        const gender = getCharacterGender(id);
+        const basePool = GENERAL_ACCESSORIES.flatMap(group => group.items);
+        const basePick = basePool.length > 0 ? basePool[Math.floor(Math.random() * basePool.length)] : '';
+        const baseAccessories = basePick ? [basePick] : [];
+        let winterAccessories: string[] = [];
+        if (enableWinter) {
+            const picked = selectWinterItems(gender).accessories;
+            winterAccessories = picked.filter(item => !used.has(item));
+            if (winterAccessories.length === 0) {
+                winterAccessories = picked;
+            }
+        }
+        const merged = Array.from(new Set([...baseAccessories, ...winterAccessories]));
+        merged.forEach(item => used.add(item));
+        map.set(id, merged);
+    });
+
+    return map;
+};
+
+const buildAutoCharacterMap = (
+    characterIds: string[],
+    targetAgeLabel: string,
+    enableWinter?: boolean
+) => {
+    const outfitMap = buildRandomOutfitsByCharacter(characterIds);
+    const accessoriesMap = buildRandomAccessoriesByCharacter(characterIds, enableWinter);
+    const map = new Map<string, ManualCharacterPrompt>();
+
+    characterIds.forEach((id) => {
+        const slotMeta = MANUAL_SLOT_META[id] || {
+            id,
+            slotLabel: id,
+            gender: getCharacterGender(id),
+            hair: '',
+            body: ''
+        };
+        const ageLabel = targetAgeLabel ? convertAgeToEnglish(targetAgeLabel) : '';
+        const identityText = slotMeta.gender === 'female'
+            ? `A stunning Korean woman${ageLabel ? ` in her ${ageLabel}` : ''}`
+            : `A handsome Korean man${ageLabel ? ` in his ${ageLabel}` : ''}`;
+        let outfit = outfitMap.get(id) || '';
+        if (enableWinter && slotMeta.gender === 'female' && outfit) {
+            outfit = convertToTightLongSleeveWithShoulderLine(outfit);
+        }
+        const accessories = accessoriesMap.get(id) || [];
+
+        map.set(id, {
+            id: slotMeta.id,
+            slotLabel: slotMeta.slotLabel,
+            gender: slotMeta.gender,
+            name: '',
+            identity: identityText,
+            hair: slotMeta.hair,
+            body: slotMeta.body,
+            outfit,
+            accessories
+        });
+    });
+
+    return map;
 };
 
 const normalizeShotType = (shotType?: string, characterIds?: string[]): '원샷' | '투샷' | '쓰리샷' => {
@@ -599,6 +708,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isTwoStepGenerating, setIsTwoStepGenerating] = useState(false);
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
@@ -1411,18 +1521,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         return cleaned;
     }, []);
 
-    type ManualCharacterPrompt = {
-        id: string;
-        slotLabel: string;
-        gender: 'female' | 'male';
-        name: string;
-        identity: string;
-        hair: string;
-        body: string;
-        outfit: string;
-        accessories: string[];
-    };
-
     const buildManualIdentityPayload = useCallback((inputScript: string): ManualCharacterPrompt[] => {
         if (!manualIdentityLockEnabled) return [];
         const hasLockedSelection = manualIdentities.some(identity => identity.isLocked);
@@ -2179,6 +2277,16 @@ ${scriptInput}
                 // scenes 배열 추출 + 후처리 적용
                 const scenesSource = scriptData.scenes || parsed.scenes;
                 if (scenesSource && Array.isArray(scenesSource)) {
+                    if (Array.isArray(scriptData.characters)) {
+                        scriptData.characters = scriptData.characters.map((character: any) => {
+                            const id = String(character?.id || '').trim();
+                            if (id.toLowerCase().startsWith('man') && typeof character.identity === 'string') {
+                                const fixedIdentity = character.identity.replace(/\bin her\b/gi, 'in his');
+                                return { ...character, identity: fixedIdentity };
+                            }
+                            return character;
+                        });
+                    }
                     // [FIX] 후처리 적용: 한국인 정체성, 의상, no text 태그 등
                     const lockedOutfits = scriptData.lockedOutfits || parsed.lockedOutfits;
                     const preferredFemaleOutfit = lockedOutfits?.womanA || settings.selectedOutfit || undefined;
@@ -2304,6 +2412,206 @@ ${scriptInput}
             }
         } catch (error) {
             console.error('Failed to add favorite:', error);
+        }
+    };
+
+    const handleTwoStepGenerate = async () => {
+        if (!aiTopic.trim()) {
+            setGenerationError('주제를 입력해주세요.');
+            return;
+        }
+        if (isGenerating || isTwoStepGenerating) return;
+
+        setIsTwoStepGenerating(true);
+        setGenerationError(null);
+
+        try {
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
+                ? {
+                    name: selectedGenreData.name,
+                    description: selectedGenreData.description,
+                    emotionCurve: selectedGenreData.emotionCurve,
+                    structure: selectedGenreData.structure,
+                    killerPhrases: selectedGenreData.killerPhrases,
+                    supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                    bodyReactions: selectedGenreData.bodyReactions,
+                    forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                    goodTwistExamples: selectedGenreData.goodTwistExamples,
+                    supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                    badTwistExamples: selectedGenreData.badTwistExamples
+                }
+                : undefined;
+
+            const scriptPrompt = buildLabScriptOnlyPrompt({
+                topic: aiTopic,
+                genre: aiGenre,
+                targetAge: aiTargetAge,
+                gender: settings.koreanGender,
+                genreGuideOverride,
+                enableWinterAccessories
+            });
+
+            const selectedService = targetService || 'GEMINI';
+            showToast(`${selectedService} AI로 대본만 생성합니다...`, 'info');
+
+            const scriptResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: scriptPrompt,
+                    maxTokens: 2000,
+                    temperature: 0.7
+                })
+            });
+
+            if (!scriptResponse.ok) {
+                throw new Error(`API 오류: ${scriptResponse.status}`);
+            }
+
+            const scriptData = await scriptResponse.json();
+            const scriptText = scriptData.rawResponse || scriptData.text || scriptData.result || '';
+
+            let jsonClean = scriptText.trim();
+            jsonClean = jsonClean.replace(/^(JSON|json)\s+/, "").trim();
+            if (jsonClean.startsWith("```")) {
+                jsonClean = jsonClean.replace(/^```(json)?/, "").replace(/```$/, "").trim();
+            }
+
+            const parsed = parseJsonFromText<any>(jsonClean, ["title", "titleOptions", "scriptBody", "punchline", "hook", "twist", "foreshadowing", "narrator", "emotionFlow"]);
+            if (!parsed) {
+                throw new Error('대본 JSON 파싱 실패');
+            }
+
+            const rawScript = parsed.scriptBody || parsed.script || parsed.text || '';
+            if (!rawScript || !rawScript.trim()) {
+                throw new Error('대본 내용이 비어있습니다.');
+            }
+
+            const finalScript = rawScript.trim();
+            setScriptInput(finalScript);
+
+            const scriptLines = extractManualScriptLines(finalScript);
+            const hasCaddy = /캐디|caddy|골프|golf/i.test(finalScript) || /골프|golf/i.test(aiTopic);
+            const characterList = [
+                { id: 'WomanA', name: '지영', slotLabel: 'Woman A' },
+                { id: 'WomanB', name: '혜경', slotLabel: 'Woman B' },
+                { id: 'ManA', name: '준호', slotLabel: 'Man A' },
+                { id: 'ManB', name: '민수', slotLabel: 'Man B' },
+                ...(hasCaddy ? [{ id: 'WomanD', name: '지우', slotLabel: 'Woman D' }] : [])
+            ];
+
+            const scenePrompt = buildManualSceneDecompositionPrompt({
+                scriptLines,
+                characters: characterList
+            });
+
+            showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
+            const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: scenePrompt,
+                    maxTokens: 2000,
+                    temperature: 0.6
+                })
+            });
+
+            if (!sceneResponse.ok) {
+                throw new Error(`API 오류: ${sceneResponse.status}`);
+            }
+
+            const sceneData = await sceneResponse.json();
+            const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
+
+            if (sceneData._folderName) {
+                setCurrentFolderName(sceneData._folderName);
+            }
+
+            const parsedResult = parseManualSceneDecompositionResponse(generatedText);
+            const scenesSource = parsedResult.scenes || [];
+
+            if (scenesSource.length === 0) {
+                throw new Error('씬 분해 결과가 비어있습니다.');
+            }
+
+            const characterIds = characterList.map(item => item.id);
+            const autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
+            const totalScenes = scenesSource.length || scriptLines.length || 8;
+
+            const newScenes = scenesSource.map((scene, idx) => {
+                const sceneNumber = scene.sceneNumber || idx + 1;
+                const sceneText = scene.scriptLine || `장면 ${idx + 1}`;
+                const sceneCharacterIds = Array.isArray(scene.characterIds) && scene.characterIds.length > 0
+                    ? scene.characterIds
+                    : [characterIds[0]];
+                const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
+                const expression = getExpressionForScene(aiGenre, storyStage);
+                const cameraPrompt = getCameraPromptForScene(storyStage);
+                const narrativeParts = [
+                    scene.summary,
+                    scene.action,
+                    scene.background
+                ].filter(Boolean).join(', ');
+                const normalizedPrompt = composeManualPrompt(
+                    narrativeParts || sceneText,
+                    sceneNumber,
+                    sceneCharacterIds,
+                    autoCharacterMap,
+                    { expression, camera: cameraPrompt }
+                );
+                const characterInfos = sceneCharacterIds
+                    .map((id) => autoCharacterMap.get(id))
+                    .filter(Boolean)
+                    .map((item) => ({
+                        identity: item!.identity,
+                        hair: item!.hair,
+                        body: item!.body,
+                        outfit: item!.outfit
+                    })) as CharacterInfo[];
+                const fixed = validateAndFixPrompt(
+                    normalizedPrompt,
+                    normalizeShotType(scene.shotType, sceneCharacterIds),
+                    characterInfos
+                );
+
+                return {
+                    number: sceneNumber,
+                    text: sceneText,
+                    prompt: fixed.fixedPrompt,
+                    imageUrl: undefined,
+                    shortPromptKo: '',
+                    longPromptKo: '',
+                    summary: scene.summary || sceneText,
+                    camera: scene.background || '',
+                    shotType: scene.shotType || '',
+                    age: '',
+                    outfit: '',
+                    isSelected: true,
+                    videoPrompt: '',
+                    dialogue: '',
+                    voiceType: 'narration',
+                    narrationText: sceneText,
+                    narrationEmotion: '',
+                    narrationSpeed: 'normal',
+                    lipSyncSpeaker: '',
+                    lipSyncLine: '',
+                    lipSyncEmotion: '',
+                    lipSyncTiming: '',
+                    characterIds: sceneCharacterIds
+                } as Scene;
+            });
+
+            setScenes(newScenes);
+            setActiveTab('preview');
+            showToast('2단계 생성이 완료되었습니다.', 'success');
+        } catch (error: any) {
+            console.error('2단계 생성 실패:', error);
+            showToast(error?.message || '2단계 생성 실패', 'error');
+        } finally {
+            setIsTwoStepGenerating(false);
         }
     };
 
@@ -2875,13 +3183,22 @@ ${scriptInput}
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={handleAiGenerate}
-                                        disabled={isGenerating || !aiTopic.trim()}
-                                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> AI가 대본을 작성 중...</> : <><Wand2 className="w-5 h-5" /> AI 대본 생성</>}
-                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <button
+                                            onClick={handleAiGenerate}
+                                            disabled={isGenerating || isTwoStepGenerating || !aiTopic.trim()}
+                                            className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> AI가 대본을 작성 중...</> : <><Wand2 className="w-5 h-5" /> AI 대본 생성</>}
+                                        </button>
+                                        <button
+                                            onClick={handleTwoStepGenerate}
+                                            disabled={isGenerating || isTwoStepGenerating || !aiTopic.trim()}
+                                            className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {isTwoStepGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> 2단계 생성 중...</> : <><Sparkles className="w-5 h-5" /> 2단계 생성</>}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 

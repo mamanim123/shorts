@@ -18,6 +18,7 @@ import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, ext
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
+import { useShortsLabStep2PromptRulesManager } from '../hooks/useShortsLabStep2PromptRulesManager';
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
@@ -1021,6 +1022,17 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         renameBackup: renamePromptRulesBackup,
         updateBackupContent: updatePromptRulesBackupContent
     } = useShortsLabPromptRulesManager();
+    const {
+        rules: labStep2Rules,
+        backups: labStep2Backups,
+        updateRules: updateStep2Rules,
+        resetRules: resetStep2Rules,
+        createBackup: createStep2Backup,
+        restoreBackup: restoreStep2Backup,
+        deleteBackup: deleteStep2Backup,
+        renameBackup: renameStep2Backup,
+        updateBackupContent: updateStep2BackupContent
+    } = useShortsLabStep2PromptRulesManager();
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
@@ -4438,6 +4450,36 @@ ${scriptInput}
                         await updatePromptRulesBackupContent(id, rulesInput);
                         showToast('백업 내용이 저장되었습니다.', 'success');
                     }}
+                    step2Rules={labStep2Rules}
+                    step2Backups={labStep2Backups}
+                    onStep2RulesSave={async (rulesInput) => {
+                        await updateStep2Rules(rulesInput);
+                        showToast('2단계 규칙이 저장되었습니다.', 'success');
+                    }}
+                    onStep2RulesReset={async () => {
+                        await resetStep2Rules();
+                        showToast('2단계 규칙이 기본값으로 초기화되었습니다.', 'success');
+                    }}
+                    onStep2BackupCreate={async (name) => {
+                        await createStep2Backup(name);
+                        showToast('2단계 규칙 백업이 저장되었습니다.', 'success');
+                    }}
+                    onStep2BackupRestore={async (id) => {
+                        await restoreStep2Backup(id);
+                        showToast('2단계 규칙을 백업에서 복구했습니다.', 'success');
+                    }}
+                    onStep2BackupDelete={async (id) => {
+                        await deleteStep2Backup(id);
+                        showToast('2단계 규칙 백업이 삭제되었습니다.', 'success');
+                    }}
+                    onStep2BackupRename={async (id, name) => {
+                        await renameStep2Backup(id, name);
+                        showToast('백업 이름이 변경되었습니다.', 'success');
+                    }}
+                    onStep2BackupEdit={async (id, rulesInput) => {
+                        await updateStep2BackupContent(id, rulesInput);
+                        showToast('백업 내용이 저장되었습니다.', 'success');
+                    }}
                 />
             )}
         </div>
@@ -4513,6 +4555,13 @@ interface GenreManagementModalProps {
         createdAt: string;
         rules: unknown;
     }[];
+    step2Rules?: unknown;
+    step2Backups?: {
+        id: string;
+        name: string;
+        createdAt: string;
+        rules: unknown;
+    }[];
     onClose: () => void;
     onAdd: (genre: LabGenreGuidelineEntry) => Promise<void>;
     onUpdate: (id: string, updates: Partial<LabGenreGuideline>) => Promise<void>;
@@ -4530,6 +4579,13 @@ interface GenreManagementModalProps {
     onPromptRulesBackupDelete: (id: string) => Promise<void>;
     onPromptRulesBackupRename: (id: string, name: string) => Promise<void>;
     onPromptRulesBackupEdit: (id: string, rulesInput: unknown) => Promise<void>;
+    onStep2RulesSave?: (rulesInput: unknown) => Promise<void>;
+    onStep2RulesReset?: () => Promise<void>;
+    onStep2BackupCreate?: (name?: string) => Promise<void>;
+    onStep2BackupRestore?: (id: string) => Promise<void>;
+    onStep2BackupDelete?: (id: string) => Promise<void>;
+    onStep2BackupRename?: (id: string, name: string) => Promise<void>;
+    onStep2BackupEdit?: (id: string, rulesInput: unknown) => Promise<void>;
 }
 
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
@@ -4537,6 +4593,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     backups,
     promptRules,
     promptRuleBackups,
+    step2Rules,
+    step2Backups,
     onClose,
     onAdd,
     onUpdate,
@@ -4553,9 +4611,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onPromptRulesBackupRestore,
     onPromptRulesBackupDelete,
     onPromptRulesBackupRename,
-    onPromptRulesBackupEdit
+    onPromptRulesBackupEdit,
+    onStep2RulesSave,
+    onStep2RulesReset,
+    onStep2BackupCreate,
+    onStep2BackupRestore,
+    onStep2BackupDelete,
+    onStep2BackupRename,
+    onStep2BackupEdit
 }) => {
-    const [activeTab, setActiveTab] = useState<'genres' | 'rules'>('genres');
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
@@ -4612,6 +4677,31 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [editingRulesBackupId, setEditingRulesBackupId] = useState<string | null>(null);
     const [rulesBackupEditText, setRulesBackupEditText] = useState('');
     const [rulesBackupEditError, setRulesBackupEditError] = useState<string | null>(null);
+
+    // Step 2 Rules State
+    const [step2ScriptPrompt, setStep2ScriptPrompt] = useState('');
+    const [step2CharacterPrompt, setStep2CharacterPrompt] = useState('');
+    const [step2FinalPrompt, setStep2FinalPrompt] = useState('');
+    const [step2RulesEditError, setStep2RulesEditError] = useState<string | null>(null);
+    const [step2RulesDirty, setStep2RulesDirty] = useState(false);
+    const [selectedStep2BackupId, setSelectedStep2BackupId] = useState<string | null>(null);
+    const [step2BackupName, setStep2BackupName] = useState('');
+    const [step2BackupEdits, setStep2BackupEdits] = useState<Record<string, string>>({});
+    const [editingStep2BackupId, setEditingStep2BackupId] = useState<string | null>(null);
+    const [step2BackupEditText, setStep2BackupEditText] = useState('');
+    const [step2BackupEditError, setStep2BackupEditError] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (step2RulesDirty) return;
+        const rulesValue = (step2Rules || {}) as {
+            scriptPrompt?: string;
+            characterPrompt?: string;
+            finalPrompt?: string;
+        };
+        setStep2ScriptPrompt(rulesValue.scriptPrompt || '');
+        setStep2CharacterPrompt(rulesValue.characterPrompt || '');
+        setStep2FinalPrompt(rulesValue.finalPrompt || '');
+    }, [step2Rules, step2RulesDirty]);
 
     React.useEffect(() => {
         if (rulesDirty) return;
@@ -4857,6 +4947,122 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
+    // Step 2 Rules Handlers
+    const handleStep2RulesSave = async () => {
+        if (!onStep2RulesSave) return;
+        try {
+            await onStep2RulesSave({
+                scriptPrompt: step2ScriptPrompt,
+                characterPrompt: step2CharacterPrompt,
+                finalPrompt: step2FinalPrompt
+            });
+            setStep2RulesDirty(false);
+            setStep2RulesEditError(null);
+        } catch (err) {
+            console.error('Failed to save step2 rules:', err);
+            setStep2RulesEditError('2단계 규칙 저장에 실패했습니다.');
+        }
+    };
+
+    const handleStep2RulesReset = async () => {
+        if (!onStep2RulesReset) return;
+        if (!window.confirm('2단계 규칙을 기본값으로 초기화하시겠습니까?')) return;
+        try {
+            await onStep2RulesReset();
+            setStep2RulesDirty(false);
+            setStep2RulesEditError(null);
+        } catch (err) {
+            console.error('Failed to reset step2 rules:', err);
+            alert('2단계 규칙 초기화에 실패했습니다.');
+        }
+    };
+
+    const handleStep2BackupCreate = async () => {
+        if (!onStep2BackupCreate) return;
+        try {
+            await onStep2BackupCreate(step2BackupName);
+            setStep2BackupName('');
+        } catch (err) {
+            console.error('Failed to create step2 backup:', err);
+            alert('2단계 규칙 백업 생성에 실패했습니다.');
+        }
+    };
+
+    const handleStep2BackupRestore = async (id: string) => {
+        if (!onStep2BackupRestore) return;
+        if (!window.confirm('이 백업으로 2단계 규칙을 복구하시겠습니까?')) return;
+        try {
+            await onStep2BackupRestore(id);
+            setStep2RulesDirty(false);
+            setStep2RulesEditError(null);
+            setSelectedStep2BackupId(id);
+        } catch (err) {
+            console.error('Failed to restore step2 backup:', err);
+            alert('2단계 규칙 백업 복구에 실패했습니다.');
+        }
+    };
+
+    const handleStep2BackupRestoreSelected = async () => {
+        if (!selectedStep2BackupId) {
+            alert('복구할 백업을 선택해주세요.');
+            return;
+        }
+        await handleStep2BackupRestore(selectedStep2BackupId);
+    };
+
+    const handleStep2BackupDelete = async (id: string) => {
+        if (!onStep2BackupDelete) return;
+        if (!window.confirm('이 백업을 삭제하시겠습니까?')) return;
+        try {
+            await onStep2BackupDelete(id);
+        } catch (err) {
+            console.error('Failed to delete step2 backup:', err);
+            alert('2단계 규칙 백업 삭제에 실패했습니다.');
+        }
+    };
+
+    const handleStep2BackupRename = async (id: string) => {
+        if (!onStep2BackupRename) return;
+        const name = (step2BackupEdits[id] || '').trim();
+        if (!name) {
+            alert('백업 이름을 입력해주세요.');
+            return;
+        }
+        try {
+            await onStep2BackupRename(id, name);
+            setStep2BackupEdits(prev => ({ ...prev, [id]: name }));
+        } catch (err) {
+            console.error('Failed to rename step2 backup:', err);
+            alert('백업 이름 변경에 실패했습니다.');
+        }
+    };
+
+    const handleOpenStep2BackupEditor = (backupId: string) => {
+        const backup = step2Backups?.find(item => item.id === backupId);
+        if (!backup) return;
+        setEditingStep2BackupId(backupId);
+        setStep2BackupEditText(JSON.stringify(backup.rules, null, 2));
+        setStep2BackupEditError(null);
+    };
+
+    const handleCloseStep2BackupEditor = () => {
+        setEditingStep2BackupId(null);
+        setStep2BackupEditText('');
+        setStep2BackupEditError(null);
+    };
+
+    const handleSaveStep2BackupContent = async () => {
+        if (!editingStep2BackupId || !onStep2BackupEdit) return;
+        try {
+            const parsed = JSON.parse(step2BackupEditText);
+            await onStep2BackupEdit(editingStep2BackupId, parsed);
+            handleCloseStep2BackupEditor();
+        } catch (err) {
+            console.error('Failed to save step2 backup content:', err);
+            setStep2BackupEditError('JSON 형식이 올바르지 않습니다.');
+        }
+    };
+
     const updateField = <K extends keyof LabGenreGuidelineEntry>(key: K, value: LabGenreGuidelineEntry[K]) => {
         setFormData(prev => ({ ...prev, [key]: value }));
     };
@@ -4932,6 +5138,19 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                 }`}
                         >
                             프롬프트 규칙
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('step2_rules');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'step2_rules'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            2단계규칙
                         </button>
                     </div>
                 </div>
@@ -5378,6 +5597,130 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'step2_rules' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+                            <div className="space-y-6">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">대본생성 프롬프트</div>
+                                    <textarea
+                                        value={step2ScriptPrompt}
+                                        onChange={(e) => {
+                                            setStep2ScriptPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={6}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                    />
+                                </div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">캐릭터분석 프롬프트</div>
+                                    <textarea
+                                        value={step2CharacterPrompt}
+                                        onChange={(e) => {
+                                            setStep2CharacterPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={6}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                    />
+                                </div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">이미지프롬프트 생성 프롬프트</div>
+                                    <textarea
+                                        value={step2FinalPrompt}
+                                        onChange={(e) => {
+                                            setStep2FinalPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={handleStep2BackupCreate}
+                                            className="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-semibold"
+                                        >
+                                            백업
+                                        </button>
+                                        <button
+                                            onClick={handleStep2BackupRestoreSelected}
+                                            className="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            복원
+                                        </button>
+                                        <button
+                                            onClick={handleStep2RulesSave}
+                                            className="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            저장
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={handleStep2RulesReset}
+                                        className="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
+                                    >
+                                        기본값으로 초기화
+                                    </button>
+                                    <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
+                                    {step2RulesEditError && (
+                                        <div className="text-xs text-rose-400">{step2RulesEditError}</div>
+                                    )}
+                                </div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-2">
+                                    <div className="text-xs font-semibold text-slate-300">백업 선택 (최대 5개)</div>
+                                    {(!step2Backups || step2Backups.length === 0) ? (
+                                        <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {step2Backups.map((backup, index) => (
+                                                <div
+                                                    key={backup.id}
+                                                    className={`rounded-lg border transition-colors ${
+                                                        selectedStep2BackupId === backup.id
+                                                            ? 'border-blue-500 bg-blue-600/20'
+                                                            : 'border-slate-800 bg-slate-900'
+                                                    }`}
+                                                >
+                                                    <button
+                                                        onClick={() => setSelectedStep2BackupId(backup.id)}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${
+                                                            selectedStep2BackupId === backup.id
+                                                                ? 'text-white'
+                                                                : 'text-slate-200 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        <div>{backup.name || `백업 ${index + 1}`}</div>
+                                                        <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
+                                                    </button>
+                                                    <div className="px-3 pb-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedStep2BackupId === backup.id) {
+                                                                    setSelectedStep2BackupId(null);
+                                                                }
+                                                                handleStep2BackupDelete(backup.id);
+                                                            }}
+                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[11px] font-semibold"
+                                                        >
+                                                            삭제
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -5511,6 +5854,74 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                             <button
                                 onClick={handleSavePromptRulesBackupContent}
                                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
+                            >
+                                저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Backup Editor Modal */}
+            {(editingBackupId || editingRulesBackupId || editingStep2BackupId) && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+                            <h3 className="text-lg font-bold text-white">
+                                {editingBackupId ? '백업 내용 편집' : (editingRulesBackupId ? '프롬프트 규칙 백업 편집' : '2단계 규칙 백업 편집')}
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    if (editingBackupId) handleCloseBackupEditor();
+                                    else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
+                                    else handleCloseStep2BackupEditor();
+                                }}
+                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 p-4 overflow-hidden flex flex-col">
+                            <textarea
+                                value={editingBackupId ? backupEditText : (editingRulesBackupId ? rulesBackupEditText : step2BackupEditText)}
+                                onChange={(e) => {
+                                    if (editingBackupId) {
+                                        setBackupEditText(e.target.value);
+                                        setBackupEditError(null);
+                                    } else if (editingRulesBackupId) {
+                                        setRulesBackupEditText(e.target.value);
+                                        setRulesBackupEditError(null);
+                                    } else {
+                                        setStep2BackupEditText(e.target.value);
+                                        setStep2BackupEditError(null);
+                                    }
+                                }}
+                                className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                            />
+                            {(backupEditError || rulesBackupEditError || step2BackupEditError) && (
+                                <div className="mt-2 text-xs text-rose-400">
+                                    {backupEditError || rulesBackupEditError || step2BackupEditError}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+                            <button
+                                onClick={() => {
+                                    if (editingBackupId) handleCloseBackupEditor();
+                                    else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
+                                    else handleCloseStep2BackupEditor();
+                                }}
+                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (editingBackupId) handleBackupSaveContent();
+                                    else if (editingRulesBackupId) handleSavePromptRulesBackupContent();
+                                    else handleSaveStep2BackupContent();
+                                }}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium"
                             >
                                 저장
                             </button>

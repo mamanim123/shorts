@@ -1,4 +1,8 @@
 import { parseJsonFromText } from './jsonParse';
+import {
+  fillStep2PromptTemplate,
+  getShortsLabStep2PromptRules
+} from './shortsLabStep2PromptRulesManager';
 
 export type ManualSceneCharacter = {
   id: string;
@@ -43,6 +47,15 @@ export const buildCharacterExtractionPrompt = (options: {
 }) => {
   const { scriptLines, defaultGender } = options;
   const lines = scriptLines.filter(Boolean);
+  const step2Rules = getShortsLabStep2PromptRules();
+  const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
+  const customPrompt = fillStep2PromptTemplate(step2Rules.characterPrompt, {
+    DEFAULT_GENDER: defaultGender,
+    SCRIPT_LINES: lineBlock
+  });
+  if (customPrompt.trim()) {
+    return customPrompt;
+  }
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -118,6 +131,15 @@ export const buildManualSceneDecompositionPrompt = (options: {
         })
         .join('\n')
     : '- (none)';
+  const step2Rules = getShortsLabStep2PromptRules();
+  const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
+  const customPrompt = fillStep2PromptTemplate(step2Rules.finalPrompt, {
+    SCRIPT_LINES: lineBlock,
+    CHARACTER_LINES: characterLines
+  });
+  if (customPrompt.trim()) {
+    return customPrompt;
+  }
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 

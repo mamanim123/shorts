@@ -57,6 +57,10 @@ import { buildOutfitPool } from './outfitService';
 import type { OutfitPoolItem } from './outfitService';
 import { DEFAULT_PROMPT_RULES } from './shortsLabPromptRulesDefaults';
 import { getShortsLabPromptRules } from './shortsLabPromptRulesManager';
+import {
+  fillStep2PromptTemplate,
+  getShortsLabStep2PromptRules
+} from './shortsLabStep2PromptRulesManager';
 
 // ============================================
 // 겨울 테마 및 럭셔리 컬렉션 (v3.8.0)
@@ -375,6 +379,20 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
   const narratorName = gender === 'female' ? '지영' : '준호';
   const narratorSlot = gender === 'female' ? 'WomanA' : 'ManA';
   const emotionFlow = genreGuide?.emotionCurve || '';
+
+  const step2Rules = getShortsLabStep2PromptRules();
+  const customPrompt = fillStep2PromptTemplate(step2Rules.scriptPrompt, {
+    TOPIC: topic,
+    GENRE: genreGuide?.name || genre,
+    TARGET_AGE: targetAge,
+    NARRATOR_SLOT: narratorSlot,
+    NARRATOR_NAME: narratorName,
+    EMOTION_FLOW: emotionFlow,
+    REQUEST_ID: JSON.stringify(seed)
+  });
+  if (customPrompt.trim()) {
+    return customPrompt;
+  }
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 

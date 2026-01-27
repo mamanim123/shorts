@@ -2886,7 +2886,8 @@ ${scriptInput}
                     service: selectedService,
                     prompt: characterExtractPrompt,
                     maxTokens: 1200,
-                    temperature: 0.2
+                    temperature: 0.2,
+                    folderName: scriptFolderName  // 첫 번째 폴더 재사용
                 })
             });
 

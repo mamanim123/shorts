@@ -2729,7 +2729,8 @@ app.post('/api/image/ai-generate', async (req, res) => {
         await switchService(requestedService);
 
         if (autoCapture) {
-            await switchImageService(requestedService);
+            // 이미지 캡처는 GEMINI만 지원하므로 항상 GEMINI 사용
+            await switchImageService('GEMINI');
 
             const { imagesDir, safeId, isLegacy } = ensureStoryImageDirectory(storyId, title);
             const sceneLabel = typeof sceneNumber === 'number'

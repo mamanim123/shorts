@@ -479,8 +479,10 @@ const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
         const gender = getCharacterGender(id);
         const candidates = gender === 'male' ? maleCandidates : femaleCandidates;
         
-        // Find a candidate that hasn't been used yet
-        const picked = candidates.find(item => !usedOutfits.has(item.name)) || candidates[0];
+        const available = candidates.filter(item => !usedOutfits.has(item.name));
+        const picked = available.length > 0
+            ? available[Math.floor(Math.random() * available.length)]
+            : candidates[0];
         
         if (picked) {
             usedOutfits.add(picked.name);

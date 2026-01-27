@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, pickFemaleOutfit, pickMaleOutfit } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -465,28 +465,24 @@ const pickRandomFromList = <T,>(items: T[], exclude: Set<T>): T | null => {
     return filtered[Math.floor(Math.random() * filtered.length)];
 };
 
-const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
-    const outfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
-    // Filter out female candidates (not MALE) and male candidates (MALE or UNISEX)
-    const femaleCandidates = outfitPool.filter(item => !item.categories.includes('MALE'));
-    const maleCandidates = outfitPool.filter(item => item.categories.includes('MALE') || item.categories.includes('UNISEX'));
-
+const buildRandomOutfitsByCharacter = (
+    characterIds: string[],
+    genre: string,
+    topic: string
+) => {
     const usedOutfits = new Set<string>();
     const outfitMap = new Map<string, string>();
 
-    // Sort to ensure deterministic behavior or just process as is
     characterIds.forEach((id) => {
         const gender = getCharacterGender(id);
-        const candidates = gender === 'male' ? maleCandidates : femaleCandidates;
-        
-        const available = candidates.filter(item => !usedOutfits.has(item.name));
-        const picked = available.length > 0
-            ? available[Math.floor(Math.random() * available.length)]
-            : candidates[0];
-        
+        const excludes = Array.from(usedOutfits);
+        const picked = gender === 'male'
+            ? pickMaleOutfit(topic, excludes)
+            : pickFemaleOutfit(genre, topic, excludes);
+
         if (picked) {
-            usedOutfits.add(picked.name);
-            outfitMap.set(id, picked.name);
+            usedOutfits.add(picked);
+            outfitMap.set(id, picked);
         }
     });
 
@@ -525,9 +521,11 @@ const buildRandomAccessoriesByCharacter = (characterIds: string[], enableWinter?
 const buildAutoCharacterMap = (
     characterIds: string[],
     targetAgeLabel: string,
+    genre: string,
+    topic: string,
     enableWinter?: boolean
 ) => {
-    const outfitMap = buildRandomOutfitsByCharacter(characterIds);
+    const outfitMap = buildRandomOutfitsByCharacter(characterIds, genre, topic);
     const accessoriesMap = buildRandomAccessoriesByCharacter(characterIds, enableWinter);
     const map = new Map<string, ManualCharacterPrompt>();
 
@@ -2951,7 +2949,7 @@ ${scriptInput}
             }
 
             const characterIds = characterList.map(item => item.id);
-            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, aiGenre, aiTopic, false);
             if (enableWinterAccessories) {
                 const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
                 const updated = new Map<string, ManualCharacterPrompt>();

@@ -665,7 +665,7 @@ app.post('/api/launch', async (req, res) => {
 
 // --- Script Generation API ---
 app.post('/api/generate/raw', async (req, res) => {
-    const { service, prompt, folderName: requestedFolderName } = req.body;
+    const { service, prompt, folderName: requestedFolderName, skipFolderCreation } = req.body;
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });
     }
@@ -736,33 +736,36 @@ app.post('/api/generate/raw', async (req, res) => {
             }
         }
 
-        // 폴더 생성 (어떤 경우에도 title은 최소한 무제로 확보됨)
-        try {
-            const normalizedFolderName = typeof requestedFolderName === 'string'
-                ? sanitizeFolderName(requestedFolderName)
-                : '';
+        // 폴더 생성 (skipFolderCreation이 true이면 건너뛰기)
+        if (!skipFolderCreation) {
+            try {
+                const normalizedFolderName = typeof requestedFolderName === 'string'
+                    ? sanitizeFolderName(requestedFolderName)
+                    : '';
 
-            if (normalizedFolderName) {
-                const ensured = ensureStoryImageDirectory(normalizedFolderName);
-                folderName = ensured.safeId;
-                console.log(`[Server] 📁 Story folder ensured (reuse): ${folderName}`);
-            } else {
-                const { safeId } = createStoryFolderFromTitle(title);
-                folderName = safeId;
-                console.log(`[Server] 📁 Story folder ensured: ${folderName}`);
+                if (normalizedFolderName) {
+                    const ensured = ensureStoryImageDirectory(normalizedFolderName);
+                    folderName = ensured.safeId;
+                    console.log(`[Server] 📁 Story folder ensured (reuse): ${folderName}`);
+                } else {
+                    const { safeId } = createStoryFolderFromTitle(title);
+                    folderName = safeId;
+                    console.log(`[Server] 📁 Story folder ensured: ${folderName}`);
+                }
+
+                // 대본 파일 저장
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const safeTitleForFile = sanitizeFolderName(title).substring(0, 50) || 'untitled';
+                const filename = `[${requestedService}] ${timestamp}_${safeTitleForFile}.txt`;
+
+                const storyScriptPath = path.join(SCRIPTS_BASE_DIR, folderName, filename);
+                fs.writeFileSync(storyScriptPath, rawResponse);
+                console.log(`[Server] ✅ Script saved to folder: ${storyScriptPath}`);
+            } catch (folderErr) {
+                console.error(`[Server] ❌ Critical failure in folder/file creation:`, folderErr);
             }
-
-            // 대본 파일 저장
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const safeTitleForFile = sanitizeFolderName(title).substring(0, 50) || 'untitled';
-            const filename = `[${requestedService}] ${timestamp}_${safeTitleForFile}.txt`;
-
-            const storyScriptPath = path.join(SCRIPTS_BASE_DIR, folderName, filename);
-            fs.writeFileSync(storyScriptPath, rawResponse);
-            console.log(`[Server] ✅ Script saved to folder: ${storyScriptPath}`);
-        } catch (folderErr) {
-            console.error(`[Server] ❌ Critical failure in folder/file creation:`, folderErr);
-            // 최후의 수단으로 UUID 기반이라도 시도할 수 있으나, 위에서 createStoryFolderFromTitle이 실패할 확률은 낮음
+        } else {
+            console.log(`[Server] ⏭️ Folder creation skipped (skipFolderCreation: true)`);
         }
 
         res.json({

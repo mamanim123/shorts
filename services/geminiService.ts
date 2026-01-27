@@ -1192,7 +1192,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
           service: input.targetService || 'GEMINI',
           prompt: characterExtractPrompt,
           maxTokens: 1200,
-          temperature: 0.2
+          temperature: 0.2,
+          skipFolderCreation: true  // 캐릭터 추출 시에는 폴더 생성 건너뛰기
         }),
         signal
       });
@@ -1205,6 +1206,9 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       const characterRaw = characterData.rawResponse || characterData.text || characterData.result || '';
       const characterResult = parseCharacterExtractionResponse(characterRaw);
       console.log(`✅ 추출된 캐릭터 수: ${characterResult.characters.length}`);
+
+      // 첫 번째 API에서 생성된 폴더명 저장 (있으면)
+      let scriptFolderName = characterData._folderName || '';
 
       // ===== 캐릭터 → 슬롯 매핑 =====
       const femaleSlots = ['WomanA', 'WomanB', 'WomanC'];
@@ -1253,7 +1257,9 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
           service: input.targetService || 'GEMINI',
           prompt: sceneDecompPrompt,
           maxTokens: 4000,
-          temperature: 0.3
+          temperature: 0.3,
+          folderName: scriptFolderName || undefined,  // 첫 번째 폴더 재사용
+          skipFolderCreation: true  // 씬 분해 시에도 폴더 생성 건너뛰기 (마지막에 생성)
         }),
         signal
       });
@@ -1266,6 +1272,11 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       const sceneRaw = sceneData.rawResponse || sceneData.text || sceneData.result || '';
       const sceneResult = parseManualSceneDecompositionResponse(sceneRaw);
       console.log(`✅ 분해된 씬 수: ${sceneResult.scenes.length}`);
+
+      // 폴더명 업데이트 (있으면)
+      if (sceneData._folderName) {
+        scriptFolderName = sceneData._folderName;
+      }
 
       // ===== 결과를 StoryResponse 형식으로 변환 =====
       const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";

@@ -441,12 +441,12 @@ You are in "Script-to-Image" mode. Your ONLY job is to:
 **Context**:
 - Topic: 자유 주제
 - Target Age: 40대
-- Main Character Outfit (Slot Woman A): Pink Sleeveless Polo + White Tight Wrap Mini Skirt
+- Main Character Outfit (Slot Woman A): Red See-through Lingerie Style Mini Dress
 
 **Instructions**:
 Follow ALL visual rules defined in the system prompt:
 - 캐릭터 Slot 시스템 v2.0 (Woman A/B/C, Man A/B/C)
-- Outfit consistency: "Pink Sleeveless Polo + White Tight Wrap Mini Skirt" must be used in ALL scenes for Woman A
+- Outfit consistency: "Red See-through Lingerie Style Mini Dress" must be used in ALL scenes for Woman A
 - Hair style consistency for each slot (Woman A: Long soft-wave hairstyle)
 - Image prompt structure (국적/외형 → Slot ID → 행동/표정 → Outfit → 배경/조명 → 품질 태그)
 - Quality tags must end with: --ar 9:16
@@ -455,10 +455,10 @@ Follow ALL visual rules defined in the system prompt:
 {
   "title": "Extract a catchy title from the script (DO NOT CREATE NEW)",
   "titleOptions": ["Extract 3 potential titles from script content"],
-  "scriptBody": "폭설주의보 내린 날, 미친 척하고 친구들이랑 라운딩을 나갔지.\n저 멀리서 눈꽃 사이로 걸어오는 캐디님이 진짜 연예인 뺨치게 예쁘더라고.\n'오늘 내가 제대로 신사다운 모습 보여준다' 하고 어깨에 힘을 빡 줬어.\n일부러 장갑도 슥 벗으면서, 지갑에서 아까 아파트 엘리베이터에서 잘못 챙겨온 호텔 주차권을 멋지게 꺼냈지.\n'이거 나중에 팁 대신 쓰세요' 라며 윙크까지 날렸는데, 혜경이가 옆에서 빤히 쳐다보더라고.\n캐디님이 갑자기 주차권을 보더니 눈이 동그래지면서 나를 빤히 쳐다보는 거야.\n심장이 철렁 내려앉으면서 '드디어 올 게 왔구나, 내 매력에 빠졌나?' 싶었지.\n근데 그분이 입술을 바짝 깨물더니 떨리는 목소리로 말을 걸더라고.\n'어머, 형부! 여기서 뭐 하세요? 언니한테는 출장 간다고 하셨다면서요?'\n알고 보니 처갓집 막내 처제가 이번 달부터 여기서 아르바이트를 시작했던 거야.\n순간 얼굴이 화끈거리면서 귀까지 새빨개져서 헛기침만 계속했지.\n결국 그날 라운딩도 못 끝내고 와이프한테 소환당해서 석고대죄했어.", 
+  "scriptBody": "근데 그날따라 눈이 펑펑 오는 거야.\n남편이랑 부부 동반 라운딩이었는데, 눈 오는 골프장이 너무 로맨틱하더라고.\n'여보, 우리 사진 찍자!' 하면서 셀카 찍고 난리였어.\n캐디님도 '와, 오늘 분위기 정말 좋으시네요!' 하면서 웃어주시더라고.\n그때까지만 해도 좋았어.\n근데 라운딩 끝나고 클럽하우스 들어가는데, 사람들이 자꾸 우리 쳐다보는 거야.\n'역시 부부 골프는 보기 좋다'는 시선인 줄 알고 어깨에 힘 빡 들어갔지.\n그런데 캐디님이 조심스럽게 다가오더니 '사모님... 혹시 뒤에...' 하는 거야.\n돌아보니까 내 치마 뒤에 하얀 눈사람 스티커가 덕지덕지 붙어있더라고.\n남편 바지 뒤에도 '백돌이 만세' 라고 적힌 메모지가 테이프로 붙어있고.\n알고보니 아까 캐디님이 웃은 게 칭찬이 아니라 참느라 힘들었던 거였어.\n지금도 그 골프장 가면 캐디님이 피식 웃으시더라고.", 
   "punchline": "Extract the final punchline from the script",
   "characters": [
-    {"id": "WomanA", "name": "지영", "role": "Female Lead", "outfit": "Pink Sleeveless Polo + White Tight Wrap Mini Skirt", "hair": "Long soft-wave hairstyle", "gender": "FEMALE"}
+    {"id": "WomanA", "name": "지영", "role": "Female Lead", "outfit": "Red See-through Lingerie Style Mini Dress", "hair": "Long soft-wave hairstyle", "gender": "FEMALE"}
   ],
   "scenes": [
     {

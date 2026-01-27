@@ -1,6 +1,9 @@
 /**
  * useShortsLabCharacterRulesManager.ts
  * 캐릭터 의상 규칙 React 훅
+ *
+ * v2.0 업데이트:
+ * - 캐릭터 추가/삭제 함수 추가
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -8,7 +11,7 @@ import {
   shortsLabCharacterRulesManager,
   ShortsLabCharacterRulesBackup
 } from '../services/shortsLabCharacterRulesManager';
-import type { ShortsLabCharacterRules } from '../services/shortsLabCharacterRulesDefaults';
+import type { ShortsLabCharacterRules, CharacterSlotRule } from '../services/shortsLabCharacterRulesDefaults';
 
 export const useShortsLabCharacterRulesManager = () => {
   const [rules, setRules] = useState<ShortsLabCharacterRules>(() =>
@@ -81,6 +84,44 @@ export const useShortsLabCharacterRulesManager = () => {
     return shortsLabCharacterRulesManager.updateBackupContent(id, rulesInput);
   }, []);
 
+  // ===== 캐릭터 CRUD =====
+  const addFemaleCharacter = useCallback(async () => {
+    setError(null);
+    return shortsLabCharacterRulesManager.addFemaleCharacter();
+  }, []);
+
+  const addMaleCharacter = useCallback(async () => {
+    setError(null);
+    return shortsLabCharacterRulesManager.addMaleCharacter();
+  }, []);
+
+  const deleteFemaleCharacter = useCallback(async (id: string) => {
+    setError(null);
+    try {
+      return await shortsLabCharacterRulesManager.deleteFemaleCharacter(id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const deleteMaleCharacter = useCallback(async (id: string) => {
+    setError(null);
+    try {
+      return await shortsLabCharacterRulesManager.deleteMaleCharacter(id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const updateCharacter = useCallback(async (gender: 'female' | 'male', id: string, updates: Partial<CharacterSlotRule>) => {
+    setError(null);
+    return shortsLabCharacterRulesManager.updateCharacter(gender, id, updates);
+  }, []);
+
   return {
     rules,
     backups,
@@ -93,6 +134,12 @@ export const useShortsLabCharacterRulesManager = () => {
     restoreBackup,
     deleteBackup,
     renameBackup,
-    updateBackupContent
+    updateBackupContent,
+    // 캐릭터 CRUD
+    addFemaleCharacter,
+    addMaleCharacter,
+    deleteFemaleCharacter,
+    deleteMaleCharacter,
+    updateCharacter
   };
 };

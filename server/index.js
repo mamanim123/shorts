@@ -76,6 +76,7 @@ const IMAGE_HISTORY_DIR = path.join(__dirname, 'user_data_image_history');
 const IMAGE_HISTORY_FILE = path.join(IMAGE_HISTORY_DIR, 'image_history.json');
 const APP_STORAGE_DIR = path.join(__dirname, 'user_data_app_storage');
 const APP_STORAGE_FILE = path.join(APP_STORAGE_DIR, 'app_storage.json');
+const CHARACTER_BACKUPS_DIR = path.join(__dirname, 'shorts-lab-character-backups');
 const DEFAULT_OUTFIT_CATEGORIES = [
     { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상', gender: 'female' },
     { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저', gender: 'female' },
@@ -141,6 +142,9 @@ if (!fs.existsSync(APP_STORAGE_DIR)) {
 }
 if (!fs.existsSync(APP_STORAGE_FILE)) {
     fs.writeFileSync(APP_STORAGE_FILE, JSON.stringify({ storage: {} }, null, 2));
+}
+if (!fs.existsSync(CHARACTER_BACKUPS_DIR)) {
+    fs.mkdirSync(CHARACTER_BACKUPS_DIR, { recursive: true });
 }
 
 const EXTRACTION_CACHE_KEYS = new Set([
@@ -1696,6 +1700,70 @@ app.delete('/api/app-storage', (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('앱 스토리지 삭제 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ---------------------------------------------------------
+// 캐릭터 의상 규칙 백업 API (파일 기반)
+// ---------------------------------------------------------
+app.get('/api/character-backups', (req, res) => {
+    try {
+        const files = fs.readdirSync(CHARACTER_BACKUPS_DIR)
+            .filter(f => f.endsWith('.json'))
+            .sort().reverse(); // 최신순
+
+        const backups = files.map(filename => {
+            const filepath = path.join(CHARACTER_BACKUPS_DIR, filename);
+            const content = fs.readFileSync(filepath, 'utf8');
+            return JSON.parse(content);
+        });
+
+        res.json({ backups });
+    } catch (error) {
+        console.error('백업 목록 로드 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/character-backups', (req, res) => {
+    try {
+        const { backup } = req.body || {};
+        if (!backup || !backup.id) {
+            return res.status(400).json({ success: false, error: 'Invalid backup data' });
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T').join('_').slice(0, -5);
+        const filename = `backup_${timestamp}_${backup.id}.json`;
+        const filepath = path.join(CHARACTER_BACKUPS_DIR, filename);
+
+        fs.writeFileSync(filepath, JSON.stringify(backup, null, 2));
+        console.log(`✅ 백업 저장됨: ${filename}`);
+
+        res.json({ success: true, filename });
+    } catch (error) {
+        console.error('백업 저장 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/character-backups/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const files = fs.readdirSync(CHARACTER_BACKUPS_DIR)
+            .filter(f => f.includes(id) && f.endsWith('.json'));
+
+        if (files.length === 0) {
+            return res.status(404).json({ success: false, error: 'Backup not found' });
+        }
+
+        files.forEach(filename => {
+            fs.unlinkSync(path.join(CHARACTER_BACKUPS_DIR, filename));
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('백업 삭제 실패:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

@@ -443,14 +443,14 @@ export const getPromptConstants = () => {
 
   return {
     ...baseConstants,
-    FEMALE_BODY_A: rules.femaleA.body,
-    FEMALE_BODY_B: rules.femaleB.body,
-    FEMALE_BODY_C: rules.femaleC.body,
-    FEMALE_BODY_D: rules.femaleD.body,
-    MALE_BODY: rules.maleA.body,
-    MALE_BODY_A: rules.maleA.body,
-    MALE_BODY_B: rules.maleB.body,
-    MALE_BODY_C: rules.maleC.body
+    FEMALE_BODY_A: rules.females[0]?.body || 'slim hourglass figure',
+    FEMALE_BODY_B: rules.females[1]?.body || 'petite and slim frame',
+    FEMALE_BODY_C: rules.females[2]?.body || 'gracefully toned athletic body',
+    FEMALE_BODY_D: rules.females[3]?.body || 'bright cheerful professional presence',
+    MALE_BODY: rules.males[0]?.body || 'fit athletic build',
+    MALE_BODY_A: rules.males[0]?.body || 'fit athletic build',
+    MALE_BODY_B: rules.males[1]?.body || 'fit athletic build',
+    MALE_BODY_C: rules.males[2]?.body || 'well-built physique'
   };
 };
 const getNoTextTag = () => getActivePromptRules().noTextTag || DEFAULT_PROMPT_RULES.noTextTag;
@@ -598,41 +598,41 @@ export const getMAMACharacterPresets = () => {
 
   return {
     FEMALE_A: {
-      identity: rules.femaleA.identity,
-      bodyType: rules.femaleA.body,
-      style: rules.femaleA.style,
-      outfitFit: rules.femaleA.outfitFit
+      identity: rules.females[0]?.identity || 'A stunning Korean woman',
+      bodyType: rules.females[0]?.body || 'slim hourglass figure',
+      style: rules.females[0]?.style || 'sophisticated look',
+      outfitFit: rules.females[0]?.outfitFit || 'tight-fitting, form-hugging'
     },
     FEMALE_B: {
-      identity: rules.femaleB.identity,
-      bodyType: rules.femaleB.body,
-      style: rules.femaleB.style,
-      outfitFit: rules.femaleB.outfitFit
+      identity: rules.females[1]?.identity || 'A stunning Korean woman',
+      bodyType: rules.females[1]?.body || 'petite and slim frame',
+      style: rules.females[1]?.style || 'charming presence',
+      outfitFit: rules.females[1]?.outfitFit || 'tight-fitting, form-hugging'
     },
     FEMALE_C: {
-      identity: rules.femaleC.identity,
-      bodyType: rules.femaleC.body,
-      style: rules.femaleC.style,
-      outfitFit: rules.femaleC.outfitFit
+      identity: rules.females[2]?.identity || 'A stunning Korean woman',
+      bodyType: rules.females[2]?.body || 'gracefully toned athletic body',
+      style: rules.females[2]?.style || 'elegant presence',
+      outfitFit: rules.females[2]?.outfitFit || 'tight-fitting, form-hugging'
     },
     FEMALE_D: {
-      identity: rules.femaleD.identity,
-      bodyType: rules.femaleD.body,
-      style: rules.femaleD.style,
-      outfitFit: rules.femaleD.outfitFit
+      identity: rules.females[3]?.identity || 'A stunning Korean woman',
+      bodyType: rules.females[3]?.body || 'bright cheerful professional presence',
+      style: rules.females[3]?.style || 'sophisticated caddy look',
+      outfitFit: rules.females[3]?.outfitFit || 'tight-fitting, form-hugging'
     },
     // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
     FEMALE: {
-      identity: rules.femaleA.identity,
-      bodyType: rules.femaleA.body,
-      style: rules.femaleA.style,
-      outfitFit: rules.femaleA.outfitFit
+      identity: rules.females[0]?.identity || 'A stunning Korean woman',
+      bodyType: rules.females[0]?.body || 'slim hourglass figure',
+      style: rules.females[0]?.style || 'sophisticated look',
+      outfitFit: rules.females[0]?.outfitFit || 'tight-fitting, form-hugging'
     },
     MALE: {
-      identity: rules.maleA.identity,
-      bodyType: rules.maleA.body,
-      style: rules.maleA.style,
-      outfitFit: rules.maleA.outfitFit
+      identity: rules.males[0]?.identity || 'A handsome Korean man',
+      bodyType: rules.males[0]?.body || 'fit athletic build',
+      style: rules.males[0]?.style || 'refined presence',
+      outfitFit: rules.males[0]?.outfitFit || 'tailored slim-fit'
     }
   };
 };

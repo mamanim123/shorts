@@ -2,15 +2,17 @@
  * shortsLabCharacterRulesManager.ts
  * 캐릭터 의상 규칙 스토리지 매니저
  *
- * localStorage 기반 영구 저장 및 백업 시스템
+ * v2.0 업데이트:
+ * - 캐릭터 추가/삭제 기능 추가
+ * - 동적 배열 구조 지원
  */
 
-import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule } from './shortsLabCharacterRulesDefaults';
+import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule, generateCharacterId } from './shortsLabCharacterRulesDefaults';
 import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
 
 const STORAGE_KEY = 'shorts-lab-character-rules';
-const BACKUP_STORAGE_KEY = 'shorts-lab-character-rules-backups';
 const MAX_BACKUPS = 5;
+const API_BASE = 'http://localhost:3002';
 
 primeAppStorageCache();
 
@@ -41,39 +43,39 @@ const notifyBackupListeners = (backups: ShortsLabCharacterRulesBackup[]) => {
 const normalizeCharacterSlot = (input?: Partial<CharacterSlotRule>): CharacterSlotRule => {
   const source = input || {};
   return {
+    id: typeof source.id === 'string' ? source.id : '',
     identity: typeof source.identity === 'string' ? source.identity : '',
     hair: typeof source.hair === 'string' ? source.hair : '',
     body: typeof source.body === 'string' ? source.body : '',
-    ageLabel: typeof source.ageLabel === 'string' ? source.ageLabel : '',
     style: typeof source.style === 'string' ? source.style : '',
-    outfitFit: typeof source.outfitFit === 'string' ? source.outfitFit : ''
+    outfitFit: typeof source.outfitFit === 'string' ? source.outfitFit : '',
+    isFixedAge: source.isFixedAge === true,
+    fixedAge: typeof source.fixedAge === 'string' ? source.fixedAge : undefined
   };
 };
 
 const normalizeRules = (input?: Partial<ShortsLabCharacterRules>): ShortsLabCharacterRules => {
   const source = input || {};
 
+  // 배열 정규화
+  const normalizeFemales = Array.isArray(source.females)
+    ? source.females.map(normalizeCharacterSlot)
+    : DEFAULT_CHARACTER_RULES.females.map(normalizeCharacterSlot);
+
+  const normalizeMales = Array.isArray(source.males)
+    ? source.males.map(normalizeCharacterSlot)
+    : DEFAULT_CHARACTER_RULES.males.map(normalizeCharacterSlot);
+
   return {
-    femaleA: normalizeCharacterSlot(source.femaleA || DEFAULT_CHARACTER_RULES.femaleA),
-    femaleB: normalizeCharacterSlot(source.femaleB || DEFAULT_CHARACTER_RULES.femaleB),
-    femaleC: normalizeCharacterSlot(source.femaleC || DEFAULT_CHARACTER_RULES.femaleC),
-    femaleD: normalizeCharacterSlot(source.femaleD || DEFAULT_CHARACTER_RULES.femaleD),
-    maleA: normalizeCharacterSlot(source.maleA || DEFAULT_CHARACTER_RULES.maleA),
-    maleB: normalizeCharacterSlot(source.maleB || DEFAULT_CHARACTER_RULES.maleB),
-    maleC: normalizeCharacterSlot(source.maleC || DEFAULT_CHARACTER_RULES.maleC),
+    females: normalizeFemales,
+    males: normalizeMales,
     common: {
       negativePrompt: typeof source.common?.negativePrompt === 'string'
         ? source.common.negativePrompt
         : DEFAULT_CHARACTER_RULES.common.negativePrompt,
       qualityTags: typeof source.common?.qualityTags === 'string'
         ? source.common.qualityTags
-        : DEFAULT_CHARACTER_RULES.common.qualityTags,
-      defaultFemaleAge: typeof source.common?.defaultFemaleAge === 'string'
-        ? source.common.defaultFemaleAge
-        : DEFAULT_CHARACTER_RULES.common.defaultFemaleAge,
-      defaultMaleAge: typeof source.common?.defaultMaleAge === 'string'
-        ? source.common.defaultMaleAge
-        : DEFAULT_CHARACTER_RULES.common.defaultMaleAge
+        : DEFAULT_CHARACTER_RULES.common.qualityTags
     }
   };
 };
@@ -98,16 +100,44 @@ const writeStoredRules = (rules: ShortsLabCharacterRules) => {
   });
 };
 
-const readStoredBackups = (): ShortsLabCharacterRulesBackup[] => {
-  const stored = getAppStorageCachedValue<ShortsLabCharacterRulesBackup[] | null>(BACKUP_STORAGE_KEY, null);
-  if (!stored || !Array.isArray(stored)) return [];
-  return stored.map((item) => normalizeBackup(item));
+const readStoredBackups = async (): Promise<ShortsLabCharacterRulesBackup[]> => {
+  try {
+    const response = await fetch(`${API_BASE}/api/character-backups`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.backups || []).map((item: Partial<ShortsLabCharacterRulesBackup> & { id: string }) => normalizeBackup(item));
+  } catch (error) {
+    console.warn('[shortsLabCharacterRulesManager] Failed to load backups:', error);
+    return [];
+  }
 };
 
-const writeStoredBackups = (backups: ShortsLabCharacterRulesBackup[]) => {
-  setAppStorageValue(BACKUP_STORAGE_KEY, backups).catch((error) => {
-    console.warn('[shortsLabCharacterRulesManager] Failed to save backups:', error);
-  });
+const writeStoredBackup = async (backup: ShortsLabCharacterRulesBackup): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE}/api/character-backups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backup })
+    });
+    if (!response.ok) throw new Error('Failed to save backup');
+    return true;
+  } catch (error) {
+    console.warn('[shortsLabCharacterRulesManager] Failed to save backup:', error);
+    return false;
+  }
+};
+
+const deleteStoredBackup = async (id: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE}/api/character-backups/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete backup');
+    return true;
+  } catch (error) {
+    console.warn('[shortsLabCharacterRulesManager] Failed to delete backup:', error);
+    return false;
+  }
 };
 
 const formatBackupName = (input?: string) => {
@@ -125,9 +155,8 @@ export const shortsLabCharacterRulesManager = {
     return cachedRules;
   },
   getBackups: (): ShortsLabCharacterRulesBackup[] => {
-    if (cachedBackups) return cachedBackups;
-    cachedBackups = readStoredBackups();
-    return cachedBackups;
+    // 캐시된 백업 반환 (최초 로드는 loadBackups를 통해)
+    return cachedBackups || [];
   },
   subscribeRules: (listener: RulesListener) => {
     rulesListeners.add(listener);
@@ -147,7 +176,7 @@ export const shortsLabCharacterRulesManager = {
     return cachedRules;
   },
   loadBackups: async (): Promise<ShortsLabCharacterRulesBackup[]> => {
-    cachedBackups = readStoredBackups();
+    cachedBackups = await readStoredBackups();
     notifyBackupListeners(cachedBackups);
     return cachedBackups;
   },
@@ -164,24 +193,151 @@ export const shortsLabCharacterRulesManager = {
     notifyRulesListeners(cachedRules);
     return cachedRules;
   },
+
+  // ===== 캐릭터 추가/삭제 기능 =====
+  addFemaleCharacter: async (): Promise<ShortsLabCharacterRules> => {
+    const rules = cachedRules || readStoredRules();
+    const newIndex = rules.females.length;
+    const newId = generateCharacterId('female', newIndex);
+
+    const newCharacter: CharacterSlotRule = {
+      id: newId,
+      identity: 'A stunning Korean woman',
+      hair: 'elegant hairstyle',
+      body: 'graceful figure',
+      style: 'elegant presence',
+      outfitFit: 'tight-fitting, form-hugging'
+    };
+
+    const updated = {
+      ...rules,
+      females: [...rules.females, newCharacter]
+    };
+
+    cachedRules = updated;
+    writeStoredRules(updated);
+    notifyRulesListeners(updated);
+    return updated;
+  },
+
+  addMaleCharacter: async (): Promise<ShortsLabCharacterRules> => {
+    const rules = cachedRules || readStoredRules();
+    const newIndex = rules.males.length;
+    const newId = generateCharacterId('male', newIndex);
+
+    const newCharacter: CharacterSlotRule = {
+      id: newId,
+      identity: 'A handsome Korean man',
+      hair: 'neat hairstyle',
+      body: 'athletic build',
+      style: 'refined presence',
+      outfitFit: 'tailored slim-fit'
+    };
+
+    const updated = {
+      ...rules,
+      males: [...rules.males, newCharacter]
+    };
+
+    cachedRules = updated;
+    writeStoredRules(updated);
+    notifyRulesListeners(updated);
+    return updated;
+  },
+
+  deleteFemaleCharacter: async (id: string): Promise<ShortsLabCharacterRules> => {
+    const rules = cachedRules || readStoredRules();
+
+    // femaleD (캐디)는 삭제 방지
+    if (id === 'femaleD') {
+      throw new Error('캐디(Female D)는 삭제할 수 없습니다.');
+    }
+
+    // 최소 1개는 유지
+    if (rules.females.length <= 1) {
+      throw new Error('최소 1개의 여성 캐릭터는 유지해야 합니다.');
+    }
+
+    const updated = {
+      ...rules,
+      females: rules.females.filter(char => char.id !== id)
+    };
+
+    cachedRules = updated;
+    writeStoredRules(updated);
+    notifyRulesListeners(updated);
+    return updated;
+  },
+
+  deleteMaleCharacter: async (id: string): Promise<ShortsLabCharacterRules> => {
+    const rules = cachedRules || readStoredRules();
+
+    // 최소 1개는 유지
+    if (rules.males.length <= 1) {
+      throw new Error('최소 1개의 남성 캐릭터는 유지해야 합니다.');
+    }
+
+    const updated = {
+      ...rules,
+      males: rules.males.filter(char => char.id !== id)
+    };
+
+    cachedRules = updated;
+    writeStoredRules(updated);
+    notifyRulesListeners(updated);
+    return updated;
+  },
+
+  updateCharacter: async (gender: 'female' | 'male', id: string, updates: Partial<CharacterSlotRule>): Promise<ShortsLabCharacterRules> => {
+    const rules = cachedRules || readStoredRules();
+
+    const updated = gender === 'female'
+      ? {
+          ...rules,
+          females: rules.females.map(char =>
+            char.id === id ? { ...char, ...updates, id: char.id } : char
+          )
+        }
+      : {
+          ...rules,
+          males: rules.males.map(char =>
+            char.id === id ? { ...char, ...updates, id: char.id } : char
+          )
+        };
+
+    cachedRules = updated;
+    writeStoredRules(updated);
+    notifyRulesListeners(updated);
+    return updated;
+  },
+
   createBackup: async (name?: string): Promise<ShortsLabCharacterRulesBackup[]> => {
     const rules = cachedRules || readStoredRules();
-    const backups = cachedBackups || readStoredBackups();
     const newBackup = normalizeBackup({
       id: `character-rules-backup-${Date.now()}`,
       name: formatBackupName(name),
       createdAt: new Date().toISOString(),
       rules
     });
-    const updated = [newBackup, ...backups];
-    const limited = updated.slice(0, MAX_BACKUPS);
-    cachedBackups = limited;
-    writeStoredBackups(limited);
-    notifyBackupListeners(limited);
-    return limited;
+
+    // 파일로 백업 저장
+    await writeStoredBackup(newBackup);
+
+    // 백업 목록 갱신
+    cachedBackups = await readStoredBackups();
+    // 최대 개수 제한
+    if (cachedBackups.length > MAX_BACKUPS) {
+      const toDelete = cachedBackups.slice(MAX_BACKUPS);
+      for (const backup of toDelete) {
+        await deleteStoredBackup(backup.id);
+      }
+      cachedBackups = cachedBackups.slice(0, MAX_BACKUPS);
+    }
+    notifyBackupListeners(cachedBackups);
+    return cachedBackups;
   },
   restoreBackup: async (id: string): Promise<ShortsLabCharacterRules> => {
-    const backups = cachedBackups || readStoredBackups();
+    const backups = cachedBackups || await readStoredBackups();
     const target = backups.find((backup) => backup.id === id);
     if (!target) {
       throw new Error('백업을 찾을 수 없습니다.');
@@ -193,42 +349,55 @@ export const shortsLabCharacterRulesManager = {
     return restored;
   },
   deleteBackup: async (id: string): Promise<ShortsLabCharacterRulesBackup[]> => {
-    const backups = cachedBackups || readStoredBackups();
-    const updated = backups.filter((backup) => backup.id !== id);
-    cachedBackups = updated;
-    writeStoredBackups(updated);
-    notifyBackupListeners(updated);
-    return updated;
+    // 파일에서 백업 삭제
+    await deleteStoredBackup(id);
+
+    // 백업 목록 갱신
+    cachedBackups = await readStoredBackups();
+    notifyBackupListeners(cachedBackups);
+    return cachedBackups;
   },
   renameBackup: async (id: string, name: string): Promise<ShortsLabCharacterRulesBackup[]> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error('백업 이름을 입력해주세요.');
     }
-    const backups = cachedBackups || readStoredBackups();
-    const updated = backups.map((backup) => {
-      if (backup.id !== id) return backup;
-      return normalizeBackup({ ...backup, name: trimmedName, id: backup.id });
-    });
-    cachedBackups = updated;
-    writeStoredBackups(updated);
-    notifyBackupListeners(updated);
-    return updated;
+    const backups = cachedBackups || await readStoredBackups();
+    const target = backups.find(b => b.id === id);
+    if (!target) {
+      throw new Error('백업을 찾을 수 없습니다.');
+    }
+
+    // 기존 백업 삭제 후 이름만 바꿔서 재생성
+    await deleteStoredBackup(id);
+    const renamed = normalizeBackup({ ...target, name: trimmedName });
+    await writeStoredBackup(renamed);
+
+    // 백업 목록 갱신
+    cachedBackups = await readStoredBackups();
+    notifyBackupListeners(cachedBackups);
+    return cachedBackups;
   },
   updateBackupContent: async (
     id: string,
     rulesInput: unknown
   ): Promise<ShortsLabCharacterRulesBackup[]> => {
     const normalized = normalizeRules(rulesInput as Partial<ShortsLabCharacterRules>);
-    const backups = cachedBackups || readStoredBackups();
-    const updated = backups.map((backup) => {
-      if (backup.id !== id) return backup;
-      return normalizeBackup({ ...backup, rules: normalized, id: backup.id });
-    });
-    cachedBackups = updated;
-    writeStoredBackups(updated);
-    notifyBackupListeners(updated);
-    return updated;
+    const backups = cachedBackups || await readStoredBackups();
+    const target = backups.find(b => b.id === id);
+    if (!target) {
+      throw new Error('백업을 찾을 수 없습니다.');
+    }
+
+    // 기존 백업 삭제 후 내용만 바꿔서 재생성
+    await deleteStoredBackup(id);
+    const updated = normalizeBackup({ ...target, rules: normalized });
+    await writeStoredBackup(updated);
+
+    // 백업 목록 갱신
+    cachedBackups = await readStoredBackups();
+    notifyBackupListeners(cachedBackups);
+    return cachedBackups;
   }
 };
 

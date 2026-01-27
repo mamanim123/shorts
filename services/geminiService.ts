@@ -1273,15 +1273,17 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
           let body = '';
 
           if (gender === 'female') {
-            // WomanA → femaleA, WomanB → femaleB, WomanC → femaleC (순환)
-            const slotRules = [characterRules.femaleA, characterRules.femaleB, characterRules.femaleC][(femaleIdx - 1) % 3];
-            identity = `${slotRules.identity} ${slotRules.ageLabel}`.trim();
+            // WomanA → females[0], WomanB → females[1], WomanC → females[2] (순환)
+            const femaleIndex = (femaleIdx - 1) % characterRules.females.length;
+            const slotRules = characterRules.females[femaleIndex];
+            identity = slotRules.identity || 'A stunning Korean woman';
             hair = slotRules.hair || 'long soft-wave hairstyle';
             body = slotRules.body || promptConstants.FEMALE_BODY_A;
           } else {
-            // ManA → maleA, ManB → maleB, ManC → maleC (순환)
-            const slotRules = [characterRules.maleA, characterRules.maleB, characterRules.maleC][(maleIdx - 1) % 3];
-            identity = `${slotRules.identity} ${slotRules.ageLabel}`.trim();
+            // ManA → males[0], ManB → males[1], ManC → males[2] (순환)
+            const maleIndex = (maleIdx - 1) % characterRules.males.length;
+            const slotRules = characterRules.males[maleIndex];
+            identity = slotRules.identity || 'A handsome Korean man';
             hair = slotRules.hair || 'short neat hairstyle';
             body = slotRules.body || promptConstants.MALE_BODY_A;
           }

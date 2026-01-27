@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
@@ -1045,7 +1045,11 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         restoreBackup: restoreCharacterRulesBackup,
         deleteBackup: deleteCharacterRulesBackup,
         renameBackup: renameCharacterRulesBackup,
-        updateBackupContent: updateCharacterRulesBackupContent
+        updateBackupContent: updateCharacterRulesBackupContent,
+        addFemaleCharacter,
+        addMaleCharacter,
+        deleteFemaleCharacter,
+        deleteMaleCharacter
     } = useShortsLabCharacterRulesManager();
 
     // Genre management modal state
@@ -4876,21 +4880,43 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [step2BackupEditText, setStep2BackupEditText] = useState('');
     const [step2BackupEditError, setStep2BackupEditError] = useState<string | null>(null);
 
-    // Character Rules State
-    const [characterRulesState, setCharacterRulesState] = useState({
-        femaleA: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        femaleB: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        femaleC: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        femaleD: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        maleA: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        maleB: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        maleC: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-        common: { negativePrompt: '', qualityTags: '', defaultFemaleAge: '', defaultMaleAge: '' }
+    // Character Rules State (v2.0: 동적 배열 구조)
+    const [characterRulesState, setCharacterRulesState] = useState<{
+        females: Array<{
+            id: string;
+            identity: string;
+            hair: string;
+            body: string;
+            style: string;
+            outfitFit: string;
+            isFixedAge?: boolean;
+            fixedAge?: string;
+        }>;
+        males: Array<{
+            id: string;
+            identity: string;
+            hair: string;
+            body: string;
+            style: string;
+            outfitFit: string;
+            isFixedAge?: boolean;
+            fixedAge?: string;
+        }>;
+        common: {
+            negativePrompt: string;
+            qualityTags: string;
+        };
+    }>({
+        females: [],
+        males: [],
+        common: { negativePrompt: '', qualityTags: '' }
     });
     const [characterRulesDirty, setCharacterRulesDirty] = useState(false);
     const [characterRulesEditError, setCharacterRulesEditError] = useState<string | null>(null);
     const [selectedCharacterRulesBackupId, setSelectedCharacterRulesBackupId] = useState<string | null>(null);
     const [characterRulesBackupName, setCharacterRulesBackupName] = useState('');
+    // 아코디언 상태 (펼쳐진 캐릭터 ID들)
+    const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
 
     React.useEffect(() => {
         if (step2RulesDirty) return;
@@ -4913,14 +4939,9 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         if (characterRulesDirty) return;
         if (characterRules) {
             setCharacterRulesState({
-                femaleA: characterRules.femaleA || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                femaleB: characterRules.femaleB || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                femaleC: characterRules.femaleC || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                femaleD: characterRules.femaleD || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                maleA: characterRules.maleA || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                maleB: characterRules.maleB || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                maleC: characterRules.maleC || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
-                common: characterRules.common || { negativePrompt: '', qualityTags: '', defaultFemaleAge: '', defaultMaleAge: '' }
+                females: characterRules.females || [],
+                males: characterRules.males || [],
+                common: characterRules.common || { negativePrompt: '', qualityTags: '' }
             });
         }
     }, [characterRules, characterRulesDirty]);
@@ -5350,16 +5371,27 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
-    const updateCharacterRulesField = (character: string, field: string, value: string) => {
+    const updateCharacterRulesField = (gender: 'female' | 'male', id: string, field: string, value: string | boolean) => {
         setCharacterRulesState(prev => ({
             ...prev,
-            [character]: {
-                ...prev[character as keyof typeof prev],
-                [field]: value
-            }
+            [gender === 'female' ? 'females' : 'males']: prev[gender === 'female' ? 'females' : 'males'].map(char =>
+                char.id === id ? { ...char, [field]: value } : char
+            )
         }));
         setCharacterRulesDirty(true);
         setCharacterRulesEditError(null);
+    };
+
+    const toggleCharacterExpand = (id: string) => {
+        setExpandedCharacters(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
     };
 
     const updateField = <K extends keyof LabGenreGuidelineEntry>(key: K, value: LabGenreGuidelineEntry[K]) => {
@@ -6039,134 +6071,252 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                             <div className="space-y-6">
                                 {/* Female Characters */}
                                 <div className="space-y-4">
-                                    <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
-                                    {['femaleA', 'femaleB', 'femaleC', 'femaleD'].map((char, idx) => (
-                                        <div key={char} className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
-                                            <div className="text-sm font-semibold text-slate-200">Female {String.fromCharCode(65 + idx)}</div>
-                                            <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await addFemaleCharacter();
+                                                    showToast('여성 캐릭터가 추가되었습니다.', 'success');
+                                                } catch (err) {
+                                                    console.error('Failed to add female character:', err);
+                                                    showToast('캐릭터 추가 실패', 'error');
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            추가
+                                        </button>
+                                    </div>
+                                    {characterRulesState.females.map((char, idx) => {
+                                        const isExpanded = expandedCharacters.has(char.id);
+                                        return (
+                                            <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                                <div
+                                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                                    onClick={() => toggleCharacterExpand(char.id)}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <ChevronDown
+                                                            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                        />
+                                                        <div className="text-sm font-semibold text-slate-200">
+                                                            Female {String.fromCharCode(65 + idx)}
+                                                            {char.id === 'femaleD' && (
+                                                                <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {char.id !== 'femaleD' && (
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                try {
+                                                                    await deleteFemaleCharacter(char.id);
+                                                                    showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                                } catch (err) {
+                                                                    const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                    showToast(message, 'error');
+                                                                }
+                                                            }}
+                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                            삭제
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {isExpanded && (
+                                                    <div className="px-4 pb-4 space-y-3">
+                                                        <div className="grid grid-cols-1 gap-3">
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Identity</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].identity}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'identity', e.target.value)}
+                                                        value={char.identity}
+                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="A stunning Korean woman"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Hair</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].hair}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'hair', e.target.value)}
+                                                        value={char.hair}
+                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="long soft-wave hairstyle"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Body</label>
                                                     <textarea
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].body}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'body', e.target.value)}
+                                                        value={char.body}
+                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
                                                         rows={2}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Age Label</label>
-                                                    <input
-                                                        type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].ageLabel}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'ageLabel', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="slim hourglass figure..."
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Style</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].style}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'style', e.target.value)}
+                                                        value={char.style}
+                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="perfectly managed sophisticated look"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].outfitFit}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'outfitFit', e.target.value)}
+                                                        value={char.outfitFit}
+                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="tight-fitting, form-hugging"
                                                     />
                                                 </div>
+                                                {char.id === 'femaleD' && (
+                                                    <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                                                            <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
+                                                            <input
+                                                                type="text"
+                                                                value={char.fixedAge || 'in her early 20s'}
+                                                                onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
+                                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                disabled={!char.isFixedAge}
+                                                            />
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Male Characters */}
                                 <div className="space-y-4">
-                                    <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
-                                    {['maleA', 'maleB', 'maleC'].map((char, idx) => (
-                                        <div key={char} className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
-                                            <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
-                                            <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await addMaleCharacter();
+                                                    showToast('남성 캐릭터가 추가되었습니다.', 'success');
+                                                } catch (err) {
+                                                    console.error('Failed to add male character:', err);
+                                                    showToast('캐릭터 추가 실패', 'error');
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            추가
+                                        </button>
+                                    </div>
+                                    {characterRulesState.males.map((char, idx) => {
+                                        const isExpanded = expandedCharacters.has(char.id);
+                                        return (
+                                            <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                                <div
+                                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                                    onClick={() => toggleCharacterExpand(char.id)}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <ChevronDown
+                                                            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                        />
+                                                        <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
+                                                    </div>
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                await deleteMaleCharacter(char.id);
+                                                                showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                            } catch (err) {
+                                                                const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                showToast(message, 'error');
+                                                            }
+                                                        }}
+                                                        className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                        삭제
+                                                    </button>
+                                                </div>
+                                                {isExpanded && (
+                                                    <div className="px-4 pb-4 space-y-3">
+                                                        <div className="grid grid-cols-1 gap-3">
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Identity</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].identity}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'identity', e.target.value)}
+                                                        value={char.identity}
+                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="A handsome Korean man"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Hair</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].hair}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'hair', e.target.value)}
+                                                        value={char.hair}
+                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="short neat hairstyle"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Body</label>
                                                     <textarea
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].body}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'body', e.target.value)}
+                                                        value={char.body}
+                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
                                                         rows={2}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Age Label</label>
-                                                    <input
-                                                        type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].ageLabel}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'ageLabel', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="fit athletic build..."
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Style</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].style}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'style', e.target.value)}
+                                                        value={char.style}
+                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="dandy and refined presence"
                                                     />
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
                                                     <input
                                                         type="text"
-                                                        value={characterRulesState[char as keyof typeof characterRulesState].outfitFit}
-                                                        onChange={(e) => updateCharacterRulesField(char, 'outfitFit', e.target.value)}
+                                                        value={char.outfitFit}
+                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="tailored slim-fit"
                                                     />
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Common Settings */}
@@ -6177,39 +6327,27 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             <label className="text-xs text-slate-400 mb-1 block">Negative Prompt</label>
                                             <textarea
                                                 value={characterRulesState.common.negativePrompt}
-                                                onChange={(e) => updateCharacterRulesField('common', 'negativePrompt', e.target.value)}
+                                                onChange={(e) => setCharacterRulesState(prev => ({
+                                                    ...prev,
+                                                    common: { ...prev.common, negativePrompt: e.target.value }
+                                                }))}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                placeholder="NOT cartoon, NOT anime..."
                                             />
                                         </div>
                                         <div>
                                             <label className="text-xs text-slate-400 mb-1 block">Quality Tags</label>
                                             <textarea
                                                 value={characterRulesState.common.qualityTags}
-                                                onChange={(e) => updateCharacterRulesField('common', 'qualityTags', e.target.value)}
+                                                onChange={(e) => setCharacterRulesState(prev => ({
+                                                    ...prev,
+                                                    common: { ...prev.common, qualityTags: e.target.value }
+                                                }))}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                placeholder="photorealistic, 8k resolution..."
                                             />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-xs text-slate-400 mb-1 block">Default Female Age</label>
-                                                <input
-                                                    type="text"
-                                                    value={characterRulesState.common.defaultFemaleAge}
-                                                    onChange={(e) => updateCharacterRulesField('common', 'defaultFemaleAge', e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-slate-400 mb-1 block">Default Male Age</label>
-                                                <input
-                                                    type="text"
-                                                    value={characterRulesState.common.defaultMaleAge}
-                                                    onChange={(e) => updateCharacterRulesField('common', 'defaultMaleAge', e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

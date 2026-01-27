@@ -12,6 +12,13 @@ import { isTopicDirectlyCopied, buildTopicViolationNotice, normalizeTopicText } 
 import { buildOutfitPool } from './outfitService';
 import type { OutfitPoolItem } from './outfitService';
 import { getCachedCharacters } from './characterService';
+import {
+  buildCharacterExtractionPrompt,
+  parseCharacterExtractionResponse,
+  buildManualSceneDecompositionPrompt,
+  parseManualSceneDecompositionResponse,
+  ManualSceneSummary
+} from './manualSceneBuilder';
 
 // Schema definition removed as we are using web automation and raw JSON parsing.
 
@@ -1147,244 +1154,257 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
     }
     userPrompt = offPromptLines.join("\\n");
   } else if (input.customScript && input.customScript.trim().length > 0) {
-    console.log("DEBUG: Entered Custom Script Block");
+    console.log("DEBUG: Entered Custom Script Block (NEW 2-STEP LOGIC)");
 
-    // [FIX] GENERATE CONSISTENT OUTFITS FOR THE SCRIPT
-    // Even though we have a script, we need to assign specific visuals to the characters to maintain consistency.
-    const isChatGPT = input.targetService === 'CHATGPT';
-    const v3Vars = isChatGPT ? generateSafeV3Variables(input.category) : generateV3Variables(input.category);
-
-    // Female outfit: if not provided, keep generated default. If provided, lock it.
-    if (input.lockedFemaleOutfit?.trim()) {
-      v3Vars.items.A = input.lockedFemaleOutfit.trim();
-    }
-    // [REMOVED] Sherbet outfit lock logic
-    const outfitA = v3Vars.items.A;
-
-    userPrompt = `[TASK: SCRIPT-TO-IMAGE MODE]
-🚨🚨🚨 CRITICAL INSTRUCTION 🚨🚨🚨
-You are in "Script-to-Image" mode. Your ONLY job is to:
-1. **USE THE PROVIDED SCRIPT EXACTLY AS-IS** - DO NOT modify, improve, or rewrite it
-2. **ANALYZE the script content** to understand the story flow
-3. **GENERATE image prompts** for each scene based on the script
-4. **EXTRACT metadata** (title, punchline) from the existing script
-
-❌ **FORBIDDEN ACTIONS**:
-- DO NOT rewrite or improve the scriptBody
-- DO NOT add new sentences to the script
-- DO NOT remove sentences from the script
-- DO NOT change the narrative structure
-- DO NOT apply "hook/background/twist" rules to the script itself
-
-✅ **YOUR TASKS**:
-- Read the script carefully
-- Divide it into ~6-8 scenes logically
-- Create visual image prompts for each scene
-- Maintain character consistency across all scenes
-
-**Context**:
-- Topic: ${resolvedTopic}
-- Target Age: ${normalizedTargetAge}
-- Main Character Outfit (Slot Woman A): ${outfitA}
-
-**Instructions**:
-Follow ALL visual rules defined in the system prompt:
-- 캐릭터 Slot 시스템 v2.0 (Woman A/B/C, Man A/B/C)
-- Outfit consistency: "${outfitA}" must be used in ALL scenes for Woman A
-- Hair style consistency for each slot (Woman A: ${CHARACTER_PRESETS.WOMAN_A.hair})
-- Image prompt structure (국적/외형 → Slot ID → 행동/표정 → Outfit → 배경/조명 → 품질 태그)
-- Quality tags must end with: --ar 9:16
-
-**Output Format**:
-{
-  "title": "Extract a catchy title from the script (DO NOT CREATE NEW)",
-  "titleOptions": ["Extract 3 potential titles from script content"],
-  "scriptBody": "${input.customScript.replace(/"/g, '\\"').replace(/\n/g, '\\n')}", 
-  "punchline": "Extract the final punchline from the script",
-  "characters": [
-    {"id": "WomanA", "name": "${CHARACTER_PRESETS.WOMAN_A.name}", "role": "${CHARACTER_PRESETS.WOMAN_A.role}", "outfit": "${outfitA}", "hair": "${CHARACTER_PRESETS.WOMAN_A.hair}", "gender": "FEMALE"}
-  ],
-  "scenes": [
-    {
-      "sceneNumber": 1,
-      "characterIds": ["A"],
-      "shortPrompt": "Visual description for this scene segment",
-      "longPrompt": "Detailed visual prompt matching the script content",
-      "soraPrompt": "...",
-      "soraPromptKo": "...",
-      "shortPromptKo": "...",
-      "longPromptKo": "..."
-    }
-  ]
-}
-
-⚠️ **REMINDER**: The scriptBody above is FINAL and LOCKED. Your output JSON must include it EXACTLY as shown above.
-`;
-
-    const fullPrompt = systemPrompt + "\n\n" + userPrompt;
+    // ===== 새로운 2단계 생성 로직 =====
+    // 1단계: 대본에서 캐릭터 추출
+    // 2단계: 캐릭터 슬롯 매핑 + 씬 분해 + 이미지 프롬프트 생성
 
     try {
-      const response = await fetch('http://localhost:3002/api/generate', {
+      const customScript = input.customScript.trim();
+
+      // 스크립트에서 대사 라인 추출 (빈 줄 제거)
+      const scriptLines = customScript
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (scriptLines.length === 0) {
+        throw new Error("스크립트에서 대사 라인을 추출할 수 없습니다.");
+      }
+
+      console.log(`📝 대본 라인 수: ${scriptLines.length}`);
+
+      // 기본 성별 결정 (input에서 가져오거나 기본값 사용)
+      const defaultGender: 'female' | 'male' = 'female';
+
+      // ===== 1단계: AI 캐릭터 추출 =====
+      console.log("🔍 1단계: AI 캐릭터 추출 중...");
+      const characterExtractPrompt = buildCharacterExtractionPrompt({
+        scriptLines,
+        defaultGender
+      });
+
+      const characterResponse = await fetch('http://localhost:3002/api/generate/raw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           service: input.targetService || 'GEMINI',
-          prompt: fullPrompt
+          prompt: characterExtractPrompt,
+          maxTokens: 1200,
+          temperature: 0.2
         }),
         signal
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate image prompts.");
+      if (!characterResponse.ok) {
+        throw new Error("캐릭터 추출 API 호출 실패");
       }
 
-      const parsed = await response.json();
-      if (parsed && typeof parsed.punchline === 'string') {
-        parsed.punchline = enforcePunchlineFormat(parsed.punchline);
-      }
+      const characterRaw = await characterResponse.text();
+      const characterResult = parseCharacterExtractionResponse(characterRaw);
+      console.log(`✅ 추출된 캐릭터 수: ${characterResult.characters.length}`);
 
-      // [NEW] POST-PROCESSING: Enforce Glamour, Ethnicity, and Aspect Ratio
-      if (parsed.scenes && Array.isArray(parsed.scenes)) {
-        // [ENHANCED] Richer Quality Tags for "Bold Glamour"
-        // Added: Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography
-        const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
-        const userContext = topicContext || "";
+      // ===== 캐릭터 → 슬롯 매핑 =====
+      const femaleSlots = ['WomanA', 'WomanB', 'WomanC'];
+      const maleSlots = ['ManA', 'ManB', 'ManC'];
+      let femaleIdx = 0;
+      let maleIdx = 0;
 
-        // [NEW] 0. 여러 명 등장 보장 (씬 처리 전에 먼저 실행)
-        parsed.scenes = enforceMultipleCharacters(parsed.scenes);
+      const characterSlotMap: Record<string, string> = {};
+      const mappedCharacters: Array<{ id: string; name?: string; slotLabel?: string }> = [];
 
-        parsed.scenes.forEach((scene: any, index: number) => {
-          // [FIX] 0. 씬 번호 강제 추가 (최우선 처리)
-          if (scene.sceneNumber) {
-            const scenePrefix = `Scene ${scene.sceneNumber}. `;
-
-            if (scene.longPrompt && typeof scene.longPrompt === 'string') {
-              const trimmed = scene.longPrompt.trim();
-              if (!trimmed.startsWith(`Scene ${scene.sceneNumber}`)) {
-                // 잘못된 씬 번호가 있으면 제거 후 올바른 번호 추가
-                scene.longPrompt = trimmed.replace(/^Scene \d+\.\s*/i, '');
-                scene.longPrompt = scenePrefix + scene.longPrompt.trim();
-              }
-            }
-
-            if (scene.shortPrompt && typeof scene.shortPrompt === 'string') {
-              const trimmed = scene.shortPrompt.trim();
-              if (!trimmed.startsWith(`Scene ${scene.sceneNumber}`)) {
-                scene.shortPrompt = trimmed.replace(/^Scene \d+\.\s*/i, '');
-                scene.shortPrompt = scenePrefix + scene.shortPrompt.trim();
-              }
-            }
+      for (const char of characterResult.characters) {
+        let slotId = '';
+        if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
+          if (femaleIdx < femaleSlots.length) {
+            slotId = femaleSlots[femaleIdx++];
           }
-
-          const originalLongPrompt = typeof scene.longPrompt === 'string' ? scene.longPrompt : '';
-          const derivedShort = deriveShortPromptFromScene(originalLongPrompt, scene.shortPrompt, input.targetAge);
-          if (derivedShort) {
-            scene.shortPrompt = derivedShort;
+        } else if (char.gender === 'male' || (char.gender === 'unknown' && defaultGender === 'male')) {
+          if (maleIdx < maleSlots.length) {
+            slotId = maleSlots[maleIdx++];
           }
-          // 1. Apply Unified Safe Glamour Logic with Settings
-          if (scene.shortPrompt) scene.shortPrompt = enhancePromptWithSafeGlamour(scene.shortPrompt, userContext, enhancementSettings);
-          if (scene.longPrompt) scene.longPrompt = enhancePromptWithSafeGlamour(scene.longPrompt, userContext, enhancementSettings);
+        }
 
-          // [NEW] 2. 표정 강제 추가 (씬마다 다른 표정)
-          if (scene.longPrompt) {
-            scene.longPrompt = ensureDynamicExpression(scene.longPrompt, index);
-          }
-          if (scene.shortPrompt) {
-            scene.shortPrompt = ensureDynamicExpression(scene.shortPrompt, index);
-          }
-
-          // [NEW] 3. 동작 강제 추가 (씬마다 다른 동작)
-          if (scene.longPrompt) {
-            scene.longPrompt = ensureDynamicAction(scene.longPrompt, index);
-          }
-          if (scene.shortPrompt) {
-            scene.shortPrompt = ensureDynamicAction(scene.shortPrompt, index);
-          }
-
-          // [NEW] 4. 악세서리 강제 추가 (여성 캐릭터만)
-          const characterIds = scene.characterIds || [];
-          const hasFemaleCharacter = characterIds.some((id: string) =>
-            id === 'A' || id === 'B' || id === 'C' || /Slot [ABC]/i.test(id)
-          );
-
-          if (hasFemaleCharacter) {
-            const mainCharacterId = characterIds.find((id: string) =>
-              id === 'A' || id === 'B' || id === 'C' || /Slot [ABC]/i.test(id)
-            ) || 'A';
-
-            if (scene.longPrompt) {
-              scene.longPrompt = ensureAccessory(scene.longPrompt, mainCharacterId);
-            }
-            if (scene.shortPrompt) {
-              scene.shortPrompt = ensureAccessory(scene.shortPrompt, mainCharacterId);
-            }
-          }
-
-          // [NEW] 5. 카메라 샷 강제 추가 (Two-shot, Three-shot 우선)
-          const characterCount = characterIds.length;
-          if (scene.longPrompt) {
-            scene.longPrompt = ensureCameraShot(scene.longPrompt, index, characterCount);
-          }
-          if (scene.shortPrompt) {
-            scene.shortPrompt = ensureCameraShot(scene.shortPrompt, index, characterCount);
-          }
-
-          // 6. Enforce Aspect Ratio and Quality Tags (DEDUPLICATED)
-          // Remove common tags that might be duplicated by the LLM or previous logic
-          const tagsToRemove = [
-            "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
-            "professional photography", "depth of field", "--ar 9:16", "--style raw",
-            "detailed texture", "magazine cover quality", "hyper-realistic"
-          ];
-
-          const cleanPrompt = (text: string) => {
-            let cleaned = text;
-            tagsToRemove.forEach(tag => {
-              const regex = new RegExp(tag.replace(/[-\/^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-              cleaned = cleaned.replace(regex, "");
-            });
-            // Remove trailing commas and spaces
-            return cleaned.replace(/,\s*,/g, ",").trim().replace(/,$/, "");
-          };
-
-          if (scene.longPrompt) {
-            scene.longPrompt = ensureAgeMention(cleanPrompt(scene.longPrompt), input.targetAge) + qualitySuffix;
-          }
-          if (scene.shortPrompt) {
-            scene.shortPrompt = ensureAgeMention(cleanPrompt(scene.shortPrompt), input.targetAge) + qualitySuffix;
-          }
-        });
-      }
-
-      // ✅ FIX: 대본 생성 시 폴더 생성 API 호출하여 _folderName 설정
-      let folderName: string | undefined = undefined;
-      if (parsed.title) {
-        try {
-          const folderResponse = await fetch('http://localhost:3002/api/create-story-folder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: parsed.title })
+        if (slotId) {
+          characterSlotMap[char.name] = slotId;
+          mappedCharacters.push({
+            id: slotId,
+            name: char.name,
+            slotLabel: slotId
           });
-          const folderResult = await folderResponse.json();
-          if (folderResult.success && folderResult.folderName) {
-            folderName = folderResult.folderName;
-            console.log(`✅ Story folder created: ${folderName}`);
-          }
-        } catch (error) {
-          console.warn('Failed to create story folder, will use fallback:', error);
         }
       }
 
+      console.log("📌 캐릭터 슬롯 매핑:", characterSlotMap);
+
+      // ===== 2단계: 씬 분해 + 이미지 프롬프트 생성 =====
+      console.log("🎬 2단계: 씬 분해 및 이미지 프롬프트 생성 중...");
+      const sceneDecompPrompt = buildManualSceneDecompositionPrompt({
+        scriptLines,
+        characters: mappedCharacters
+      });
+
+      const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: input.targetService || 'GEMINI',
+          prompt: sceneDecompPrompt,
+          maxTokens: 4000,
+          temperature: 0.3
+        }),
+        signal
+      });
+
+      if (!sceneResponse.ok) {
+        throw new Error("씬 분해 API 호출 실패");
+      }
+
+      const sceneRaw = await sceneResponse.text();
+      const sceneResult = parseManualSceneDecompositionResponse(sceneRaw);
+      console.log(`✅ 분해된 씬 수: ${sceneResult.scenes.length}`);
+
+      // ===== 결과를 StoryResponse 형식으로 변환 =====
+      const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
+      const userContext = topicContext || "";
+
+      // 의상 생성
+      const isChatGPT = input.targetService === 'CHATGPT';
+      const v3Vars = isChatGPT ? generateSafeV3Variables(input.category) : generateV3Variables(input.category);
+      if (input.lockedFemaleOutfit?.trim()) {
+        v3Vars.items.A = input.lockedFemaleOutfit.trim();
+      }
+
+      // characters 배열 생성
+      const outputCharacters = mappedCharacters.map(char => {
+        const slotKey = char.id.replace('Woman', '').replace('Man', '') as 'A' | 'B' | 'C';
+        const isWoman = char.id.startsWith('Woman');
+        const preset = isWoman
+          ? CHARACTER_PRESETS[`WOMAN_${slotKey}` as keyof typeof CHARACTER_PRESETS]
+          : CHARACTER_PRESETS[`MAN_${slotKey}` as keyof typeof CHARACTER_PRESETS];
+
+        return {
+          id: char.id,
+          name: char.name || preset?.name || char.id,
+          role: preset?.role || 'supporting',
+          outfit: isWoman ? v3Vars.items[slotKey] || v3Vars.items.A : pickMaleOutfitForContext(userContext),
+          hair: preset?.hair || 'natural hair',
+          gender: isWoman ? 'FEMALE' : 'MALE'
+        };
+      });
+
+      // scenes 배열 생성 및 후처리
+      const outputScenes = sceneResult.scenes.map((scene, index) => {
+        let longPrompt = scene.longPrompt || scene.summary || '';
+        let shortPrompt = scene.shortPrompt || scene.summary || '';
+
+        // 씬 번호 추가
+        const scenePrefix = `Scene ${scene.sceneNumber}. `;
+        if (!longPrompt.startsWith(`Scene ${scene.sceneNumber}`)) {
+          longPrompt = scenePrefix + longPrompt.replace(/^Scene \d+\.\s*/i, '');
+        }
+        if (!shortPrompt.startsWith(`Scene ${scene.sceneNumber}`)) {
+          shortPrompt = scenePrefix + shortPrompt.replace(/^Scene \d+\.\s*/i, '');
+        }
+
+        // Safe Glamour 적용
+        longPrompt = enhancePromptWithSafeGlamour(longPrompt, userContext, enhancementSettings);
+        shortPrompt = enhancePromptWithSafeGlamour(shortPrompt, userContext, enhancementSettings);
+
+        // 표정/동작/악세서리 추가
+        longPrompt = ensureDynamicExpression(longPrompt, index);
+        shortPrompt = ensureDynamicExpression(shortPrompt, index);
+        longPrompt = ensureDynamicAction(longPrompt, index);
+        shortPrompt = ensureDynamicAction(shortPrompt, index);
+
+        const characterIds = scene.characterIds || [];
+        const hasFemaleCharacter = characterIds.some((id: string) =>
+          id.startsWith('Woman') || id === 'A' || id === 'B' || id === 'C'
+        );
+
+        if (hasFemaleCharacter) {
+          const mainCharacterId = characterIds.find((id: string) =>
+            id.startsWith('Woman') || id === 'A' || id === 'B' || id === 'C'
+          ) || 'A';
+          longPrompt = ensureAccessory(longPrompt, mainCharacterId);
+          shortPrompt = ensureAccessory(shortPrompt, mainCharacterId);
+        }
+
+        // 카메라 샷 추가
+        longPrompt = ensureCameraShot(longPrompt, index, characterIds.length);
+        shortPrompt = ensureCameraShot(shortPrompt, index, characterIds.length);
+
+        // 중복 태그 제거
+        const tagsToRemove = [
+          "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
+          "professional photography", "depth of field", "--ar 9:16", "--style raw",
+          "detailed texture", "magazine cover quality", "hyper-realistic"
+        ];
+
+        const cleanPrompt = (text: string) => {
+          let cleaned = text;
+          tagsToRemove.forEach(tag => {
+            const regex = new RegExp(tag.replace(/[-\/^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+            cleaned = cleaned.replace(regex, "");
+          });
+          return cleaned.replace(/,\s*,/g, ",").trim().replace(/,$/, "");
+        };
+
+        longPrompt = ensureAgeMention(cleanPrompt(longPrompt), input.targetAge) + qualitySuffix;
+        shortPrompt = ensureAgeMention(cleanPrompt(shortPrompt), input.targetAge) + qualitySuffix;
+
+        return {
+          sceneNumber: scene.sceneNumber,
+          characterIds: scene.characterIds || [],
+          shortPrompt,
+          longPrompt,
+          shortPromptKo: scene.scriptLine || '',
+          longPromptKo: scene.scriptLine || '',
+          soraPrompt: longPrompt,
+          soraPromptKo: scene.scriptLine || ''
+        };
+      });
+
+      // 제목 추출 (첫 번째 라인 또는 AI가 생성한 제목 사용)
+      const title = sceneResult.title || scriptLines[0].substring(0, 30) + '...';
+
+      // 마지막 라인을 punchline으로 사용
+      const punchline = enforcePunchlineFormat(scriptLines[scriptLines.length - 1] || '');
+
+      // 폴더 생성
+      let folderName: string | undefined = undefined;
+      try {
+        const folderResponse = await fetch('http://localhost:3002/api/create-story-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title })
+        });
+        const folderResult = await folderResponse.json();
+        if (folderResult.success && folderResult.folderName) {
+          folderName = folderResult.folderName;
+          console.log(`✅ Story folder created: ${folderName}`);
+        }
+      } catch (error) {
+        console.warn('Failed to create story folder, will use fallback:', error);
+      }
+
+      console.log("✅ 2단계 생성 완료!");
+
       return {
-        ...parsed,
+        title,
+        titleOptions: [title],
+        scriptBody: customScript,
+        punchline,
+        characters: outputCharacters,
+        scenes: outputScenes,
         id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString().slice(2),
         createdAt: Date.now(),
         service: input.targetService || 'GEMINI',
         _folderName: folderName,
       };
     } catch (error) {
-      console.error("Script-to-Image Generation Error:", error);
+      console.error("Script-to-Image Generation Error (2-Step):", error);
       throw error;
     }
   } else if (isV3Family || isCustomEngine) {

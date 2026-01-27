@@ -1201,7 +1201,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
         throw new Error("캐릭터 추출 API 호출 실패");
       }
 
-      const characterRaw = await characterResponse.text();
+      const characterData = await characterResponse.json();
+      const characterRaw = characterData.rawResponse || characterData.text || characterData.result || '';
       const characterResult = parseCharacterExtractionResponse(characterRaw);
       console.log(`✅ 추출된 캐릭터 수: ${characterResult.characters.length}`);
 
@@ -1261,7 +1262,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
         throw new Error("씬 분해 API 호출 실패");
       }
 
-      const sceneRaw = await sceneResponse.text();
+      const sceneData = await sceneResponse.json();
+      const sceneRaw = sceneData.rawResponse || sceneData.text || sceneData.result || '';
       const sceneResult = parseManualSceneDecompositionResponse(sceneRaw);
       console.log(`✅ 분해된 씬 수: ${sceneResult.scenes.length}`);
 

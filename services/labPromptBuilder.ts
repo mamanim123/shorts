@@ -61,6 +61,8 @@ import {
   fillStep2PromptTemplate,
   getShortsLabStep2PromptRules
 } from './shortsLabStep2PromptRulesManager';
+import { getCharacterRules } from './shortsLabCharacterRulesManager';
+import type { ShortsLabCharacterRules } from './shortsLabCharacterRulesDefaults';
 
 // ============================================
 // 겨울 테마 및 럭셔리 컬렉션 (v3.8.0)
@@ -435,8 +437,22 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
 // ============================================
 
 const getActivePromptRules = () => getShortsLabPromptRules() || DEFAULT_PROMPT_RULES;
-const getPromptConstants = () =>
-  getActivePromptRules().promptConstants || DEFAULT_PROMPT_RULES.promptConstants;
+export const getPromptConstants = () => {
+  const baseConstants = getActivePromptRules().promptConstants || DEFAULT_PROMPT_RULES.promptConstants;
+  const rules = getCharacterRules();
+
+  return {
+    ...baseConstants,
+    FEMALE_BODY_A: rules.femaleA.body,
+    FEMALE_BODY_B: rules.femaleB.body,
+    FEMALE_BODY_C: rules.femaleC.body,
+    FEMALE_BODY_D: rules.femaleD.body,
+    MALE_BODY: rules.maleA.body,
+    MALE_BODY_A: rules.maleA.body,
+    MALE_BODY_B: rules.maleB.body,
+    MALE_BODY_C: rules.maleC.body
+  };
+};
 const getNoTextTag = () => getActivePromptRules().noTextTag || DEFAULT_PROMPT_RULES.noTextTag;
 const shouldEnforceKoreanIdentity = () => getActivePromptRules().enforceKoreanIdentity !== false;
 export const getExpressionKeywordMap = () =>
@@ -576,51 +592,59 @@ export const translateActionToEnglish = (action: string): string => {
 // 마마님 취향 반영 캐릭터 프리셋
 // ============================================
 
-export const MAMA_CHARACTER_PRESETS = {
-  FEMALE_A: {
-    identity: 'A stunning Korean woman',
-    bodyType: 'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
-    style: 'perfectly managed sophisticated look, confident presence',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
-  },
-  FEMALE_B: {
-    identity: 'A stunning Korean woman',
-    bodyType: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line',
-    style: 'charming presence, expressive and lively reactions',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
-  },
-  FEMALE_C: {
-    identity: 'A stunning Korean woman',
-    bodyType: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
-    style: 'composed and calm observer demeanor, elegant presence',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
-  },
-  FEMALE_D: {
-    identity: 'A stunning Korean woman',
-    bodyType: 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
-    style: 'bright cheerful professional presence, sophisticated and beautiful caddy look',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
-  },
-  // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
-  FEMALE: {
-    identity: 'A stunning Korean woman',
-    bodyType: 'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
-    style: 'perfectly managed sophisticated look, confident presence',
-    outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
-  },
-  MALE: {
-    identity: 'A handsome Korean man',
-    bodyType: 'fit athletic build with broad shoulders',
-    style: 'dandy and refined presence, well-groomed and polished appearance',
-    outfitFit: 'tailored slim-fit, clean and sharp lines'
-  }
+// 의상 규칙을 동적으로 가져오는 함수
+export const getMAMACharacterPresets = () => {
+  const rules = getCharacterRules();
+
+  return {
+    FEMALE_A: {
+      identity: rules.femaleA.identity,
+      bodyType: rules.femaleA.body,
+      style: rules.femaleA.style,
+      outfitFit: rules.femaleA.outfitFit
+    },
+    FEMALE_B: {
+      identity: rules.femaleB.identity,
+      bodyType: rules.femaleB.body,
+      style: rules.femaleB.style,
+      outfitFit: rules.femaleB.outfitFit
+    },
+    FEMALE_C: {
+      identity: rules.femaleC.identity,
+      bodyType: rules.femaleC.body,
+      style: rules.femaleC.style,
+      outfitFit: rules.femaleC.outfitFit
+    },
+    FEMALE_D: {
+      identity: rules.femaleD.identity,
+      bodyType: rules.femaleD.body,
+      style: rules.femaleD.style,
+      outfitFit: rules.femaleD.outfitFit
+    },
+    // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
+    FEMALE: {
+      identity: rules.femaleA.identity,
+      bodyType: rules.femaleA.body,
+      style: rules.femaleA.style,
+      outfitFit: rules.femaleA.outfitFit
+    },
+    MALE: {
+      identity: rules.maleA.identity,
+      bodyType: rules.maleA.body,
+      style: rules.maleA.style,
+      outfitFit: rules.maleA.outfitFit
+    }
+  };
 };
+
+// 하위 호환성을 위한 getter
+export const MAMA_CHARACTER_PRESETS = getMAMACharacterPresets();
 
 // ============================================
 // 이미지 프롬프트 고정 문구 (절대 생략 금지)
 // ============================================
 
-export const PROMPT_CONSTANTS = DEFAULT_PROMPT_RULES.promptConstants;
+export const PROMPT_CONSTANTS = getPromptConstants();
 
 export const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
   if (!text) return text;
@@ -1842,6 +1866,8 @@ export default {
   convertAgeToEnglish,
   LAB_GENRE_GUIDELINES,
   MAMA_CHARACTER_PRESETS,
+  getMAMACharacterPresets,
   PROMPT_CONSTANTS,
+  getPromptConstants,
   RANDOM_SEED_POOLS
 };

@@ -19,6 +19,7 @@ import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '.
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { useShortsLabStep2PromptRulesManager } from '../hooks/useShortsLabStep2PromptRulesManager';
+import { useShortsLabCharacterRulesManager } from '../hooks/useShortsLabCharacterRulesManager';
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
@@ -1035,6 +1036,17 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         renameBackup: renameStep2Backup,
         updateBackupContent: updateStep2BackupContent
     } = useShortsLabStep2PromptRulesManager();
+    const {
+        rules: characterRules,
+        backups: characterRulesBackups,
+        updateRules: updateCharacterRules,
+        resetRules: resetCharacterRules,
+        createBackup: createCharacterRulesBackup,
+        restoreBackup: restoreCharacterRulesBackup,
+        deleteBackup: deleteCharacterRulesBackup,
+        renameBackup: renameCharacterRulesBackup,
+        updateBackupContent: updateCharacterRulesBackupContent
+    } = useShortsLabCharacterRulesManager();
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
@@ -4605,6 +4617,36 @@ ${scriptInput}
                         await updateStep2BackupContent(id, rulesInput);
                         showToast('백업 내용이 저장되었습니다.', 'success');
                     }}
+                    characterRules={characterRules}
+                    characterRulesBackups={characterRulesBackups}
+                    onCharacterRulesSave={async (rulesInput) => {
+                        await updateCharacterRules(rulesInput);
+                        showToast('의상 규칙이 저장되었습니다.', 'success');
+                    }}
+                    onCharacterRulesReset={async () => {
+                        await resetCharacterRules();
+                        showToast('의상 규칙이 기본값으로 초기화되었습니다.', 'success');
+                    }}
+                    onCharacterRulesBackupCreate={async (name) => {
+                        await createCharacterRulesBackup(name);
+                        showToast('의상 규칙 백업이 저장되었습니다.', 'success');
+                    }}
+                    onCharacterRulesBackupRestore={async (id) => {
+                        await restoreCharacterRulesBackup(id);
+                        showToast('의상 규칙을 백업에서 복구했습니다.', 'success');
+                    }}
+                    onCharacterRulesBackupDelete={async (id) => {
+                        await deleteCharacterRulesBackup(id);
+                        showToast('의상 규칙 백업이 삭제되었습니다.', 'success');
+                    }}
+                    onCharacterRulesBackupRename={async (id, name) => {
+                        await renameCharacterRulesBackup(id, name);
+                        showToast('백업 이름이 변경되었습니다.', 'success');
+                    }}
+                    onCharacterRulesBackupEdit={async (id, rulesInput) => {
+                        await updateCharacterRulesBackupContent(id, rulesInput);
+                        showToast('백업 내용이 저장되었습니다.', 'success');
+                    }}
                 />
             )}
         </div>
@@ -4711,6 +4753,15 @@ interface GenreManagementModalProps {
     onStep2BackupDelete?: (id: string) => Promise<void>;
     onStep2BackupRename?: (id: string, name: string) => Promise<void>;
     onStep2BackupEdit?: (id: string, rulesInput: unknown) => Promise<void>;
+    characterRules?: any;
+    characterRulesBackups?: any[];
+    onCharacterRulesSave?: (rulesInput: unknown) => Promise<void>;
+    onCharacterRulesReset?: () => Promise<void>;
+    onCharacterRulesBackupCreate?: (name?: string) => Promise<void>;
+    onCharacterRulesBackupRestore?: (id: string) => Promise<void>;
+    onCharacterRulesBackupDelete?: (id: string) => Promise<void>;
+    onCharacterRulesBackupRename?: (id: string, name: string) => Promise<void>;
+    onCharacterRulesBackupEdit?: (id: string, rulesInput: unknown) => Promise<void>;
 }
 
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
@@ -4743,9 +4794,18 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onStep2BackupRestore,
     onStep2BackupDelete,
     onStep2BackupRename,
-    onStep2BackupEdit
+    onStep2BackupEdit,
+    characterRules,
+    characterRulesBackups,
+    onCharacterRulesSave,
+    onCharacterRulesReset,
+    onCharacterRulesBackupCreate,
+    onCharacterRulesBackupRestore,
+    onCharacterRulesBackupDelete,
+    onCharacterRulesBackupRename,
+    onCharacterRulesBackupEdit
 }) => {
-    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules'>('genres');
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
@@ -4816,6 +4876,22 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [step2BackupEditText, setStep2BackupEditText] = useState('');
     const [step2BackupEditError, setStep2BackupEditError] = useState<string | null>(null);
 
+    // Character Rules State
+    const [characterRulesState, setCharacterRulesState] = useState({
+        femaleA: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        femaleB: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        femaleC: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        femaleD: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        maleA: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        maleB: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        maleC: { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+        common: { negativePrompt: '', qualityTags: '', defaultFemaleAge: '', defaultMaleAge: '' }
+    });
+    const [characterRulesDirty, setCharacterRulesDirty] = useState(false);
+    const [characterRulesEditError, setCharacterRulesEditError] = useState<string | null>(null);
+    const [selectedCharacterRulesBackupId, setSelectedCharacterRulesBackupId] = useState<string | null>(null);
+    const [characterRulesBackupName, setCharacterRulesBackupName] = useState('');
+
     React.useEffect(() => {
         if (step2RulesDirty) return;
         const rulesValue = (step2Rules || {}) as {
@@ -4832,6 +4908,22 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         if (rulesDirty) return;
         setRulesEditText(JSON.stringify(promptRules, null, 2));
     }, [promptRules, rulesDirty]);
+
+    React.useEffect(() => {
+        if (characterRulesDirty) return;
+        if (characterRules) {
+            setCharacterRulesState({
+                femaleA: characterRules.femaleA || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                femaleB: characterRules.femaleB || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                femaleC: characterRules.femaleC || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                femaleD: characterRules.femaleD || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                maleA: characterRules.maleA || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                maleB: characterRules.maleB || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                maleC: characterRules.maleC || { identity: '', hair: '', body: '', ageLabel: '', style: '', outfitFit: '' },
+                common: characterRules.common || { negativePrompt: '', qualityTags: '', defaultFemaleAge: '', defaultMaleAge: '' }
+            });
+        }
+    }, [characterRules, characterRulesDirty]);
 
     const handleStartEdit = (genre: LabGenreGuidelineEntry) => {
         setSelectedGenre(genre);
@@ -5188,6 +5280,88 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
+    // Character Rules Handlers
+    const handleCharacterRulesSave = async () => {
+        if (!onCharacterRulesSave) return;
+        try {
+            await onCharacterRulesSave(characterRulesState);
+            setCharacterRulesDirty(false);
+            setCharacterRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to save character rules:', err);
+            setCharacterRulesEditError('의상 규칙 저장에 실패했습니다.');
+        }
+    };
+
+    const handleCharacterRulesReset = async () => {
+        if (!onCharacterRulesReset) return;
+        if (!window.confirm('의상 규칙을 기본값으로 초기화하시겠습니까?')) return;
+        try {
+            await onCharacterRulesReset();
+            setCharacterRulesDirty(false);
+            setCharacterRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to reset character rules:', err);
+            alert('의상 규칙 초기화에 실패했습니다.');
+        }
+    };
+
+    const handleCharacterRulesBackupCreate = async () => {
+        if (!onCharacterRulesBackupCreate) return;
+        try {
+            await onCharacterRulesBackupCreate(characterRulesBackupName);
+            setCharacterRulesBackupName('');
+        } catch (err) {
+            console.error('Failed to create character rules backup:', err);
+            alert('의상 규칙 백업 생성에 실패했습니다.');
+        }
+    };
+
+    const handleCharacterRulesBackupRestore = async (id: string) => {
+        if (!onCharacterRulesBackupRestore) return;
+        if (!window.confirm('이 백업으로 의상 규칙을 복구하시겠습니까?')) return;
+        try {
+            await onCharacterRulesBackupRestore(id);
+            setCharacterRulesDirty(false);
+            setCharacterRulesEditError(null);
+            setSelectedCharacterRulesBackupId(id);
+        } catch (err) {
+            console.error('Failed to restore character rules backup:', err);
+            alert('의상 규칙 백업 복구에 실패했습니다.');
+        }
+    };
+
+    const handleCharacterRulesBackupRestoreSelected = async () => {
+        if (!selectedCharacterRulesBackupId) {
+            alert('복구할 백업을 선택해주세요.');
+            return;
+        }
+        await handleCharacterRulesBackupRestore(selectedCharacterRulesBackupId);
+    };
+
+    const handleCharacterRulesBackupDelete = async (id: string) => {
+        if (!onCharacterRulesBackupDelete) return;
+        if (!window.confirm('이 백업을 삭제하시겠습니까?')) return;
+        try {
+            await onCharacterRulesBackupDelete(id);
+        } catch (err) {
+            console.error('Failed to delete character rules backup:', err);
+            alert('의상 규칙 백업 삭제에 실패했습니다.');
+        }
+    };
+
+    const updateCharacterRulesField = (character: string, field: string, value: string) => {
+        setCharacterRulesState(prev => ({
+            ...prev,
+            [character]: {
+                ...prev[character as keyof typeof prev],
+                [field]: value
+            }
+        }));
+        setCharacterRulesDirty(true);
+        setCharacterRulesEditError(null);
+    };
+
     const updateField = <K extends keyof LabGenreGuidelineEntry>(key: K, value: LabGenreGuidelineEntry[K]) => {
         setFormData(prev => ({ ...prev, [key]: value }));
     };
@@ -5276,6 +5450,19 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                 }`}
                         >
                             2단계규칙
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('character_rules');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'character_rules'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            의상규칙
                         </button>
                     </div>
                 </div>
@@ -5832,6 +6019,269 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                                     setSelectedStep2BackupId(null);
                                                                 }
                                                                 handleStep2BackupDelete(backup.id);
+                                                            }}
+                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[11px] font-semibold"
+                                                        >
+                                                            삭제
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'character_rules' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+                            <div className="space-y-6">
+                                {/* Female Characters */}
+                                <div className="space-y-4">
+                                    <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                    {['femaleA', 'femaleB', 'femaleC', 'femaleD'].map((char, idx) => (
+                                        <div key={char} className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                            <div className="text-sm font-semibold text-slate-200">Female {String.fromCharCode(65 + idx)}</div>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].identity}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'identity', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].hair}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'hair', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                    <textarea
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].body}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'body', e.target.value)}
+                                                        rows={2}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Age Label</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].ageLabel}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'ageLabel', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].style}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'style', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].outfitFit}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'outfitFit', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Male Characters */}
+                                <div className="space-y-4">
+                                    <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
+                                    {['maleA', 'maleB', 'maleC'].map((char, idx) => (
+                                        <div key={char} className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                            <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].identity}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'identity', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].hair}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'hair', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                    <textarea
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].body}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'body', e.target.value)}
+                                                        rows={2}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Age Label</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].ageLabel}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'ageLabel', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].style}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'style', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                    <input
+                                                        type="text"
+                                                        value={characterRulesState[char as keyof typeof characterRulesState].outfitFit}
+                                                        onChange={(e) => updateCharacterRulesField(char, 'outfitFit', e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Common Settings */}
+                                <div className="space-y-4">
+                                    <div className="text-lg font-bold text-purple-400">공통 설정</div>
+                                    <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                        <div>
+                                            <label className="text-xs text-slate-400 mb-1 block">Negative Prompt</label>
+                                            <textarea
+                                                value={characterRulesState.common.negativePrompt}
+                                                onChange={(e) => updateCharacterRulesField('common', 'negativePrompt', e.target.value)}
+                                                rows={3}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-400 mb-1 block">Quality Tags</label>
+                                            <textarea
+                                                value={characterRulesState.common.qualityTags}
+                                                onChange={(e) => updateCharacterRulesField('common', 'qualityTags', e.target.value)}
+                                                rows={3}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-xs text-slate-400 mb-1 block">Default Female Age</label>
+                                                <input
+                                                    type="text"
+                                                    value={characterRulesState.common.defaultFemaleAge}
+                                                    onChange={(e) => updateCharacterRulesField('common', 'defaultFemaleAge', e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 mb-1 block">Default Male Age</label>
+                                                <input
+                                                    type="text"
+                                                    value={characterRulesState.common.defaultMaleAge}
+                                                    onChange={(e) => updateCharacterRulesField('common', 'defaultMaleAge', e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Sidebar - Actions & Backups */}
+                            <div className="space-y-4">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={handleCharacterRulesBackupCreate}
+                                            className="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-semibold"
+                                        >
+                                            백업
+                                        </button>
+                                        <button
+                                            onClick={handleCharacterRulesBackupRestoreSelected}
+                                            className="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            복원
+                                        </button>
+                                        <button
+                                            onClick={handleCharacterRulesSave}
+                                            className="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            저장
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={handleCharacterRulesReset}
+                                        className="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
+                                    >
+                                        기본값으로 초기화
+                                    </button>
+                                    <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
+                                    {characterRulesEditError && (
+                                        <div className="text-xs text-rose-400">{characterRulesEditError}</div>
+                                    )}
+                                </div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-2">
+                                    <div className="text-xs font-semibold text-slate-300">백업 선택 (최대 5개)</div>
+                                    {(!characterRulesBackups || characterRulesBackups.length === 0) ? (
+                                        <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {characterRulesBackups.map((backup, index) => (
+                                                <div
+                                                    key={backup.id}
+                                                    className={`rounded-lg border transition-colors ${
+                                                        selectedCharacterRulesBackupId === backup.id
+                                                            ? 'border-blue-500 bg-blue-600/20'
+                                                            : 'border-slate-800 bg-slate-900'
+                                                    }`}
+                                                >
+                                                    <button
+                                                        onClick={() => setSelectedCharacterRulesBackupId(backup.id)}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${
+                                                            selectedCharacterRulesBackupId === backup.id
+                                                                ? 'text-white'
+                                                                : 'text-slate-200 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        <div>{backup.name || `백업 ${index + 1}`}</div>
+                                                        <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
+                                                    </button>
+                                                    <div className="px-3 pb-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedCharacterRulesBackupId === backup.id) {
+                                                                    setSelectedCharacterRulesBackupId(null);
+                                                                }
+                                                                handleCharacterRulesBackupDelete(backup.id);
                                                             }}
                                                             className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[11px] font-semibold"
                                                         >

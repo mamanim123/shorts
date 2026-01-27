@@ -17,8 +17,16 @@ import {
   parseCharacterExtractionResponse,
   buildManualSceneDecompositionPrompt,
   parseManualSceneDecompositionResponse,
-  ManualSceneSummary
+  ManualSceneSummary,
+  ManualSceneCharacter
 } from './manualSceneBuilder';
+import {
+  pickFemaleOutfit,
+  pickMaleOutfit,
+  selectWinterItems,
+  getPromptConstants
+} from './labPromptBuilder';
+import { getCharacterRules } from './shortsLabCharacterRulesManager';
 
 // Schema definition removed as we are using web automation and raw JSON parsing.
 
@@ -1210,34 +1218,86 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       // 첫 번째 API에서 생성된 폴더명 저장 (있으면)
       let scriptFolderName = characterData._folderName || '';
 
-      // ===== 캐릭터 → 슬롯 매핑 =====
+      // ===== 캐릭터 → 슬롯 매핑 + 의상 생성 =====
       const femaleSlots = ['WomanA', 'WomanB', 'WomanC'];
       const maleSlots = ['ManA', 'ManB', 'ManC'];
       let femaleIdx = 0;
       let maleIdx = 0;
 
       const characterSlotMap: Record<string, string> = {};
-      const mappedCharacters: Array<{ id: string; name?: string; slotLabel?: string }> = [];
+      const mappedCharacters: ManualSceneCharacter[] = [];
+
+      // 의상 및 캐릭터 정보 생성을 위한 준비
+      const promptConstants = getPromptConstants();
+      const characterRules = getCharacterRules();
+      const topic = input.topic || input.category || '';
+      const enableWinterAccessories = input.enableWinterAccessories || false;
 
       for (const char of characterResult.characters) {
         let slotId = '';
+        let gender: 'female' | 'male' = 'female';
+
         if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
           if (femaleIdx < femaleSlots.length) {
             slotId = femaleSlots[femaleIdx++];
+            gender = 'female';
           }
         } else if (char.gender === 'male' || (char.gender === 'unknown' && defaultGender === 'male')) {
           if (maleIdx < maleSlots.length) {
             slotId = maleSlots[maleIdx++];
+            gender = 'male';
           }
         }
 
         if (slotId) {
           characterSlotMap[char.name] = slotId;
+
+          // 의상 생성
+          let outfit = '';
+          if (gender === 'female') {
+            outfit = pickFemaleOutfit(topic);
+          } else {
+            outfit = pickMaleOutfit(topic);
+          }
+
+          // 겨울 악세서리 생성
+          let winterAccessories: string[] = [];
+          if (enableWinterAccessories) {
+            const winterItems = selectWinterItems(gender);
+            winterAccessories = winterItems.accessories || [];
+          }
+
+          // identity, hair, body 정보 생성 (의상 규칙 사용)
+          let identity = '';
+          let hair = '';
+          let body = '';
+
+          if (gender === 'female') {
+            // WomanA → femaleA, WomanB → femaleB, WomanC → femaleC (순환)
+            const slotRules = [characterRules.femaleA, characterRules.femaleB, characterRules.femaleC][(femaleIdx - 1) % 3];
+            identity = `${slotRules.identity} ${slotRules.ageLabel}`.trim();
+            hair = slotRules.hair || 'long soft-wave hairstyle';
+            body = slotRules.body || promptConstants.FEMALE_BODY_A;
+          } else {
+            // ManA → maleA, ManB → maleB, ManC → maleC (순환)
+            const slotRules = [characterRules.maleA, characterRules.maleB, characterRules.maleC][(maleIdx - 1) % 3];
+            identity = `${slotRules.identity} ${slotRules.ageLabel}`.trim();
+            hair = slotRules.hair || 'short neat hairstyle';
+            body = slotRules.body || promptConstants.MALE_BODY_A;
+          }
+
           mappedCharacters.push({
             id: slotId,
             name: char.name,
-            slotLabel: slotId
+            slotLabel: slotId,
+            identity,
+            hair,
+            body,
+            outfit,
+            winterAccessories
           });
+
+          console.log(`✅ ${slotId} (${char.name}): ${outfit}${winterAccessories.length > 0 ? ` + ${winterAccessories.join(', ')}` : ''}`);
         }
       }
 
@@ -1247,7 +1307,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       console.log("🎬 2단계: 씬 분해 및 이미지 프롬프트 생성 중...");
       const sceneDecompPrompt = buildManualSceneDecompositionPrompt({
         scriptLines,
-        characters: mappedCharacters
+        characters: mappedCharacters,
+        enableWinterAccessories
       });
 
       const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {

@@ -50,12 +50,77 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 4) characterIds는 아래 목록의 ID만 사용 (없으면 빈 배열 [])
 5) summary/action/background는 짧고 명확한 영어 묘사로 작성
 6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
-7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
+
+## 📸 샷 타입 규칙 (매우 중요!)
+### 등장 인물 수에 따른 샷 타입
+- **1명 등장**: shotType = "원샷"
+- **2명 등장**: shotType = "투샷"
+- **3명 등장**: shotType = "쓰리샷"
+
+### 투샷/쓰리샷 longPrompt 작성 필수 규칙
+**여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분!**
+
+✅ **원샷 예시** (1명):
+\`\`\`
+unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}, smiling at camera, snowy golf course, ...
+\`\`\`
+
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
+\`\`\`
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit{{WINTER_ACCESSORIES_EXAMPLE}}] walking together, snowy golf course, ...
+\`\`\`
+
+❌ **금지**: 캐릭터 구분 없이 쉼표로만 연결 (AI가 캐릭터를 혼동함!)
+
+## 📷 카메라 앵글 필수 규칙 (미디움샷만 쓰면 안됨!)
+각 씬마다 다른 앵글을 사용하여 영상 다양성 확보!
+
+| 씬 번호 | 권장 앵글 | 프롬프트 키워드 |
+|--------|----------|---------------|
+| Scene 1 (Hook) | **close-up** | close-up portrait shot, face in focus, shallow depth of field |
+| Scene 2 (Setup) | **wide** | wide establishing shot, full body visible, environment context |
+| Scene 3 | **medium** | medium shot, waist-up framing, natural pose |
+| Scene 4 | **over-the-shoulder** | over-the-shoulder shot, perspective view |
+| Scene 5 (Climax) | **close-up** | close-up shot, dramatic expression, face in focus |
+| Scene 6 | **POV** | first-person POV shot, subjective camera angle |
+| Scene 7 (Twist) | **wide** | wide shot, revealing context, full body visible |
+| Scene 8 (Outro) | **medium** | medium shot, natural pose, waist-up framing |
+
+**⚠️ 필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
+**⚠️ 금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용
+
+### 앵글 다양성 체크리스트
+- ✅ close-up 최소 2개 이상 (Hook, Climax 필수)
+- ✅ wide 최소 2개 이상 (Setup, Twist 권장)
+- ✅ medium 2-3개
+- ✅ over-the-shoulder 또는 POV 중 최소 1개
+- ❌ 같은 앵글 3연속 사용 금지
+
+## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️
+POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
+
+**필수 규칙:**
+1. ✅ **화면에 보이는 캐릭터만 longPrompt에 포함**
+   - "지영의 시선에서 캐디가 웃으며" → 프롬프트에는 **캐디만** 포함
+2. ❌ **시점의 주인공(카메라 역할)은 절대 프롬프트에 포함 금지**
+   - "지영의 시선" → 지영은 카메라이므로 프롬프트에서 완전히 제외
+3. ✅ **POV 대상 캐릭터는 카메라를 바라봄**
+   - "looking at camera (POV target)" 필수
+
+**올바른 예시:**
+\`\`\`
+한글: "지영의 시선에서 캐디가 손을 흔들며 인사하는 POV 샷"
+영문 longPrompt: "unfiltered raw photograph..., first-person POV shot, A stunning Korean woman in her early 20s (캐디만!), high-bun hairstyle, ..., waving hand, looking at camera (POV target), ..."
+\`\`\`
+
+{{WINTER_ACCESSORIES_RULE}}
+
+{{CHARACTER_OUTFIT_CONSISTENCY_RULE}}
 
 ## 대본 라인
 {{SCRIPT_LINES}}
 
-## 캐릭터 ID 목록
+## 캐릭터 ID 목록 (의상 정보 포함)
 {{CHARACTER_LINES}}
 
 `

@@ -8,6 +8,11 @@ export type ManualSceneCharacter = {
   id: string;
   name?: string;
   slotLabel?: string;
+  identity?: string;
+  hair?: string;
+  body?: string;
+  outfit?: string;
+  winterAccessories?: string[];
 };
 
 export type ManualSceneSummary = {
@@ -119,23 +124,68 @@ export const parseCharacterExtractionResponse = (rawText: string): CharacterExtr
 export const buildManualSceneDecompositionPrompt = (options: {
   scriptLines: string[];
   characters: ManualSceneCharacter[];
+  enableWinterAccessories?: boolean;
 }) => {
-  const { scriptLines, characters } = options;
+  const { scriptLines, characters, enableWinterAccessories = false } = options;
   const lines = scriptLines.filter(Boolean);
+
+  // 캐릭터 정보를 상세하게 포맷 (의상, identity, hair, body 포함)
   const characterLines = characters.length > 0
     ? characters
         .map((char) => {
           const nameLabel = char.name ? ` (${char.name})` : '';
           const slotLabel = char.slotLabel ? ` / ${char.slotLabel}` : '';
-          return `- ${char.id}${nameLabel}${slotLabel}`;
+          let detailStr = `- ${char.id}${nameLabel}${slotLabel}`;
+
+          if (char.identity || char.hair || char.body || char.outfit) {
+            const details: string[] = [];
+            if (char.identity) details.push(`Identity: ${char.identity}`);
+            if (char.hair) details.push(`Hair: ${char.hair}`);
+            if (char.body) details.push(`Body: ${char.body}`);
+            if (char.outfit) details.push(`Outfit: wearing ${char.outfit}`);
+            if (char.winterAccessories && char.winterAccessories.length > 0) {
+              details.push(`Winter Accessories: accessorized with ${char.winterAccessories.join(', ')}`);
+            }
+            detailStr += `\n  ${details.join(' | ')}`;
+          }
+
+          return detailStr;
         })
         .join('\n')
     : '- (none)';
+
   const step2Rules = getShortsLabStep2PromptRules();
   const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
+
+  // 겨울 악세서리 규칙 추가
+  const winterAccessoriesRule = enableWinterAccessories
+    ? `## ❄️ 겨울 악세서리 규칙 (필수!)
+1. **모든 씬의 이미지 프롬프트에는 각 캐릭터의 겨울 악세서리를 반드시 포함**한다.
+2. 위 "캐릭터 ID 목록"에 명시된 각 캐릭터의 Winter Accessories를 그대로 사용한다.
+3. 악세서리는 shortPrompt/longPrompt 모두에 반영한다.
+4. **의상 명칭은 절대 변형하지 말고 악세서리만 추가**한다.
+5. **각 캐릭터마다 지정된 악세서리가 다르므로 혼동하지 말 것** (캐릭터별로 중복 없이 다른 악세서리 착용)`
+    : '';
+
+  // 의상 일관성 규칙
+  const outfitConsistencyRule = `## 👗 의상 일관성 규칙 (절대 엄수!)
+1. **모든 씬에서 각 캐릭터의 identity/hair/body/outfit 문구를 100% 동일하게 사용**
+2. 위 "캐릭터 ID 목록"에 명시된 정보를 **한 글자도 바꾸지 말고** 그대로 복사
+3. **의상 명칭 보존**: "Pink & White Striped Knit + White Micro Short Pants" 같은 의상 명칭을 요약하거나 일부 생략 절대 금지
+4. **투샷/쓰리샷에서도 각 캐릭터별로 전체 정보(identity+hair+body+outfit${enableWinterAccessories ? '+accessories' : ''}) 개별 명시**
+5. Scene 1부터 마지막 Scene까지 **동일한 캐릭터는 동일한 의상**을 입어야 함 (랜덤 생성 금지)`;
+
+  // 겨울 악세서리 예시
+  const winterAccessoriesExample = enableWinterAccessories
+    ? ', accessorized with luxurious mink fur beanie, premium cashmere scarf'
+    : '';
+
   const customPrompt = fillStep2PromptTemplate(step2Rules.finalPrompt, {
     SCRIPT_LINES: lineBlock,
-    CHARACTER_LINES: characterLines
+    CHARACTER_LINES: characterLines,
+    WINTER_ACCESSORIES_RULE: winterAccessoriesRule,
+    CHARACTER_OUTFIT_CONSISTENCY_RULE: outfitConsistencyRule,
+    WINTER_ACCESSORIES_EXAMPLE: winterAccessoriesExample
   });
   if (customPrompt.trim()) {
     return customPrompt;

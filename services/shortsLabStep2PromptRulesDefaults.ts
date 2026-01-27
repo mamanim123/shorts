@@ -15,19 +15,6 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 장르: {{GENRE}}
 타겟 연령: {{TARGET_AGE}}
 
-출력은 반드시 아래 JSON 형식 하나만:
-{
-  "title": "제목",
-  "titleOptions": ["옵션1", "옵션2", "옵션3"],
-  "scriptBody": "문장1\n문장2... (8~12개 문장)",
-  "punchline": "펀치라인",
-  "hook": "HOOK 문장",
-  "twist": "TWIST 문장",
-  "foreshadowing": "복선 문장",
-  "narrator": { "slot": "{{NARRATOR_SLOT}}", "name": "{{NARRATOR_NAME}}" },
-  "emotionFlow": "{{EMOTION_FLOW}}"
-}
-
 규칙:
 1) scriptBody는 8~12문장 (줄바꿈으로 구분)
 2) 1문장 = 훅(강한 시작)
@@ -36,9 +23,7 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 5) 8~10문장 = 반전/결말
 6) 대사는 자연스러운 구어체 한국어
 7) scenes/longPrompt/shortPrompt 절대 포함 금지
-8) 마크다운 금지, JSON만 출력
-
-[Request ID: {{REQUEST_ID}}]`,
+8) 마크다운 금지, JSON만 출력`,
   characterPrompt: `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
 당신은 등장인물 추출 전문가입니다. 아래 대본 라인에서 등장인물과 각 라인에 등장하는 인물 목록을 추출하세요.
@@ -52,15 +37,7 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 ## 대본 라인
 {{SCRIPT_LINES}}
 
-## 출력 JSON 스키마
-{
-  "characters": [
-    { "name": "주인공", "gender": "{{DEFAULT_GENDER}}", "role": "narrator" }
-  ],
-  "lineCharacterNames": [
-    { "line": 1, "characters": ["주인공"] }
-  ]
-}`,
+`,
   finalPrompt: `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
 당신은 장면 분해 전문가입니다. 아래 "대본 라인"을 그대로 유지하면서 씬 정보를 구조화하세요.
@@ -81,23 +58,5 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 ## 캐릭터 ID 목록
 {{CHARACTER_LINES}}
 
-## 출력 JSON 스키마
-{
-  "title": "string",
-  "scenes": [
-    {
-      "sceneNumber": 1,
-      "scriptLine": "원문 그대로",
-      "summary": "short english summary",
-      "action": "short english action",
-      "background": "short english background",
-      "shotType": "원샷/투샷/쓰리샷",
-      "cameraAngle": "close-up | wide | medium | canted (dutch) | over-the-shoulder | POV | low-angle | high-angle",
-      "characterIds": ["WomanA"],
-      "shortPrompt": "short image prompt",
-      "longPrompt": "detailed image prompt",
-      "negativePrompt": "NOT cartoon, NOT anime, ..."
-    }
-  ]
-}`
+`
 };

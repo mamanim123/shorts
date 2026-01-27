@@ -1441,6 +1441,13 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const hairSection = promptSections.hairstyleSection?.trim() || defaultHairSection;
   const characterSection = promptSections.characterSection?.trim() || defaultCharacterSection;
   const imagePromptRulesExtra = promptSections.imagePromptRulesExtra?.trim();
+  const winterAccessoriesRule = options.enableWinterAccessories
+    ? `## ❄️ 겨울 악세서리 규칙
+1. 모든 씬의 이미지 프롬프트에는 겨울 악세서리를 반드시 포함한다.
+2. 예시: beanie, earmuffs, scarf, gloves, winter boots 중 1~2개를 자연스럽게 배치한다.
+3. 악세서리는 shortPrompt/longPrompt 모두에 반영한다.
+4. 의상 명칭은 절대 변형하지 말고 악세서리만 추가한다.`
+    : '';
 
   const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
   const golfCaddyRule = isGolfTopic ? `\n11. **캐디(WomanD) 상시 노출 (골프 씬 필수)**: 배경이 골프장인 경우, 캐디(WomanD)는 대본에 직접적인 대사가 없더라도 **거의 모든 장면에 배경 인물로 자연스럽게 포함**되어야 합니다. 주인공의 시선이 닿지 않는 곳에서 카트를 정리하거나 지켜보는 모습으로 배치하세요.` : '';
@@ -1529,6 +1536,8 @@ ${additionalContext ? `4. 추가 요청: ${additionalContext}` : ''}
 - **Woman D (캐디)**: ${womanDOutfit}
 - **Man A (준호)**: ${manAOutfit}
 - **Man B (민수)**: ${manBOutfit}
+
+${winterAccessoriesRule}
 
 ${outfitRulesSection}
 

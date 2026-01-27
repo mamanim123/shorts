@@ -5,12 +5,13 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$
 export const extractValidJson = (text: string): string | null => {
   if (!text) return null;
   let startIndex = -1;
-  let endIndex = -1;
   let startChar = '';
   let endChar = '';
   let depth = 0;
   let inString = false;
   let escaped = false;
+  let lastStart = -1;
+  let lastEnd = -1;
 
   for (let i = 0; i < text.length; i += 1) {
     const ch = text[i];
@@ -39,14 +40,17 @@ export const extractValidJson = (text: string): string | null => {
       if (ch === startChar) depth += 1;
       if (ch === endChar) depth -= 1;
       if (depth === 0) {
-        endIndex = i + 1;
-        break;
+        lastStart = startIndex;
+        lastEnd = i + 1;
+        startIndex = -1;
+        startChar = '';
+        endChar = '';
       }
     }
   }
 
-  if (startIndex !== -1 && endIndex !== -1) {
-    return text.substring(startIndex, endIndex);
+  if (lastStart !== -1 && lastEnd !== -1) {
+    return text.substring(lastStart, lastEnd);
   }
   return null;
 };

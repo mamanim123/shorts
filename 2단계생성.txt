@@ -64,11 +64,7 @@
 
 8) 마크다운 금지, JSON만 출력
 
-
-
-[Request ID: {"location":"골프 클럽 식당","object":"다이어트 보조제","reaction":"목소리가 갈라짐","misunderstanding":"숨기는 병 있는 줄","truth":"알고보니 명찰을 거꾸로 달고 다니고 있었음","twistType":"건강 관련 좋은 소식 또는 배려"}]
-
-{ "title": "골프장에서 마주한 생사의 갈림길", "titleOptions": [ "아름다운 캐디님이 나를 보며 자꾸 웃는 이유", "건강검진보다 떨리는 골프장 식당에서의 고백", "명찰 하나 때문에 시한부 인생 된 사연" ], "scriptBody": "여러분, 눈 내리는 설원 골프장에서 미모의 캐디님이 나만 빤히 쳐다본다면 어떤 기분일 것 같으세요?\n클럽 하우스 식당에 앉아 있는데 캐디님이 제 앞에 다이어트 보조제를 쓱 밀어 넣더라고요.\n순간 가슴이 철렁하면서 '나한테 뭐 숨기는 병이라도 있나?' 싶은 게 목소리부터 쩍쩍 갈라졌죠.\n제가 비장하게 '혹시 제 건강검진 결과가 안 좋은가요?'라고 물어봤거든요.\n캐디님이 당황하면서 '아뇨, 손님 건강은 아주 좋아 보이시는데...'라며 말끝을 흐리는 거예요.\n전 이미 머릿속으로 가족들 얼굴 떠올리며 보험금 계산까지 끝낸 상태였죠.\n근데 캐디님이 제 가슴팍을 가리키며 '그게 아니고... 명찰이 거꾸로 달려 있으세요' 하는 겁니다.\n알고 보니 제가 아침부터 명찰을 뒤집어 달고는 위풍당당하게 필드를 누볐던 거죠.\n캐디님은 제가 너무 열정적으로 치길래 혹시 당 떨어져서 실수하신 건가 싶어 보조제를 챙겨준 거였고요.\n병이 아니라 제 정신머리가 거꾸로 달려 있었다는 게 밝혀지는 순간이었습니다.\n민망해서 밥도 못 먹고 나왔는데, 덕분에 명찰 제대로 다는 법은 확실히 배웠네요.", "punchline": "건강은 최고인데 제 패션 감각은 이미 사망 선고받았습니다.", "hook": "설원 골프장에서 미모의 캐디님이 나한테 다이어트 보조제를 건넨 진짜 이유!", "twist": "심각한 지병이 있는 줄 알았는데, 알고 보니 패션 파괴자였습니다.", "foreshadowing": "아침부터 지나가는 사람들마다 제 가슴 쪽을 보고 묘하게 웃더라고요.", "narrator": { "slot": "ManA", "name": "준호" }, "emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음" }
+{ "title": "설원 위의 캐디와 그늘집 미스터리", "titleOptions": ["눈 오는 날 골프장 빌런", "캐디님이 너무 예뻐서 생긴 일", "화이트 아웃 골프 라운딩"], "scriptBody": "여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.", "punchline": "공은 잃어버려도 캐디님 번호는 못 물어보는 게 40대의 운명입니다.", "hook": "눈 오는 날 골프장 가면 공이 보일까요, 캐디님이 보일까요?", "twist": "내 공을 찾는 줄 알았던 캐디님이 본인 핫팩을 뜯고 있었습니다.", "foreshadowing": "오늘 스코어는 포기해도 좋다는 대목이 나중에 현실이 됩니다.", "narrator": { "slot": "ManA", "name": "준호" }, "emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음" }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -92,27 +88,7 @@
 
 ## 대본 라인
 
-1. 여러분, 눈 내리는 설원 골프장에서 미모의 캐디님이 나만 빤히 쳐다본다면 어떤 기분일 것 같으세요?
-
-2. 클럽 하우스 식당에 앉아 있는데 캐디님이 제 앞에 다이어트 보조제를 쓱 밀어 넣더라고요.
-
-3. 순간 가슴이 철렁하면서 '나한테 뭐 숨기는 병이라도 있나?' 싶은 게 목소리부터 쩍쩍 갈라졌죠.
-
-4. 제가 비장하게 '혹시 제 건강검진 결과가 안 좋은가요?'라고 물어봤거든요.
-
-5. 캐디님이 당황하면서 '아뇨, 손님 건강은 아주 좋아 보이시는데...'라며 말끝을 흐리는 거예요.
-
-6. 전 이미 머릿속으로 가족들 얼굴 떠올리며 보험금 계산까지 끝낸 상태였죠.
-
-7. 근데 캐디님이 제 가슴팍을 가리키며 '그게 아니고... 명찰이 거꾸로 달려 있으세요' 하는 겁니다.
-
-8. 알고 보니 제가 아침부터 명찰을 뒤집어 달고는 위풍당당하게 필드를 누볐던 거죠.
-
-9. 캐디님은 제가 너무 열정적으로 치길래 혹시 당 떨어져서 실수하신 건가 싶어 보조제를 챙겨준 거였고요.
-
-10. 병이 아니라 제 정신머리가 거꾸로 달려 있었다는 게 밝혀지는 순간이었습니다.
-
-11. 민망해서 밥도 못 먹고 나왔는데, 덕분에 명찰 제대로 다는 법은 확실히 배웠네요.
+1. 여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.
 
 
 
@@ -134,7 +110,7 @@
 
 }
 
-{ "characters": [ { "name": "주인공", "gender": "male", "role": "narrator" }, { "name": "캐디", "gender": "female", "role": "supporting" } ], "lineCharacterNames": [ { "line": 1, "characters": ["주인공", "캐디"] }, { "line": 2, "characters": ["주인공", "캐디"] }, { "line": 3, "characters": ["주인공"] }, { "line": 4, "characters": ["주인공"] }, { "line": 5, "characters": ["주인공", "캐디"] }, { "line": 6, "characters": ["주인공"] }, { "line": 7, "characters": ["주인공", "캐디"] }, { "line": 8, "characters": ["주인공"] }, { "line": 9, "characters": ["주인공", "캐디"] }, { "line": 10, "characters": ["주인공"] }, { "line": 11, "characters": ["주인공"] } ] }
+{ "characters": [ { "name": "주인공", "gender": "male", "role": "narrator" }, { "name": "캐디", "gender": "female", "role": "supporting" }, { "name": "형님1", "gender": "male", "role": "supporting" }, { "name": "형님2", "gender": "male", "role": "supporting" }, { "name": "마누라", "gender": "female", "role": "supporting" } ], "lineCharacterNames": [ { "line": 1, "characters": [ "주인공", "캐디", "형님1", "형님2", "마누라" ] } ] }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -166,35 +142,19 @@
 
 ## 대본 라인
 
-1. 여러분, 눈 내리는 설원 골프장에서 미모의 캐디님이 나만 빤히 쳐다본다면 어떤 기분일 것 같으세요?
-
-2. 클럽 하우스 식당에 앉아 있는데 캐디님이 제 앞에 다이어트 보조제를 쓱 밀어 넣더라고요.
-
-3. 순간 가슴이 철렁하면서 '나한테 뭐 숨기는 병이라도 있나?' 싶은 게 목소리부터 쩍쩍 갈라졌죠.
-
-4. 제가 비장하게 '혹시 제 건강검진 결과가 안 좋은가요?'라고 물어봤거든요.
-
-5. 캐디님이 당황하면서 '아뇨, 손님 건강은 아주 좋아 보이시는데...'라며 말끝을 흐리는 거예요.
-
-6. 전 이미 머릿속으로 가족들 얼굴 떠올리며 보험금 계산까지 끝낸 상태였죠.
-
-7. 근데 캐디님이 제 가슴팍을 가리키며 '그게 아니고... 명찰이 거꾸로 달려 있으세요' 하는 겁니다.
-
-8. 알고 보니 제가 아침부터 명찰을 뒤집어 달고는 위풍당당하게 필드를 누볐던 거죠.
-
-9. 캐디님은 제가 너무 열정적으로 치길래 혹시 당 떨어져서 실수하신 건가 싶어 보조제를 챙겨준 거였고요.
-
-10. 병이 아니라 제 정신머리가 거꾸로 달려 있었다는 게 밝혀지는 순간이었습니다.
-
-11. 민망해서 밥도 못 먹고 나왔는데, 덕분에 명찰 제대로 다는 법은 확실히 배웠네요.
+1. 여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.
 
 
 
 ## 캐릭터 ID 목록
 
+- WomanA / Woman A
+
 - WomanD / Woman D
 
 - ManA / Man A
+
+- ManB / Man B
 
 
 
@@ -236,4 +196,5 @@
 
 }
 
-{ "title": "골프장에서 마주한 생사의 갈림길", "scenes": [ { "sceneNumber": 1, "scriptLine": "여러분, 눈 내리는 설원 골프장에서 미모의 캐디님이 나만 빤히 쳐다본다면 어떤 기분일 것 같으세요?", "summary": "Beautiful caddy staring at the man in a snowy golf course.", "action": "A beautiful female caddy in a winter golf uniform stares intently at the camera with a mysterious smile.", "background": "Snowy luxury golf course with white fairways and pine trees.", "shotType": "투샷", "cameraAngle": "wide", "characterIds": ["ManA", "WomanD"], "shortPrompt": "Beautiful caddy staring at a man on a snowy golf course.", "longPrompt": "Wide shot of a snowy luxury golf course, a beautiful female caddy in a stylish winter uniform staring at a middle-aged Korean man, snowflakes falling softly, cinematic lighting, 8k resolution.", "negativePrompt": "NOT cartoon, NOT anime, NOT sketch, low quality, blurry, extra limbs, distorted face." }, { "sceneNumber": 2, "scriptLine": "클럽 하우스 식당에 앉아 있는데 캐디님이 제 앞에 다이어트 보조제를 쓱 밀어 넣더라고요.", "summary": "Caddy handing a supplement to the man at the restaurant.", "action": "The caddy's hand slides a small supplement packet across the wooden table toward the man.", "background": "High-end golf club house restaurant with large windows showing snow outside.", "shotType": "투샷", "cameraAngle": "close-up", "characterIds": ["ManA", "WomanD"], "shortPrompt": "Caddy handing a supplement packet to a man at a table.", "longPrompt": "Close-up shot of a elegant female caddy's hand sliding a dietary supplement packet toward a middle-aged man on a polished wooden table in a luxury club house restaurant, soft indoor lighting.", "negativePrompt": "NOT cartoon, NOT anime, messy, blurry, distorted hands, two phones." }, { "sceneNumber": 3, "scriptLine": "순간 가슴이 철렁하면서 '나한테 뭐 숨기는 병이라도 있나?' 싶은 게 목소리부터 쩍쩍 갈라졌죠.", "summary": "Man looking terrified and shocked.", "action": "The man looks extremely pale and shocked, touching his chest with a trembling hand.", "background": "Club house restaurant interior, slightly blurred.", "shotType": "원샷", "cameraAngle": "canted (dutch)", "characterIds": ["ManA"], "shortPrompt": "Middle-aged man looking terrified and touching his chest.", "longPrompt": "Dutch angle shot of a middle-aged Korean man looking pale and horrified, touching his chest as if his heart stopped, expressive face, realistic skin texture, cinematic shadows.", "negativePrompt": "NOT cartoon, NOT anime, happy, smiling, low resolution." }, { "sceneNumber": 4, "scriptLine": "제가 비장하게 '혹시 제 건강검진 결과가 안 좋은가요?'라고 물어봤거든요.", "summary": "Man asking a serious question with a desperate face.", "action": "The man leans forward toward the caddy, eyes wide and desperate.", "background": "Club house restaurant table.", "shotType": "투샷", "cameraAngle": "over-the-shoulder", "characterIds": ["ManA", "WomanD"], "shortPrompt": "Desperate man asking a question to the caddy.", "longPrompt": "Over-the-shoulder shot looking at a middle-aged man leaning forward with a desperate and serious expression, talking to a caddy, restaurant setting, high contrast lighting.", "negativePrompt": "NOT cartoon, NOT anime, blurry, distorted, extra fingers." }, { "sceneNumber": 5, "scriptLine": "캐디님이 당황하면서 '아뇨, 손님 건강은 아주 좋아 보이시는데...'라며 말끝을 흐리는 거예요.", "summary": "Caddy looking confused and hesitant.", "action": "The caddy avoids eye contact, looking confused and slightly awkward.", "background": "Club house restaurant interior.", "shotType": "원샷", "cameraAngle": "medium", "characterIds": ["WomanD"], "shortPrompt": "Confused female caddy looking away awkwardly.", "longPrompt": "Medium shot of a beautiful female caddy in a golf uniform looking confused and awkward, avoiding eye contact, soft bokeh background of a restaurant.", "negativePrompt": "NOT cartoon, NOT anime, angry, scary, low quality." }, { "sceneNumber": 6, "scriptLine": "전 이미 머릿속으로 가족들 얼굴 떠올리며 보험금 계산까지 끝낸 상태였죠.", "summary": "Man staring into space, imagining his funeral.", "action": "The man has a blank stare, looking into the distance with a hollow expression.", "background": "Abstract blurred background with cold tones.", "shotType": "원샷", "cameraAngle": "POV", "characterIds": ["ManA"], "shortPrompt": "Man staring blankly into space with a hollow expression.", "longPrompt": "POV shot of a man's blank and hollow facial expression, looking into the distance as if imagining his future, dramatic blue lighting, photorealistic.", "negativePrompt": "NOT cartoon, NOT anime, smiling, happy, energetic." }, { "sceneNumber": 7, "scriptLine": "근데 캐디님이 제 가슴팍을 가리키며 '그게 아니고... 명찰이 거꾸로 달려 있으세요' 하는 겁니다.", "summary": "Caddy pointing at the man's upside-down name tag.", "action": "The caddy points her finger toward the man's chest with a polite but awkward smile.", "background": "Club house restaurant.", "shotType": "투샷", "cameraAngle": "medium", "characterIds": ["ManA", "WomanD"], "shortPrompt": "Caddy pointing at a man's chest name tag.", "longPrompt": "Medium shot of a female caddy pointing at a man's chest, the man is looking down in surprise, restaurant interior background, detailed uniform and name tag.", "negativePrompt": "NOT cartoon, NOT anime, messy, low-res, distorted hands." }, { "sceneNumber": 8, "scriptLine": "알고 보니 제가 아침부터 명찰을 뒤집어 달고는 위풍당당하게 필드를 누볐던 거죠.", "summary": "Close-up of the upside-down name tag on the man's chest.", "action": "A name tag pinned to a golf vest is clearly upside down.", "background": "Texture of a golf vest/jacket.", "shotType": "원샷", "cameraAngle": "close-up", "characterIds": ["ManA"], "shortPrompt": "Close-up of an upside-down name tag on a vest.", "longPrompt": "Extreme close-up of a silver name tag pinned to a high-end golf vest, the text on the name tag is clearly upside down, sharp focus on the metal texture.", "negativePrompt": "NOT cartoon, NOT anime, blurry, readable text, straight tag." }, { "sceneNumber": 9, "scriptLine": "캐디님은 제가 너무 열정적으로 치길래 혹시 당 떨어져서 실수하신 건가 싶어 보조제를 챙겨준 거였고요.", "summary": "Caddy smiling kindly with a supplement in her hand.", "action": "The caddy smiles warmly, holding another supplement packet.", "background": "Bright club house restaurant.", "shotType": "원샷", "cameraAngle": "medium", "characterIds": ["WomanD"], "shortPrompt": "Beautiful caddy smiling warmly.", "longPrompt": "Medium shot of a beautiful female caddy smiling warmly and kindly, holding a supplement packet, bright and cheerful atmosphere, realistic lighting.", "negativePrompt": "NOT cartoon, NOT anime, scary, angry, distorted face." }, { "sceneNumber": 10, "scriptLine": "병이 아니라 제 정신머리가 거꾸로 달려 있었다는 게 밝혀지는 순간이었습니다.", "summary": "Man closing his eyes in extreme embarrassment.", "action": "The man closes his eyes tight and bows his head in shame.", "background": "Club house restaurant table.", "shotType": "원샷", "cameraAngle": "high-angle", "characterIds": ["ManA"], "shortPrompt": "Man bowing his head in shame and embarrassment.", "longPrompt": "High-angle shot of a middle-aged man bowing his head and closing his eyes in extreme embarrassment, hand on forehead, comedic atmosphere, sharp focus.", "negativePrompt": "NOT cartoon, NOT anime, happy, looking at camera." }, { "sceneNumber": 11, "scriptLine": "민망해서 밥도 못 먹고 나왔는데, 덕분에 명찰 제대로 다는 법은 확실히 배웠네요.", "summary": "Man walking away from the club house, looking frustrated but funny.", "action": "The man walks towards the snowy parking lot, fixing his name tag.", "background": "Exterior of a luxury golf club house with snow.", "shotType": "원샷", "cameraAngle": "low-angle", "characterIds": ["ManA"], "shortPrompt": "Man fixing his name tag while walking in the snow.", "longPrompt": "Low-angle wide shot of a man walking away from a beautiful golf club house into a snowy landscape, he is looking down and fixing the name tag on his chest, humorous posture.", "negativePrompt": "NOT cartoon, NOT anime, dark, blurry, distorted legs." } ] }
+{ "title": "Snowy Golf Course and the Beautiful Caddy", "scenes": [ { "sceneNumber": 1, "scriptLine": "여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.", "summary": "Comedy golf session in heavy snow with a beautiful caddy", "action": "A group of middle-aged men swinging golf clubs and a caddy holding a hot pack to her face while laughing", "background": "Luxurious golf course covered in thick white snow under a grey winter sky", "shotType": "쓰리샷", "cameraAngle": "wide", "characterIds": ["ManA", "ManB", "WomanA"], "shortPrompt": "Cinematic wide shot of men golfing in heavy snow, beautiful female caddy laughing", "longPrompt": "A cinematic wide-angle shot of a luxurious golf course completely covered in thick white snow. A group of 40-year-old Korean men in colorful winter golf attire are standing on the tee box. One man is mid-swing with a driver. To the side, a stunningly beautiful female caddy in a stylish white winter uniform and a pom-pom hat is holding a heat pack to her rosy cheek and laughing brightly. Snow is falling softly. High resolution, photorealistic, 8k, professional lighting.", "negativePrompt": "NOT cartoon, NOT anime, NOT drawing, distorted faces, bad anatomy, missing fingers, low resolution, blurry, watermark" } ] }
+

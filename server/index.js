@@ -2747,8 +2747,9 @@ app.post('/api/image/ai-generate', async (req, res) => {
                 const requestToken = `#${sceneLabel}-${crypto.randomUUID()}`;
 
                 try {
+                    // 이미지 캡처는 GEMINI만 지원
                     const captureResult = await submitPromptAndCaptureImage(
-                        requestedService,
+                        'GEMINI',
                         prompt,
                         targetPath,
                         {

@@ -2007,123 +2007,245 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
         setIsManualSceneParsing(true);
         try {
-            const prompt = buildManualAiPrompt(scriptInput);
             const selectedService = targetService || 'GEMINI';
+            const finalScript = scriptInput.trim();
 
-            showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
+            // 1단계: 대본에서 스크립트 라인 추출 및 성별 추론
+            const scriptLines = extractManualScriptLines(finalScript);
+            const inferredScriptGender = inferGenderFromText(finalScript, settings.koreanGender);
 
-            const response = await fetch('http://localhost:3002/api/generate/raw', {
+            // 2단계: AI 인물 추출
+            showToast(`${selectedService} AI로 인물 추출 중...`, 'info');
+            const characterExtractPrompt = buildCharacterExtractionPrompt({
+                scriptLines,
+                defaultGender: inferredScriptGender
+            });
+
+            const characterResponse = await fetch('http://localhost:3002/api/generate/raw', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     service: selectedService,
-                    prompt,
+                    prompt: characterExtractPrompt,
+                    maxTokens: 1200,
+                    temperature: 0.2,
+                    folderName: currentFolderName
+                })
+            });
+
+            if (!characterResponse.ok) {
+                throw new Error(`인물 추출 API 오류: ${characterResponse.status}`);
+            }
+
+            const characterData = await characterResponse.json();
+            const characterText = characterData.rawResponse || characterData.text || characterData.result || '';
+            const extractedCharacters = parseCharacterExtractionResponse(characterText);
+
+            // 3단계: 슬롯 매핑
+            const slotMap = buildCharacterSlotMapping(extractedCharacters.characters);
+            const lineCharacterMap = mapLineCharactersToSlots(extractedCharacters.lineCharacterNames, slotMap);
+
+            const uniqueSlotIds = Array.from(new Set(Array.from(slotMap.values())));
+            const hasCaddy = extractedCharacters.characters.some((char) => {
+                const name = (char.name || '').trim();
+                return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
+            });
+            const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
+
+            const characterList = allSlotIds.map((slotId) => ({
+                id: slotId,
+                name: '',
+                slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man ')
+            }));
+
+            // 4단계: 씬 분해 프롬프트 생성
+            const scenePrompt = buildManualSceneDecompositionPrompt({
+                scriptLines,
+                characters: characterList
+            });
+
+            showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
+            const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: scenePrompt,
+                    folderName: currentFolderName,
                     maxTokens: 2000,
                     temperature: 0.6
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`API 오류: ${response.status}`);
+            if (!sceneResponse.ok) {
+                throw new Error(`씬 분해 API 오류: ${sceneResponse.status}`);
             }
 
-            const data = await response.json();
-            const generatedText = data.rawResponse || data.text || data.result || '';
+            const sceneData = await sceneResponse.json();
+            const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
-            if (data._folderName) {
-                setCurrentFolderName(data._folderName);
+            if (sceneData._folderName) {
+                setCurrentFolderName(sceneData._folderName);
             }
 
-            let extractedScenes: Scene[] = [];
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
             const scenesSource = parsedResult.scenes || [];
 
-            if (scenesSource.length > 0) {
-                const manualCharacters = buildManualIdentityPayload(scriptInput);
-                const manualCharacterMap = new Map<string, ManualCharacterPrompt>();
-                manualCharacters.forEach(character => manualCharacterMap.set(character.id, character));
-                const fallbackCharacterIds = manualCharacters.map((character) => character.id);
-                const totalScenes = scenesSource.length || manualCharacters.length || 8;
+            if (scenesSource.length === 0) {
+                throw new Error('씬 분해 결과가 비어있습니다.');
+            }
 
-                extractedScenes = scenesSource.map((scene, idx) => {
-                    const sceneNumber = scene.sceneNumber || idx + 1;
-                    const sceneText = scene.scriptLine || `장면 ${idx + 1}`;
-                    const characterIds = Array.isArray(scene.characterIds) && scene.characterIds.length > 0
-                        ? scene.characterIds
-                        : fallbackCharacterIds;
-                    const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
-                    const expression = getExpressionForScene(aiGenre, storyStage);
-                    const cameraPrompt = getCameraPromptForScene(storyStage);
-                    const narrativeParts = [
-                        scene.summary,
-                        scene.action,
-                        scene.background
-                    ].filter(Boolean).join(', ');
-                    const normalizedPrompt = composeManualPrompt(
-                        narrativeParts || sceneText,
-                        sceneNumber,
-                        characterIds,
-                        manualCharacterMap,
-                        { expression, camera: cameraPrompt }
-                    );
-                    const characterInfos = characterIds
-                        .map((id) => manualCharacterMap.get(id))
-                        .filter(Boolean)
-                        .map((item) => ({
-                            identity: item!.identity,
-                            hair: item!.hair,
-                            body: item!.body,
-                            outfit: item!.outfit
-                        })) as CharacterInfo[];
-                    const fixed = validateAndFixPrompt(
-                        normalizedPrompt,
-                        normalizeShotType(scene.shotType, characterIds),
-                        characterInfos
-                    );
-                    const winterGender =
-                        characterIds
-                            .map((id) => manualCharacterMap.get(id))
-                            .find((meta) => meta?.gender)?.gender || 'female';
-                    const winterApplied = enableWinterAccessories
-                        ? applyWinterLookToExistingPrompt(fixed.fixedPrompt, '', winterGender)
-                        : null;
-
-                    return {
-                        number: sceneNumber,
-                        text: sceneText,
-                        prompt: winterApplied?.longPrompt || fixed.fixedPrompt,
-                        imageUrl: undefined,
-                        shortPromptKo: '',
-                        longPromptKo: '',
-                        summary: scene.summary || sceneText,
-                        camera: scene.background || '',
-                        shotType: scene.shotType || '',
-                        age: '',
-                        outfit: '',
-                        isSelected: true,
-                        videoPrompt: '',
-                        dialogue: '',
-                        voiceType: 'narration',
-                        narrationText: sceneText,
-                        narrationEmotion: '',
-                        narrationSpeed: 'normal',
-                        lipSyncSpeaker: '',
-                        lipSyncSpeakerName: '',
-                        lipSyncLine: '',
-                        lipSyncEmotion: '',
-                        lipSyncTiming: undefined
-                    };
+            // 5단계: 캐릭터 맵 생성
+            const characterIds = characterList.map(item => item.id);
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
+            if (enableWinterAccessories) {
+                const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
+                const updated = new Map<string, ManualCharacterPrompt>();
+                autoCharacterMap.forEach((meta, id) => {
+                    const winterOutfit = meta.gender === 'female' && meta.outfit
+                        ? convertToTightLongSleeveWithShoulderLine(meta.outfit)
+                        : meta.outfit;
+                    if (meta.gender !== 'female') {
+                        updated.set(id, { ...meta, outfit: winterOutfit });
+                        return;
+                    }
+                    const winterAccessories = winterAccessoryMap.get(id) || [];
+                    const accessories = Array.from(new Set([...meta.accessories, ...winterAccessories]));
+                    updated.set(id, { ...meta, outfit: winterOutfit, accessories });
                 });
+                autoCharacterMap = updated;
             }
 
-            if (extractedScenes.length === 0) {
-                throw new Error('씬 데이터를 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
-            }
+            // 6단계: 씬별 프롬프트 구성
+            const totalScenes = scenesSource.length || scriptLines.length || 8;
+            let lastExpressionKeyword = '';
+            let lastCameraKeyword = '';
+            let lastActionFlavor = '';
 
-            setScenes(normalizeSceneNumbers(extractedScenes));
+            const newScenes = scenesSource.map((scene, idx) => {
+                const sceneNumber = scene.sceneNumber || idx + 1;
+                const sceneText = scene.scriptLine || `장면 ${idx + 1}`;
+                const lineSlots = normalizeSceneCharacterIds(
+                    lineCharacterMap.get(sceneNumber) || [],
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                const normalizedSceneIds = normalizeSceneCharacterIds(
+                    Array.isArray(scene.characterIds) ? scene.characterIds : [],
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                const sceneCharacterIds = lineSlots.length > 0
+                    ? lineSlots
+                    : (normalizedSceneIds.length > 0 ? normalizedSceneIds : [characterIds[0]]);
+                let shotType = normalizeShotType(scene.shotType, sceneCharacterIds);
+                shotType = enforceShotTypeMix(shotType, sceneCharacterIds, idx, totalScenes);
+                const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
+                const expressionCandidates = getExpressionCandidates(aiGenre, storyStage);
+                let expression = pickRotatingCandidate(expressionCandidates, idx, lastExpressionKeyword);
+                if (!expression) {
+                    expression = 'candid, off-guard';
+                } else if (lastExpressionKeyword && expression.toLowerCase() === lastExpressionKeyword.toLowerCase()) {
+                    if (!expression.toLowerCase().includes('candid')) {
+                        expression = `${expression}, candid, off-guard`;
+                    }
+                }
+                const baseCameraPrompt = scene.cameraAngle || getCameraPromptForScene(storyStage);
+                const cameraPrompt = pickCameraPrompt(baseCameraPrompt, idx, lastCameraKeyword);
+                lastExpressionKeyword = expression;
+                const cameraKeyword = detectCameraKeyword(cameraPrompt);
+                if (cameraKeyword) {
+                    lastCameraKeyword = cameraKeyword;
+                }
+                const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
+                lastActionFlavor = actionFlavor;
+                const cleanedLongPrompt = stripCameraPrefix(stripLongPromptMarkers(scene.longPrompt || ''));
+                const narrativeParts = mergeNarrativeParts([
+                    scene.summary,
+                    scene.action,
+                    scene.background,
+                    actionFlavor,
+                    cleanedLongPrompt
+                ]);
+                const normalizedPrompt = composeManualPrompt(
+                    narrativeParts || sceneText,
+                    sceneNumber,
+                    sceneCharacterIds,
+                    autoCharacterMap,
+                    { expression, camera: cameraPrompt }
+                );
+                const characterInfos = sceneCharacterIds
+                    .map((id) => autoCharacterMap.get(id))
+                    .filter(Boolean)
+                    .map((item) => ({
+                        identity: item!.identity,
+                        hair: item!.hair,
+                        body: item!.body,
+                        outfit: item!.outfit
+                    })) as CharacterInfo[];
+                const fallbackCharacters = characterInfos.length > 0
+                    ? characterInfos
+                    : Array.from(autoCharacterMap.values())
+                        .slice(0, 3)
+                        .map((item) => ({
+                            identity: item.identity,
+                            hair: item.hair,
+                            body: item.body,
+                            outfit: item.outfit
+                        }));
+                const fixed = validateAndFixPrompt(
+                    normalizedPrompt,
+                    shotType,
+                    fallbackCharacters
+                );
+                let mergedPrompt = fixed.fixedPrompt;
+                if (enableWinterAccessories) {
+                    const winterGender = sceneCharacterIds.some((id) => getCharacterGender(id) === 'female')
+                        ? 'female'
+                        : 'male';
+                    const winterApplied = applyWinterLookToExistingPrompt(mergedPrompt, '', winterGender, { applyAccessories: false });
+                    mergedPrompt = winterApplied.longPrompt;
+                }
+                const accessoryMap = new Map<string, string[]>();
+                sceneCharacterIds.forEach((id) => {
+                    const meta = autoCharacterMap.get(id);
+                    accessoryMap.set(id, meta?.accessories || []);
+                });
+                const promptWithAccessories = applyAccessoriesToPrompt(mergedPrompt, sceneCharacterIds, accessoryMap);
+
+                return {
+                    number: sceneNumber,
+                    text: sceneText,
+                    prompt: promptWithAccessories,
+                    imageUrl: undefined,
+                    shortPromptKo: '',
+                    longPromptKo: '',
+                    summary: scene.summary || sceneText,
+                    camera: scene.background || '',
+                    shotType,
+                    age: '',
+                    outfit: '',
+                    isSelected: true,
+                    videoPrompt: '',
+                    dialogue: '',
+                    voiceType: 'narration',
+                    narrationText: sceneText,
+                    narrationEmotion: '',
+                    narrationSpeed: 'normal',
+                    lipSyncSpeaker: '',
+                    lipSyncSpeakerName: '',
+                    lipSyncLine: '',
+                    lipSyncEmotion: '',
+                    lipSyncTiming: undefined,
+                    characterIds: sceneCharacterIds
+                } as Scene;
+            });
+
+            setScenes(newScenes);
             setActiveTab('preview');
-            showToast(`✅ ${targetService || 'GEMINI'} AI로 씬 분해 완료! (${extractedScenes.length}개 씬)`, 'success');
-            return;
+            showToast(`✅ ${selectedService} AI로 인물추출 + 씬 분해 완료! (${newScenes.length}개 씬)`, 'success');
         } catch (error) {
             console.error('Manual scene generation failed:', error);
             const message = error instanceof Error ? error.message : '씬 분해에 실패했습니다.';

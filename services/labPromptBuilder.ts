@@ -1795,10 +1795,11 @@ export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '�
   const issues: string[] = [];
   let fixedPrompt = longPrompt;
   const promptConstants = getPromptConstants();
+  const hasPersonMarkers = /\[Person\s+\d+:/i.test(longPrompt);
 
   // 1. 필수 시작 문구 확인
   if (!longPrompt.includes('unfiltered raw photograph')) {
-  } else {
+  } else if (!hasPersonMarkers) {
     // One-shot synchronization and de-duplication
     const character = characters[0];
     if (character) {

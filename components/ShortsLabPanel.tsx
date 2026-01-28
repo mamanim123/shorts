@@ -1926,6 +1926,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
         let remainder = (rawPrompt || '').trim();
+        const hadPersonMarkers = /\[Person\s+\d+:/i.test(remainder);
         
         // Clean up common AI prefixes
         remainder = remainder.replace(/^Scene\s+\d+[.,]?\s*/i, '').trim();
@@ -1983,6 +1984,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         // Suppress AI's attempt to REDESCRIBE characters if we already have the block
         // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
         let cleanedRemainder = remainder;
+        if (hadPersonMarkers) {
+            cleanedRemainder = cleanedRemainder.replace(/\[Person\s+\d+:[^\]]*\]/gi, '').trim();
+        }
         characterIds.forEach((id) => {
             const meta = characterMap.get(id);
             if (!meta) return;

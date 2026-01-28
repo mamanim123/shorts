@@ -94,7 +94,8 @@ const IDENTITY_SLOTS = [
     { id: 'woman-c', label: 'Woman C', gender: 'female' as const, presetKey: null },
     { id: 'woman-d', label: 'Woman D', gender: 'female' as const, presetKey: null },
     { id: 'man-a', label: 'Man A', gender: 'male' as const, presetKey: 'man-a' as const },
-    { id: 'man-b', label: 'Man B', gender: 'male' as const, presetKey: null }
+    { id: 'man-b', label: 'Man B', gender: 'male' as const, presetKey: null },
+    { id: 'man-c', label: 'Man C', gender: 'male' as const, presetKey: null }
 ];
 
 const MANUAL_SLOT_META: Record<string, { id: string; slotLabel: string; gender: 'female' | 'male'; hair: string; body: string }> = {
@@ -104,12 +105,14 @@ const MANUAL_SLOT_META: Record<string, { id: string; slotLabel: string; gender: 
     'Woman D': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
     'Man A': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
     'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
+    'Man C': { id: 'ManC', slotLabel: 'Man C', gender: 'male', hair: 'classic side-part hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
     'WomanA': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
     'WomanB': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
     'WomanC': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
     'WomanD': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
     'ManA': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    'ManB': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+    'ManB': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
+    'ManC': { id: 'ManC', slotLabel: 'Man C', gender: 'male', hair: 'classic side-part hairstyle', body: PROMPT_CONSTANTS.MALE_BODY }
 };
 
 const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: string; body: string }> = {
@@ -118,10 +121,11 @@ const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: 
     WomanC: { gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
     WomanD: { gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
     ManA: { gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    ManB: { gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY }
+    ManB: { gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
+    ManC: { gender: 'male', hair: 'classic side-part hairstyle', body: PROMPT_CONSTANTS.MALE_BODY }
 };
 
-const SLOT_ORDER = ['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB'];
+const SLOT_ORDER = ['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB', 'ManC'];
 const CAMERA_ANGLE_KEYWORDS = [
     'close-up',
     'close up',
@@ -181,7 +185,8 @@ const normalizeSlotId = (value: string): string => {
         womanc: 'WomanC',
         womand: 'WomanD',
         mana: 'ManA',
-        manb: 'ManB'
+        manb: 'ManB',
+        manc: 'ManC'
     };
     return canonical[key] || '';
 };
@@ -598,10 +603,8 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
         const name = (char.name || '').trim();
         return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
     });
-    const femaleSlots = hasCaddy
-        ? ['WomanA', 'WomanB', 'WomanC']
-        : ['WomanA', 'WomanB', 'WomanC', 'WomanD'];
-    const maleSlots = ['ManA', 'ManB'];
+    const femaleSlots = ['WomanA', 'WomanB', 'WomanC', 'WomanD'];
+    const maleSlots = ['ManA', 'ManB', 'ManC'];
     let femaleIndex = 0;
     let maleIndex = 0;
 
@@ -2049,7 +2052,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     prompt: characterExtractPrompt,
                     maxTokens: 1200,
                     temperature: 0.2,
-                    folderName: currentFolderName
+                    folderName: currentFolderName,
+                    skipFolderCreation: true
                 })
             });
 
@@ -2093,7 +2097,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     prompt: scenePrompt,
                     folderName: currentFolderName,
                     maxTokens: 2000,
-                    temperature: 0.6
+                    temperature: 0.6,
+                    skipFolderCreation: true
                 })
             });
 
@@ -2104,15 +2109,54 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const sceneData = await sceneResponse.json();
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
-            if (sceneData._folderName) {
-                setCurrentFolderName(sceneData._folderName);
-            }
-
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
             const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');
+            }
+
+            const consolidatedPayload = {
+                title: 'manual_script',
+                scriptBody: finalScript,
+                scenes: scenesSource,
+                characters: extractedCharacters.characters || [],
+                lineCharacterNames: extractedCharacters.lineCharacterNames || [],
+                source: 'manual'
+            };
+
+            try {
+                const saveResponse = await fetch('http://localhost:3002/api/save-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: 'manual_script',
+                        content: JSON.stringify(consolidatedPayload, null, 2),
+                        service: selectedService
+                    })
+                });
+
+                if (saveResponse.ok) {
+                    const saveData = await saveResponse.json();
+                    if (saveData?.folderName) {
+                        setCurrentFolderName(saveData.folderName);
+                    }
+                } else {
+                    showToast('대본 저장에 실패했습니다.', 'warning');
+                }
+            } catch (saveError) {
+                console.error('Failed to save consolidated story:', saveError);
+                showToast('대본 저장에 실패했습니다.', 'warning');
+            }
+
+            try {
+                await fetch('http://localhost:3002/api/scripts/cleanup-empty-folders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ minAgeMinutes: 5 })
+                });
+            } catch (cleanupError) {
+                console.warn('Empty folder cleanup skipped:', cleanupError);
             }
 
             // 5단계: 캐릭터 맵 생성
@@ -4696,6 +4740,10 @@ ${scriptInput}
                         await updateCharacterRulesBackupContent(id, rulesInput);
                         showToast('백업 내용이 저장되었습니다.', 'success');
                     }}
+                    onAddFemaleCharacter={addFemaleCharacter}
+                    onAddMaleCharacter={addMaleCharacter}
+                    onDeleteFemaleCharacter={deleteFemaleCharacter}
+                    onDeleteMaleCharacter={deleteMaleCharacter}
                 />
             )}
         </div>
@@ -4811,6 +4859,10 @@ interface GenreManagementModalProps {
     onCharacterRulesBackupDelete?: (id: string) => Promise<void>;
     onCharacterRulesBackupRename?: (id: string, name: string) => Promise<void>;
     onCharacterRulesBackupEdit?: (id: string, rulesInput: unknown) => Promise<void>;
+    onAddFemaleCharacter?: () => Promise<any>;
+    onAddMaleCharacter?: () => Promise<any>;
+    onDeleteFemaleCharacter?: (id: string) => Promise<any>;
+    onDeleteMaleCharacter?: (id: string) => Promise<any>;
 }
 
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
@@ -4852,7 +4904,11 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onCharacterRulesBackupRestore,
     onCharacterRulesBackupDelete,
     onCharacterRulesBackupRename,
-    onCharacterRulesBackupEdit
+    onCharacterRulesBackupEdit,
+    onAddFemaleCharacter,
+    onAddMaleCharacter,
+    onDeleteFemaleCharacter,
+    onDeleteMaleCharacter
 }) => {
     const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
@@ -6121,7 +6177,19 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                         <button
                                             onClick={async () => {
                                                 try {
-                                                    await addFemaleCharacter();
+                                                    if (!onAddFemaleCharacter) return;
+                                                    const updated = await onAddFemaleCharacter();
+                                                    if (updated?.females) {
+                                                        setCharacterRulesState((prev) => {
+                                                            const existing = new Set(prev.females.map((char) => char.id));
+                                                            const additions = updated.females.filter((char) => !existing.has(char.id));
+                                                            if (additions.length === 0) return prev;
+                                                            return {
+                                                                ...prev,
+                                                                females: [...prev.females, ...additions]
+                                                            };
+                                                        });
+                                                    }
                                                     showToast('여성 캐릭터가 추가되었습니다.', 'success');
                                                 } catch (err) {
                                                     console.error('Failed to add female character:', err);
@@ -6158,7 +6226,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                             onClick={async (e) => {
                                                                 e.stopPropagation();
                                                                 try {
-                                                                    await deleteFemaleCharacter(char.id);
+                                                                    if (!onDeleteFemaleCharacter) return;
+                                                                    await onDeleteFemaleCharacter(char.id);
                                                                     showToast('캐릭터가 삭제되었습니다.', 'success');
                                                                 } catch (err) {
                                                                     const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
@@ -6259,7 +6328,19 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                         <button
                                             onClick={async () => {
                                                 try {
-                                                    await addMaleCharacter();
+                                                    if (!onAddMaleCharacter) return;
+                                                    const updated = await onAddMaleCharacter();
+                                                    if (updated?.males) {
+                                                        setCharacterRulesState((prev) => {
+                                                            const existing = new Set(prev.males.map((char) => char.id));
+                                                            const additions = updated.males.filter((char) => !existing.has(char.id));
+                                                            if (additions.length === 0) return prev;
+                                                            return {
+                                                                ...prev,
+                                                                males: [...prev.males, ...additions]
+                                                            };
+                                                        });
+                                                    }
                                                     showToast('남성 캐릭터가 추가되었습니다.', 'success');
                                                 } catch (err) {
                                                     console.error('Failed to add male character:', err);
@@ -6290,7 +6371,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                         onClick={async (e) => {
                                                             e.stopPropagation();
                                                             try {
-                                                                await deleteMaleCharacter(char.id);
+                                                                if (!onDeleteMaleCharacter) return;
+                                                                await onDeleteMaleCharacter(char.id);
                                                                 showToast('캐릭터가 삭제되었습니다.', 'success');
                                                             } catch (err) {
                                                                 const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';

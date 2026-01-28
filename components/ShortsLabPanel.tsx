@@ -2975,7 +2975,8 @@ ${scriptInput}
                     service: selectedService,
                     prompt: scriptPrompt,
                     maxTokens: 2000,
-                    temperature: 0.7
+                    temperature: 0.7,
+                    skipFolderCreation: true
                 })
             });
 
@@ -2986,9 +2987,6 @@ ${scriptInput}
             const scriptData = await scriptResponse.json();
             const scriptText = scriptData.rawResponse || scriptData.text || scriptData.result || '';
             const scriptFolderName = scriptData._folderName;
-            if (scriptFolderName) {
-                setCurrentFolderName(scriptFolderName);
-            }
 
             let jsonClean = scriptText.trim();
             jsonClean = jsonClean.replace(/^(JSON|json)\s+/, "").trim();
@@ -3000,6 +2998,8 @@ ${scriptInput}
             if (!parsed) {
                 throw new Error('대본 JSON 파싱 실패');
             }
+
+            const scriptTitle = (parsed.title || aiTopic || '').trim() || '무제대본';
 
             const rawScript = parsed.scriptBody || parsed.script || parsed.text || '';
             if (!rawScript || !rawScript.trim()) {
@@ -3025,7 +3025,8 @@ ${scriptInput}
                     prompt: characterExtractPrompt,
                     maxTokens: 1200,
                     temperature: 0.2,
-                    folderName: scriptFolderName  // 첫 번째 폴더 재사용
+                    folderName: scriptFolderName,
+                    skipFolderCreation: true
                 })
             });
 
@@ -3067,7 +3068,8 @@ ${scriptInput}
                     prompt: scenePrompt,
                     folderName: scriptFolderName,
                     maxTokens: 2000,
-                    temperature: 0.6
+                    temperature: 0.6,
+                    skipFolderCreation: true
                 })
             });
 
@@ -3078,15 +3080,54 @@ ${scriptInput}
             const sceneData = await sceneResponse.json();
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
-            if (sceneData._folderName) {
-                setCurrentFolderName(sceneData._folderName);
-            }
-
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
             const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');
+            }
+
+            const consolidatedPayload = {
+                title: scriptTitle,
+                scriptBody: finalScript,
+                scenes: scenesSource,
+                characters: extractedCharacters.characters || [],
+                lineCharacterNames: extractedCharacters.lineCharacterNames || [],
+                source: 'step2'
+            };
+
+            try {
+                const saveResponse = await fetch('http://localhost:3002/api/save-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: scriptTitle,
+                        content: JSON.stringify(consolidatedPayload, null, 2),
+                        service: selectedService
+                    })
+                });
+
+                if (saveResponse.ok) {
+                    const saveData = await saveResponse.json();
+                    if (saveData?.folderName) {
+                        setCurrentFolderName(saveData.folderName);
+                    }
+                } else {
+                    showToast('대본 저장에 실패했습니다.', 'warning');
+                }
+            } catch (saveError) {
+                console.error('Failed to save consolidated story:', saveError);
+                showToast('대본 저장에 실패했습니다.', 'warning');
+            }
+
+            try {
+                await fetch('http://localhost:3002/api/scripts/cleanup-empty-folders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ minAgeMinutes: 5 })
+                });
+            } catch (cleanupError) {
+                console.warn('Empty folder cleanup skipped:', cleanupError);
             }
 
             const characterIds = characterList.map(item => item.id);

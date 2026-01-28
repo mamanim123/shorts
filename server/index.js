@@ -2410,6 +2410,72 @@ app.get('/api/scripts/story-folders', (req, res) => {
     }
 });
 
+app.post('/api/scripts/cleanup-empty-folders', (req, res) => {
+    const minAgeMinutes = Number(req.body?.minAgeMinutes ?? 5);
+    const minAgeMs = Number.isFinite(minAgeMinutes) && minAgeMinutes >= 0
+        ? minAgeMinutes * 60 * 1000
+        : 5 * 60 * 1000;
+    const now = Date.now();
+    const deleted = [];
+    const skipped = [];
+    const errors = [];
+
+    const hasImageFiles = (dirPath) => {
+        if (!fs.existsSync(dirPath)) return false;
+        return fs.readdirSync(dirPath).some((name) => /\.(png|jpe?g|webp)$/i.test(name));
+    };
+
+    const hasAnyFiles = (dirPath) => {
+        if (!fs.existsSync(dirPath)) return false;
+        return fs.readdirSync(dirPath).some((name) => !name.endsWith('.temp'));
+    };
+
+    try {
+        if (!fs.existsSync(SCRIPTS_BASE_DIR)) {
+            return res.json({ deleted, skipped, errors });
+        }
+
+        const entries = fs.readdirSync(SCRIPTS_BASE_DIR);
+        entries.forEach((entry) => {
+            const folderPath = path.join(SCRIPTS_BASE_DIR, entry);
+            try {
+                const stat = fs.statSync(folderPath);
+                if (!stat.isDirectory()) return;
+                if (now - stat.mtimeMs < minAgeMs) {
+                    skipped.push({ folder: entry, reason: 'recent' });
+                    return;
+                }
+
+                const scriptFiles = fs.readdirSync(folderPath)
+                    .filter((name) => name.endsWith('.txt') && !name.includes('.temp'));
+                const imagesDir = path.join(folderPath, 'images');
+                const audioDir = path.join(folderPath, 'audio');
+                const videoDir = path.join(folderPath, 'video');
+
+                const hasScripts = scriptFiles.length > 0;
+                const hasImages = hasImageFiles(imagesDir);
+                const hasAudio = hasAnyFiles(audioDir);
+                const hasVideo = hasAnyFiles(videoDir);
+
+                if (hasScripts || hasImages || hasAudio || hasVideo) {
+                    skipped.push({ folder: entry, reason: 'has-content' });
+                    return;
+                }
+
+                fs.rmSync(folderPath, { recursive: true, force: true });
+                deleted.push(entry);
+            } catch (err) {
+                errors.push({ folder: entry, error: err?.message || String(err) });
+            }
+        });
+
+        res.json({ deleted, skipped, errors });
+    } catch (e) {
+        console.error('[cleanup-empty-folders] Failed:', e);
+        res.status(500).json({ error: 'Failed to cleanup folders' });
+    }
+});
+
 // NEW: Get script file from a specific folder
 app.get('/api/scripts/by-folder/:folderName', (req, res) => {
     let parsedScenes = null;

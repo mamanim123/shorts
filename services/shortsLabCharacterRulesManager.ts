@@ -8,7 +8,12 @@
  */
 
 import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule, generateCharacterId } from './shortsLabCharacterRulesDefaults';
-import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
+import {
+  getAppStorageCachedValue,
+  getAppStorageValue,
+  primeAppStorageCache,
+  setAppStorageValue
+} from './appStorageService';
 import type { CharacterItem } from './characterService';
 
 // CharacterItem → CharacterSlotRule 변환 함수
@@ -191,7 +196,8 @@ export const shortsLabCharacterRulesManager = {
     };
   },
   loadRules: async (): Promise<ShortsLabCharacterRules> => {
-    cachedRules = readStoredRules();
+    const stored = await getAppStorageValue<ShortsLabCharacterRules | null>(STORAGE_KEY, null);
+    cachedRules = stored ? normalizeRules(stored) : readStoredRules();
     notifyRulesListeners(cachedRules);
     return cachedRules;
   },

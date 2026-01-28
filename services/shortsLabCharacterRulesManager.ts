@@ -9,6 +9,26 @@
 
 import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule, generateCharacterId } from './shortsLabCharacterRulesDefaults';
 import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
+import type { CharacterItem } from './characterService';
+
+// CharacterItem → CharacterSlotRule 변환 함수
+export const convertCharacterToSlotRule = (
+  char: CharacterItem,
+  targetSlotId: string
+): CharacterSlotRule => ({
+  id: targetSlotId,
+  identity: char.gender === 'female'
+    ? 'A stunning Korean woman'
+    : 'A handsome Korean man',
+  hair: char.hair || 'elegant hairstyle',
+  body: char.body || 'graceful figure',
+  style: char.style || (char.gender === 'female'
+    ? 'perfectly managed sophisticated look'
+    : 'dandy and refined presence'),
+  outfitFit: char.gender === 'female'
+    ? 'tight-fitting, form-hugging, accentuating curves naturally'
+    : 'tailored slim-fit, clean and sharp lines'
+});
 
 const STORAGE_KEY = 'shorts-lab-character-rules';
 const MAX_BACKUPS = 5;
@@ -302,6 +322,35 @@ export const shortsLabCharacterRulesManager = {
           ...rules,
           males: rules.males.map(char =>
             char.id === id ? { ...char, ...updates, id: char.id } : char
+          )
+        };
+
+    cachedRules = updated;
+    writeStoredRules(updated);
+    notifyRulesListeners(updated);
+    return updated;
+  },
+
+  // 캐릭터 가져오기: CharacterItem → CharacterSlotRule 변환 후 적용
+  importCharacter: async (
+    char: CharacterItem,
+    targetSlotId: string
+  ): Promise<ShortsLabCharacterRules> => {
+    const rules = cachedRules || readStoredRules();
+    const gender = char.gender;
+    const slotRule = convertCharacterToSlotRule(char, targetSlotId);
+
+    const updated = gender === 'female'
+      ? {
+          ...rules,
+          females: rules.females.map(slot =>
+            slot.id === targetSlotId ? slotRule : slot
+          )
+        }
+      : {
+          ...rules,
+          males: rules.males.map(slot =>
+            slot.id === targetSlotId ? slotRule : slot
           )
         };
 

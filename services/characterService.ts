@@ -8,8 +8,25 @@ export interface CharacterItem {
   face: string;
   hair: string;
   body: string;
+  style: string;
   createdAt: string;
 }
+
+// 기존 데이터 호환성: style 필드가 없는 경우 빈 문자열로 처리
+const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }): CharacterItem => ({
+  id: character.id,
+  name: character.name || '',
+  age: character.age || '',
+  gender: character.gender || 'female',
+  face: character.face || '',
+  hair: character.hair || '',
+  body: character.body || '',
+  style: character.style || '',
+  createdAt: character.createdAt || new Date().toISOString(),
+});
+
+const normalizeCharacters = (characters: Array<Partial<CharacterItem> & { id: string }>): CharacterItem[] =>
+  characters.map(normalizeCharacter);
 
 const CHARACTER_CACHE_KEY = 'character-catalog-cache-v1';
 
@@ -19,8 +36,10 @@ const getStorageValue = <T,>(key: string, fallback: T): T => {
   return getAppStorageCachedValue<T>(key, fallback);
 };
 
-export const getCachedCharacters = (): CharacterItem[] =>
-  getStorageValue<CharacterItem[]>(CHARACTER_CACHE_KEY, []);
+export const getCachedCharacters = (): CharacterItem[] => {
+  const cached = getStorageValue<Array<Partial<CharacterItem> & { id: string }>>(CHARACTER_CACHE_KEY, []);
+  return normalizeCharacters(cached);
+};
 
 export const setCachedCharacters = (characters: CharacterItem[]) => {
   setAppStorageValue(CHARACTER_CACHE_KEY, characters || []);
@@ -30,8 +49,9 @@ export const fetchCharacters = async (): Promise<CharacterItem[]> => {
   try {
     const response = await fetch('http://localhost:3002/api/characters');
     if (!response.ok) throw new Error('failed');
-    const payload = (await response.json()) as { characters?: CharacterItem[] };
-    const characters = Array.isArray(payload.characters) ? payload.characters : [];
+    const payload = (await response.json()) as { characters?: Array<Partial<CharacterItem> & { id: string }> };
+    const rawCharacters = Array.isArray(payload.characters) ? payload.characters : [];
+    const characters = normalizeCharacters(rawCharacters);
     setCachedCharacters(characters);
     return characters;
   } catch {

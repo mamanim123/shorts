@@ -31,6 +31,9 @@ import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '.
 import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
 import { UNIFIED_OUTFIT_LIST } from '../constants';
+import { fetchCharacters } from '../services/characterService';
+import type { CharacterItem } from '../services/characterService';
+import { shortsLabCharacterRulesManager } from '../services/shortsLabCharacterRulesManager';
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -5402,6 +5405,43 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
+    // Character Import Modal State
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importTargetGender, setImportTargetGender] = useState<'female' | 'male'>('female');
+    const [importTargetSlotId, setImportTargetSlotId] = useState<string>('');
+    const [importableCharacters, setImportableCharacters] = useState<CharacterItem[]>([]);
+    const [isLoadingCharacters, setIsLoadingCharacters] = useState(false);
+
+    const handleOpenImportModal = useCallback(async (gender: 'female' | 'male', slotId: string) => {
+        setImportTargetGender(gender);
+        setImportTargetSlotId(slotId);
+        setIsLoadingCharacters(true);
+        setShowImportModal(true);
+        try {
+            const chars = await fetchCharacters();
+            // 성별 필터링
+            const filtered = chars.filter(c => c.gender === gender);
+            setImportableCharacters(filtered);
+        } catch (err) {
+            console.error('Failed to fetch characters:', err);
+            showToast('캐릭터 목록을 불러오는데 실패했습니다.', 'error');
+        } finally {
+            setIsLoadingCharacters(false);
+        }
+    }, []);
+
+    const handleImportCharacter = useCallback(async (char: CharacterItem) => {
+        try {
+            await shortsLabCharacterRulesManager.importCharacter(char, importTargetSlotId);
+            showToast(`${char.name} 캐릭터를 가져왔습니다.`, 'success');
+            setShowImportModal(false);
+        } catch (err) {
+            console.error('Failed to import character:', err);
+            const message = err instanceof Error ? err.message : '캐릭터 가져오기 실패';
+            showToast(message, 'error');
+        }
+    }, [importTargetSlotId]);
+
     // Character Rules Handlers
     const handleCharacterRulesSave = async () => {
         if (!onCharacterRulesSave) return;
@@ -6221,25 +6261,37 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                             )}
                                                         </div>
                                                     </div>
-                                                    {char.id !== 'femaleD' && (
+                                                    <div className="flex items-center gap-1">
                                                         <button
                                                             onClick={async (e) => {
                                                                 e.stopPropagation();
-                                                                try {
-                                                                    if (!onDeleteFemaleCharacter) return;
-                                                                    await onDeleteFemaleCharacter(char.id);
-                                                                    showToast('캐릭터가 삭제되었습니다.', 'success');
-                                                                } catch (err) {
-                                                                    const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
-                                                                    showToast(message, 'error');
-                                                                }
+                                                                handleOpenImportModal('female', char.id);
                                                             }}
-                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                            className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
                                                         >
-                                                            <Trash2 className="w-3 h-3" />
-                                                            삭제
+                                                            <Download className="w-3 h-3" />
+                                                            가져오기
                                                         </button>
-                                                    )}
+                                                        {char.id !== 'femaleD' && (
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    try {
+                                                                        if (!onDeleteFemaleCharacter) return;
+                                                                        await onDeleteFemaleCharacter(char.id);
+                                                                        showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                                    } catch (err) {
+                                                                        const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                        showToast(message, 'error');
+                                                                    }
+                                                                }}
+                                                                className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                                삭제
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
@@ -6367,23 +6419,35 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
                                                     </div>
-                                                    <button
-                                                        onClick={async (e) => {
-                                                            e.stopPropagation();
-                                                            try {
-                                                                if (!onDeleteMaleCharacter) return;
-                                                                await onDeleteMaleCharacter(char.id);
-                                                                showToast('캐릭터가 삭제되었습니다.', 'success');
-                                                            } catch (err) {
-                                                                const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
-                                                                showToast(message, 'error');
-                                                            }
-                                                        }}
-                                                        className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
-                                                    >
-                                                        <Trash2 className="w-3 h-3" />
-                                                        삭제
-                                                    </button>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                handleOpenImportModal('male', char.id);
+                                                            }}
+                                                            className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Download className="w-3 h-3" />
+                                                            가져오기
+                                                        </button>
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                try {
+                                                                    if (!onDeleteMaleCharacter) return;
+                                                                    await onDeleteMaleCharacter(char.id);
+                                                                    showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                                } catch (err) {
+                                                                    const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                    showToast(message, 'error');
+                                                                }
+                                                            }}
+                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                            삭제
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
@@ -6764,6 +6828,76 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium"
                             >
                                 저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 캐릭터 가져오기 모달 */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-100">
+                                캐릭터 가져오기
+                            </h3>
+                            <button
+                                onClick={() => setShowImportModal(false)}
+                                className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                            <div className="text-sm text-slate-400 mb-3">
+                                {importTargetGender === 'female' ? '여성' : '남성'} 캐릭터 목록에서 선택하세요
+                            </div>
+                            {isLoadingCharacters ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                                </div>
+                            ) : importableCharacters.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500">
+                                    저장된 {importTargetGender === 'female' ? '여성' : '남성'} 캐릭터가 없습니다.
+                                    <br />
+                                    <span className="text-xs">입력탭 → 캐릭터관리에서 먼저 캐릭터를 생성해주세요.</span>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {importableCharacters.map((char) => (
+                                        <button
+                                            key={char.id}
+                                            onClick={() => handleImportCharacter(char)}
+                                            className="w-full p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-blue-500/50 rounded-xl text-left transition-all group"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">
+                                                        {char.name}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 mt-1">
+                                                        {char.age} · {char.gender === 'female' ? '여성' : '남성'}
+                                                    </div>
+                                                </div>
+                                                <Download className="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors" />
+                                            </div>
+                                            {char.hair && (
+                                                <div className="mt-2 text-[10px] text-slate-500 truncate">
+                                                    헤어: {char.hair.substring(0, 50)}...
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-800 flex justify-end">
+                            <button
+                                onClick={() => setShowImportModal(false)}
+                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
+                            >
+                                닫기
                             </button>
                         </div>
                     </div>

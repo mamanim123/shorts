@@ -139,15 +139,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   // 카테고리 드롭다운 상태
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
-  // 캐릭터 관리 상태 (서브탭)
-  const [manageSubTab, setManageSubTab] = useState<'face' | 'hair' | 'body'>('face');
+  // 캐릭터 관리 상태 (서브탭: face, body 2개로 통합)
+  const [manageSubTab, setManageSubTab] = useState<'face' | 'body'>('face');
   const [newCharacter, setNewCharacter] = useState({
     name: '',
     age: '30대',
     gender: 'female' as 'female' | 'male',
     face: '',
     hair: '',
-    body: ''
+    body: '',
+    style: ''
   });
 
   // 의상 추출 상태 (서버 캐시에서 복원)
@@ -377,6 +378,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         }
         if (type === 'body') {
           setExtractedBody(prev => prev ? { ...prev, en: result.translated } : null);
+          // newCharacter.body에도 동기화
+          setNewCharacter(prev => ({ ...prev, body: result.translated }));
         }
         showToast('영문 프롬프트가 자동 번역되었습니다.', 'success');
       }
@@ -1369,12 +1372,46 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     showToast(`'${item.translation}' 의상이 선택되었습니다.`, 'success');
   }, [onOutfitSelect]);
 
+  // body 기반 style 자동 생성 함수
+  const generateStyleFromBody = useCallback((body: string, gender: 'female' | 'male'): string => {
+    if (!body) {
+      return gender === 'female'
+        ? 'perfectly managed sophisticated look'
+        : 'dandy and refined presence';
+    }
+    // body 키워드에 따라 style 생성
+    const bodyLower = body.toLowerCase();
+    if (gender === 'female') {
+      if (bodyLower.includes('athletic') || bodyLower.includes('toned')) {
+        return 'confident athletic presence, energetic and vibrant aura';
+      } else if (bodyLower.includes('glamour') || bodyLower.includes('voluminous')) {
+        return 'glamorous and alluring presence, captivating charm';
+      } else if (bodyLower.includes('petite')) {
+        return 'delicate and elegant presence, graceful charm';
+      } else if (bodyLower.includes('hourglass') || bodyLower.includes('slim')) {
+        return 'perfectly managed sophisticated look, confident presence';
+      }
+      return 'elegant and refined presence, graceful demeanor';
+    } else {
+      if (bodyLower.includes('athletic') || bodyLower.includes('muscular')) {
+        return 'strong and confident presence, masculine charm';
+      } else if (bodyLower.includes('slim') || bodyLower.includes('lean')) {
+        return 'sleek and refined presence, modern elegance';
+      }
+      return 'dandy and refined presence, well-groomed appearance';
+    }
+  }, []);
+
   const handleSaveCharacter = useCallback(() => {
     if (!newCharacter.name.trim()) return;
+
+    // body 기반으로 style 자동 생성
+    const autoStyle = generateStyleFromBody(newCharacter.body, newCharacter.gender);
 
     const character: Character = {
       id: `char-${Date.now()}`,
       ...newCharacter,
+      style: newCharacter.style || autoStyle,
       createdAt: new Date().toISOString()
     };
 
@@ -1387,11 +1424,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       gender: 'female',
       face: '',
       hair: '',
-      body: ''
+      body: '',
+      style: ''
     });
     setActiveTab('select');
     showToast(`${character.name} 캐릭터가 저장되었습니다.`, 'success');
-  }, [newCharacter, characters]);
+  }, [newCharacter, characters, generateStyleFromBody]);
 
   const resolveExtractionImageData = useCallback(async (value: string | null) => {
     if (!value) return null;
@@ -1624,9 +1662,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               </div>
             </div>
 
-            {/* 서브탭 */}
+            {/* 서브탭 (얼굴, 체형 2개 - 헤어는 체형 탭에 통합) */}
             <div className="flex p-1 bg-slate-900/50 rounded-lg border border-slate-800">
-              {(['face', 'hair', 'body'] as const).map(tab => (
+              {(['face', 'body'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setManageSubTab(tab)}
@@ -1635,7 +1673,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     : 'text-slate-500 hover:text-slate-300'
                     }`}
                 >
-                  {tab === 'face' ? '얼굴' : tab === 'hair' ? '헤어' : '체형'}
+                  {tab === 'face' ? '얼굴' : '헤어/체형'}
                 </button>
               ))}
             </div>
@@ -1744,155 +1782,64 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 </div>
               )}
 
-              {manageSubTab === 'hair' && (
-                <div className="space-y-3 animate-in fade-in duration-300">
-                  <label
-                    className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingHair
-                      ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
-                      : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
-                      }`}
-                    onDragOver={(e) => handleDragOver(e, 'hair')}
-                    onDragLeave={(e) => handleDragLeave(e, 'hair')}
-                    onDrop={(e) => handleDrop(e, 'hair')}
-                  >
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleExtractHair(file);
-                      e.target.value = '';
-                    }} />
-                    {isExtractingHair ? (
-                      <>
-                        <Loader2 size={24} className="text-purple-400 animate-spin mb-2" />
-                        <span className="text-[11px] font-bold text-purple-400">헤어 분석 중...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={24} className={`${isDraggingHair ? 'text-purple-400 animate-bounce' : 'text-slate-600 group-hover:text-purple-400'} mb-2 transition-colors`} />
-                        <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-300">
-                          {isDraggingHair ? '여기에 놓으세요!' : '헤어 사진 드래그 또는 클릭'}
-                        </span>
-                      </>
-                    )}
-                  </label>
-
-                  {extractedHair && (
-                    <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
-                      <div className="flex items-start gap-3">
-                        {generatedHairImage && (
-                          <img
-                            src={generatedHairImage}
-                            alt="Generated Hair"
-                            className="w-16 h-16 rounded-lg object-cover border border-purple-500/30 cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
-                            onClick={() => setLightboxImage(generatedHairImage)}
-                          />
-                        )}
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (한글 수정 시 자동 번역)</div>
-                          <div>
-                            <label className="text-[9px] text-purple-300 mb-0.5 block flex items-center gap-1">
-                              한글 설명 (수정하면 영문 자동 번역)
-                              {isTranslatingHair && <Loader2 className="w-3 h-3 animate-spin text-purple-400" />}
-                            </label>
-                            <textarea
-                              value={extractedHair.ko}
-                              onChange={e => handleHairKoChange(e.target.value)}
-                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-14"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
-                            <textarea
-                              value={extractedHair.en}
-                              onChange={e => setExtractedHair(prev => prev ? { ...prev, en: e.target.value } : null)}
-                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-16 font-mono"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => handleGenerateCharacterImage(extractedHair.en, 'hair')}
-                          disabled={isGeneratingImage}
-                          className="flex-1 py-1.5 bg-purple-600/90 hover:bg-purple-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
-                        </button>
-                        <button
-                          onClick={() => handleForwardPromptToImageAI(extractedHair.en, 'hair')}
-                          disabled={!!aiForwardingType && aiForwardingType !== 'hair'}
-                          className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          {aiForwardingType === 'hair' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />} AI 생성
-                        </button>
-                        <button
-                          onClick={handleReExtractHair}
-                          disabled={isExtractingHair}
-                          className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all disabled:opacity-50"
-                          title="다시 분석"
-                        >
-                          {isExtractingHair ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {HAIR_PRESETS.map(preset => (
-                      <button
-                        key={preset.id}
-                        onClick={() => {
-                          setNewCharacter(prev => ({ ...prev, hair: preset.prompt }));
-                          setExtractedHair(prev => (prev ? { ...prev, en: preset.prompt } : prev));
-                        }}
-                        className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.hair === preset.prompt
-                          ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
-                          : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
-                          }`}
-                      >
-                        {preset.name}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    placeholder="헤어스타일 상세 정보"
-                    value={newCharacter.hair}
-                    onChange={e => setNewCharacter(prev => ({ ...prev, hair: e.target.value }))}
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-300 outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-20 transition-all"
-                  />
-                </div>
-              )}
-
               {manageSubTab === 'body' && (
-                <div className="space-y-3 animate-in fade-in duration-300">
-                  <label
-                    className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingBody
-                      ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
-                      : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
-                      }`}
-                    onDragOver={(e) => handleDragOver(e, 'body')}
-                    onDragLeave={(e) => handleDragLeave(e, 'body')}
-                    onDrop={(e) => handleDrop(e, 'body')}
-                  >
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleExtractBody(file);
-                      e.target.value = '';
-                    }} />
-                    {isExtractingBody ? (
-                      <>
-                        <Loader2 size={24} className="text-purple-400 animate-spin mb-2" />
-                        <span className="text-[11px] font-bold text-purple-400">체형 분석 중...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={24} className={`${isDraggingBody ? 'text-purple-400 animate-bounce' : 'text-slate-600 group-hover:text-purple-400'} mb-2 transition-colors`} />
-                        <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-300">
-                          {isDraggingBody ? '여기에 놓으세요!' : '체형 사진 드래그 또는 클릭'}
-                        </span>
-                      </>
-                    )}
-                  </label>
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  {/* 헤어 섹션 */}
+                  <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
+                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">💇 헤어스타일</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {HAIR_PRESETS.map(preset => (
+                        <button
+                          key={preset.id}
+                          onClick={() => setNewCharacter(prev => ({ ...prev, hair: preset.prompt }))}
+                          className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.hair === preset.prompt
+                            ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
+                            : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                            }`}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="헤어스타일 상세 정보"
+                      value={newCharacter.hair}
+                      onChange={e => setNewCharacter(prev => ({ ...prev, hair: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-300 outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-16 transition-all"
+                    />
+                  </div>
+
+                  {/* 체형 섹션 */}
+                  <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
+                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">👤 체형</div>
+                    <label
+                      className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingBody
+                        ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
+                        : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
+                        }`}
+                      onDragOver={(e) => handleDragOver(e, 'body')}
+                      onDragLeave={(e) => handleDragLeave(e, 'body')}
+                      onDrop={(e) => handleDrop(e, 'body')}
+                    >
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleExtractBody(file);
+                        e.target.value = '';
+                      }} />
+                      {isExtractingBody ? (
+                        <>
+                          <Loader2 size={24} className="text-purple-400 animate-spin mb-2" />
+                          <span className="text-[11px] font-bold text-purple-400">체형 분석 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={24} className={`${isDraggingBody ? 'text-purple-400 animate-bounce' : 'text-slate-600 group-hover:text-purple-400'} mb-2 transition-colors`} />
+                          <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-300">
+                            {isDraggingBody ? '여기에 놓으세요!' : '체형 사진 드래그 또는 클릭'}
+                          </span>
+                        </>
+                      )}
+                    </label>
 
                   {extractedBody && (
                     <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
@@ -1922,7 +1869,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
                             <textarea
                               value={extractedBody.en}
-                              onChange={e => setExtractedBody(prev => prev ? { ...prev, en: e.target.value } : null)}
+                              onChange={e => {
+                                const newValue = e.target.value;
+                                setExtractedBody(prev => prev ? { ...prev, en: newValue } : null);
+                                // newCharacter.body에도 동기화
+                                setNewCharacter(prev => ({ ...prev, body: newValue }));
+                              }}
                               className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-16 font-mono"
                             />
                           </div>
@@ -1931,14 +1883,24 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
                       <div className="flex gap-2 pt-1">
                         <button
-                          onClick={() => handleGenerateCharacterImage(extractedBody.en, 'body')}
+                          onClick={() => {
+                            // 헤어 + 체형 프롬프트 결합
+                            const hairPrompt = newCharacter.hair ? `${newCharacter.hair}, ` : '';
+                            const fullPrompt = `${hairPrompt}${extractedBody.en}`;
+                            handleGenerateCharacterImage(fullPrompt, 'body');
+                          }}
                           disabled={isGeneratingImage}
                           className="flex-1 py-1.5 bg-purple-600/90 hover:bg-purple-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
                         </button>
                         <button
-                          onClick={() => handleForwardPromptToImageAI(extractedBody.en, 'body')}
+                          onClick={() => {
+                            // 헤어 + 체형 프롬프트 결합
+                            const hairPrompt = newCharacter.hair ? `${newCharacter.hair}, ` : '';
+                            const fullPrompt = `${hairPrompt}${extractedBody.en}`;
+                            handleForwardPromptToImageAI(fullPrompt, 'body');
+                          }}
                           disabled={!!aiForwardingType && aiForwardingType !== 'body'}
                           className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
@@ -1956,29 +1918,30 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {BODY_PRESETS.map(preset => (
-                      <button
-                        key={preset.id}
-                        onClick={() => {
-                          setNewCharacter(prev => ({ ...prev, body: preset.prompt }));
-                          setExtractedBody(prev => (prev ? { ...prev, en: preset.prompt } : prev));
-                        }}
-                        className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.body === preset.prompt
-                          ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
-                          : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
-                          }`}
-                      >
-                        {preset.name}
-                      </button>
-                    ))}
+                    <div className="grid grid-cols-2 gap-2">
+                      {BODY_PRESETS.map(preset => (
+                        <button
+                          key={preset.id}
+                          onClick={() => {
+                            setNewCharacter(prev => ({ ...prev, body: preset.prompt }));
+                            setExtractedBody(prev => (prev ? { ...prev, en: preset.prompt } : prev));
+                          }}
+                          className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.body === preset.prompt
+                            ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
+                            : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                            }`}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="체형/포즈 상세 정보"
+                      value={newCharacter.body}
+                      onChange={e => setNewCharacter(prev => ({ ...prev, body: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-300 outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-16 transition-all"
+                    />
                   </div>
-                  <textarea
-                    placeholder="체형/포즈 상세 정보"
-                    value={newCharacter.body}
-                    onChange={e => setNewCharacter(prev => ({ ...prev, body: e.target.value }))}
-                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-300 outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-20 transition-all"
-                  />
                 </div>
               )}
             </div>

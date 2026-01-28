@@ -151,6 +151,14 @@
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:23:14.751Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769581394751_2026-01-28T06-24-00-421Z.png"
+    },
+    {
+      "id": "outfit-1769582187294",
+      "name": "헤더 그레이 리브드 셔츠 칼라 보디콘 미니 원피스",
+      "prompt": "tight long-sleeve bodycon mini dress in a heather gray shade, crafted from a medium-weight ribbed knit fabric with a visible vertical corded texture. The garment features a classic pointed shirt collar transitioning into a V-neckline without visible buttons, creating a polo-style aesthetic. The silhouette is skin-tight and fitted throughout the bodice and skirt, showcasing gathered ruching details along the side seams of the skirt section. The sleeves are full-length and slim-fit, ending in simple finished cuffs. The hemline is short, ending at the mid-thigh with a straight, finished edge. The material appears opaque with a matte finish, providing a casual yet structured minimalist look.",
+      "category": "ROYAL",
+      "createdAt": "2026-01-28T06:36:27.294Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582187294_2026-01-28T06-39-08-273Z.png"
     }
   ],
   "categories": [

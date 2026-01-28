@@ -742,41 +742,45 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       showToast('프롬프트가 없어 이미지를 생성할 수 없습니다.', 'warning');
       return null;
     }
+    const response = await fetch('http://localhost:3002/api/image/ai-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        storyId: 'outfit_previews',
+        sceneNumber: 1,
+        service: 'GEMINI',
+        autoCapture: true,
+        title: 'OutfitPreview'
+      })
+    });
 
-    const safetySettings = [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    ];
-
-    const result: any = await generateImageWithImagen(
-      prompt,
-      "",
-      { aspectRatio: "1:1", model: "imagen-4.0-generate-001" },
-      safetySettings
-    );
-
-    let base64Image: string | null = null;
-    if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
-      const generatedImage = result.generatedImages[0];
-      if (generatedImage?.image?.imageBytes) {
-        base64Image = generatedImage.image.imageBytes;
-      } else if (generatedImage?.imageBytes) {
-        base64Image = generatedImage.imageBytes;
+    if (!response.ok) {
+      let message = 'AI 이미지 생성에 실패했습니다.';
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) message = errorData.error;
+      } catch {
+        // ignore
       }
-    } else if (result && result.images && result.images.length > 0) {
-      base64Image = result.images[0];
+      throw new Error(message);
     }
 
-    if (!base64Image) return null;
+    const payload = await response.json();
+    const rawUrl = payload?.url ? `http://localhost:3002${payload.url}` : null;
+    if (!rawUrl) return null;
 
-    const savedUrl = await saveOutfitPreviewImage(
-      `data:image/png;base64,${base64Image}`,
-      id,
-      prompt
-    );
+    const imageResponse = await fetch(rawUrl);
+    if (!imageResponse.ok) return null;
+    const blob = await imageResponse.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('이미지 읽기에 실패했습니다.'));
+      reader.readAsDataURL(blob);
+    });
 
+    const savedUrl = await saveOutfitPreviewImage(dataUrl, id, prompt);
     return savedUrl || null;
   }, []);
 
@@ -2133,7 +2137,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      const targets = outfitsMissingPreview.map(outfit => ({
+                      const targets: OutfitPreviewTarget[] = outfitsMissingPreview.map(outfit => ({
                         id: outfit.id,
                         prompt: outfit.prompt,
                         kind: 'user' as const

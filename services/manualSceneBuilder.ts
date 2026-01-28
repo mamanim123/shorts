@@ -107,16 +107,18 @@ export const parseCharacterExtractionResponse = (rawText: string): CharacterExtr
         .filter((item: any) => item.name)
     : [];
 
-  const lineCharacterNames = Array.isArray(parsed.lineCharacterNames)
+  const rawLineEntries = Array.isArray(parsed.lineCharacterNames)
     ? parsed.lineCharacterNames
-        .map((item: any) => ({
-          line: Number(item?.line || 0),
-          characters: Array.isArray(item?.characters)
-            ? item.characters.map((name: any) => String(name || '').trim()).filter(Boolean)
-            : []
-        }))
-        .filter((item: any) => item.line > 0)
-    : [];
+    : (Array.isArray(parsed.lines) ? parsed.lines : []);
+
+  const lineCharacterNames = rawLineEntries
+    .map((item: any) => ({
+      line: Number(item?.line ?? item?.line_number ?? 0),
+      characters: Array.isArray(item?.characters)
+        ? item.characters.map((name: any) => String(name || '').trim()).filter(Boolean)
+        : []
+    }))
+    .filter((item: any) => item.line > 0);
 
   return { characters, lineCharacterNames };
 };

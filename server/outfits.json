@@ -135,6 +135,14 @@
       "category": "SEXY",
       "createdAt": "2026-01-28T03:57:05.847Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572625847_2026-01-28T03-57-38-692Z.png"
+    },
+    {
+      "id": "outfit-1769573473597",
+      "name": "매트 블랙 리브드 텍스처 숏슬리브 미니 바디컨 원피스",
+      "prompt": "ultra-short matte black long-sleeved bodycon micro mini dress, vertical ribbed knit pattern, lightweight stretch ribbed fabric, skin-tight fitted silhouette, classic round crew neckline, snug full-length sleeves extending to wrists, seamless minimalist construction, opaque matte texture, non-reflective finish, micro mini length hemline, high-density knit material, streamlined profile, no closures or hardware, form-fitting architectural seams.",
+      "category": "ROYAL",
+      "createdAt": "2026-01-28T04:11:13.597Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769573473597_2026-01-28T04-11-48-008Z.png"
     }
   ],
   "categories": [

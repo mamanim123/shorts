@@ -1,3 +1,37 @@
 {
-  "characters": []
+  "characters": [
+    {
+      "id": "char-1769573224153",
+      "name": "수아",
+      "age": "40대",
+      "gender": "female",
+      "face": "",
+      "hair": "",
+      "body": "A full-body silhouette of a Korean woman with an hourglass figure and a slim waist. She is captured from a side profile, wearing a tight-fitting long-sleeved top and a high-waisted mini skirt that emphasizes her body curves. Her posture is upright and confident as she walks, with one arm slightly back and the other forward. She has a glamorous body proportion with a voluminous chest and balanced hips, creating a soft yet structured silhouette against a neutral urban background.",
+      "style": "",
+      "createdAt": "2026-01-28T04:07:04.153Z"
+    },
+    {
+      "id": "char-1769578452591",
+      "name": "지아",
+      "age": "40대",
+      "gender": "female",
+      "face": "",
+      "hair": "sophisticated updo hairstyle",
+      "body": "",
+      "style": "perfectly managed sophisticated look",
+      "createdAt": "2026-01-28T05:34:12.591Z"
+    },
+    {
+      "id": "char-1769580400461",
+      "name": "지영",
+      "age": "40대",
+      "gender": "female",
+      "face": "",
+      "hair": "",
+      "body": "A side-profile silhouette of a slim Korean woman with an exaggerated hourglass figure and a voluminous chest. She is walking forward with a confident posture, straight back, and elegant arm swing. She is wearing a tight-fitting black long-sleeved ribbed top and a short mini skirt that emphasizes her narrow waist and curved hips. The lighting is backlit, creating a high-contrast silhouette against a blurred urban architectural background.",
+      "style": "glamorous and alluring presence, captivating charm",
+      "createdAt": "2026-01-28T06:06:40.461Z"
+    }
+  ]
 }

@@ -8,6 +8,7 @@ export interface CharacterIdentity {
   age: string;
   outfit: string;
   accessories: string;
+  body?: string;
   image?: string;
   isLocked: boolean;
   lockedFields: Set<string>;

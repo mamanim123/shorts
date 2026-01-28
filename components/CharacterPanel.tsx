@@ -334,6 +334,20 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   };
 
+  const handleDeleteCharacter = useCallback(async (id: string) => {
+    const target = characters.find((char) => char.id === id);
+    if (!target) return;
+    if (!window.confirm(`"${target.name}" 캐릭터를 삭제할까요?`)) return;
+    const updated = characters.filter((char) => char.id !== id);
+    setCharacters(updated);
+    await saveCharactersToBE(updated);
+    if (selectedCharacterId === id) {
+      setSelectedCharacterId(null);
+      onCharacterSelect?.(null, selectedSlot);
+    }
+    showToast('캐릭터가 삭제되었습니다.', 'success');
+  }, [characters, onCharacterSelect, saveCharactersToBE, selectedCharacterId, selectedSlot]);
+
   // ---------------------------------------------------------
   // 프롬프트 복사 핸들러
   // ---------------------------------------------------------
@@ -1621,7 +1635,20 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           <div className="text-sm font-bold text-slate-200 group-hover:text-purple-300 transition-colors">{char.name}</div>
                           <div className="text-[10px] text-slate-500 mt-0.5">{char.age} · {char.gender === 'female' ? '여성' : '남성'}</div>
                         </div>
-                        <div className={`w-2 h-2 rounded-full ${selectedCharacterId === char.id ? 'bg-purple-500 animate-pulse' : 'bg-slate-700'}`} />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCharacter(char.id);
+                            }}
+                            className="p-1 rounded-md text-slate-500 hover:text-rose-400 hover:bg-slate-800/60 transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                          <div className={`w-2 h-2 rounded-full ${selectedCharacterId === char.id ? 'bg-purple-500 animate-pulse' : 'bg-slate-700'}`} />
+                        </div>
                       </div>
                     </div>
                   ))}

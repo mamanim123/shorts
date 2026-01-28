@@ -1915,7 +1915,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     name: identity.name?.trim() || '',
                     identity: identityText,
                     hair: slotMeta.hair,
-                    body: slotMeta.body,
+                    body: identity.body?.trim() || slotMeta.body,
                     outfit: adjustedOutfit,
                     accessories
                 };
@@ -2389,9 +2389,16 @@ ${scriptInput}
             const slotSequence = ['Woman A', 'Woman B', 'Woman C', 'Woman D', 'Man A', 'Man B'];
             const newIdentities = analyzed.map((char: any, index: number) => {
                 const slotId = slotSequence[index % slotSequence.length];
+                const bodyFromProfile = typeof char?.visualProfile?.bodyType === 'string'
+                    ? char.visualProfile.bodyType
+                    : '';
+                const body = bodyFromProfile
+                    || (typeof char?.body === 'string' ? char.body : '')
+                    || (typeof char?.bodyType === 'string' ? char.bodyType : '');
                 return createManualIdentity({
                     slotId,
                     name: char.name || '',
+                    body,
                     accessories: '',
                     isLocked: true
                 });

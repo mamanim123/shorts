@@ -1104,6 +1104,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [aiTargetAge, setAiTargetAge] = useState('40대');
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
+    const [useRandomOutfits, setUseRandomOutfits] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isTwoStepGenerating, setIsTwoStepGenerating] = useState(false);
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
@@ -2864,7 +2865,8 @@ ${scriptInput}
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
-                enableWinterAccessories: enableWinterAccessories
+                enableWinterAccessories: enableWinterAccessories,
+                useRandomOutfits
             });
 
             // 선택된 AI 서비스 (기본값: GEMINI)
@@ -4021,23 +4023,47 @@ ${scriptInput}
                             </div>
 
                             {activeTab === 'input' && (
-                                <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
-                                        <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
-                                    </div>
-                                    <button
-                                        onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                            enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
-                                        }`}
-                                    >
-                                        <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
                                             }`}
-                                        />
-                                    </button>
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">
+                                                {useRandomOutfits ? '의상 랜덤 선택' : '의상 LLM 선택'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">
+                                                {useRandomOutfits ? 'ON: 랜덤 선택' : 'ON: LLM 선택'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => setUseRandomOutfits(!useRandomOutfits)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                                useRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    useRandomOutfits ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 

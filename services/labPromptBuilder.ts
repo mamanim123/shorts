@@ -379,6 +379,7 @@ export interface LabScriptOptions {
   additionalContext?: string;
   genreGuideOverride?: LabGenreGuideline;
   enableWinterAccessories?: boolean;
+  useRandomOutfits?: boolean;
 }
 
 export interface LabImagePromptOptions {
@@ -1424,26 +1425,30 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const { topic, genre, targetAge, gender, additionalContext } = options;
   const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const seed = generateRandomSeed();
+  const useRandomOutfits = options.useRandomOutfits ?? true;
 
   // 기본 의상 선택
-  let womanAOutfit = pickFemaleOutfit(genre, topic, []);
-  let womanBOutfit = pickFemaleOutfit(genre, topic, [womanAOutfit]);
-  let womanDOutfit = pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit]);
-  const manAOutfit = pickMaleOutfit(topic, []);
-  const manBOutfit = pickMaleOutfit(topic, [manAOutfit]);
+  const outfitPlaceholder = 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
+  let womanAOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, []) : outfitPlaceholder;
+  let womanBOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit]) : outfitPlaceholder;
+  let womanDOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit]) : outfitPlaceholder;
+  const manAOutfit = useRandomOutfits ? pickMaleOutfit(topic, []) : outfitPlaceholder;
+  const manBOutfit = useRandomOutfits ? pickMaleOutfit(topic, [manAOutfit]) : outfitPlaceholder;
 
   // 의상 검증 (너무 긴 설명문 방지)
-  [
-    { outfit: womanAOutfit, label: 'Woman A' },
-    { outfit: womanBOutfit, label: 'Woman B' },
-    { outfit: womanDOutfit, label: 'Woman D' },
-    { outfit: manAOutfit, label: 'Man A' },
-    { outfit: manBOutfit, label: 'Man B' }
-  ].forEach(({ outfit, label }) => {
-    if (!validateOutfit(outfit)) {
-      console.warn(`Invalid outfit detected (${label}): ${outfit.substring(0, 50)}...`);
-    }
-  });
+  if (useRandomOutfits) {
+    [
+      { outfit: womanAOutfit, label: 'Woman A' },
+      { outfit: womanBOutfit, label: 'Woman B' },
+      { outfit: womanDOutfit, label: 'Woman D' },
+      { outfit: manAOutfit, label: 'Man A' },
+      { outfit: manBOutfit, label: 'Man B' }
+    ].forEach(({ outfit, label }) => {
+      if (!validateOutfit(outfit)) {
+        console.warn(`Invalid outfit detected (${label}): ${outfit.substring(0, 50)}...`);
+      }
+    });
+  }
 
   // 겨울 악세서리 자동 적용 제거 (의상은 겨울 키워드에서만 긴팔 변환)
 
@@ -1452,7 +1457,8 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const promptRules = getActivePromptRules();
   const promptConstants = getPromptConstants();
   const promptSections = promptRules.promptSections || {};
-  const defaultOutfitRulesSection = `## 🚨 의상 선택 절대 규칙 (매우 중요!)
+  const defaultOutfitRulesSection = useRandomOutfits
+    ? `## 🚨 의상 선택 절대 규칙 (매우 중요!)
 ⚠️ **의상은 반드시 위에 지정된 명칭을 100% 그대로 사용해야 합니다!**
 
 ✅ **올바른 사용**:
@@ -1466,7 +1472,13 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 
 📋 **UNIFIED_OUTFIT_LIST에서만 선택**
 - 모든 의상은 사전 정의된 리스트에서 정확한 명칭으로 선택
-- 리스트에 없는 의상 생성 절대 금지`;
+ - 리스트에 없는 의상 생성 절대 금지`
+    : `## 🚨 의상 선택 절대 규칙 (LLM 선택 모드)
+1) lockedOutfits 값은 반드시 **UNIFIED_OUTFIT_LIST**에서 골라 직접 채워야 합니다.
+2) "CHOOSE_FROM_UNIFIED_OUTFIT_LIST"라는 문구는 절대 그대로 출력하지 말고 실제 의상 명칭으로 치환하세요.
+3) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
+4) 의상 명칭은 한 글자도 바꾸지 말고 리스트의 원문 그대로 사용하세요.
+5) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
   const defaultHairSection = `## 💇 헤어스타일
 - **Woman A (지영)**: long soft-wave hairstyle
 - **Woman B (혜경)**: short chic bob cut

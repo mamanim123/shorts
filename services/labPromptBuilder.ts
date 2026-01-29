@@ -420,11 +420,11 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
 }
 
 규칙:
-1) scriptBody는 8~12문장 (줄바꿈으로 구분)
+1) scriptBody는 8~12문장 (문장마다 반드시 줄바꿈, 1줄=1문장)
 2) 1문장 = 훅(강한 시작)
-3) 2~3문장 = 배경/상황 설명
+3) 2~3문장 = 배경/상황 설명 (각 문장은 독립된 한 줄)
 4) 4~7문장 = 전개/행동
-5) 8~10문장 = 반전/결말
+5) 8~10문장 = 반전/결말 (각 문장은 독립된 한 줄)
 6) 대사는 자연스러운 구어체 한국어
 7) scenes/longPrompt/shortPrompt 절대 포함 금지
 8) 마크다운 금지, JSON만 출력

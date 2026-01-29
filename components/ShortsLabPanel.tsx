@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -167,6 +167,12 @@ const CANDID_ACTION_FLAVORS = [
     'playful movement, caught mid-step, lively energy',
     'energetic action, subtle motion blur, candid vibe',
     'cinematic candid shot, authentic body language'
+];
+const GROUP_ACTION_FLAVORS = [
+    'natural interaction, candid moment, each person reacting differently',
+    'captured mid-action, lively group dynamic, varied gestures',
+    'spontaneous group moment, mixed reactions, authentic movement',
+    'candid interaction, playful exchanges, unscripted energy'
 ];
 const WINTER_ACCESSORY_SET = new Set(getWinterAccessoryPool());
 
@@ -361,12 +367,20 @@ const pickCameraPrompt = (basePrompt: string, sceneIndex: number, lastKeyword?: 
         ? CAMERA_ANGLE_KEYWORDS[(sceneIndex + 1) % CAMERA_ANGLE_KEYWORDS.length]
         : baseKeyword;
     const normalizedKeyword = keyword.toLowerCase();
+    const lastNormalized = lastKeyword ? lastKeyword.toLowerCase() : '';
+    if (normalizedKeyword === 'medium' && lastNormalized === 'medium') {
+        const alternatives = CAMERA_ANGLE_KEYWORDS.filter((item) => item !== 'medium');
+        keyword = alternatives[(sceneIndex + 2) % alternatives.length] || keyword;
+    }
     if (lastKeyword && normalizedKeyword === lastKeyword.toLowerCase()) {
         const currentIndex = CAMERA_ANGLE_KEYWORDS.findIndex((item) => item === normalizedKeyword);
         const nextIndex = currentIndex >= 0
             ? (currentIndex + 1) % CAMERA_ANGLE_KEYWORDS.length
             : (sceneIndex + 1) % CAMERA_ANGLE_KEYWORDS.length;
         keyword = CAMERA_ANGLE_KEYWORDS[nextIndex];
+        return CAMERA_PROMPT_FALLBACKS[keyword] || basePrompt;
+    }
+    if (shouldRotate) {
         return CAMERA_PROMPT_FALLBACKS[keyword] || basePrompt;
     }
     return basePrompt;
@@ -608,25 +622,44 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
     });
     const femaleSlots = ['WomanA', 'WomanB', 'WomanC', 'WomanD'];
     const maleSlots = ['ManA', 'ManB', 'ManC'];
+    const usedSlots = new Set<string>();
     let femaleIndex = 0;
     let maleIndex = 0;
+
+    const getPreferredSlot = (name: string, role?: string) => {
+        const combined = `${name} ${role || ''}`.trim();
+        if (/캐디|caddy/i.test(combined)) return 'WomanD';
+        if (/(마누라|와이프|아내|부인|wife|spouse)/i.test(combined)) return 'WomanA';
+        return '';
+    };
+
+    const pickNextSlot = (slots: string[], index: number) => {
+        let cursor = index;
+        while (cursor < slots.length && usedSlots.has(slots[cursor])) {
+            cursor += 1;
+        }
+        return slots[cursor] || slots[slots.length - 1];
+    };
 
     characters.forEach((char) => {
         const name = char.name.trim();
         if (!name) return;
-        const isCaddy = /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
-        if (isCaddy) {
-            mapping.set(name, 'WomanD');
+        const preferred = getPreferredSlot(name, char.role);
+        if (preferred && !usedSlots.has(preferred)) {
+            mapping.set(name, preferred);
+            usedSlots.add(preferred);
             return;
         }
         if (char.gender === 'male') {
-            const slot = maleSlots[maleIndex] || maleSlots[maleSlots.length - 1];
+            const slot = pickNextSlot(maleSlots, maleIndex);
             mapping.set(name, slot);
+            usedSlots.add(slot);
             maleIndex += 1;
             return;
         }
-        const slot = femaleSlots[femaleIndex] || femaleSlots[femaleSlots.length - 1];
+        const slot = pickNextSlot(femaleSlots, femaleIndex);
         mapping.set(name, slot);
+        usedSlots.add(slot);
         femaleIndex += 1;
     });
 
@@ -1928,7 +1961,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         sceneNumber: number,
         characterIds: string[],
         characterMap: Map<string, ManualCharacterPrompt>,
-        guidance?: { expression?: string; camera?: string }
+        guidance?: { expression?: string; camera?: string; action?: string; background?: string }
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
         let remainder = (rawPrompt || '').trim();
@@ -1948,6 +1981,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         // If AI already wrote a long prompt, we want to replace its generic character descriptions
         // with our specific [Person X] markers to ensure consistency while avoiding "A stunning Korean woman" appearing twice.
         
+        const actionChunks = (guidance?.action || '').split(/\s*,\s*/).filter(Boolean);
+        const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
+
         const identityBlock = characterIds
             .map((id, index) => {
                 const meta = characterMap.get(id);
@@ -1965,16 +2001,21 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     ? `accessorized with ${meta.accessories.join(', ')}`
                     : '';
                 
+                const personAction = actionChunks[index] || actionChunks[0] || '';
+                const personExpression = expressionChunks[index] || expressionChunks[0] || '';
+
                 const descriptor = [
                     meta.identity,
                     fallbackHair,
                     fallbackBody,
                     outfitPhrase,
-                    accessoryPhrase
+                    accessoryPhrase,
+                    personAction ? `action: ${personAction}` : '',
+                    personExpression ? `expression: ${personExpression}` : ''
                 ].filter(Boolean).join(', ');
                 
                 // Use Person index for the marker
-                return `[Person ${index + 1}: ${descriptor}]`;
+                return `[Person ${index + 1} (${meta.slotLabel}): ${descriptor}]`;
             })
             .filter(Boolean)
             .join(', ');
@@ -1982,10 +2023,24 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         // Try to find where the AI described characters and replace or suppress
         // For now, let's keep it simple: Start with our identity markers, then add the rest.
         const parts = [PROMPT_CONSTANTS.START];
+        const actionPrompt = guidance?.action ? translateActionToEnglish(guidance.action) : '';
+        const cameraPrompt = guidance?.camera || '';
+        const isWideShot = /\bwide\b|establishing|panoramic|bird\'s-eye|overhead/i.test(cameraPrompt);
+        const backgroundPrompt = guidance?.background ? guidance.background.trim() : '';
+        const environmentBoost = isWideShot
+            ? 'scenic backdrop, wide field of view, deep focus, sharp background details'
+            : 'environment context';
+        const environmentPrompt = [backgroundPrompt, environmentBoost]
+            .filter(Boolean)
+            .join(', ');
         
-        if (guidance?.camera) parts.push(guidance.camera);
+        if (cameraPrompt) parts.push(cameraPrompt);
+        if (environmentPrompt) parts.push(environmentPrompt);
         if (identityBlock) parts.push(identityBlock);
-        if (guidance?.expression) parts.push(`[${guidance.expression}]`);
+        if (characterIds.length === 1) {
+            if (guidance?.expression) parts.push(`[${guidance.expression}]`);
+            if (actionPrompt) parts.push(actionPrompt);
+        }
         
         // Suppress AI's attempt to REDESCRIBE characters if we already have the block
         // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
@@ -2000,6 +2055,23 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const namePattern = new RegExp(`(A\\s+stunning\\s+Korean\\s+woman|A\\s+handsome\\s+Korean\\s+man|Slot\\s+${meta.slotLabel}|${meta.slotLabel})`, 'gi');
             cleanedRemainder = cleanedRemainder.replace(namePattern, '').trim();
         });
+        if (actionPrompt && guidance?.action) {
+            cleanedRemainder = cleanedRemainder.replace(guidance.action, '').trim();
+        }
+        cleanedRemainder = cleanedRemainder
+            .replace(/\bwearing\s+[^,]+/gi, '')
+            .replace(/\boutfit:\s*[^,]+/gi, '')
+            .replace(/\bin\s+a\s+[^,]+\s+(knit|coat|jacket|puffer|vest|turtleneck|sweater|hoodie)\b/gi, '')
+            .trim();
+        if (isWideShot) {
+            cleanedRemainder = cleanedRemainder
+                .replace(/shallow depth of field/gi, '')
+                .replace(/studio (backdrop|lighting)/gi, '')
+                .replace(/portrait (lighting|background|shot)/gi, '')
+                .trim();
+        }
+        const adjectivePattern = /\b(stunning|beautiful|attractive|gorgeous|sexy|elegant|handsome)\b\s+(korean\s+)?(woman|man|female|male|lady|gentleman|caddy)\b/gi;
+        cleanedRemainder = cleanedRemainder.replace(adjectivePattern, '').trim();
         
         // Clean up messy commas from replacement
         cleanedRemainder = cleanedRemainder.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
@@ -2188,6 +2260,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             let lastExpressionKeyword = '';
             let lastCameraKeyword = '';
             let lastActionFlavor = '';
+            let lastGroupActionFlavor = '';
 
             const newScenes = scenesSource.map((scene, idx) => {
                 const sceneNumber = scene.sceneNumber || idx + 1;
@@ -2228,12 +2301,20 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 }
                 const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
                 lastActionFlavor = actionFlavor;
+                const isGroupShot = sceneCharacterIds.length >= 2;
+                const groupActionFlavor = isGroupShot
+                    ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
+                    : '';
+                if (groupActionFlavor) {
+                    lastGroupActionFlavor = groupActionFlavor;
+                }
                 const cleanedLongPrompt = stripCameraPrefix(stripLongPromptMarkers(scene.longPrompt || ''));
                 const narrativeParts = mergeNarrativeParts([
+                    scene.background,
                     scene.summary,
                     scene.action,
-                    scene.background,
                     actionFlavor,
+                    groupActionFlavor,
                     cleanedLongPrompt
                 ]);
                 const normalizedPrompt = composeManualPrompt(
@@ -2241,7 +2322,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     sceneNumber,
                     sceneCharacterIds,
                     autoCharacterMap,
-                    { expression, camera: cameraPrompt }
+                    { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
                 );
                 const characterInfos = sceneCharacterIds
                     .map((id) => autoCharacterMap.get(id))
@@ -3211,6 +3292,7 @@ ${scriptInput}
             let lastExpressionKeyword = '';
             let lastCameraKeyword = '';
             let lastActionFlavor = '';
+            let lastGroupActionFlavor = '';
 
             const newScenes = scenesSource.map((scene, idx) => {
                 const sceneNumber = scene.sceneNumber || idx + 1;
@@ -3251,12 +3333,20 @@ ${scriptInput}
                 }
                 const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
                 lastActionFlavor = actionFlavor;
+                const isGroupShot = sceneCharacterIds.length >= 2;
+                const groupActionFlavor = isGroupShot
+                    ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
+                    : '';
+                if (groupActionFlavor) {
+                    lastGroupActionFlavor = groupActionFlavor;
+                }
                 const cleanedLongPrompt = stripCameraPrefix(stripLongPromptMarkers(scene.longPrompt || ''));
                 const narrativeParts = mergeNarrativeParts([
+                    scene.background,
                     scene.summary,
                     scene.action,
-                    scene.background,
                     actionFlavor,
+                    groupActionFlavor,
                     cleanedLongPrompt
                 ]);
                 const normalizedPrompt = composeManualPrompt(
@@ -3264,7 +3354,7 @@ ${scriptInput}
                     sceneNumber,
                     sceneCharacterIds,
                     autoCharacterMap,
-                    { expression, camera: cameraPrompt }
+                    { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
                 );
                 const characterInfos = sceneCharacterIds
                     .map((id) => autoCharacterMap.get(id))

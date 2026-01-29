@@ -191,6 +191,46 @@
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:45:23.555Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582723555_2026-01-28T06-45-49-975Z.png"
+    },
+    {
+      "id": "outfit-1769661992994",
+      "name": "제트 블랙 오프숄더 셔링 미니 보디콘 드레스 + 매칭 초커",
+      "prompt": "minimalist jet black bodycon mini dress featuring a strapless bandeau neckline with a sleek horizontal cut, tight-fitting silhouette with dense horizontal ruching and gathered fabric details along the sides and torso, crafted from a smooth matte stretch jersey or spandex blend with an opaque finish, mid-thigh length straight hemline, paired with a matching wide black fabric choker necklace in the same material and color, creating a seamless and coordinated monochromatic look, pull-on construction with no visible hardware or closures, clean finished edges for a contemporary streetwear aesthetic",
+      "category": "ROYAL",
+      "createdAt": "2026-01-29T04:46:32.994Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769661992994_2026-01-29T04-47-02-528Z.png"
+    },
+    {
+      "id": "outfit-1769662176163",
+      "name": "오프화이트 루싱 디테일 튜브 탑 보디콘 미니 드레스",
+      "prompt": "minimalist off-white strapless tube top bodycon mini dress, form-fitting silhouette with vertical ruching and gathered fabric details along the side seams, clean horizontal bandeau neckline without straps, opaque medium-weight stretch fabric with a smooth matte finish, short mini length hitting mid-thigh, structured bodice construction, paired with a delicate thin double-layered silver chain necklace, minimalist white pointed-toe stiletto pumps with ankle straps and polished finish, monochromatic clean aesthetic",
+      "category": "ROYAL",
+      "createdAt": "2026-01-29T04:49:36.163Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662176163_2026-01-29T04-50-06-728Z.png"
+    },
+    {
+      "id": "outfit-1769662612888",
+      "name": "오트밀 베이지 골지 니트 롱슬리브 미니 원피스 + 아이보리 숄더백",
+      "prompt": "sophisticated oatmeal beige monochrome ensemble featuring a form-fitting long-sleeved mini bodycon dress, crafted from a fine-gauge ribbed knit material with a soft matte texture, high crew neckline with a clean finished edge, seamless shoulder construction leading into full-length sleeves, the skirt portion features a dense vertical ribbing pattern for structural contrast, mid-thigh length hemline with a neat straight finish,",
+      "category": "ROYAL",
+      "createdAt": "2026-01-29T04:56:52.888Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662612888_2026-01-29T04-57-25-178Z.png"
+    },
+    {
+      "id": "outfit-1769662745091",
+      "name": "매트 블랙 롱슬리브 크루넥 탑 + 매치 하이웨이스트 타이즈",
+      "prompt": "sleek minimalist all-black ensemble featuring a fitted long-sleeve crew neck top and matching high-waisted leggings, crafted from a smooth matte-finish technical fabric with moderate opacity and a slight stretch, opaque medium-weight material, top has a seamless-looking construction with fine ribbed texture at the cuffs and hem, slim-fit silhouette accentuating the waistline, paired with coordinating black athletic tights, accessorized with a delicate silver chain necklace with a small circular pendant, a gold-toned watch with a black leather strap on the left wrist, small silver hoop earrings, and a black leather clutch bag with a structured rectangular shape, clean-cut aesthetic with emphasis on monochromatic layering and precise tailoring",
+      "category": "YOGA",
+      "createdAt": "2026-01-29T04:59:05.091Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662745091_2026-01-29T05-04-23-977Z.png"
+    },
+    {
+      "id": "outfit-1769663341703",
+      "name": "베이지 골지 크롭 니트 + 빈티지 워싱 데님 쇼츠",
+      "prompt": "minimalist casual summer outfit featuring a long-sleeve crop top in a warm beige sand color, constructed from a medium-weight ribbed knit fabric with a visible vertical cord texture and matte finish, featuring a wide scoop neckline and fitted silhouette that ends above the navel. paired with high-waisted denim hot pants in a medium indigo wash with vintage fading and distressed details including frayed raw-cut hems and subtle whiskering, secured by a metallic brass button and zip fly closure. accessories include a delicate gold chain bracelet on the right wrist and a classic gold watch with a dark leather strap on the left wrist, creating a clean urban aesthetic through balanced textures of knit and denim.",
+      "category": "ROYAL",
+      "createdAt": "2026-01-29T05:09:01.703Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769663341703_2026-01-29T05-10-19-417Z.png"
     }
   ],
   "categories": [

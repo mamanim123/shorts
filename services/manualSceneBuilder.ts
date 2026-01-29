@@ -54,6 +54,9 @@ export const buildCharacterExtractionPrompt = (options: {
   const lines = scriptLines.filter(Boolean);
   const step2Rules = getShortsLabStep2PromptRules();
   const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
+
+
+
   const customPrompt = fillStep2PromptTemplate(step2Rules.characterPrompt, {
     DEFAULT_GENDER: defaultGender,
     SCRIPT_LINES: lineBlock
@@ -159,6 +162,23 @@ export const buildManualSceneDecompositionPrompt = (options: {
   const step2Rules = getShortsLabStep2PromptRules();
   const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
 
+  const shotQualityRule = `## 🎥 샷 품질 고도화 규칙 (매우 중요!)
+1) **배경 일관성 (Environment Continuity)**:
+   - 첫 씬에서 설정된 장소/배경은 대본에 명시된 이동이 없으면 끝까지 유지한다.
+   - 골프장/설산 배경을 실내/스튜디오로 바꾸지 말 것.
+2) **다인원 동작 다양성 (Action Diversity)**:
+   - 2명 이상 등장 시 각 인물의 동작을 서로 다르게 설정한다.
+   - 예: Person1=스윙 준비, Person2=박수/웃음, Person3=고개 돌림.
+3) **카메라 앵글 다양성**:
+   - 미디엄샷을 연속으로 사용하지 말 것.
+   - close-up, wide, POV, over-the-shoulder 등을 섞어라.
+4) **Candid Shot 스타일**:
+   - 자연스럽고 우연히 찍힌 느낌을 강조한다.
+   - 키워드 예: candid moment, natural interaction, captured mid-action.
+5) **배경 가시성 강화**:
+   - wide/establishing shot에서는 배경이 선명하게 보이도록 deep focus, sharp background를 포함한다.
+   - 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.`;
+
   // 겨울 악세서리 규칙 추가
   const winterAccessoriesRule = enableWinterAccessories
     ? `## ❄️ 겨울 악세서리 규칙 (필수!)
@@ -190,7 +210,7 @@ export const buildManualSceneDecompositionPrompt = (options: {
     WINTER_ACCESSORIES_EXAMPLE: winterAccessoriesExample
   });
   if (customPrompt.trim()) {
-    return customPrompt;
+    return `${customPrompt}\n\n${shotQualityRule}`;
   }
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
@@ -206,6 +226,8 @@ export const buildManualSceneDecompositionPrompt = (options: {
 5) summary/action/background는 짧고 명확한 영어 묘사로 작성
 6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
 7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
+
+${shotQualityRule}
 
 ## 대본 라인
 ${lines.map((line, index) => `${index + 1}. ${line}`).join('\n')}

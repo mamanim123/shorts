@@ -235,10 +235,28 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
   let isChanged = false;
   const deepVNeckRegex = /deep\s*v[-\s]?neck(?:line)?/gi;
   const deepNeckRegex = /deep\s*neck(?:line)?/gi;
-  if (deepVNeckRegex.test(newTop) || deepNeckRegex.test(newTop)) {
+  const vNeckRegex = /\b(v[-\s]?neck|v[-\s]?neckline|plunging\s*neckline)\b/gi;
+  const halterRegex = /\bhalter[-\s]?neck\b/gi;
+  const tubeTopRegex = /\btube\s*top\b/gi;
+  const camisoleRegex = /\bcamisole\b/gi;
+  const seeThroughRegex = /\bsee[-\s]?through\b/gi;
+  if (
+    deepVNeckRegex.test(newTop)
+    || deepNeckRegex.test(newTop)
+    || vNeckRegex.test(newTop)
+    || halterRegex.test(newTop)
+    || tubeTopRegex.test(newTop)
+    || camisoleRegex.test(newTop)
+    || seeThroughRegex.test(newTop)
+  ) {
     newTop = newTop
       .replace(deepVNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve')
-      .replace(deepNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve');
+      .replace(deepNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve')
+      .replace(vNeckRegex, 'Sleek turtleneck long-sleeve')
+      .replace(halterRegex, 'Elegant off-shoulder long-sleeve')
+      .replace(tubeTopRegex, 'Elegant off-shoulder long-sleeve')
+      .replace(camisoleRegex, 'Elegant mock-neck long-sleeve')
+      .replace(seeThroughRegex, 'Elegant mock-neck long-sleeve');
     isChanged = true;
   }
   shortSleeveKeywords.forEach((keyword) => {

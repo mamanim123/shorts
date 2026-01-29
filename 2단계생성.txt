@@ -10,7 +10,7 @@
 
 
 
-주제: 눈오는 골프장에 여사님들 출동
+주제: 눈오는 골프장에 아름다운 사모들
 
 장르: 코미디 / 유머
 
@@ -36,7 +36,7 @@
 
 8) 마크다운 금지, JSON만 출력
 
-{ "scriptBody": "아니, 이 날씨에 골프치러 온 사람 누구야? 응, 나야!\n온 세상이 하얀데 필드 나가는 우리 여사님들 열정, 진짜 아무도 못 말려요.\n남편은 집에서 TV 보라는데, 우리는 이미 클럽하우스에서 따뜻한 정종 한 잔 때리고 시작합니다.\n자, 비장하게 티박스 딱 섰는데, 골프공이 하얀색이라 눈밭에서 찾을 수가 없네?\n결국 가방 뒤져서 애들 쓰던 야광 오렌지색 공 꺼내고 난리 났어요.\n스윙 한 번 하면 공이 날아가는 게 아니라 눈송이가 싸대기를 때리는데, 이게 골프야 설국열차야?\n그 와중에 인생샷 건지겠다고 패딩 벗어던지고 폼 잡다가 다들 오들오들 떨고 있습니다.\n옆 홀에서 '사장님~' 부르는데 대답 없으면 그건 공 찾다가 눈 속에 파묻힌 거예요.\n근데 제일 웃긴 건 뭔지 알아? 공이 벙커에 빠졌는데 눈 때문에 벙커인지 그린인지 구분이 안 가!\n결국 대충 '이건 컨시드지?' 하고 발로 슥 밀어놓고 다 같이 빵 터졌네요.\n추워 죽겠지만 이 맛에 골프 치지, 다음 주에도 눈 오면 또 올 사람 여기 여기 붙어라!\n내일 아침에 다들 파스 붙이고 단톡방에서 만나요!" }
+{ "scriptBody": "한파 경보에 골프장 오는 사람은 우리밖에 없을걸?\n눈 덮인 필드가 마치 백화점 명품관 바닥처럼 하얗고 영롱하네.\n완벽한 풀착장에 명품 스윙까지 준비 완료!\n언니, 사진 찍을 거니까 거기 비싼 가방 옆에 서봐.\n자, 구도는 다리 길게 나오게 아래에서 위로!\n추위? 그게 뭐야? 인스타에 올릴 사진 한 장이면 영하 10도도 견디는 게 사모님들 의리잖아.\n근데 이상하다, 스윙할 때마다 왜 자꾸 뼈 마디에서 소리가 나지?\n앗, 언니 잠깐만! 방금 공 친 거야, 아니면 눈덩이 던진 거야?\n공이 하얀색이라 눈밭에서 찾을 수가 없네, 오늘 경기는 여기서 종료!\n캐디님, 공 찾는 건 포기하고 그냥 그늘집 가서 정종이나 한 잔 하러 가요." }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -60,31 +60,27 @@
 
 ## 대본 라인
 
-1. 아니, 이 날씨에 골프치러 온 사람 누구야? 응, 나야!
+1. 한파 경보에 골프장 오는 사람은 우리밖에 없을걸?
 
-2. 온 세상이 하얀데 필드 나가는 우리 여사님들 열정, 진짜 아무도 못 말려요.
+2. 눈 덮인 필드가 마치 백화점 명품관 바닥처럼 하얗고 영롱하네.
 
-3. 남편은 집에서 TV 보라는데, 우리는 이미 클럽하우스에서 따뜻한 정종 한 잔 때리고 시작합니다.
+3. 완벽한 풀착장에 명품 스윙까지 준비 완료!
 
-4. 자, 비장하게 티박스 딱 섰는데, 골프공이 하얀색이라 눈밭에서 찾을 수가 없네?
+4. 언니, 사진 찍을 거니까 거기 비싼 가방 옆에 서봐.
 
-5. 결국 가방 뒤져서 애들 쓰던 야광 오렌지색 공 꺼내고 난리 났어요.
+5. 자, 구도는 다리 길게 나오게 아래에서 위로!
 
-6. 스윙 한 번 하면 공이 날아가는 게 아니라 눈송이가 싸대기를 때리는데, 이게 골프야 설국열차야?
+6. 추위? 그게 뭐야? 인스타에 올릴 사진 한 장이면 영하 10도도 견디는 게 사모님들 의리잖아.
 
-7. 그 와중에 인생샷 건지겠다고 패딩 벗어던지고 폼 잡다가 다들 오들오들 떨고 있습니다.
+7. 근데 이상하다, 스윙할 때마다 왜 자꾸 뼈 마디에서 소리가 나지?
 
-8. 옆 홀에서 '사장님~' 부르는데 대답 없으면 그건 공 찾다가 눈 속에 파묻힌 거예요.
+8. 앗, 언니 잠깐만! 방금 공 친 거야, 아니면 눈덩이 던진 거야?
 
-9. 근데 제일 웃긴 건 뭔지 알아? 공이 벙커에 빠졌는데 눈 때문에 벙커인지 그린인지 구분이 안 가!
+9. 공이 하얀색이라 눈밭에서 찾을 수가 없네, 오늘 경기는 여기서 종료!
 
-10. 결국 대충 '이건 컨시드지?' 하고 발로 슥 밀어놓고 다 같이 빵 터졌네요.
+10. 캐디님, 공 찾는 건 포기하고 그냥 그늘집 가서 정종이나 한 잔 하러 가요.
 
-11. 추워 죽겠지만 이 맛에 골프 치지, 다음 주에도 눈 오면 또 올 사람 여기 여기 붙어라!
-
-12. 내일 아침에 다들 파스 붙이고 단톡방에서 만나요!
-
-{ "characters": [ { "name": "주인공", "gender": "female" }, { "name": "여사님1", "gender": "female" }, { "name": "여사님2", "gender": "female" }, { "name": "남편", "gender": "male" }, { "name": "사장님", "gender": "unknown" } ], "lines": [ { "line_number": 1, "characters": ["주인공"] }, { "line_number": 2, "characters": ["주인공", "여사님1", "여사님2"] }, { "line_number": 3, "characters": ["주인공", "여사님1", "여사님2", "남편"] }, { "line_number": 4, "characters": ["주인공"] }, { "line_number": 5, "characters": ["주인공", "여사님1", "여사님2"] }, { "line_number": 6, "characters": ["주인공"] }, { "line_number": 7, "characters": ["주인공", "여사님1", "여사님2"] }, { "line_number": 8, "characters": ["사장님"] }, { "line_number": 9, "characters": ["주인공"] }, { "line_number": 10, "characters": ["주인공", "여사님1", "여사님2"] }, { "line_number": 11, "characters": ["주인공", "여사님1", "여사님2"] }, { "line_number": 12, "characters": ["주인공", "여사님1", "여사님2"] } ] }
+{ "characters": [ { "name": "주인공", "gender": "female" }, { "name": "지인1", "gender": "female" }, { "name": "캐디님", "gender": "unknown" } ], "lines": [ { "line_number": 1, "character_names": ["주인공", "지인1"] }, { "line_number": 2, "character_names": ["주인공"] }, { "line_number": 3, "character_names": ["주인공"] }, { "line_number": 4, "character_names": ["주인공", "지인1"] }, { "line_number": 5, "character_names": ["주인공"] }, { "line_number": 6, "character_names": ["주인공"] }, { "line_number": 7, "character_names": ["주인공"] }, { "line_number": 8, "character_names": ["주인공", "지인1"] }, { "line_number": 9, "character_names": ["주인공"] }, { "line_number": 10, "character_names": ["주인공", "캐디님"] } ] }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -256,29 +252,25 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 ## 대본 라인
 
-1. 아니, 이 날씨에 골프치러 온 사람 누구야? 응, 나야!
+1. 한파 경보에 골프장 오는 사람은 우리밖에 없을걸?
 
-2. 온 세상이 하얀데 필드 나가는 우리 여사님들 열정, 진짜 아무도 못 말려요.
+2. 눈 덮인 필드가 마치 백화점 명품관 바닥처럼 하얗고 영롱하네.
 
-3. 남편은 집에서 TV 보라는데, 우리는 이미 클럽하우스에서 따뜻한 정종 한 잔 때리고 시작합니다.
+3. 완벽한 풀착장에 명품 스윙까지 준비 완료!
 
-4. 자, 비장하게 티박스 딱 섰는데, 골프공이 하얀색이라 눈밭에서 찾을 수가 없네?
+4. 언니, 사진 찍을 거니까 거기 비싼 가방 옆에 서봐.
 
-5. 결국 가방 뒤져서 애들 쓰던 야광 오렌지색 공 꺼내고 난리 났어요.
+5. 자, 구도는 다리 길게 나오게 아래에서 위로!
 
-6. 스윙 한 번 하면 공이 날아가는 게 아니라 눈송이가 싸대기를 때리는데, 이게 골프야 설국열차야?
+6. 추위? 그게 뭐야? 인스타에 올릴 사진 한 장이면 영하 10도도 견디는 게 사모님들 의리잖아.
 
-7. 그 와중에 인생샷 건지겠다고 패딩 벗어던지고 폼 잡다가 다들 오들오들 떨고 있습니다.
+7. 근데 이상하다, 스윙할 때마다 왜 자꾸 뼈 마디에서 소리가 나지?
 
-8. 옆 홀에서 '사장님~' 부르는데 대답 없으면 그건 공 찾다가 눈 속에 파묻힌 거예요.
+8. 앗, 언니 잠깐만! 방금 공 친 거야, 아니면 눈덩이 던진 거야?
 
-9. 근데 제일 웃긴 건 뭔지 알아? 공이 벙커에 빠졌는데 눈 때문에 벙커인지 그린인지 구분이 안 가!
+9. 공이 하얀색이라 눈밭에서 찾을 수가 없네, 오늘 경기는 여기서 종료!
 
-10. 결국 대충 '이건 컨시드지?' 하고 발로 슥 밀어놓고 다 같이 빵 터졌네요.
-
-11. 추워 죽겠지만 이 맛에 골프 치지, 다음 주에도 눈 오면 또 올 사람 여기 여기 붙어라!
-
-12. 내일 아침에 다들 파스 붙이고 단톡방에서 만나요!
+10. 캐디님, 공 찾는 건 포기하고 그냥 그늘집 가서 정종이나 한 잔 하러 가요.
 
 
 
@@ -288,11 +280,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 - WomanB / Woman B
 
-- WomanC / Woman C
-
 - WomanD / Woman D
-
-- ManA / Man A
 
 
 
@@ -332,4 +320,4 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 - 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.
 
-{ "scenes": [ { "sceneNumber": 1, "scriptLine": "아니, 이 날씨에 골프치러 온 사람 누구야? 응, 나야!", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Close-up of protagonist laughing at the camera.", "action": "laughing heartily, pointing at herself", "background": "snowy golf course, white snow falling", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] laughing heartily and pointing at herself, snowy golf course background, snowflakes falling, high quality, 8k", "shortPrompt": "close-up, laughing Korean woman in 40s, white puffer jacket, snowy golf course" }, { "sceneNumber": 2, "scriptLine": "온 세상이 하얀데 필드 나가는 우리 여사님들 열정, 진짜 아무도 못 말려요.", "characterIds": ["WomanA", "WomanB", "WomanC"], "shotType": "쓰리샷", "summary": "Wide shot of three women walking on a snowy golf course.", "action": "walking together with golf bags, environment context", "background": "vast snowy golf course, trees covered in snow, wide landscape", "longPrompt": "unfiltered raw photograph, wide establishing shot, full body visible, environment context, deep focus, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] [Person 2: A stylish Korean woman in her 40s, short bob hairstyle, fit build, wearing Pink Thermal Golf Wear + White Ear Muffs] [Person 3: A sophisticated Korean woman in her 40s, ponytail hairstyle, slender build, wearing Navy Padded Vest + Grey Turtleneck] walking together with energy on a vast snowy golf course, sharp background, 8k", "shortPrompt": "wide shot, three women walking on snowy golf course, winter golf wear" }, { "sceneNumber": 3, "scriptLine": "남편은 집에서 TV 보라는데, 우리는 이미 클럽하우스에서 따뜻한 정종 한 잔 때리고 시작합니다.", "characterIds": ["WomanA", "WomanB", "WomanC"], "shotType": "쓰리샷", "summary": "Medium shot of women drinking at the clubhouse.", "action": "holding warm cups, clinking glasses, smiling", "background": "cozy golf clubhouse interior, wooden furniture, window showing snow", "longPrompt": "unfiltered raw photograph, medium shot, waist-up framing, natural pose, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] [Person 2: A stylish Korean woman in her 40s, short bob hairstyle, fit build, wearing Pink Thermal Golf Wear + White Ear Muffs] [Person 3: A sophisticated Korean woman in her 40s, ponytail hairstyle, slender build, wearing Navy Padded Vest + Grey Turtleneck] sitting at a wooden table in a clubhouse, holding warm cups of sake, clinking glasses and smiling, cozy lighting, 8k", "shortPrompt": "medium shot, women drinking in clubhouse, cozy atmosphere" }, { "sceneNumber": 4, "scriptLine": "자, 비장하게 티박스 딱 섰는데, 골프공이 하얀색이라 눈밭에서 찾을 수가 없네?", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Over-the-shoulder shot of WomanA looking at the snow.", "action": "standing at tee box, looking confused, searching for ball", "background": "tee box covered in snow, white golf ball hidden in snow", "longPrompt": "unfiltered raw photograph, over-the-shoulder shot, perspective view, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] standing at a snowy tee box, looking down at the white snow with a confused expression, searching for a hidden ball, snowy golf course, 8k", "shortPrompt": "over-the-shoulder, woman searching for golf ball in snow" }, { "sceneNumber": 5, "scriptLine": "결국 가방 뒤져서 애들 쓰던 야광 오렌지색 공 꺼내고 난리 났어요.", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "summary": "Close-up of women holding a bright orange golf ball.", "action": "WomanA holding orange ball, WomanB laughing", "background": "close-up of hands and faces, snowy background", "longPrompt": "unfiltered raw photograph, close-up shot, dramatic expression, face in focus, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] holding a bright neon orange golf ball, [Person 2: A stylish Korean woman in her 40s, short bob hairstyle, fit build, wearing Pink Thermal Golf Wear + White Ear Muffs] laughing hysterically next to her, snowy background, 8k", "shortPrompt": "close-up, women with neon orange golf ball, laughing" }, { "sceneNumber": 6, "scriptLine": "스윙 한 번 하면 공이 날아가는 게 아니라 눈송이가 싸대기를 때리는데, 이게 골프야 설국열차야?", "characterIds": ["WomanA"], "shotType": "POV", "summary": "POV shot of snow blowing into the camera during a swing.", "action": "snow splashing towards the camera", "background": "snowy golf field, motion blur of snow", "longPrompt": "unfiltered raw photograph, first-person POV shot, snow splashing towards the camera, motion blur of white snow flying, winter golf field background, dynamic action, looking at camera (POV target), 8k", "shortPrompt": "POV shot, snow splashing into camera, snowy golf field" }, { "sceneNumber": 7, "scriptLine": "그 와중에 인생샷 건지겠다고 패딩 벗어던지고 폼 잡다가 다들 오들오들 떨고 있습니다.", "characterIds": ["WomanA", "WomanB", "WomanC"], "shotType": "쓰리샷", "summary": "Wide shot of women shivering without jackets.", "action": "posing without jackets, shivering, hugging themselves", "background": "snowy green, jackets lying on the snow", "longPrompt": "unfiltered raw photograph, wide shot, revealing context, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing Grey Slim Fit Knit] [Person 2: A stylish Korean woman in her 40s, short bob hairstyle, fit build, wearing Pink Thermal Golf Wear] [Person 3: A sophisticated Korean woman in her 40s, ponytail hairstyle, slender build, wearing Navy Padded Vest + Grey Turtleneck] shivering and hugging their arms while trying to pose, white puffer jackets lying on the snow nearby, snowy golf course landscape, 8k", "shortPrompt": "wide shot, women shivering in light clothes on snow" }, { "sceneNumber": 8, "scriptLine": "옆 홀에서 '사장님~' 부르는데 대답 없으면 그건 공 찾다가 눈 속에 파묻힌 거예요.", "characterIds": ["ManA"], "shotType": "원샷", "summary": "Medium shot of a man buried in snow.", "action": "waist-deep in snow, looking around for a ball", "background": "deep snow bank on the side of a golf hole", "longPrompt": "unfiltered raw photograph, medium shot, natural pose, waist-up framing, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build, wearing Charcoal Knit + Black Golf Pants] buried waist-deep in a large snow bank on a golf course, looking around confused for a ball, snowy hills background, 8k", "shortPrompt": "medium shot, man buried in snow at golf course" }, { "sceneNumber": 9, "scriptLine": "근데 제일 웃긴 건 뭔지 알아? 공이 벙커에 빠졌는데 눈 때문에 벙커인지 그린인지 구분이 안 가!", "characterIds": ["WomanA"], "shotType": "close-up", "summary": "Close-up of WomanA pointing at the ground and laughing.", "action": "pointing down, face in focus, humorous expression", "background": "flat white snow, no visible bunker edges", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] pointing at the flat white snow on the ground and laughing at the camera, humorous expression, 8k", "shortPrompt": "close-up, laughing woman pointing at snow" }, { "sceneNumber": 10, "scriptLine": "결국 대충 '이건 컨시드지?' 하고 발로 슥 밀어놓고 다 같이 빵 터졌네요.", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "summary": "Medium shot of women cheating humorously.", "action": "WomanA kicking ball with foot, WomanB covering mouth and laughing", "background": "snowy green, golf hole visible", "longPrompt": "unfiltered raw photograph, medium shot, waist-up framing, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] using her foot to move a golf ball toward the hole, [Person 2: A stylish Korean woman in her 40s, short bob hairstyle, fit build, wearing Pink Thermal Golf Wear + White Ear Muffs] covering her mouth and laughing at the playful cheating, snowy green, 8k", "shortPrompt": "medium shot, woman moving golf ball with foot, friend laughing" }, { "sceneNumber": 11, "scriptLine": "추워 죽겠지만 이 맛에 골프 치지, 다음 주에도 눈 오면 또 올 사람 여기 여기 붙어라!", "characterIds": ["WomanA", "WomanB", "WomanC"], "shotType": "쓰리샷", "summary": "Wide shot of women gathering and raising hands.", "action": "gathering close, raising hands, bright smiles", "background": "sunset snowy golf course, golden light on snow", "longPrompt": "unfiltered raw photograph, wide shot, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] [Person 2: A stylish Korean woman in her 40s, short bob hairstyle, fit build, wearing Pink Thermal Golf Wear + White Ear Muffs] [Person 3: A sophisticated Korean woman in her 40s, ponytail hairstyle, slender build, wearing Navy Padded Vest + Grey Turtleneck] gathering in a circle, raising their hands up, cheering happily, sunset snowy golf course, golden hour light, 8k", "shortPrompt": "wide shot, women cheering on sunset snowy golf course" }, { "sceneNumber": 12, "scriptLine": "내일 아침에 다들 파스 붙이고 단톡방에서 만나요!", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Medium shot of WomanA waving goodbye.", "action": "waving at camera, holding a phone, winking", "background": "parking lot of golf course, evening snow", "longPrompt": "unfiltered raw photograph, medium shot, natural pose, waist-up framing, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing White Down Puffer Jacket + Luxury Golf Cap] waving at the camera, holding a smartphone in the other hand, winking playfully, evening snowy golf course parking lot background, 8k", "shortPrompt": "medium shot, woman waving with phone, snowy evening" } ] }
+{ "scenes": [ { "sceneNumber": 1, "scriptLine": "한파 경보에 골프장 오는 사람은 우리밖에 없을걸?", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "summary": "Two women laughing in the cold wind on a snowy golf course.", "action": "Laughing together while shivering slightly in the cold wind, looking around the empty course.", "background": "Snow-covered golf course, empty and frozen landscape, bright winter light.", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, [Person 1: Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt] [Person 2: Woman B, a elegant Korean woman in her 40s, neat bob hairstyle, fit athletic build, wearing premium navy quilted golf vest and white thermal pants] laughing together, cold breath visible, snowy golf course background, captured mid-action.", "shortPrompt": "Two elegant women laughing on snowy golf course, close-up portrait." }, { "sceneNumber": 2, "scriptLine": "눈 덮인 필드가 마치 백화점 명품관 바닥처럼 하얗고 영롱하네.", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Wide shot of Woman A admiring the white field.", "action": "Standing in the middle of the fairway, looking at the horizon with arms open.", "background": "Pristine white snow-covered fairway, deep focus, sharp background, clear winter sky.", "longPrompt": "unfiltered raw photograph, wide establishing shot, full body visible, environment context, Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt, looking at the snowy field with admiration, vast snowy golf course, bright sunlight reflecting on snow.", "shortPrompt": "Woman A standing on wide snowy fairway, admiring landscape." }, { "sceneNumber": 3, "scriptLine": "완벽한 풀착장에 명품 스윙까지 준비 완료!", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Woman A posing with a golf club.", "action": "Holding a driver and striking a confident pose, smiling at the camera.", "background": "Snowy tee box, winter golf course setting.", "longPrompt": "unfiltered raw photograph, medium shot, waist-up framing, natural pose, Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt, holding a golf driver, confident expression, snowy golf course background.", "shortPrompt": "Woman A posing with golf driver, medium shot." }, { "sceneNumber": 4, "scriptLine": "언니, 사진 찍을 거니까 거기 비싼 가방 옆에 서봐.", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "summary": "Over-the-shoulder shot of Woman A telling Woman B to pose.", "action": "Woman A holding a smartphone to take a photo of Woman B who is standing next to a luxury golf bag.", "background": "Golf course side with a luxury golf bag placed on the snow.", "longPrompt": "unfiltered raw photograph, over-the-shoulder shot, perspective view, [Person 1: Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt] [Person 2: Woman B, a elegant Korean woman in her 40s, neat bob hairstyle, fit athletic build, wearing premium navy quilted golf vest and white thermal pants] Woman B posing next to a luxury leather golf bag on snow, Woman A holding phone in foreground.", "shortPrompt": "Over-the-shoulder shot, Woman A taking photo of Woman B." }, { "sceneNumber": 5, "scriptLine": "자, 구도는 다리 길게 나오게 아래에서 위로!", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Close-up of Woman A concentrating on taking a photo.", "action": "Crouching down slightly, focusing on the smartphone screen with a serious but funny expression.", "background": "Snowy ground texture, blurry winter background.", "longPrompt": "unfiltered raw photograph, close-up shot, dramatic expression, face in focus, Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt, holding smartphone, crouching down for a low angle shot, funny determined expression, snowy background.", "shortPrompt": "Close-up of Woman A taking photo with smartphone." }, { "sceneNumber": 6, "scriptLine": "추위? 그게 뭐야? 인스타에 올릴 사진 한 장이면 영하 10도도 견디는 게 사모님들 의리잖아.", "characterIds": ["WomanB"], "shotType": "원샷", "summary": "POV shot of Woman B posing for the camera.", "action": "Looking directly at the camera with a bright smile and a finger heart gesture.", "background": "Beautiful snowy golf course landscape.", "longPrompt": "unfiltered raw photograph, first-person POV shot, Woman B, a elegant Korean woman in her 40s, neat bob hairstyle, fit athletic build, wearing premium navy quilted golf vest and white thermal pants, making a finger heart gesture, looking at camera (POV target), smiling brightly, snowy golf course background.", "shortPrompt": "POV shot of Woman B smiling at camera." }, { "sceneNumber": 7, "scriptLine": "근데 이상하다, 스윙할 때마다 왜 자꾸 뼈 마디에서 소리가 나지?", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Wide shot of Woman A swinging and feeling a crack in her joints.", "action": "After a swing, holding her lower back with a surprised and slightly painful expression.", "background": "Wide snowy tee box, frozen trees in the background.", "longPrompt": "unfiltered raw photograph, wide shot, revealing context, full body visible, Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt, holding golf club, touching her waist with a painful expression, frozen posture, vast snowy golf course.", "shortPrompt": "Wide shot of Woman A feeling back pain after swing." }, { "sceneNumber": 8, "scriptLine": "앗, 언니 잠깐만! 방금 공 친 거야, 아니면 눈덩이 던진 거야?", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "summary": "Medium shot of Woman A and Woman B confused by the snow.", "action": "Both looking down at the snow, Woman B pointing at a pile of snow, confused expressions.", "background": "Snow-covered ground with many white lumps.", "longPrompt": "unfiltered raw photograph, medium shot, natural pose, waist-up framing, [Person 1: Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt] [Person 2: Woman B, a elegant Korean woman in her 40s, neat bob hairstyle, fit athletic build, wearing premium navy quilted golf vest and white thermal pants] both looking at the snowy ground, Woman B pointing down, confused and funny faces, snowy golf course background.", "shortPrompt": "Woman A and Woman B looking confused at the snow." }, { "sceneNumber": 9, "scriptLine": "공이 하얀색이라 눈밭에서 찾을 수가 없네, 오늘 경기는 여기서 종료!", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Close-up of Woman A giving up with a playful shrug.", "action": "Shrugging shoulders with her hands up, looking at the camera with a 'what can I do' face.", "background": "Snowy golf course, soft winter lighting.", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt, shrugging shoulders, playful smile, snowy background, high-quality winter aesthetic.", "shortPrompt": "Close-up of Woman A shrugging playfully." }, { "sceneNumber": 10, "scriptLine": "캐디님, 공 찾는 건 포기하고 그냥 그늘집 가서 정종이나 한 잔 하러 가요.", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "summary": "Medium shot of Woman A talking to Caddy (Woman D).", "action": "Woman A putting an arm around Woman D's shoulder, pointing towards the clubhouse.", "background": "Pathway leading to the golf clubhouse in the snow.", "longPrompt": "unfiltered raw photograph, medium shot, natural pose, waist-up framing, [Person 1: Woman A, a stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing luxury white fur-trimmed golf down jacket and matching skirt] [Person 2: Woman D, a Korean woman in her 30s, wearing a professional golf caddy uniform with a wide-brimmed hat and vest] Woman A talking to Woman D while gesturing towards the distance, snowy golf course background.", "shortPrompt": "Woman A talking to Caddy, medium shot." } ] }

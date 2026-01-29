@@ -1476,9 +1476,10 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
     : `## 🚨 의상 선택 절대 규칙 (LLM 선택 모드)
 1) lockedOutfits 값은 반드시 **UNIFIED_OUTFIT_LIST**에서 골라 직접 채워야 합니다.
 2) "CHOOSE_FROM_UNIFIED_OUTFIT_LIST"라는 문구는 절대 그대로 출력하지 말고 실제 의상 명칭으로 치환하세요.
-3) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
-4) 의상 명칭은 한 글자도 바꾸지 말고 리스트의 원문 그대로 사용하세요.
-5) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
+3) **WomanA/WomanB/WomanD/ManA/ManB는 서로 다른 의상**을 선택해야 합니다. (중복 금지)
+4) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
+5) 의상 명칭은 한 글자도 바꾸지 말고 리스트의 원문 그대로 사용하세요.
+6) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
   const defaultHairSection = `## 💇 헤어스타일
 - **Woman A (지영)**: long soft-wave hairstyle
 - **Woman B (혜경)**: short chic bob cut

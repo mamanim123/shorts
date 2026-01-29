@@ -625,7 +625,7 @@ const ensureDynamicExpression = (prompt: string, sceneNumber: number): string =>
   ];
 
   // 이미 표정이 있는지 확인
-  const hasExpression = /biting|furrowed|wide eyes|sweating|flustered|smirking|pouting|nervous|shocked|confident|surprised|worried|happy|sad|angry|excited|curious|skeptical|amused/i.test(prompt);
+  const hasExpression = /biting|furrowed|wide eyes|sweating|flustered|smirking|pouting|nervous|shocked|confident|surprised|worried|happy|sad|angry|excited|curious|skeptical|amused|laughing|smiling/i.test(prompt);
 
   if (hasExpression) {
     return prompt;
@@ -634,9 +634,9 @@ const ensureDynamicExpression = (prompt: string, sceneNumber: number): string =>
   // 씬 번호에 따라 다른 표정 선택 (순환)
   const selectedExpression = expressions[sceneNumber % expressions.length];
 
-  // "Korean woman in her 40s," 또는 "Korean man in his 40s," 뒤에 표정 삽입
+  // [FIX] [Person 1: ...] 구문 인식 및 일반 패턴 모두 대응
   let result = prompt.replace(
-    /(Korean (?:woman|man) in (?:her|his) \d+s),/i,
+    /((?:\[Person \d+:[^\]]*?|Korean (?:woman|man) in (?:her|his) \d+s)),/i,
     `$1, ${selectedExpression},`
   );
 
@@ -691,10 +691,10 @@ const ensureDynamicAction = (prompt: string, sceneNumber: number): string => {
     `$1, ${selectedAction},`
   );
 
-  // 만약 표정이 없으면 "Korean woman/man" 뒤에 추가
+  // 만약 표정이 없으면 "Korean woman/man" 또는 "[Person 1: ...]" 뒤에 추가
   if (result === prompt) {
     result = prompt.replace(
-      /(Korean (?:woman|man) in (?:her|his) \d+s),/i,
+      /((?:\[Person \d+:[^\]]*?|Korean (?:woman|man) in (?:her|his) \d+s)),/i,
       `$1, ${selectedAction},`
     );
   }
@@ -774,7 +774,7 @@ const ensureCameraShot = (prompt: string, sceneNumber: number, characterCount: n
   if (!prompt) return prompt;
 
   // 이미 카메라 샷이 명시되어 있는지 확인
-  const hasCameraShot = /\b(two-shot|three-shot|over-the-shoulder|close-up|wide shot|medium shot|establishing shot|dutch angle|extreme close-up)\b/i.test(prompt);
+  const hasCameraShot = /\b(two-shot|three-shot|over-the-shoulder|close-up|wide shot|medium shot|establishing shot|dutch angle|extreme close-up|portrait shot|full body shot|waist-up shot|eye-level|low-angle|high-angle|canted angle|dutch shot|POV shot|first-person POV)\b/i.test(prompt);
 
   if (hasCameraShot) {
     return prompt; // 이미 카메라 샷이 있으면 그대로
@@ -1364,7 +1364,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
           id: char.id,
           name: char.name || preset?.name || char.id,
           role: preset?.role || 'supporting',
-          outfit: isWoman ? v3Vars.items[slotKey] || v3Vars.items.A : pickMaleOutfitForContext(userContext),
+          // [FIX] mappedCharacters에서 생성된 outfit을 우선 사용 (일관성 확보)
+          outfit: char.outfit || (isWoman ? v3Vars.items[slotKey] || v3Vars.items.A : pickMaleOutfitForContext(userContext)),
           hair: preset?.hair || 'natural hair',
           gender: isWoman ? 'FEMALE' : 'MALE'
         };
@@ -1411,22 +1412,25 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
         longPrompt = ensureCameraShot(longPrompt, index, characterIds.length);
         shortPrompt = ensureCameraShot(shortPrompt, index, characterIds.length);
 
-        // 중복 태그 제거
+        // 중복 태그 제거 및 정제
         const tagsToRemove = [
           "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
           "professional photography", "depth of field", "--ar 9:16", "--style raw",
-          "detailed texture", "magazine cover quality", "hyper-realistic"
+          "detailed texture", "magazine cover quality", "hyper-realistic", "unfiltered raw photograph",
+          "8k uhd", "8k", "High fashion photography", "Volumetric lighting", "Rim light", "Detailed skin texture"
         ];
 
         const cleanPrompt = (text: string) => {
           let cleaned = text;
           tagsToRemove.forEach(tag => {
-            const regex = new RegExp(tag.replace(/[-\/^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+            const regex = new RegExp(tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
             cleaned = cleaned.replace(regex, "");
           });
-          return cleaned.replace(/,\s*,/g, ",").trim().replace(/,$/, "");
+          // 연속 쉼표 정리 및 양끝 공백 제거
+          return cleaned.replace(/,\s*,/g, ",").replace(/\s+/g, " ").trim().replace(/^,|,$/g, "").trim();
         };
 
+        // [FIX] 중복 제거 후 필수 품질 태그만 깔끔하게 추가
         longPrompt = ensureAgeMention(cleanPrompt(longPrompt), input.targetAge) + qualitySuffix;
         shortPrompt = ensureAgeMention(cleanPrompt(shortPrompt), input.targetAge) + qualitySuffix;
 
@@ -1836,7 +1840,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
         const tagsToRemove = [
           "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
           "professional photography", "depth of field", "--ar 9:16", "--style raw",
-          "detailed texture", "magazine cover quality", "hyper-realistic"
+          "detailed texture", "magazine cover quality", "hyper-realistic", "unfiltered raw photograph",
+          "8k uhd", "8k", "High fashion photography", "Volumetric lighting", "Rim light", "Detailed skin texture"
         ];
 
         const cleanPrompt = (text: string) => {
@@ -1845,7 +1850,7 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
             const regex = new RegExp(tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
             cleaned = cleaned.replace(regex, "");
           });
-          return cleaned.split(',').map(s => s.trim()).filter(s => s.length > 0).join(', ');
+          return cleaned.replace(/,\s*,/g, ",").replace(/\s+/g, " ").trim().replace(/^,|,$/g, "").trim();
         };
 
         if (scene.longPrompt) {

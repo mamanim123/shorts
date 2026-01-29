@@ -250,13 +250,13 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
     || seeThroughRegex.test(newTop)
   ) {
     newTop = newTop
-      .replace(deepVNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve')
-      .replace(deepNeckRegex, 'Elegant Mock-neck tight-fitting long-sleeve')
-      .replace(vNeckRegex, 'Sleek turtleneck long-sleeve')
-      .replace(halterRegex, 'Elegant off-shoulder long-sleeve')
-      .replace(tubeTopRegex, 'Elegant off-shoulder long-sleeve')
-      .replace(camisoleRegex, 'Elegant mock-neck long-sleeve')
-      .replace(seeThroughRegex, 'Elegant mock-neck long-sleeve');
+      .replace(deepVNeckRegex, 'Elegant boat-neck fitted knit')
+      .replace(deepNeckRegex, 'Elegant boat-neck fitted knit')
+      .replace(vNeckRegex, 'Elegant mock-neck fitted top with defined shoulder line')
+      .replace(halterRegex, 'Elegant high-cut off-shoulder long-sleeve')
+      .replace(tubeTopRegex, 'Elegant high-cut off-shoulder long-sleeve')
+      .replace(camisoleRegex, 'Elegant soft cowl-neck fitted knit')
+      .replace(seeThroughRegex, 'Elegant mock-neck fitted top with inner panel');
     isChanged = true;
   }
   shortSleeveKeywords.forEach((keyword) => {

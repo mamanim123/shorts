@@ -5,6 +5,9 @@ const STORAGE_KEY = 'shorts-lab-genre-guidelines';
 const BACKUP_STORAGE_KEY = 'shorts-lab-genre-guidelines-backups';
 const MAX_BACKUPS = 5;
 
+// ⚠️ 중요: 백업 키 변경 방지 - 기존 백업 보호
+const BACKUP_KEY_VERSION = 'v1';
+
 primeAppStorageCache();
 
 const buildDefaultGenres = (): LabGenreGuidelineEntry[] =>
@@ -169,10 +172,13 @@ export const shortsLabGenreManager = {
   },
 
   reset: async (): Promise<LabGenreGuidelineEntry[]> => {
-    cachedGenres = buildDefaultGenres();
-    writeStoredGenres(cachedGenres);
-    notifyListeners(cachedGenres);
-    return cachedGenres;
+    // ⚠️ 중요: reset은 장르 데이터만 초기화하고 백업은 삭제하지 않습니다
+    const defaults = buildDefaultGenres();
+    cachedGenres = defaults;
+    writeStoredGenres(defaults);
+    notifyListeners(defaults);
+    // 백업은 보존 - 삭제하지 않음
+    return defaults;
   },
   createBackup: async (name?: string): Promise<LabGenreBackup[]> => {
     const currentGenres = cachedGenres || buildDefaultGenres();

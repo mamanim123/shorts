@@ -5072,7 +5072,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onDeleteFemaleCharacter,
     onDeleteMaleCharacter
 }) => {
-    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules'>('genres');
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
@@ -5876,6 +5876,32 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 }`}
                         >
                             의상규칙
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('winter_accessories');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'winter_accessories'
+                                ? 'bg-cyan-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            겨울악세
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('outfit_selection');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'outfit_selection'
+                                ? 'bg-orange-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            의상선택
                         </button>
                     </div>
                 </div>
@@ -6892,6 +6918,163 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 겨울악세 탭 */}
+                    {activeTab === 'winter_accessories' && (
+                        <div className="space-y-6">
+                            {/* ON 상태 지침 */}
+                            <div className="bg-cyan-900/20 border border-cyan-700/30 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">❄️</span>
+                                    <h3 className="text-lg font-bold text-cyan-400">겨울 악세서리 ON</h3>
+                                </div>
+                                <p className="text-sm text-slate-300 mb-4">
+                                    모든 씬의 이미지 프롬프트에 겨울 악세서리가 자동으로 추가됩니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>beanie (비니), earmuffs (귀마개), scarf (목도리), gloves (장갑), winter boots (겨울 부츠) 중 1~2개를 자연스럽게 배치</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>겨울 키워드(눈, 스키, 겨울 등)가 있을 때 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>악세서리는 "accessorized with [item1], [item2]" 형식으로 프롬프트에 추가</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>딥브이넥 → 오프숄더, 짧은소매 → 긴팔로 강제 치환</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-cyan-700/30">
+                                    <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider mb-2">예시</h4>
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-slate-500 font-mono">accessorized with stylish pom-pom beanie, leather gloves</p>
+                                        <p className="text-xs text-slate-500 font-mono">accessorized with fur earmuffs, cashmere scarf</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* OFF 상태 지침 */}
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">🚫</span>
+                                    <h3 className="text-lg font-bold text-slate-400">겨울 악세서리 OFF</h3>
+                                </div>
+                                <p className="text-sm text-slate-400 mb-4">
+                                    겨울 악세서리를 자동으로 추가하지 않습니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-500 flex items-start gap-2">
+                                            <span className="text-slate-600 mt-0.5">•</span>
+                                            <span>기존 의상 프롬프트를 그대로 사용</span>
+                                        </li>
+                                        <li className="text-xs text-slate-500 flex items-start gap-2">
+                                            <span className="text-slate-600 mt-0.5">•</span>
+                                            <span>수동으로 겨울 악세서리를 추가하려면 프롬프트에 직접 입력</span>
+                                        </li>
+                                        <li className="text-xs text-slate-500 flex items-start gap-2">
+                                            <span className="text-slate-600 mt-0.5">•</span>
+                                            <span>겨울 키워드가 있어도 상의 변환 없이 원본 의상 유지</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 의상선택 탭 */}
+                    {activeTab === 'outfit_selection' && (
+                        <div className="space-y-6">
+                            {/* 랜덤 선택 (ON) 지침 */}
+                            <div className="bg-orange-900/20 border border-orange-700/30 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">🎲</span>
+                                    <h3 className="text-lg font-bold text-orange-400">의상 랜덤 선택 ON</h3>
+                                </div>
+                                <p className="text-sm text-slate-300 mb-4">
+                                    로컬 카탈로그에서 미리 정의된 의상을 무작위로 선택합니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-orange-300 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>pickFemaleOutfit(), pickMaleOutfit() 함수가 로컬 의상 풀에서 랜덤 선택</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>같은 의상이 중복되지 않도록 필터링</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>Woman A, B, D와 Man A, B 각각 독립적으로 선택</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>빠른 처리 속도 (LLM 호출 없음)</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-orange-700/30">
+                                    <h4 className="text-xs font-semibold text-orange-300 uppercase tracking-wider mb-2">장점</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">⚡ 속도 빠름</span>
+                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">📊 결과 일관성</span>
+                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">🎯 예측 가능한 스타일</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* LLM 선택 (OFF) 지침 */}
+                            <div className="bg-purple-900/20 border border-purple-700/30 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">🤖</span>
+                                    <h3 className="text-lg font-bold text-purple-400">의상 LLM 선택 ON</h3>
+                                </div>
+                                <p className="text-sm text-slate-300 mb-4">
+                                    AI가 주제와 장르에 맞는 의상을 실시간으로 생성합니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-purple-300 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>프롬프트 빌드 시 outfitPlaceholder로 표시</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>LLM이 주제, 장르, 캐릭터 특성을 고려하여 의상 생성</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>더 창의적이고 주제에 맞는 의상 가능</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>약간의 처리 시간 추가 소요</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-purple-700/30">
+                                    <h4 className="text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">장점</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">✨ 창의적인 의상</span>
+                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">🎭 주제 적합성</span>
+                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">🌈 다양성</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

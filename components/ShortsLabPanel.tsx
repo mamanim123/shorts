@@ -5187,6 +5187,9 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [characterRulesBackupName, setCharacterRulesBackupName] = useState('');
     // 아코디언 상태 (펼쳐진 캐릭터 ID들)
     const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
+    // 섹션 아코디언 상태 (여성/남성 캐릭터 섹션 펼침/접힘)
+    const [isFemaleSectionExpanded, setIsFemaleSectionExpanded] = useState(true);
+    const [isMaleSectionExpanded, setIsMaleSectionExpanded] = useState(true);
 
     React.useEffect(() => {
         if (step2RulesDirty) return;
@@ -6453,11 +6456,21 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
                             <div className="space-y-6">
                                 {/* Female Characters */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div
+                                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                        onClick={() => setIsFemaleSectionExpanded(!isFemaleSectionExpanded)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                className={`w-5 h-5 text-blue-400 transition-transform ${isFemaleSectionExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                            <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                            <span className="text-xs text-slate-500">({characterRulesState.females.length}명)</span>
+                                        </div>
                                         <button
-                                            onClick={async () => {
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
                                                 try {
                                                     if (!onAddFemaleCharacter) return;
                                                     const updated = await onAddFemaleCharacter();
@@ -6484,6 +6497,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             추가
                                         </button>
                                     </div>
+                                    {isFemaleSectionExpanded && (
+                                        <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.females.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
                                         return (
@@ -6613,14 +6628,26 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             </div>
                                         );
                                     })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Male Characters */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div
+                                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                        onClick={() => setIsMaleSectionExpanded(!isMaleSectionExpanded)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                className={`w-5 h-5 text-blue-400 transition-transform ${isMaleSectionExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                            <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
+                                            <span className="text-xs text-slate-500">({characterRulesState.males.length}명)</span>
+                                        </div>
                                         <button
-                                            onClick={async () => {
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
                                                 try {
                                                     if (!onAddMaleCharacter) return;
                                                     const updated = await onAddMaleCharacter();
@@ -6647,6 +6674,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             추가
                                         </button>
                                     </div>
+                                    {isMaleSectionExpanded && (
+                                        <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.males.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
                                         return (
@@ -6750,6 +6779,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             </div>
                                         );
                                     })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Common Settings */}

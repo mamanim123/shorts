@@ -1427,7 +1427,9 @@ export const pickFemaleOutfit = (
     if (isMaleOutfit(item)) return false;
     if (allowList.length > 0 && !allowList.includes(item.name)) return false;
     if (excludeSet.has(item.name)) return false;
-    return true;
+    // SEXY 의상 필터링 - 폴백에서도 적용 (버그 수정)
+    if (isSexyGenre) return item.categories.includes('SEXY');
+    return !item.categories.includes('SEXY');
   });
 
   const poolToUse = candidates.length > 0 ? candidates : fallbackCandidates;

@@ -942,8 +942,8 @@ async function sendPromptToPage(activePage, config, prompt, serviceName, files =
 
     await new Promise(r => setTimeout(r, 1000));
 
-    // GEMINI, CLAUDE, DEEPSEEK는 Enter로 전송
-    if (serviceName === 'CLAUDE' || serviceName === 'GEMINI' || serviceName === 'DEEPSEEK') {
+    // GEMINI, CLAUDE, GENSPARK는 Enter로 전송
+    if (serviceName === 'CLAUDE' || serviceName === 'GEMINI' || serviceName === 'GENSPARK') {
         console.log(`[Puppeteer] Sending to ${serviceName} via Enter key...`);
         await activePage.keyboard.press('Enter');
     } else {

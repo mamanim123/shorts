@@ -32,6 +32,20 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 복수 지칭(예: "얘들아", "언니들", "친구들")이 있으면 최소 2명 이상의 인물로 분리하세요.
 이름이 없는 조연은 "지인1", "지인2"처럼 구분해 작성하세요.
 
+## 🎯 맥락 기반 인물 추출 (매우 중요!)
+단순히 이름이 언급된 인물만 추출하지 마세요. **맥락상 그 장면에 함께 있어야 할 인물**을 모두 추출하세요.
+
+### 필수 추출 패턴:
+1. **관찰/반응 패턴**: "A가 B를 쳐다봤다", "A가 B를 보고 놀랐다" → A와 B 모두 추출
+2. **상호작용 패턴**: "A가 B에게 건네다", "A가 B를 도왔다" → A와 B 모두 추출  
+3. **암시적 존재 패턴**: "다들 넋 놓고 쳐다봤다" → 쳐다본 대상과 관찰자들 모두 추출
+4. **대화 패턴**: 대사가 있으면 말하는 사람 + 듣는 사람 모두 추출
+
+### 추출 검증:
+- 각 라인에서 **동작의 주체**와 **동작의 대상**을 모두 확인했는가?
+- **리액션을 보이는 사람**이 누락되지 않았는가?
+- 이전 라인에서 등장한 인물이 갑자기 사라지지 않았는가?
+
 기본 성별: {{DEFAULT_GENDER}}
 
 ## 대본 라인
@@ -78,23 +92,40 @@ unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, lon
 | 씬 번호 | 권장 앵글 | 프롬프트 키워드 |
 |--------|----------|---------------|
 | Scene 1 (Hook) | **close-up** | close-up portrait shot, face in focus, shallow depth of field |
-| Scene 2 (Setup) | **wide** | wide establishing shot, full body visible, environment context |
+| Scene 2 (Setup) | **wide** | wide establishing shot, full body visible, environment context, deep focus |
 | Scene 3 | **medium** | medium shot, waist-up framing, natural pose |
-| Scene 4 | **over-the-shoulder** | over-the-shoulder shot, perspective view |
+| Scene 4 | **wide** | wide shot, full body, background emphasis, deep focus |
 | Scene 5 (Climax) | **close-up** | close-up shot, dramatic expression, face in focus |
-| Scene 6 | **POV** | first-person POV shot, subjective camera angle |
-| Scene 7 (Twist) | **wide** | wide shot, revealing context, full body visible |
-| Scene 8 (Outro) | **medium** | medium shot, natural pose, waist-up framing |
+| Scene 6 | **over-the-shoulder** | over-the-shoulder shot, perspective view |
+| Scene 7 (Twist) | **wide** | wide shot, revealing context, full body visible, environment storytelling |
+| Scene 8 | **POV** | first-person POV shot, subjective camera angle |
+| Scene 9-10 | **medium/wide** | 상황에 맞게 선택, 단 연속 중복 금지 |
+| Scene 11-12 (Outro) | **wide** | wide shot, final scene, background visible, deep focus |
 
 **⚠️ 필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
 **⚠️ 금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용
 
-### 앵글 다양성 체크리스트
-- ✅ close-up 최소 2개 이상 (Hook, Climax 필수)
-- ✅ wide 최소 2개 이상 (Setup, Twist 권장)
-- ✅ medium 2-3개
+### 앵글 다양성 체크리스트 (12씬 기준)
+- ✅ **wide 최소 4개** (Setup, Scene 4, Twist, Outro 필수) - 배경이 보여야 함!
+- ✅ close-up 최소 2개 (Hook, Climax 필수)
+- ✅ medium 최대 3개 (과다 사용 금지)
 - ✅ over-the-shoulder 또는 POV 중 최소 1개
 - ❌ 같은 앵글 3연속 사용 금지
+
+## 🌄 배경 가시성 강화 규칙 (쇼츠는 세로 화면!)
+쇼츠는 9:16 세로 화면이므로 미디움샷만 쓰면 배경이 전혀 보이지 않습니다.
+
+### 와이드 샷 필수 요소:
+1. **deep focus** - 배경까지 선명하게
+2. **environment context** - 장소가 무엇인지 명확히
+3. **full body visible** - 인물 전신이 보여야 배경도 보임
+4. **background details** - 눈, 나무, 건물 등 구체적 배경 묘사
+
+### 와이드 샷 배경 묘사 예시:
+\`\`\`
+wide establishing shot, deep focus, snowy golf course with pine trees in background, 
+falling snowflakes, winter morning atmosphere, distant mountains visible, ...
+\`\`\`
 
 ## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️
 POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
@@ -125,3 +156,4 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 `
 };
+

@@ -1,0 +1,25 @@
+
+
+---
+
+[SYSTEM DIRECTIVE: OH-MY-OPENCODE - ORACLE CONSULTATION]
+
+You are being invoked as **ORACLE**, the high-IQ reasoning specialist for debugging complex logic and architectural issues.
+
+**PROBLEM STATEMENT:**
+The user reports that in the "Shorts Lab" (쇼츠랩) Genre Manager, the **Prompt Rules (프롬프트 규칙)** cannot be modified. Specifically, when a user edits the JSON rules and clicks save, the changes are **reverted/reset** to their initial or default state immediately.
+
+**FILES TO ANALYZE (Read these first):**
+- `F:/projact/쇼츠대본생성기-v3.5.3/services/shortsLabPromptRulesManager.ts`
+- `F:/projact/쇼츠대본생성기-v3.5.3/hooks/useShortsLabPromptRulesManager.ts`
+- `F:/projact/쇼츠대본생성기-v3.5.3/components/ShortsLabPanel.tsx` (Focus on Genre Modal / Prompt Rules tab save handler)
+- `F:/projact/쇼츠대본생성기-v3.5.3/services/shortsLabPromptRulesDefaults.ts`
+
+**DIAGNOSTIC GOALS:**
+1.  **Identify the Reset Trigger**: Why does the state revert? Is there a `useEffect` in the hook that reloads the data from LocalStorage/Server while the save is in progress, or is the save failing silently?
+2.  **Verify Persistence**: Does `shortsLabPromptRulesManager.ts` correctly write to the backend or LocalStorage?
+3.  **Check for Overwrites**: Is `DEFAULT_PROMPT_RULES` being used in a way that overwrites the user-saved settings?
+4.  **Race Conditions**: Is there a race condition between `setRules` in the UI and the `load` call in the hook?
+5.  **Propose a Concrete Fix**.
+
+Please perform a thorough investigation and provide a detailed report on the cause and the solution.

@@ -1,11 +1,6 @@
 {
-  "active_plan": "F:\\test\\쇼츠대본생성기-v3.5.3\\.sisyphus\\plans\\shorts-lab-group-differentiation.md",
-  "started_at": "2026-01-29T05:34:00.000Z",
-  "session_ids": [
-    "ses_403408738ffeSKpErwdUfq3WX0",
-    "ses_402bf7ee8ffevhZO8LNM4QJLzQ",
-    "ses_3fe1b3afeffeAWAvQapZO8M1o7",
-    "ses_current"
-  ],
-  "plan_name": "shorts-lab-group-differentiation"
+  "active_plan": "F:\\projact\\쇼츠대본생성기-v3.5.3\\.sisyphus\\plans\\2step-gen-fix.md",
+  "started_at": "2026-01-30T13:13:12.942Z",
+  "session_ids": ["ses_3f0fdf48cffecvIGb5QLI8uJ97"],
+  "plan_name": "2step-gen-fix"
 }

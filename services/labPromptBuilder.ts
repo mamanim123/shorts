@@ -172,6 +172,104 @@ export const getWinterAccessoryPool = (): string[] => {
 };
 
 // ============================================
+// 고유 악세서리 분배 시스템 (v3.9.1 - 마마님 요청)
+// ============================================
+
+/**
+ * 4개 카테고리로 통합된 겨울 악세서리 풀
+ * - Head: 모자 + 귀마개
+ * - Neck: 목도리/스카프
+ * - Arms: 장갑
+ * - Legs: 레그워머/부츠
+ */
+const ACCESSORY_CATEGORIES = {
+  Head: [...WINTER_COLLECTION.HEADWEAR, ...WINTER_COLLECTION.EARMUFFS],
+  Neck: WINTER_COLLECTION.SCARVES,
+  Arms: WINTER_COLLECTION.GLOVES,
+  Legs: WINTER_COLLECTION.LEGS
+} as const;
+
+type AccessoryCategory = keyof typeof ACCESSORY_CATEGORIES;
+
+/**
+ * 캐릭터별 고유 악세서리 조합 분배
+ * 
+ * 규칙:
+ * 1. 인당 최대 2개 카테고리에서만 선택
+ * 2. 캐릭터 간 조합이 절대 중복되지 않음
+ * 3. 세션 내 일관성 유지 (한번 할당된 조합은 변하지 않음)
+ * 
+ * @param characterIds - 캐릭터 ID 목록 (예: ['WomanA', 'WomanB', 'ManA'])
+ * @returns 캐릭터별 악세서리 맵
+ */
+export const distributeUniqueWinterItems = (
+  characterIds: string[]
+): Record<string, { categories: AccessoryCategory[]; items: string[] }> => {
+  const result: Record<string, { categories: AccessoryCategory[]; items: string[] }> = {};
+  const usedCombinations = new Set<string>();
+  const allCategories: AccessoryCategory[] = ['Head', 'Neck', 'Arms', 'Legs'];
+  
+  // 2개 카테고리 조합 생성 (6가지: Head+Neck, Head+Arms, Head+Legs, Neck+Arms, Neck+Legs, Arms+Legs)
+  const generateCombinations = (): AccessoryCategory[][] => {
+    const combos: AccessoryCategory[][] = [];
+    for (let i = 0; i < allCategories.length; i++) {
+      for (let j = i + 1; j < allCategories.length; j++) {
+        combos.push([allCategories[i], allCategories[j]]);
+      }
+    }
+    return combos.sort(() => 0.5 - Math.random()); // 랜덤 셔플
+  };
+  
+  const pick = (arr: readonly string[]) => arr[Math.floor(Math.random() * arr.length)];
+  
+  const availableCombos = generateCombinations();
+  let comboIndex = 0;
+  
+  for (const charId of characterIds) {
+    let combo: AccessoryCategory[];
+    let comboKey: string;
+    
+    // 고유한 조합 찾기
+    let attempts = 0;
+    do {
+      if (comboIndex >= availableCombos.length) {
+        // 조합이 부족하면 1개 카테고리로 폴백
+        const singleCat = allCategories[attempts % allCategories.length];
+        combo = [singleCat];
+      } else {
+        combo = availableCombos[comboIndex];
+        comboIndex++;
+      }
+      comboKey = combo.sort().join('+');
+      attempts++;
+    } while (usedCombinations.has(comboKey) && attempts < 20);
+    
+    usedCombinations.add(comboKey);
+    
+    // 각 카테고리에서 아이템 선택
+    const items = combo.map(cat => pick(ACCESSORY_CATEGORIES[cat]));
+    
+    result[charId] = {
+      categories: combo,
+      items
+    };
+  }
+  
+  return result;
+};
+
+/**
+ * 캐릭터의 악세서리를 프롬프트 문자열로 변환
+ */
+export const formatAccessoriesForPrompt = (
+  accessories: { categories: AccessoryCategory[]; items: string[] }
+): string => {
+  if (!accessories || accessories.items.length === 0) return '';
+  return `, accessorized with ${accessories.items.join(', ')}`;
+};
+
+
+// ============================================
 // 타입 정의
 // ============================================
 
@@ -530,6 +628,83 @@ export const getCameraPromptForScene = (storyStage: string): string => {
   const mapping = cameraMap[storyStage] || cameraMap['buildup'];
   return mapping.prompt;
 };
+
+// ============================================
+// 카메라 앵글 다양화 시스템 (v3.9.1 - 마마님 요청)
+// ============================================
+
+/**
+ * 씬별 권장 카메라 앵글 (배경 강조를 위해 와이드 샷 비중 확대)
+ * 12씬 기준 와이드 샷 최소 4개 보장
+ */
+const SCENE_ANGLE_MAP: Record<number, { angle: string; prompt: string }> = {
+  1: { angle: 'close-up', prompt: 'close-up portrait shot, face in focus, shallow depth of field, dramatic lighting' },
+  2: { angle: 'wide', prompt: 'wide establishing shot, full body visible, environment context, deep focus, detailed background' },
+  3: { angle: 'medium', prompt: 'medium shot, waist-up framing, natural pose' },
+  4: { angle: 'wide', prompt: 'wide shot, full body, background emphasis, deep focus, environment storytelling' },
+  5: { angle: 'close-up', prompt: 'close-up shot, dramatic expression, face in focus, shallow depth of field' },
+  6: { angle: 'over-the-shoulder', prompt: 'over-the-shoulder shot, perspective view, layered depth' },
+  7: { angle: 'wide', prompt: 'wide shot, revealing context, full body visible, environment storytelling, deep focus' },
+  8: { angle: 'POV', prompt: 'first-person POV shot, subjective camera angle, target looking at camera' },
+  9: { angle: 'medium', prompt: 'medium shot, waist-up framing, natural interaction' },
+  10: { angle: 'wide', prompt: 'wide shot, context visible, full body, background details, deep focus' },
+  11: { angle: 'medium', prompt: 'medium shot, natural pose, waist-up framing' },
+  12: { angle: 'wide', prompt: 'wide establishing shot, final scene, background visible, deep focus, environment context' }
+};
+
+/**
+ * 연속 중복 방지를 위한 앵글 히스토리 추적
+ */
+let angleHistory: string[] = [];
+
+/**
+ * 앵글 히스토리 리셋 (새 생성 세션 시작 시 호출)
+ */
+export const resetAngleHistory = (): void => {
+  angleHistory = [];
+};
+
+/**
+ * 스마트 카메라 앵글 선택
+ * - 연속 2회 이상 동일 앵글 사용 방지
+ * - 3회 연속 동일 앵글 절대 금지
+ * - 와이드 샷 비중 확보
+ * 
+ * @param sceneNumber - 씬 번호 (1-12)
+ * @param totalScenes - 전체 씬 수
+ * @returns 카메라 앵글 프롬프트
+ */
+export const getSmartCameraPrompt = (sceneNumber: number, totalScenes: number = 12): { angle: string; prompt: string } => {
+  // 기본 권장 앵글 가져오기
+  const recommended = SCENE_ANGLE_MAP[sceneNumber] || SCENE_ANGLE_MAP[Math.min(sceneNumber, 12)];
+  
+  // 연속 중복 체크
+  const lastTwo = angleHistory.slice(-2);
+  
+  // 같은 앵글이 2번 연속이면 대체 앵글 선택
+  if (lastTwo.length >= 2 && lastTwo.every(a => a === recommended.angle)) {
+    const alternates: { angle: string; prompt: string }[] = [
+      { angle: 'wide', prompt: 'wide shot, full body visible, environment context, deep focus' },
+      { angle: 'medium', prompt: 'medium shot, waist-up framing, natural pose' },
+      { angle: 'over-the-shoulder', prompt: 'over-the-shoulder shot, perspective view' }
+    ].filter(alt => alt.angle !== recommended.angle);
+    
+    const chosen = alternates[0];
+    angleHistory.push(chosen.angle);
+    return chosen;
+  }
+  
+  angleHistory.push(recommended.angle);
+  return recommended;
+};
+
+/**
+ * 현재 씬까지의 와이드 샷 개수 확인
+ */
+export const getWideAngleCount = (): number => {
+  return angleHistory.filter(a => a === 'wide').length;
+};
+
 
 // ============================================
 // 한국어 동작 → 영어 변환 매핑 테이블

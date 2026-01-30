@@ -3190,11 +3190,27 @@ ${scriptInput}
             });
             const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
 
-            const characterList = allSlotIds.map((slotId) => ({
-                id: slotId,
-                name: '',
-                slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man ')
-            }));
+            // [v3.5.3] 의상 선택 방식 결정 (랜덤 선택 옵션 준수)
+            const characterList = allSlotIds.map((slotId) => {
+                const gender = slotId.startsWith('Woman') ? 'female' : 'male';
+                let outfit = '';
+
+                if (useRandomOutfits) {
+                    // 랜덤 선택 ON인 경우 로컬 카탈로그에서 미리 할당
+                    if (gender === 'female') {
+                        outfit = pickFemaleOutfit(aiGenre, aiTopic, []);
+                    } else {
+                        outfit = pickMaleOutfit(aiTopic, []);
+                    }
+                }
+
+                return {
+                    id: slotId,
+                    name: '',
+                    slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man '),
+                    outfit: outfit
+                };
+            });
 
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
@@ -3224,8 +3240,20 @@ ${scriptInput}
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
-            const scenesSource = parsedResult.scenes || [];
+            let scenesSource = parsedResult.scenes || [];
             const llmOutfits = parsedResult.lockedOutfits || {};
+
+            // [v3.5.4] 생성된 프롬프트에 겨울 룩(방한용품 및 정밀 필터링) 최종 적용
+            if (enableWinterAccessories && scenesSource.length > 0) {
+                scenesSource = scenesSource.map(s => {
+                    const gender = (s.characterIds?.[0]?.startsWith('Man')) ? 'male' : 'female';
+                    const winterApplied = applyWinterLookToExistingPrompt(s.longPrompt, '', gender);
+                    return {
+                        ...s,
+                        longPrompt: winterApplied.longPrompt
+                    };
+                });
+            }
 
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');

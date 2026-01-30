@@ -165,6 +165,7 @@ export const buildManualSceneDecompositionPrompt = (options: {
     ? `\n2. **의상 자율 선택 (LLM Selection)**: 
    - 현재 캐릭터들의 의상이 지정되지 않았습니다. 
    - 대본의 주제, 분위기, 장르를 종합적으로 분석하여 **각 캐릭터에게 가장 잘 어울리는 최상급 명품 의상 명칭**을 직접 선택하세요.
+   - **⚠️ 의상 정책 (Must Follow)**: 쇄골(Collarbone)과 어깨(Shoulder) 라인이 드러나는 스타일(Off-shoulder 등)은 허용되지만, **가슴골(Cleavage)이 깊게 파인 디자인(Deep V-neck, Plunging, Low-cut)은 절대 피하세요.**
    - 선택한 의상은 아래 JSON의 "lockedOutfits" 객체에 담아야 합니다.`
     : `\n2. **의상 일관성 준수**: 캐릭터 ID 목록에 명시된 의상을 한 글자도 바꾸지 말고 그대로 사용하세요.`;
 

@@ -196,6 +196,7 @@ export const shortsLabCharacterRulesManager = {
     };
   },
   loadRules: async (): Promise<ShortsLabCharacterRules> => {
+    await primeAppStorageCache();
     const stored = await getAppStorageValue<ShortsLabCharacterRules | null>(STORAGE_KEY, null);
     cachedRules = stored ? normalizeRules(stored) : readStoredRules();
     notifyRulesListeners(cachedRules);

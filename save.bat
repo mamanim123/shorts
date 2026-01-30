@@ -67,7 +67,9 @@ if errorlevel 1 (
 )
 
 echo.
-echo Done!
+echo ========================================
+echo   PUSH SUCCESS!
+echo ========================================
 echo.
 
 :end

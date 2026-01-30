@@ -1,6 +1,7 @@
 const API_BASE = 'http://localhost:3002';
 let storageCache: Record<string, unknown> | null = null;
 let cachePromise: Promise<void> | null = null;
+let isPrimed = false;
 
 export const primeAppStorageCache = async (): Promise<void> => {
   if (cachePromise) return cachePromise;
@@ -10,14 +11,25 @@ export const primeAppStorageCache = async (): Promise<void> => {
       if (!response.ok) throw new Error('failed');
       const payload = (await response.json()) as { storage?: Record<string, unknown> };
       storageCache = payload.storage || {};
+      isPrimed = true;
     } catch {
       storageCache = storageCache || {};
+      isPrimed = true;
     }
   })();
   return cachePromise;
 };
 
+export const ensurePrimed = async (): Promise<void> => {
+  if (!isPrimed) {
+    await primeAppStorageCache();
+  }
+};
+
 export const getAppStorageCachedValue = <T,>(key: string, fallback: T): T => {
+  if (!isPrimed) {
+    console.warn('[appStorageService] Cache not primed yet. Call await primeAppStorageCache() first.');
+  }
   if (!storageCache) {
     primeAppStorageCache();
     return fallback;

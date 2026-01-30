@@ -35,7 +35,11 @@
       "Bash(git check-ignore:*)",
       "Bash(npm run build:*)",
       "Bash(cat:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npm run lint)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(tasklist:*)"
     ]
   }
 }

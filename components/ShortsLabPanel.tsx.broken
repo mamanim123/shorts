@@ -5280,15 +5280,10 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
-    const handleReset = async () => {
-        if (!window.confirm('모든 장르를 기본값으로 초기화하시겠습니까? 커스텀 장르는 삭제됩니다.')) return;
-        try {
-            await onReset();
-        } catch (err) {
-            console.error('Failed to reset genres:', err);
-            alert('장르 초기화에 실패했습니다.');
-        }
-    };
+    // 장르 초기화 기능 제거 (마마님 요청)
+    /*
+    const handleReset = async () => { ... };
+    */
 
     const handleBackupCreate = async () => {
         try {
@@ -5362,37 +5357,20 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     };
 
     const handlePromptRulesSave = async () => {
-        console.log('[DEBUG FRONTEND] ==================== handlePromptRulesSave START ====================');
-        console.log('[DEBUG FRONTEND] rulesEditText length:', rulesEditText.length);
         try {
             const parsed = JSON.parse(rulesEditText);
-            console.log('[DEBUG FRONTEND] JSON.parse success, keys:', Object.keys(parsed));
-            console.log('[DEBUG FRONTEND] Calling onPromptRulesSave...');
             await onPromptRulesSave(parsed);
-            console.log('[DEBUG FRONTEND] onPromptRulesSave completed');
-            // dirty 플래그를 약간 지연시켜 설정 (useEffect 트리거 방지)
-            setTimeout(() => {
-                setRulesDirty(false);
-            }, 100);
-            setRulesEditError(null);
-            console.log('[DEBUG FRONTEND] ==================== handlePromptRulesSave END ====================');
+            setRulesDirty(false);
+            showToast('프롬프트 규칙이 저장되었습니다. 이제 모든 생성에 즉시 반영됩니다.', 'success');
         } catch (err) {
-            console.error('Failed to save prompt rules:', err);
-            setRulesEditError('JSON 형식이 올바르지 않습니다.');
+            showToast('JSON 형식이 올바르지 않습니다.', 'error');
         }
     };
 
-    const handlePromptRulesReset = async () => {
-        if (!window.confirm('프롬프트 규칙을 기본값으로 초기화하시겠습니까?')) return;
-        try {
-            await onPromptRulesReset();
-            setRulesDirty(false);
-            setRulesEditError(null);
-        } catch (err) {
-            console.error('Failed to reset prompt rules:', err);
-            alert('프롬프트 규칙 초기화에 실패했습니다.');
-        }
-    };
+    // 초기화 기능 제거 (마마님 요청)
+    /*
+    const handlePromptRulesReset = async () => { ... }
+    */
 
     const handlePromptRulesBackupCreate = async () => {
         try {
@@ -5478,24 +5456,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             });
             setStep2RulesDirty(false);
             setStep2RulesEditError(null);
+            showToast('2단계 규칙이 저장되었습니다.', 'success');
         } catch (err) {
             console.error('Failed to save step2 rules:', err);
             setStep2RulesEditError('2단계 규칙 저장에 실패했습니다.');
         }
     };
 
-    const handleStep2RulesReset = async () => {
-        if (!onStep2RulesReset) return;
-        if (!window.confirm('2단계 규칙을 기본값으로 초기화하시겠습니까?')) return;
-        try {
-            await onStep2RulesReset();
-            setStep2RulesDirty(false);
-            setStep2RulesEditError(null);
-        } catch (err) {
-            console.error('Failed to reset step2 rules:', err);
-            alert('2단계 규칙 초기화에 실패했습니다.');
-        }
-    };
+    // 2단계 초기화 기능 제거 (마마님 요청)
+    /*
+    const handleStep2RulesReset = async () => { ... };
+    */
 
     const handleStep2BackupCreate = async () => {
         if (!onStep2BackupCreate) return;
@@ -5627,24 +5598,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             await onCharacterRulesSave(characterRulesState);
             setCharacterRulesDirty(false);
             setCharacterRulesEditError(null);
+            showToast('의상 규칙이 저장되었습니다.', 'success');
         } catch (err) {
             console.error('Failed to save character rules:', err);
             setCharacterRulesEditError('의상 규칙 저장에 실패했습니다.');
         }
     };
 
-    const handleCharacterRulesReset = async () => {
-        if (!onCharacterRulesReset) return;
-        if (!window.confirm('의상 규칙을 기본값으로 초기화하시겠습니까?')) return;
-        try {
-            await onCharacterRulesReset();
-            setCharacterRulesDirty(false);
-            setCharacterRulesEditError(null);
-        } catch (err) {
-            console.error('Failed to reset character rules:', err);
-            alert('의상 규칙 초기화에 실패했습니다.');
-        }
-    };
+    // 의상규칙 초기화 기능 제거 (마마님 요청)
+    /*
+    const handleCharacterRulesReset = async () => { ... };
+    */
 
     const handleCharacterRulesBackupCreate = async () => {
         if (!onCharacterRulesBackupCreate) return;
@@ -5922,19 +5886,13 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                             {/* Action buttons */}
                             <div className="flex gap-2 mb-4">
                                 <button
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg flex items-center gap-2 transition-colors shadow-sm text-sm font-medium"
                                     onClick={handleStartAdd}
-                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                                 >
-                                    <Plus className="w-4 h-4" />
+                                    <Plus size={18} />
                                     새 장르 추가
                                 </button>
-                                <button
-                                    onClick={handleReset}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    기본값으로 초기화
-                                </button>
+                                {/* 장르 초기화 버튼 제거 */}
                             </div>
 
                             {/* Backup manager */}
@@ -6240,28 +6198,24 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                     )}
 
                     {activeTab === 'rules' && (
-                        <div className="space-y-5">
-                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-200">프롬프트 규칙 편집</h3>
-                                        <p className="text-[11px] text-slate-500">JSON 수정 후 저장하면 즉시 적용됩니다.</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={handlePromptRulesReset}
-                                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
-                                        >
-                                            기본값으로 초기화
-                                        </button>
-                                        <button
-                                            onClick={handlePromptRulesSave}
-                                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
-                                        >
-                                            저장
-                                        </button>
-                                    </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-200">프롬프트 규칙 편집</h3>
+                                    <p className="text-[11px] text-slate-500">JSON 형식을 유지하며 수정하십시오. 저장 시 즉시 모든 생성 결과에 반영됩니다.</p>
                                 </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors shadow-sm text-sm font-medium"
+                                        onClick={handlePromptRulesSave}
+                                    >
+                                        <Save size={18} />
+                                        저장하기
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="relative">
                                 <textarea
                                     value={rulesEditText}
                                     onChange={(e) => {
@@ -6269,11 +6223,18 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         setRulesDirty(true);
                                         setRulesEditError(null);
                                     }}
-                                    rows={14}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                    className={`w-full h-[400px] bg-slate-900 border ${rulesEditError ? 'border-rose-500' : 'border-slate-700'} rounded-xl p-4 text-xs font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none`}
+                                    placeholder="프롬프트 규칙 JSON을 입력하세요..."
                                 />
                                 {rulesEditError && (
-                                    <div className="text-xs text-rose-400">{rulesEditError}</div>
+                                    <div className="absolute top-2 right-2 bg-rose-500/90 text-white text-[10px] px-2 py-1 rounded shadow-lg">
+                                        {rulesEditError}
+                                    </div>
+                                )}
+                                {rulesDirty && !rulesEditError && (
+                                    <div className="absolute top-2 right-2 bg-blue-500/90 text-white text-[10px] px-2 py-1 rounded shadow-lg animate-pulse">
+                                        저장되지 않은 변경사항이 있습니다
+                                    </div>
                                 )}
                             </div>
 
@@ -6430,12 +6391,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             저장
                                         </button>
                                     </div>
-                                    <button
-                                        onClick={handleStep2RulesReset}
-                                        className="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
-                                    >
-                                        기본값으로 초기화
-                                    </button>
                                     <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
                                     {step2RulesEditError && (
                                         <div className="text-xs text-rose-400">{step2RulesEditError}</div>
@@ -6845,28 +6800,21 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                 }))}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                placeholder="photorealistic, 8k resolution..."
+                                                placeholder="8k ultra photorealism, professional cinematic lighting..."
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Right Sidebar - Actions & Backups */}
                             <div className="space-y-4">
                                 <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-1 gap-2">
                                         <button
                                             onClick={handleCharacterRulesBackupCreate}
                                             className="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-semibold"
                                         >
-                                            백업
-                                        </button>
-                                        <button
-                                            onClick={handleCharacterRulesBackupRestoreSelected}
-                                            className="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
-                                        >
-                                            복원
+                                            백업 생성
                                         </button>
                                         <button
                                             onClick={handleCharacterRulesSave}
@@ -6875,12 +6823,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             저장
                                         </button>
                                     </div>
-                                    <button
-                                        onClick={handleCharacterRulesReset}
-                                        className="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
-                                    >
-                                        기본값으로 초기화
-                                    </button>
                                     <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
                                     {characterRulesEditError && (
                                         <div className="text-xs text-rose-400">{characterRulesEditError}</div>
@@ -6932,278 +6874,11 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         </div>
                     )}
 
-                    {/* 겨울악세 탭 */}
-                    {activeTab === 'winter_accessories' && (
-                        <div className="space-y-6">
-                            {/* ON 상태 지침 */}
-                            <div className="bg-cyan-900/20 border border-cyan-700/30 rounded-xl p-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="text-2xl">❄️</span>
-                                    <h3 className="text-lg font-bold text-cyan-400">겨울 악세서리 ON</h3>
-                                </div>
-                                <p className="text-sm text-slate-300 mb-4">
-                                    모든 씬의 이미지 프롬프트에 겨울 악세서리가 자동으로 추가됩니다.
-                                </p>
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider">규칙</h4>
-                                    <ul className="space-y-2">
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-cyan-500 mt-0.5">•</span>
-                                            <span>beanie (비니), earmuffs (귀마개), scarf (목도리), gloves (장갑), winter boots (겨울 부츠) 중 1~2개를 자연스럽게 배치</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-cyan-500 mt-0.5">•</span>
-                                            <span>겨울 키워드(눈, 스키, 겨울 등)가 있을 때 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-cyan-500 mt-0.5">•</span>
-                                            <span>악세서리는 "accessorized with [item1], [item2]" 형식으로 프롬프트에 추가</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-cyan-500 mt-0.5">•</span>
-                                            <span>딥브이넥 → 오프숄더, 짧은소매 → 긴팔로 강제 치환</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-cyan-700/30">
-                                    <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider mb-2">예시</h4>
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-slate-500 font-mono">accessorized with stylish pom-pom beanie, leather gloves</p>
-                                        <p className="text-xs text-slate-500 font-mono">accessorized with fur earmuffs, cashmere scarf</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* OFF 상태 지침 */}
-                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="text-2xl">🚫</span>
-                                    <h3 className="text-lg font-bold text-slate-400">겨울 악세서리 OFF</h3>
-                                </div>
-                                <p className="text-sm text-slate-400 mb-4">
-                                    겨울 악세서리를 자동으로 추가하지 않습니다.
-                                </p>
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">규칙</h4>
-                                    <ul className="space-y-2">
-                                        <li className="text-xs text-slate-500 flex items-start gap-2">
-                                            <span className="text-slate-600 mt-0.5">•</span>
-                                            <span>기존 의상 프롬프트를 그대로 사용</span>
-                                        </li>
-                                        <li className="text-xs text-slate-500 flex items-start gap-2">
-                                            <span className="text-slate-600 mt-0.5">•</span>
-                                            <span>수동으로 겨울 악세서리를 추가하려면 프롬프트에 직접 입력</span>
-                                        </li>
-                                        <li className="text-xs text-slate-500 flex items-start gap-2">
-                                            <span className="text-slate-600 mt-0.5">•</span>
-                                            <span>겨울 키워드가 있어도 상의 변환 없이 원본 의상 유지</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 의상선택 탭 */}
-                    {activeTab === 'outfit_selection' && (
-                        <div className="space-y-6">
-                            {/* 랜덤 선택 (ON) 지침 */}
-                            <div className="bg-orange-900/20 border border-orange-700/30 rounded-xl p-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="text-2xl">🎲</span>
-                                    <h3 className="text-lg font-bold text-orange-400">의상 랜덤 선택 ON</h3>
-                                </div>
-                                <p className="text-sm text-slate-300 mb-4">
-                                    로컬 카탈로그에서 미리 정의된 의상을 무작위로 선택합니다.
-                                </p>
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-semibold text-orange-300 uppercase tracking-wider">규칙</h4>
-                                    <ul className="space-y-2">
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-orange-500 mt-0.5">•</span>
-                                            <span>pickFemaleOutfit(), pickMaleOutfit() 함수가 로컬 의상 풀에서 랜덤 선택</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-orange-500 mt-0.5">•</span>
-                                            <span>같은 의상이 중복되지 않도록 필터링</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-orange-500 mt-0.5">•</span>
-                                            <span>Woman A, B, D와 Man A, B 각각 독립적으로 선택</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-orange-500 mt-0.5">•</span>
-                                            <span>빠른 처리 속도 (LLM 호출 없음)</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-orange-700/30">
-                                    <h4 className="text-xs font-semibold text-orange-300 uppercase tracking-wider mb-2">장점</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">⚡ 속도 빠름</span>
-                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">📊 결과 일관성</span>
-                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">🎯 예측 가능한 스타일</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* LLM 선택 (OFF) 지침 */}
-                            <div className="bg-purple-900/20 border border-purple-700/30 rounded-xl p-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="text-2xl">🤖</span>
-                                    <h3 className="text-lg font-bold text-purple-400">의상 LLM 선택 ON</h3>
-                                </div>
-                                <p className="text-sm text-slate-300 mb-4">
-                                    AI가 주제와 장르에 맞는 의상을 실시간으로 생성합니다.
-                                </p>
-                                <div className="space-y-3">
-                                    <h4 className="text-xs font-semibold text-purple-300 uppercase tracking-wider">규칙</h4>
-                                    <ul className="space-y-2">
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-purple-500 mt-0.5">•</span>
-                                            <span>프롬프트 빌드 시 outfitPlaceholder로 표시</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-purple-500 mt-0.5">•</span>
-                                            <span>LLM이 주제, 장르, 캐릭터 특성을 고려하여 의상 생성</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-purple-500 mt-0.5">•</span>
-                                            <span>더 창의적이고 주제에 맞는 의상 가능</span>
-                                        </li>
-                                        <li className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-purple-500 mt-0.5">•</span>
-                                            <span>약간의 처리 시간 추가 소요</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-purple-700/30">
-                                    <h4 className="text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">장점</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">✨ 창의적인 의상</span>
-                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">🎭 주제 적합성</span>
-                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">🌈 다양성</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer */}
-                {activeTab === 'genres' && (mode === 'edit' || mode === 'add') && (
-                    <div className="p-6 border-t border-slate-800 flex justify-end gap-3">
-                        <button
-                            onClick={() => handleOpenGuidelineView(selectedGenre || formData)}
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
-                        >
-                            <FileText className="w-4 h-4" />
-                            전체보기
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMode('list');
-                                setSelectedGenre(null);
-                            }}
-                            className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
-                        >
-                            취소
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
-                        >
-                            {isSaving ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    저장 중...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="w-4 h-4" />
-                                    장르 저장
-                                </>
-                            )}
-                        </button>
-                    </div>
-                )}
-
-                {/* 지침 전체 보기 모달 */}
-                {isGuidelineViewOpen && selectedGuidelineGenre && (
-                    <div
-                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                        onClick={() => setIsGuidelineViewOpen(false)}
-                    >
-                        <div
-                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">📋 {selectedGuidelineGenre.name} - 전체 지침</h3>
-                                    <p className="text-xs text-slate-400 mt-1">{selectedGuidelineGenre.description}</p>
-                                </div>
-                                <button
-                                    onClick={() => setIsGuidelineViewOpen(false)}
-                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50">
-                                <pre className="whitespace-pre-wrap text-sm text-slate-200 font-mono leading-relaxed">
-                                    {formatGuidelineAsText(selectedGuidelineGenre)}
-                                </pre>
-                            </div>
-
-                            <div className="flex justify-end gap-2 p-6 border-t border-slate-800">
-                                <button
-                                    onClick={handleCopyGuidelines}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"
-                                >
-                                    <Copy className="w-4 h-4" />
-                                    복사
-                                </button>
-                                <button
-                                    onClick={handleDownloadGuidelines}
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    다운로드
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 2단계 프롬프트 전체 보기/편집 모달 */}
-                {isStep2PromptViewOpen && (
-                    <div
-                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                        onClick={() => setIsStep2PromptViewOpen(false)}
-                    >
-                        <div
-                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">📋 2단계 프롬프트 - 보기/편집</h3>
-                                    <p className="text-xs text-slate-400 mt-1">대본생성, 캐릭터분석, 이미지프롬프트 생성 프롬프트를 수정하고 저장할 수 있습니다</p>
-                                </div>
-                                <button
-                                    onClick={() => setIsStep2PromptViewOpen(false)}
-                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50 space-y-6">
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold text-blue-400">📝 대본생성 프롬프트</h4>
+                    {activeTab === 'step2_rules' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+                            <div className="space-y-6">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">대본생성 프롬프트</div>
                                     <textarea
                                         value={step2ScriptPrompt}
                                         onChange={(e) => {
@@ -7211,14 +6886,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             setStep2RulesDirty(true);
                                             setStep2RulesEditError(null);
                                         }}
-                                        rows={8}
+                                        rows={6}
                                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                        placeholder="대본생성 프롬프트를 입력하세요..."
                                     />
                                 </div>
-
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold text-emerald-400">👤 캐릭터분석 프롬프트</h4>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">캐릭터분석 프롬프트</div>
                                     <textarea
                                         value={step2CharacterPrompt}
                                         onChange={(e) => {
@@ -7226,14 +6899,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             setStep2RulesDirty(true);
                                             setStep2RulesEditError(null);
                                         }}
-                                        rows={8}
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                                        placeholder="캐릭터분석 프롬프트를 입력하세요..."
+                                        rows={6}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                     />
                                 </div>
-
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold text-purple-400">🎨 이미지프롬프트 생성 프롬프트</h4>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">이미지프롬프트 생성 프롬프트</div>
                                     <textarea
                                         value={step2FinalPrompt}
                                         onChange={(e) => {
@@ -7241,310 +6912,256 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             setStep2RulesDirty(true);
                                             setStep2RulesEditError(null);
                                         }}
-                                        rows={10}
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                                        placeholder="이미지프롬프트 생성 프롬프트를 입력하세요..."
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                     />
                                 </div>
                             </div>
-
-                            <div className="flex justify-end gap-2 p-6 border-t border-slate-800">
-                                <button
-                                    onClick={() => setIsStep2PromptViewOpen(false)}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium"
-                                >
-                                    닫기
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        const fullText = `=== 대본생성 프롬프트 ===\n${step2ScriptPrompt}\n\n=== 캐릭터분석 프롬프트 ===\n${step2CharacterPrompt}\n\n=== 이미지프롬프트 생성 프롬프트 ===\n${step2FinalPrompt}`;
-                                        try {
-                                            await navigator.clipboard.writeText(fullText);
-                                            showToast('모든 프롬프트가 복사되었습니다.', 'success');
-                                        } catch (error) {
-                                            console.error('Failed to copy prompts:', error);
-                                            showToast('복사 실패', 'error');
-                                        }
-                                    }}
-                                    className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
-                                >
-                                    <Copy className="w-4 h-4" />
-                                    복사
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await onStep2RulesSave({
-                                                scriptPrompt: step2ScriptPrompt,
-                                                characterPrompt: step2CharacterPrompt,
-                                                finalPrompt: step2FinalPrompt
-                                            });
-                                            setStep2RulesDirty(false);
-                                            showToast('프롬프트가 저장되었습니다.', 'success');
-                                            setIsStep2PromptViewOpen(false);
-                                        } catch (error) {
-                                            console.error('Failed to save step2 rules:', error);
-                                            showToast('저장 실패', 'error');
-                                        }
-                                    }}
-                                    disabled={!step2RulesDirty}
-                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    {step2RulesDirty ? '저장' : '저장됨'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-            </div>
-
-            {editingBackupId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                    onClick={handleCloseBackupEditor}
-                >
-                    <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">백업 프롬프트 보기/편집</h3>
-                                <p className="text-xs text-slate-400">장르 가이드라인 JSON을 수정한 뒤 저장하세요.</p>
-                            </div>
-                            <button
-                                onClick={handleCloseBackupEditor}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            <textarea
-                                value={backupEditText}
-                                onChange={(e) => {
-                                    setBackupEditText(e.target.value);
-                                    setBackupEditError(null);
-                                }}
-                                rows={16}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                            />
-                            {backupEditError && (
-                                <div className="text-xs text-rose-400">{backupEditError}</div>
-                            )}
-                        </div>
-                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
-                            <button
-                                onClick={handleCloseBackupEditor}
-                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={handleBackupSaveContent}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {editingRulesBackupId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                    onClick={handleClosePromptRulesBackupEditor}
-                >
-                    <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">프롬프트 규칙 백업 보기/편집</h3>
-                                <p className="text-xs text-slate-400">JSON을 수정한 뒤 저장하세요.</p>
-                            </div>
-                            <button
-                                onClick={handleClosePromptRulesBackupEditor}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            <textarea
-                                value={rulesBackupEditText}
-                                onChange={(e) => {
-                                    setRulesBackupEditText(e.target.value);
-                                    setRulesBackupEditError(null);
-                                }}
-                                rows={16}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                            />
-                            {rulesBackupEditError && (
-                                <div className="text-xs text-rose-400">{rulesBackupEditError}</div>
-                            )}
-                        </div>
-                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
-                            <button
-                                onClick={handleClosePromptRulesBackupEditor}
-                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={handleSavePromptRulesBackupContent}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Backup Editor Modal */}
-            {(editingBackupId || editingRulesBackupId || editingStep2BackupId) && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                            <h3 className="text-lg font-bold text-white">
-                                {editingBackupId ? '백업 내용 편집' : (editingRulesBackupId ? '프롬프트 규칙 백업 편집' : '2단계 규칙 백업 편집')}
-                            </h3>
-                            <button
-                                onClick={() => {
-                                    if (editingBackupId) handleCloseBackupEditor();
-                                    else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
-                                    else handleCloseStep2BackupEditor();
-                                }}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 p-4 overflow-hidden flex flex-col">
-                            <textarea
-                                value={editingBackupId ? backupEditText : (editingRulesBackupId ? rulesBackupEditText : step2BackupEditText)}
-                                onChange={(e) => {
-                                    if (editingBackupId) {
-                                        setBackupEditText(e.target.value);
-                                        setBackupEditError(null);
-                                    } else if (editingRulesBackupId) {
-                                        setRulesBackupEditText(e.target.value);
-                                        setRulesBackupEditError(null);
-                                    } else {
-                                        setStep2BackupEditText(e.target.value);
-                                        setStep2BackupEditError(null);
-                                    }
-                                }}
-                                className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                            />
-                            {(backupEditError || rulesBackupEditError || step2BackupEditError) && (
-                                <div className="mt-2 text-xs text-rose-400">
-                                    {backupEditError || rulesBackupEditError || step2BackupEditError}
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
-                            <button
-                                onClick={() => {
-                                    if (editingBackupId) handleCloseBackupEditor();
-                                    else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
-                                    else handleCloseStep2BackupEditor();
-                                }}
-                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (editingBackupId) handleBackupSaveContent();
-                                    else if (editingRulesBackupId) handleSavePromptRulesBackupContent();
-                                    else handleSaveStep2BackupContent();
-                                }}
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 캐릭터 가져오기 모달 */}
-            {showImportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-slate-100">
-                                캐릭터 가져오기
-                            </h3>
-                            <button
-                                onClick={() => setShowImportModal(false)}
-                                className="p-1 hover:bg-slate-800 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5 text-slate-400" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                            <div className="text-sm text-slate-400 mb-3">
-                                {importTargetGender === 'female' ? '여성' : '남성'} 캐릭터 목록에서 선택하세요
-                            </div>
-                            {isLoadingCharacters ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                                </div>
-                            ) : importableCharacters.length === 0 ? (
-                                <div className="text-center py-8 text-slate-500">
-                                    저장된 {importTargetGender === 'female' ? '여성' : '남성'} 캐릭터가 없습니다.
-                                    <br />
-                                    <span className="text-xs">입력탭 → 캐릭터관리에서 먼저 캐릭터를 생성해주세요.</span>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {importableCharacters.map((char) => (
+                            <div className="space-y-4">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+                                    <button
+                                        onClick={() => setIsStep2PromptViewOpen(true)}
+                                        className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        전체 프롬프트 보기
+                                    </button>
+                                    <div className="grid grid-cols-3 gap-2">
                                         <button
-                                            key={char.id}
-                                            onClick={() => handleImportCharacter(char)}
-                                            className="w-full p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-blue-500/50 rounded-xl text-left transition-all group"
+                                            onClick={handleStep2BackupCreate}
+                                            className="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-semibold"
                                         >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">
-                                                        {char.name}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500 mt-1">
-                                                        {char.age} · {char.gender === 'female' ? '여성' : '남성'}
-                                                    </div>
-                                                </div>
-                                                <Download className="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors" />
-                                            </div>
-                                            {char.hair && (
-                                                <div className="mt-2 text-[10px] text-slate-500 truncate">
-                                                    헤어: {char.hair.substring(0, 50)}...
-                                                </div>
-                                            )}
+                                            백업
                                         </button>
-                                    ))}
+                                        <button
+                                            onClick={handleStep2BackupRestoreSelected}
+                                            className="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            복원
+                                        </button>
+                                        <button
+                                            onClick={handleStep2RulesSave}
+                                            className="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            저장
+                                        </button>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
+                                    {step2RulesEditError && (
+                                        <div className="text-xs text-rose-400">{step2RulesEditError}</div>
+                                    )}
                                 </div>
-                            )}
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-2">
+                                    <div className="text-xs font-semibold text-slate-300">백업 선택 (최대 5개)</div>
+                                    {(!step2Backups || step2Backups.length === 0) ? (
+                                        <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {step2Backups.map((backup, index) => (
+                                                <div
+                                                    key={backup.id}
+                                                    className={`rounded-lg border transition-colors ${selectedStep2BackupId === backup.id
+                                                        ? 'border-blue-500 bg-blue-600/20'
+                                                        : 'border-slate-800 bg-slate-900'
+                                                        }`}
+                                                >
+                                                    <button
+                                                        onClick={() => setSelectedStep2BackupId(backup.id)}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedStep2BackupId === backup.id
+                                                            ? 'text-white'
+                                                            : 'text-slate-200 hover:text-white'
+                                                            }`}
+                                                    >
+                                                        <div>{backup.name || `백업 ${index + 1}`}</div>
+                                                        <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
+                                                    </button>
+                                                    <div className="px-3 pb-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (selectedStep2BackupId === backup.id) {
+                                                                    setSelectedStep2BackupId(null);
+                                                                }
+                                                                handleStep2BackupDelete(backup.id);
+                                                            }}
+                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[11px] font-semibold"
+                                                        >
+                                                            삭제
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <div className="px-6 py-4 border-t border-slate-800 flex justify-end">
-                            <button
-                                onClick={() => setShowImportModal(false)}
-                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-                            >
-                                닫기
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
+                    )}
 
-export default ShortsLabPanel;
+                    {activeTab === 'character_rules' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+                            <div className="space-y-6">
+                                {/* Female Characters */}
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div
+                                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                        onClick={() => setIsFemaleSectionExpanded(!isFemaleSectionExpanded)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                className={`w-5 h-5 text-blue-400 transition-transform ${isFemaleSectionExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                            <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                            <span className="text-xs text-slate-500">({characterRulesState.females.length}명)</span>
+                                        </div>
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    if (!onAddFemaleCharacter) return;
+                                                    const updated = await onAddFemaleCharacter();
+                                                    if (updated?.females) {
+                                                        setCharacterRulesState((prev) => {
+                                                            const existing = new Set(prev.females.map((char) => char.id));
+                                                            const additions = updated.females.filter((char) => !existing.has(char.id));
+                                                            if (additions.length === 0) return prev;
+                                                            return {
+                                                                ...prev,
+                                                                females: [...prev.females, ...additions]
+                                                            };
+                                                        });
+                                                    }
+                                                    showToast('여성 캐릭터가 추가되었습니다.', 'success');
+                                                } catch (err) {
+                                                    console.error('Failed to add female character:', err);
+                                                    showToast('캐릭터 추가 실패', 'error');
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            추가
+                                        </button>
+                                    </div>
+                                    {isFemaleSectionExpanded && (
+                                        <div className="px-4 pb-4 space-y-3">
+                                    {characterRulesState.females.map((char, idx) => {
+                                        const isExpanded = expandedCharacters.has(char.id);
+                                        return (
+                                            <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                                <div
+                                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                                    onClick={() => toggleCharacterExpand(char.id)}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <ChevronDown
+                                                            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                                        />
+                                                        <div className="text-sm font-semibold text-slate-200">
+                                                            Female {String.fromCharCode(65 + idx)}
+                                                            {char.id === 'femaleD' && (
+                                                                <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                handleOpenImportModal('female', char.id);
+                                                            }}
+                                                            className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Download className="w-3 h-3" />
+                                                            가져오기
+                                                        </button>
+                                                        {char.id !== 'femaleD' && (
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    try {
+                                                                        if (!onDeleteFemaleCharacter) return;
+                                                                        await onDeleteFemaleCharacter(char.id);
+                                                                        showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                                    } catch (err) {
+                                                                        const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                        showToast(message, 'error');
+                                                                    }
+                                                                }}
+                                                                className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                                삭제
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {isExpanded && (
+                                                    <div className="px-4 pb-4 space-y-3">
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.identity}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="A stunning Korean woman"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.hair}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="long soft-wave hairstyle"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                <textarea
+                                                                    value={char.body}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
+                                                                    rows={2}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                    placeholder="slim hourglass figure..."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.style}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="perfectly managed sophisticated look"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.outfitFit}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="tight-fitting, form-hugging"
+                                                                />
+                                                            </div>
+                                                            {char.id === 'femaleD' && (
+                                                                <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                                                                        <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.fixedAge || 'in her early 20s'}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            disabled={!char.isFixedAge}
+                                                                        />
+                                                                    </div>
+                                                                </div>

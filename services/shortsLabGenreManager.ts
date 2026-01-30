@@ -75,7 +75,11 @@ const readStoredGenres = (): LabGenreGuidelineEntry[] => {
 };
 
 const writeStoredGenres = (genres: LabGenreGuidelineEntry[]) => {
-  setAppStorageValue(STORAGE_KEY, genres).catch((error) => {
+  console.log('[DEBUG GENRE] writeStoredGenres called with:', genres.length, 'genres');
+  console.log('[DEBUG GENRE] STORAGE_KEY:', STORAGE_KEY);
+  setAppStorageValue(STORAGE_KEY, genres).then(() => {
+    console.log('[DEBUG GENRE] writeStoredGenres SUCCESS');
+  }).catch((error) => {
     console.warn('[shortsLabGenreManager] Failed to save genres:', error);
   });
 };
@@ -126,15 +130,15 @@ export const shortsLabGenreManager = {
   },
 
   loadGenres: async (): Promise<LabGenreGuidelineEntry[]> => {
+    await primeAppStorageCache();
     const stored = readStoredGenres();
+    // 자동 저장(write) 로직 제거 - 오직 마마님의 수정시에만 저장되도록 함
     cachedGenres = stored.length > 0 ? stored : buildDefaultGenres();
-    if (stored.length === 0) {
-      writeStoredGenres(cachedGenres);
-    }
     notifyListeners(cachedGenres);
     return cachedGenres;
   },
   loadBackups: async (): Promise<LabGenreBackup[]> => {
+    await primeAppStorageCache();
     cachedBackups = readStoredBackups();
     notifyBackupListeners(cachedBackups);
     return cachedBackups;
@@ -151,14 +155,26 @@ export const shortsLabGenreManager = {
   },
 
   updateGenre: async (id: string, updates: Partial<LabGenreGuideline>): Promise<LabGenreGuidelineEntry[]> => {
+    console.log('[DEBUG GENRE] ==================== updateGenre START ====================');
+    console.log('[DEBUG GENRE] 1. id:', id);
+    console.log('[DEBUG GENRE] 2. updates keys:', Object.keys(updates));
+
     const current = cachedGenres || buildDefaultGenres();
     const updated = current.map((genre) => {
       if (genre.id !== id) return genre;
       return normalizeGenre({ ...genre, ...updates, id });
     });
+
+    console.log('[DEBUG GENRE] 3. Updated genres count:', updated.length);
     cachedGenres = updated;
+    console.log('[DEBUG GENRE] 4. cachedGenres updated');
+
     writeStoredGenres(updated);
+    console.log('[DEBUG GENRE] 5. writeStoredGenres called');
+
     notifyListeners(updated);
+    console.log('[DEBUG GENRE] 6. Listeners notified');
+    console.log('[DEBUG GENRE] ==================== updateGenre END ====================');
     return updated;
   },
 

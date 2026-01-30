@@ -683,10 +683,27 @@ export const getMAMACharacterPresets = () => {
 export const MAMA_CHARACTER_PRESETS = getMAMACharacterPresets();
 
 // ============================================
-// 이미지 프롬프트 고정 문구 (절대 생략 금지)
+// 이미지 프롬프트 고정 문구 (v3.5.5 - 마마님 요청: 상수 동적화)
 // ============================================
 
-export const PROMPT_CONSTANTS = getPromptConstants();
+/**
+ * [CRITICAL] 고정 상수를 함수로 변경하여 실시간 규칙 수정을 즉시 반영함.
+ * 이제 새로고침 없이도 프롬프트 규칙 수정이 생성 결과에 즉시 적용됨.
+ */
+export const PROMPT_CONSTANTS_PROXY = {
+  get START() { return getPromptConstants().START; },
+  get FEMALE_BODY() { return getPromptConstants().FEMALE_BODY; },
+  get FEMALE_BODY_A() { return getPromptConstants().FEMALE_BODY_A; },
+  get FEMALE_BODY_B() { return getPromptConstants().FEMALE_BODY_B; },
+  get FEMALE_BODY_C() { return getPromptConstants().FEMALE_BODY_C; },
+  get FEMALE_BODY_D() { return getPromptConstants().FEMALE_BODY_D; },
+  get MALE_BODY() { return getPromptConstants().MALE_BODY; },
+  get END() { return getPromptConstants().END; },
+  get NEGATIVE() { return getPromptConstants().NEGATIVE; }
+};
+
+// 하위 호환성을 위해 PROMPT_CONSTANTS는 그대로 유지하되 내부는 동적 게터로 연결
+export const PROMPT_CONSTANTS = PROMPT_CONSTANTS_PROXY;
 
 export const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumber?: number, gender: 'female' | 'male' = 'female'): string => {
   if (!text) return text;

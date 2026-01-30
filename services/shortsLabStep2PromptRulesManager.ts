@@ -34,8 +34,8 @@ const notifyBackupListeners = (backups: ShortsLabStep2PromptRulesBackup[]) => {
 const normalizeRules = (input?: Partial<ShortsLabStep2PromptRules>): ShortsLabStep2PromptRules => {
   const source = input || {};
   const normalizeField = (value: unknown, fallback: string) => {
-    if (typeof value !== 'string') return fallback;
-    return value.trim() ? value : fallback;
+    // Allow empty strings - user may want to clear prompts
+    return typeof value === 'string' ? value : fallback;
   };
 
   return {
@@ -117,11 +117,13 @@ export const shortsLabStep2PromptRulesManager = {
     };
   },
   loadRules: async (): Promise<ShortsLabStep2PromptRules> => {
+    await primeAppStorageCache();
     cachedRules = readStoredRules();
     notifyRulesListeners(cachedRules);
     return cachedRules;
   },
   loadBackups: async (): Promise<ShortsLabStep2PromptRulesBackup[]> => {
+    await primeAppStorageCache();
     cachedBackups = readStoredBackups();
     notifyBackupListeners(cachedBackups);
     return cachedBackups;

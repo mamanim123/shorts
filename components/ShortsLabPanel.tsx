@@ -408,8 +408,8 @@ const buildAccessoryMap = (
     if (enableWinterAccessories) {
         const ids = Array.isArray(characters)
             ? characters
-                  .map((ch) => String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim())
-                  .filter(Boolean)
+                .map((ch) => String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim())
+                .filter(Boolean)
             : [];
         ids.forEach((id) => {
             const gender = getCharacterGender(id);
@@ -501,12 +501,12 @@ const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
     characterIds.forEach((id) => {
         const gender = getCharacterGender(id);
         const candidates = gender === 'male' ? maleCandidates : femaleCandidates;
-        
+
         const available = candidates.filter(item => !usedOutfits.has(item.name));
         const picked = available.length > 0
             ? available[Math.floor(Math.random() * available.length)]
             : candidates[0];
-        
+
         if (picked) {
             usedOutfits.add(picked.name);
             outfitMap.set(id, picked.name);
@@ -942,7 +942,7 @@ const postProcessAiScenes = (
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
-    
+
     const totalScenes = options.totalScenes || scenes.length || 12;
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
     let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
@@ -1967,7 +1967,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         const scenePrefix = `Scene ${sceneNumber}.`;
         let remainder = (rawPrompt || '').trim();
         const hadPersonMarkers = /\[Person\s+\d+:/i.test(remainder);
-        
+
         // Clean up common AI prefixes
         remainder = remainder.replace(/^Scene\s+\d+[.,]?\s*/i, '').trim();
         if (remainder.includes(PROMPT_CONSTANTS.START)) {
@@ -1981,7 +1981,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         // [v3.5.3] De-duplication Logic: 
         // If AI already wrote a long prompt, we want to replace its generic character descriptions
         // with our specific [Person X] markers to ensure consistency while avoiding "A stunning Korean woman" appearing twice.
-        
+
         const actionChunks = (guidance?.action || '').split(/\s*,\s*/).filter(Boolean);
         const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
 
@@ -1989,19 +1989,19 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             .map((id, index) => {
                 const meta = characterMap.get(id);
                 if (!meta) return '';
-                
+
                 const fallbackHair = meta.hair || DEFAULT_CHARACTER_META[meta.id]?.hair || '';
                 const fallbackBody = meta.body
                     || DEFAULT_CHARACTER_META[meta.id]?.body
                     || (meta.gender === 'female' ? PROMPT_CONSTANTS.FEMALE_BODY_A : '');
-                
+
                 const outfitPhrase = meta.outfit
                     ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
                     : '';
                 const accessoryPhrase = meta.accessories.length > 0
                     ? `accessorized with ${meta.accessories.join(', ')}`
                     : '';
-                
+
                 const personAction = actionChunks[index] || actionChunks[0] || '';
                 const personExpression = expressionChunks[index] || expressionChunks[0] || '';
 
@@ -2014,7 +2014,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     personAction ? `action: ${personAction}` : '',
                     personExpression ? `expression: ${personExpression}` : ''
                 ].filter(Boolean).join(', ');
-                
+
                 // Use Person index for the marker
                 return `[Person ${index + 1} (${meta.slotLabel}): ${descriptor}]`;
             })
@@ -2034,7 +2034,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         const environmentPrompt = [backgroundPrompt, environmentBoost]
             .filter(Boolean)
             .join(', ');
-        
+
         if (cameraPrompt) parts.push(cameraPrompt);
         if (environmentPrompt) parts.push(environmentPrompt);
         if (identityBlock) parts.push(identityBlock);
@@ -2042,7 +2042,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             if (guidance?.expression) parts.push(`[${guidance.expression}]`);
             if (actionPrompt) parts.push(actionPrompt);
         }
-        
+
         // Suppress AI's attempt to REDESCRIBE characters if we already have the block
         // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
         let cleanedRemainder = remainder;
@@ -2073,7 +2073,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         }
         const adjectivePattern = /\b(stunning|beautiful|attractive|gorgeous|sexy|elegant|handsome)\b\s+(korean\s+)?(woman|man|female|male|lady|gentleman|caddy)\b/gi;
         cleanedRemainder = cleanedRemainder.replace(adjectivePattern, '').trim();
-        
+
         // Clean up messy commas from replacement
         cleanedRemainder = cleanedRemainder.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
 
@@ -2161,7 +2161,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             // 4단계: 씬 분해 프롬프트 생성
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
-                characters: characterList
+                characters: characterList,
+                enableWinterAccessories: enableWinterAccessories
             });
 
             showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
@@ -3197,7 +3198,8 @@ ${scriptInput}
 
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
-                characters: characterList
+                characters: characterList,
+                enableWinterAccessories: enableWinterAccessories
             });
 
             showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
@@ -3223,6 +3225,7 @@ ${scriptInput}
 
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
             const scenesSource = parsedResult.scenes || [];
+            const llmOutfits = parsedResult.lockedOutfits || {};
 
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');
@@ -3234,6 +3237,7 @@ ${scriptInput}
                 scenes: scenesSource,
                 characters: extractedCharacters.characters || [],
                 lineCharacterNames: extractedCharacters.lineCharacterNames || [],
+                lockedOutfits: llmOutfits,
                 source: 'step2'
             };
 
@@ -3272,21 +3276,29 @@ ${scriptInput}
             }
 
             const characterIds = characterList.map(item => item.id);
-            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
+
+            // [v3.5.3] LLM 선택 모드일 경우 AI가 고른 의상을 맵에 덮어쓰기 + 마마님 겨울 변환 로직 적용
+            if (!useRandomOutfits && Object.keys(llmOutfits).length > 0) {
+                autoCharacterMap.forEach((meta, id) => {
+                    const slotKey = id.charAt(0).toLowerCase() + id.slice(1);
+                    let chosenOutfit = llmOutfits[id] || llmOutfits[slotKey] || meta.outfit;
+
+                    // 마마님의 철학: 겨울이면 딥브이넥->오프숄더, 짧은소매->긴팔로 강제 치환
+                    if (enableWinterAccessories && chosenOutfit) {
+                        chosenOutfit = convertToTightLongSleeveWithShoulderLine(chosenOutfit);
+                    }
+
+                    autoCharacterMap.set(id, { ...meta, outfit: chosenOutfit });
+                });
+            }
             if (enableWinterAccessories) {
                 const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
                 const updated = new Map<string, ManualCharacterPrompt>();
                 autoCharacterMap.forEach((meta, id) => {
-                    const winterOutfit = meta.gender === 'female' && meta.outfit
-                        ? convertToTightLongSleeveWithShoulderLine(meta.outfit)
-                        : meta.outfit;
-                    if (meta.gender !== 'female') {
-                        updated.set(id, { ...meta, outfit: winterOutfit });
-                        return;
-                    }
                     const winterAccessories = winterAccessoryMap.get(id) || [];
                     const accessories = Array.from(new Set([...meta.accessories, ...winterAccessories]));
-                    updated.set(id, { ...meta, outfit: winterOutfit, accessories });
+                    updated.set(id, { ...meta, accessories });
                 });
                 autoCharacterMap = updated;
             }
@@ -4031,14 +4043,12 @@ ${scriptInput}
                                         </div>
                                         <button
                                             onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                                enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
-                                            }`}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
+                                                }`}
                                         >
                                             <span
-                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                    enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
-                                                }`}
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
                                             />
                                         </button>
                                     </div>
@@ -4053,14 +4063,12 @@ ${scriptInput}
                                         </div>
                                         <button
                                             onClick={() => setUseRandomOutfits(!useRandomOutfits)}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                                useRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'
-                                            }`}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'
+                                                }`}
                                         >
                                             <span
-                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                    useRandomOutfits ? 'translate-x-6' : 'translate-x-1'
-                                                }`}
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useRandomOutfits ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
                                             />
                                         </button>
                                     </div>
@@ -4127,15 +4135,13 @@ ${scriptInput}
                                                 <span>인물 고정</span>
                                                 <button
                                                     onClick={() => setManualIdentityLockEnabled(!manualIdentityLockEnabled)}
-                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                                        manualIdentityLockEnabled ? 'bg-purple-600' : 'bg-slate-700'
-                                                    }`}
+                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${manualIdentityLockEnabled ? 'bg-purple-600' : 'bg-slate-700'
+                                                        }`}
                                                     title="인물 고정 토글"
                                                 >
                                                     <span
-                                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                                            manualIdentityLockEnabled ? 'translate-x-5' : 'translate-x-1'
-                                                        }`}
+                                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${manualIdentityLockEnabled ? 'translate-x-5' : 'translate-x-1'
+                                                            }`}
                                                     />
                                                 </button>
                                             </div>
@@ -5672,13 +5678,13 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     };
 
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onClick={onClose}
         >
-            <div 
+            <div
                 className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
                 style={{
                     transform: `translate(${position.x}px, ${position.y}px)`,
@@ -5687,7 +5693,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div 
+                <div
                     className="flex items-center justify-between p-6 border-b border-slate-800 cursor-move select-none"
                     onMouseDown={handleMouseDown}
                 >
@@ -5813,7 +5819,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                     <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
                                 ) : (
                                     <div className="space-y-2">
-                                {backups.map((backup) => (
+                                        {backups.map((backup) => (
                                             <div
                                                 key={backup.id}
                                                 className="flex flex-col md:flex-row md:items-center gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2"
@@ -6291,19 +6297,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             {step2Backups.map((backup, index) => (
                                                 <div
                                                     key={backup.id}
-                                                    className={`rounded-lg border transition-colors ${
-                                                        selectedStep2BackupId === backup.id
-                                                            ? 'border-blue-500 bg-blue-600/20'
-                                                            : 'border-slate-800 bg-slate-900'
-                                                    }`}
+                                                    className={`rounded-lg border transition-colors ${selectedStep2BackupId === backup.id
+                                                        ? 'border-blue-500 bg-blue-600/20'
+                                                        : 'border-slate-800 bg-slate-900'
+                                                        }`}
                                                 >
                                                     <button
                                                         onClick={() => setSelectedStep2BackupId(backup.id)}
-                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${
-                                                            selectedStep2BackupId === backup.id
-                                                                ? 'text-white'
-                                                                : 'text-slate-200 hover:text-white'
-                                                        }`}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedStep2BackupId === backup.id
+                                                            ? 'text-white'
+                                                            : 'text-slate-200 hover:text-white'
+                                                            }`}
                                                     >
                                                         <div>{backup.name || `백업 ${index + 1}`}</div>
                                                         <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
@@ -6419,76 +6423,76 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 gap-3">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Identity</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.identity}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="A stunning Korean woman"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Hair</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.hair}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="long soft-wave hairstyle"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Body</label>
-                                                    <textarea
-                                                        value={char.body}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
-                                                        rows={2}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                        placeholder="slim hourglass figure..."
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Style</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.style}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="perfectly managed sophisticated look"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.outfitFit}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="tight-fitting, form-hugging"
-                                                    />
-                                                </div>
-                                                {char.id === 'femaleD' && (
-                                                    <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                                                            <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.identity}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="A stunning Korean woman"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.hair}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="long soft-wave hairstyle"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                <textarea
+                                                                    value={char.body}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
+                                                                    rows={2}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                    placeholder="slim hourglass figure..."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.style}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="perfectly managed sophisticated look"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.outfitFit}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="tight-fitting, form-hugging"
+                                                                />
+                                                            </div>
+                                                            {char.id === 'femaleD' && (
+                                                                <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                                                                        <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.fixedAge || 'in her early 20s'}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            disabled={!char.isFixedAge}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
-                                                            <input
-                                                                type="text"
-                                                                value={char.fixedAge || 'in her early 20s'}
-                                                                onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
-                                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                disabled={!char.isFixedAge}
-                                                            />
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
-                                                    </div>
-                                                )}
-                                            </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -6575,57 +6579,57 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 gap-3">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Identity</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.identity}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="A handsome Korean man"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Hair</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.hair}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="short neat hairstyle"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Body</label>
-                                                    <textarea
-                                                        value={char.body}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
-                                                        rows={2}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                        placeholder="fit athletic build..."
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Style</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.style}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="dandy and refined presence"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.outfitFit}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="tailored slim-fit"
-                                                    />
-                                                </div>
-                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.identity}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="A handsome Korean man"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.hair}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="short neat hairstyle"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                <textarea
+                                                                    value={char.body}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
+                                                                    rows={2}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                    placeholder="fit athletic build..."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.style}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="dandy and refined presence"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.outfitFit}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="tailored slim-fit"
+                                                                />
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -6710,19 +6714,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             {characterRulesBackups.map((backup, index) => (
                                                 <div
                                                     key={backup.id}
-                                                    className={`rounded-lg border transition-colors ${
-                                                        selectedCharacterRulesBackupId === backup.id
-                                                            ? 'border-blue-500 bg-blue-600/20'
-                                                            : 'border-slate-800 bg-slate-900'
-                                                    }`}
+                                                    className={`rounded-lg border transition-colors ${selectedCharacterRulesBackupId === backup.id
+                                                        ? 'border-blue-500 bg-blue-600/20'
+                                                        : 'border-slate-800 bg-slate-900'
+                                                        }`}
                                                 >
                                                     <button
                                                         onClick={() => setSelectedCharacterRulesBackupId(backup.id)}
-                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${
-                                                            selectedCharacterRulesBackupId === backup.id
-                                                                ? 'text-white'
-                                                                : 'text-slate-200 hover:text-white'
-                                                        }`}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedCharacterRulesBackupId === backup.id
+                                                            ? 'text-white'
+                                                            : 'text-slate-200 hover:text-white'
+                                                            }`}
                                                     >
                                                         <div>{backup.name || `백업 ${index + 1}`}</div>
                                                         <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>

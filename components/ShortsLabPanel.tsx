@@ -5080,6 +5080,9 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [isGuidelineViewOpen, setIsGuidelineViewOpen] = useState(false);
     const [selectedGuidelineGenre, setSelectedGuidelineGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
+    // 2단계 프롬프트 전체 보기 모달 상태
+    const [isStep2PromptViewOpen, setIsStep2PromptViewOpen] = useState(false);
+
     // Draggable state
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -6362,6 +6365,13 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                             </div>
                             <div className="space-y-4">
                                 <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+                                    <button
+                                        onClick={() => setIsStep2PromptViewOpen(true)}
+                                        className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        전체 프롬프트 보기
+                                    </button>
                                     <div className="grid grid-cols-3 gap-2">
                                         <button
                                             onClick={handleStep2BackupCreate}
@@ -6939,6 +6949,126 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 >
                                     <Download className="w-4 h-4" />
                                     다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 2단계 프롬프트 전체 보기/편집 모달 */}
+                {isStep2PromptViewOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                        onClick={() => setIsStep2PromptViewOpen(false)}
+                    >
+                        <div
+                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">📋 2단계 프롬프트 - 보기/편집</h3>
+                                    <p className="text-xs text-slate-400 mt-1">대본생성, 캐릭터분석, 이미지프롬프트 생성 프롬프트를 수정하고 저장할 수 있습니다</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsStep2PromptViewOpen(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50 space-y-6">
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-blue-400">📝 대본생성 프롬프트</h4>
+                                    <textarea
+                                        value={step2ScriptPrompt}
+                                        onChange={(e) => {
+                                            setStep2ScriptPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        placeholder="대본생성 프롬프트를 입력하세요..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-emerald-400">👤 캐릭터분석 프롬프트</h4>
+                                    <textarea
+                                        value={step2CharacterPrompt}
+                                        onChange={(e) => {
+                                            setStep2CharacterPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                        placeholder="캐릭터분석 프롬프트를 입력하세요..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-purple-400">🎨 이미지프롬프트 생성 프롬프트</h4>
+                                    <textarea
+                                        value={step2FinalPrompt}
+                                        onChange={(e) => {
+                                            setStep2FinalPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={10}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                        placeholder="이미지프롬프트 생성 프롬프트를 입력하세요..."
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 p-6 border-t border-slate-800">
+                                <button
+                                    onClick={() => setIsStep2PromptViewOpen(false)}
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium"
+                                >
+                                    닫기
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        const fullText = `=== 대본생성 프롬프트 ===\n${step2ScriptPrompt}\n\n=== 캐릭터분석 프롬프트 ===\n${step2CharacterPrompt}\n\n=== 이미지프롬프트 생성 프롬프트 ===\n${step2FinalPrompt}`;
+                                        try {
+                                            await navigator.clipboard.writeText(fullText);
+                                            showToast('모든 프롬프트가 복사되었습니다.', 'success');
+                                        } catch (error) {
+                                            console.error('Failed to copy prompts:', error);
+                                            showToast('복사 실패', 'error');
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    복사
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await onStep2RulesSave({
+                                                scriptPrompt: step2ScriptPrompt,
+                                                characterPrompt: step2CharacterPrompt,
+                                                finalPrompt: step2FinalPrompt
+                                            });
+                                            setStep2RulesDirty(false);
+                                            showToast('프롬프트가 저장되었습니다.', 'success');
+                                            setIsStep2PromptViewOpen(false);
+                                        } catch (error) {
+                                            console.error('Failed to save step2 rules:', error);
+                                            showToast('저장 실패', 'error');
+                                        }
+                                    }}
+                                    disabled={!step2RulesDirty}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {step2RulesDirty ? '저장' : '저장됨'}
                                 </button>
                             </div>
                         </div>

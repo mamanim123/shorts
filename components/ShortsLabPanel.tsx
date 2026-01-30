@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';

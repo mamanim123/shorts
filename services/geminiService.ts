@@ -1237,7 +1237,10 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
         let slotId = '';
         let gender: 'female' | 'male' = 'female';
 
-        if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
+        if (char.name === '캐디') {
+          slotId = 'WomanD';
+          gender = 'female';
+        } else if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
           if (femaleIdx < femaleSlots.length) {
             slotId = femaleSlots[femaleIdx++];
             gender = 'female';

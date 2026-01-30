@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
@@ -1090,6 +1090,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         deleteFemaleCharacter,
         deleteMaleCharacter
     } = useShortsLabCharacterRulesManager();
+
+    // 지침 전체 보기 모달 상태는 GenreManagementModal에서 관리합니다
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
@@ -5074,6 +5076,10 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
+    // 지침 전체 보기 모달 상태
+    const [isGuidelineViewOpen, setIsGuidelineViewOpen] = useState(false);
+    const [selectedGuidelineGenre, setSelectedGuidelineGenre] = useState<LabGenreGuidelineEntry | null>(null);
+
     // Draggable state
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -5703,6 +5709,77 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
 
     const arrayToText = (arr: string[] | undefined): string => {
         return arr?.join('\n') || '';
+    };
+
+    const formatGuidelineAsText = (genre: LabGenreGuidelineEntry): string => {
+        return `
+╔═════════════════════════════════════════════════════════════════╗
+║  📋 ${genre.name} - 전체 지침                              ║
+╚═════════════════════════════════════════════════════════════════╝
+
+📝 설명
+${genre.description || ''}
+
+🎭 감정 곡선 (Emotion Curve)
+${genre.emotionCurve || ''}
+
+📖 구조 (Structure)
+${genre.structure || ''}
+
+🎯 킬러 프레이즈 (Killer Phrases)
+${genre.killerPhrases?.map(p => `  - "${p}"`).join('\n') || '  - 없음'}
+
+💬 조연 캐릭터 패턴 (Supporting Character Patterns)
+${genre.supportingCharacterPhrasePatterns?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+🎭 신체 반응 (Body Reactions)
+${genre.bodyReactions?.map(p => `  - "${p}"`).join('\n') || '  - 없음'}
+
+🚫 금지 패턴 (Forbidden Patterns)
+${genre.forbiddenPatterns?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+✅ 좋은 반전 예시 (Good Twist Examples)
+${genre.goodTwistExamples?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+❌ 나쁜 반전 예시 (Bad Twist Examples)
+${genre.badTwistExamples?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+💬 조연 캐릭터 반전 패턴
+${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+`;
+    };
+
+    const handleOpenGuidelineView = (genre: LabGenreGuidelineEntry) => {
+        setSelectedGuidelineGenre(genre);
+        setIsGuidelineViewOpen(true);
+    };
+
+    const handleCopyGuidelines = async () => {
+        if (!selectedGuidelineGenre) return;
+        const text = formatGuidelineAsText(selectedGuidelineGenre);
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast('지침이 복사되었습니다.', 'success');
+        } catch (error) {
+            console.error('Failed to copy guidelines:', error);
+            showToast('복사 실패', 'error');
+        }
+    };
+
+    const handleDownloadGuidelines = () => {
+        if (!selectedGuidelineGenre) return;
+        const text = formatGuidelineAsText(selectedGuidelineGenre);
+        const fileName = `${selectedGuidelineGenre.name.replace(/[\/\\:*?"<>|]/g, '_')}_지침.txt`;
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('지침이 다운로드되었습니다.', 'success');
     };
 
     return (
@@ -6784,6 +6861,13 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                 {activeTab === 'genres' && (mode === 'edit' || mode === 'add') && (
                     <div className="p-6 border-t border-slate-800 flex justify-end gap-3">
                         <button
+                            onClick={() => handleOpenGuidelineView(selectedGenre || formData)}
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                        >
+                            <FileText className="w-4 h-4" />
+                            전체보기
+                        </button>
+                        <button
                             onClick={() => {
                                 setMode('list');
                                 setSelectedGenre(null);
@@ -6811,6 +6895,56 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                         </button>
                     </div>
                 )}
+
+                {/* 지침 전체 보기 모달 */}
+                {isGuidelineViewOpen && selectedGuidelineGenre && (
+                    <div
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                        onClick={() => setIsGuidelineViewOpen(false)}
+                    >
+                        <div
+                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">📋 {selectedGuidelineGenre.name} - 전체 지침</h3>
+                                    <p className="text-xs text-slate-400 mt-1">{selectedGuidelineGenre.description}</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsGuidelineViewOpen(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50">
+                                <pre className="whitespace-pre-wrap text-sm text-slate-200 font-mono leading-relaxed">
+                                    {formatGuidelineAsText(selectedGuidelineGenre)}
+                                </pre>
+                            </div>
+
+                            <div className="flex justify-end gap-2 p-6 border-t border-slate-800">
+                                <button
+                                    onClick={handleCopyGuidelines}
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    복사
+                                </button>
+                                <button
+                                    onClick={handleDownloadGuidelines}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             {editingBackupId && (

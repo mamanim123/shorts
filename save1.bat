@@ -1,4 +1,5 @@
 @echo off
+git checkout master 2>nul
 title Save - Git Push
 
 echo.

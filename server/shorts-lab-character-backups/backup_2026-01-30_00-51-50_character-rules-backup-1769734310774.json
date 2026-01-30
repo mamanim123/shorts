@@ -1,7 +1,7 @@
 {
-  "id": "character-rules-backup-1769566346445",
-  "name": "백업 2026. 01. 28.",
-  "createdAt": "2026-01-28T02:12:26.446Z",
+  "id": "character-rules-backup-1769734310774",
+  "name": "백업 2026. 01. 30.",
+  "createdAt": "2026-01-30T00:51:50.775Z",
   "rules": {
     "females": [
       {
@@ -40,6 +40,15 @@
         "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
         "isFixedAge": true,
         "fixedAge": "in her early 20s"
+      },
+      {
+        "id": "femaleE",
+        "identity": "A stunning Korean woman",
+        "hair": "elegant hairstyle",
+        "body": "A side-profile silhouette of a slim Korean woman with an exaggerated hourglass figure and a voluminous chest. She is walking forward with a confident posture, straight back, and elegant arm swing. She is wearing a tight-fitting black long-sleeved ribbed top and a short mini skirt that emphasizes her narrow waist and curved hips. The lighting is backlit, creating a high-contrast silhouette against a blurred urban architectural background.",
+        "style": "glamorous and alluring presence, captivating charm",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": false
       }
     ],
     "males": [
@@ -68,15 +77,6 @@
         "body": "well-built physique with strong shoulders",
         "style": "professional and confident presence, business casual elegance",
         "outfitFit": "tailored slim-fit, clean and sharp lines",
-        "isFixedAge": false
-      },
-      {
-        "id": "maleD",
-        "identity": "A handsome Korean man",
-        "hair": "neat hairstyle",
-        "body": "athletic build",
-        "style": "refined presence",
-        "outfitFit": "tailored slim-fit",
         "isFixedAge": false
       }
     ],

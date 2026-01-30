@@ -12,9 +12,9 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -167,6 +167,12 @@ const CANDID_ACTION_FLAVORS = [
     'playful movement, caught mid-step, lively energy',
     'energetic action, subtle motion blur, candid vibe',
     'cinematic candid shot, authentic body language'
+];
+const GROUP_ACTION_FLAVORS = [
+    'natural interaction, candid moment, each person reacting differently',
+    'captured mid-action, lively group dynamic, varied gestures',
+    'spontaneous group moment, mixed reactions, authentic movement',
+    'candid interaction, playful exchanges, unscripted energy'
 ];
 const WINTER_ACCESSORY_SET = new Set(getWinterAccessoryPool());
 
@@ -361,12 +367,20 @@ const pickCameraPrompt = (basePrompt: string, sceneIndex: number, lastKeyword?: 
         ? CAMERA_ANGLE_KEYWORDS[(sceneIndex + 1) % CAMERA_ANGLE_KEYWORDS.length]
         : baseKeyword;
     const normalizedKeyword = keyword.toLowerCase();
+    const lastNormalized = lastKeyword ? lastKeyword.toLowerCase() : '';
+    if (normalizedKeyword === 'medium' && lastNormalized === 'medium') {
+        const alternatives = CAMERA_ANGLE_KEYWORDS.filter((item) => item !== 'medium');
+        keyword = alternatives[(sceneIndex + 2) % alternatives.length] || keyword;
+    }
     if (lastKeyword && normalizedKeyword === lastKeyword.toLowerCase()) {
         const currentIndex = CAMERA_ANGLE_KEYWORDS.findIndex((item) => item === normalizedKeyword);
         const nextIndex = currentIndex >= 0
             ? (currentIndex + 1) % CAMERA_ANGLE_KEYWORDS.length
             : (sceneIndex + 1) % CAMERA_ANGLE_KEYWORDS.length;
         keyword = CAMERA_ANGLE_KEYWORDS[nextIndex];
+        return CAMERA_PROMPT_FALLBACKS[keyword] || basePrompt;
+    }
+    if (shouldRotate) {
         return CAMERA_PROMPT_FALLBACKS[keyword] || basePrompt;
     }
     return basePrompt;
@@ -394,8 +408,8 @@ const buildAccessoryMap = (
     if (enableWinterAccessories) {
         const ids = Array.isArray(characters)
             ? characters
-                  .map((ch) => String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim())
-                  .filter(Boolean)
+                .map((ch) => String(ch.id || ch.slot || ch.slotId || ch.characterSlot || '').trim())
+                .filter(Boolean)
             : [];
         ids.forEach((id) => {
             const gender = getCharacterGender(id);
@@ -487,12 +501,12 @@ const buildRandomOutfitsByCharacter = (characterIds: string[]) => {
     characterIds.forEach((id) => {
         const gender = getCharacterGender(id);
         const candidates = gender === 'male' ? maleCandidates : femaleCandidates;
-        
+
         const available = candidates.filter(item => !usedOutfits.has(item.name));
         const picked = available.length > 0
             ? available[Math.floor(Math.random() * available.length)]
             : candidates[0];
-        
+
         if (picked) {
             usedOutfits.add(picked.name);
             outfitMap.set(id, picked.name);
@@ -608,25 +622,44 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
     });
     const femaleSlots = ['WomanA', 'WomanB', 'WomanC', 'WomanD'];
     const maleSlots = ['ManA', 'ManB', 'ManC'];
+    const usedSlots = new Set<string>();
     let femaleIndex = 0;
     let maleIndex = 0;
+
+    const getPreferredSlot = (name: string, role?: string) => {
+        const combined = `${name} ${role || ''}`.trim();
+        if (/캐디|caddy/i.test(combined)) return 'WomanD';
+        if (/(마누라|와이프|아내|부인|wife|spouse)/i.test(combined)) return 'WomanA';
+        return '';
+    };
+
+    const pickNextSlot = (slots: string[], index: number) => {
+        let cursor = index;
+        while (cursor < slots.length && usedSlots.has(slots[cursor])) {
+            cursor += 1;
+        }
+        return slots[cursor] || slots[slots.length - 1];
+    };
 
     characters.forEach((char) => {
         const name = char.name.trim();
         if (!name) return;
-        const isCaddy = /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
-        if (isCaddy) {
-            mapping.set(name, 'WomanD');
+        const preferred = getPreferredSlot(name, char.role);
+        if (preferred && !usedSlots.has(preferred)) {
+            mapping.set(name, preferred);
+            usedSlots.add(preferred);
             return;
         }
         if (char.gender === 'male') {
-            const slot = maleSlots[maleIndex] || maleSlots[maleSlots.length - 1];
+            const slot = pickNextSlot(maleSlots, maleIndex);
             mapping.set(name, slot);
+            usedSlots.add(slot);
             maleIndex += 1;
             return;
         }
-        const slot = femaleSlots[femaleIndex] || femaleSlots[femaleSlots.length - 1];
+        const slot = pickNextSlot(femaleSlots, femaleIndex);
         mapping.set(name, slot);
+        usedSlots.add(slot);
         femaleIndex += 1;
     });
 
@@ -909,7 +942,7 @@ const postProcessAiScenes = (
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
-    
+
     const totalScenes = options.totalScenes || scenes.length || 12;
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
     let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
@@ -1058,6 +1091,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         deleteMaleCharacter
     } = useShortsLabCharacterRulesManager();
 
+    // 지침 전체 보기 모달 상태는 GenreManagementModal에서 관리합니다
+
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
 
@@ -1071,6 +1106,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [aiTargetAge, setAiTargetAge] = useState('40대');
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
+    const [useRandomOutfits, setUseRandomOutfits] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isTwoStepGenerating, setIsTwoStepGenerating] = useState(false);
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
@@ -1928,12 +1964,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         sceneNumber: number,
         characterIds: string[],
         characterMap: Map<string, ManualCharacterPrompt>,
-        guidance?: { expression?: string; camera?: string }
+        guidance?: { expression?: string; camera?: string; action?: string; background?: string }
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
         let remainder = (rawPrompt || '').trim();
         const hadPersonMarkers = /\[Person\s+\d+:/i.test(remainder);
-        
+
         // Clean up common AI prefixes
         remainder = remainder.replace(/^Scene\s+\d+[.,]?\s*/i, '').trim();
         if (remainder.includes(PROMPT_CONSTANTS.START)) {
@@ -1947,34 +1983,42 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         // [v3.5.3] De-duplication Logic: 
         // If AI already wrote a long prompt, we want to replace its generic character descriptions
         // with our specific [Person X] markers to ensure consistency while avoiding "A stunning Korean woman" appearing twice.
-        
+
+        const actionChunks = (guidance?.action || '').split(/\s*,\s*/).filter(Boolean);
+        const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
+
         const identityBlock = characterIds
             .map((id, index) => {
                 const meta = characterMap.get(id);
                 if (!meta) return '';
-                
+
                 const fallbackHair = meta.hair || DEFAULT_CHARACTER_META[meta.id]?.hair || '';
                 const fallbackBody = meta.body
                     || DEFAULT_CHARACTER_META[meta.id]?.body
                     || (meta.gender === 'female' ? PROMPT_CONSTANTS.FEMALE_BODY_A : '');
-                
+
                 const outfitPhrase = meta.outfit
                     ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
                     : '';
                 const accessoryPhrase = meta.accessories.length > 0
                     ? `accessorized with ${meta.accessories.join(', ')}`
                     : '';
-                
+
+                const personAction = actionChunks[index] || actionChunks[0] || '';
+                const personExpression = expressionChunks[index] || expressionChunks[0] || '';
+
                 const descriptor = [
                     meta.identity,
                     fallbackHair,
                     fallbackBody,
                     outfitPhrase,
-                    accessoryPhrase
+                    accessoryPhrase,
+                    personAction ? `action: ${personAction}` : '',
+                    personExpression ? `expression: ${personExpression}` : ''
                 ].filter(Boolean).join(', ');
-                
+
                 // Use Person index for the marker
-                return `[Person ${index + 1}: ${descriptor}]`;
+                return `[Person ${index + 1} (${meta.slotLabel}): ${descriptor}]`;
             })
             .filter(Boolean)
             .join(', ');
@@ -1982,11 +2026,25 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         // Try to find where the AI described characters and replace or suppress
         // For now, let's keep it simple: Start with our identity markers, then add the rest.
         const parts = [PROMPT_CONSTANTS.START];
-        
-        if (guidance?.camera) parts.push(guidance.camera);
+        const actionPrompt = guidance?.action ? translateActionToEnglish(guidance.action) : '';
+        const cameraPrompt = guidance?.camera || '';
+        const isWideShot = /\bwide\b|establishing|panoramic|bird\'s-eye|overhead/i.test(cameraPrompt);
+        const backgroundPrompt = guidance?.background ? guidance.background.trim() : '';
+        const environmentBoost = isWideShot
+            ? 'scenic backdrop, wide field of view, deep focus, sharp background details'
+            : 'environment context';
+        const environmentPrompt = [backgroundPrompt, environmentBoost]
+            .filter(Boolean)
+            .join(', ');
+
+        if (cameraPrompt) parts.push(cameraPrompt);
+        if (environmentPrompt) parts.push(environmentPrompt);
         if (identityBlock) parts.push(identityBlock);
-        if (guidance?.expression) parts.push(`[${guidance.expression}]`);
-        
+        if (characterIds.length === 1) {
+            if (guidance?.expression) parts.push(`[${guidance.expression}]`);
+            if (actionPrompt) parts.push(actionPrompt);
+        }
+
         // Suppress AI's attempt to REDESCRIBE characters if we already have the block
         // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
         let cleanedRemainder = remainder;
@@ -2000,7 +2058,24 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const namePattern = new RegExp(`(A\\s+stunning\\s+Korean\\s+woman|A\\s+handsome\\s+Korean\\s+man|Slot\\s+${meta.slotLabel}|${meta.slotLabel})`, 'gi');
             cleanedRemainder = cleanedRemainder.replace(namePattern, '').trim();
         });
-        
+        if (actionPrompt && guidance?.action) {
+            cleanedRemainder = cleanedRemainder.replace(guidance.action, '').trim();
+        }
+        cleanedRemainder = cleanedRemainder
+            .replace(/\bwearing\s+[^,]+/gi, '')
+            .replace(/\boutfit:\s*[^,]+/gi, '')
+            .replace(/\bin\s+a\s+[^,]+\s+(knit|coat|jacket|puffer|vest|turtleneck|sweater|hoodie)\b/gi, '')
+            .trim();
+        if (isWideShot) {
+            cleanedRemainder = cleanedRemainder
+                .replace(/shallow depth of field/gi, '')
+                .replace(/studio (backdrop|lighting)/gi, '')
+                .replace(/portrait (lighting|background|shot)/gi, '')
+                .trim();
+        }
+        const adjectivePattern = /\b(stunning|beautiful|attractive|gorgeous|sexy|elegant|handsome)\b\s+(korean\s+)?(woman|man|female|male|lady|gentleman|caddy)\b/gi;
+        cleanedRemainder = cleanedRemainder.replace(adjectivePattern, '').trim();
+
         // Clean up messy commas from replacement
         cleanedRemainder = cleanedRemainder.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
 
@@ -2088,7 +2163,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             // 4단계: 씬 분해 프롬프트 생성
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
-                characters: characterList
+                characters: characterList,
+                enableWinterAccessories: enableWinterAccessories
             });
 
             showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
@@ -2188,6 +2264,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             let lastExpressionKeyword = '';
             let lastCameraKeyword = '';
             let lastActionFlavor = '';
+            let lastGroupActionFlavor = '';
 
             const newScenes = scenesSource.map((scene, idx) => {
                 const sceneNumber = scene.sceneNumber || idx + 1;
@@ -2228,12 +2305,20 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 }
                 const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
                 lastActionFlavor = actionFlavor;
+                const isGroupShot = sceneCharacterIds.length >= 2;
+                const groupActionFlavor = isGroupShot
+                    ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
+                    : '';
+                if (groupActionFlavor) {
+                    lastGroupActionFlavor = groupActionFlavor;
+                }
                 const cleanedLongPrompt = stripCameraPrefix(stripLongPromptMarkers(scene.longPrompt || ''));
                 const narrativeParts = mergeNarrativeParts([
+                    scene.background,
                     scene.summary,
                     scene.action,
-                    scene.background,
                     actionFlavor,
+                    groupActionFlavor,
                     cleanedLongPrompt
                 ]);
                 const normalizedPrompt = composeManualPrompt(
@@ -2241,7 +2326,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     sceneNumber,
                     sceneCharacterIds,
                     autoCharacterMap,
-                    { expression, camera: cameraPrompt }
+                    { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
                 );
                 const characterInfos = sceneCharacterIds
                     .map((id) => autoCharacterMap.get(id))
@@ -2783,7 +2868,8 @@ ${scriptInput}
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
-                enableWinterAccessories: enableWinterAccessories
+                enableWinterAccessories: enableWinterAccessories,
+                useRandomOutfits
             });
 
             // 선택된 AI 서비스 (기본값: GEMINI)
@@ -3106,15 +3192,32 @@ ${scriptInput}
             });
             const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
 
-            const characterList = allSlotIds.map((slotId) => ({
-                id: slotId,
-                name: '',
-                slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man ')
-            }));
+            // [v3.5.3] 의상 선택 방식 결정 (랜덤 선택 옵션 준수)
+            const characterList = allSlotIds.map((slotId) => {
+                const gender = slotId.startsWith('Woman') ? 'female' : 'male';
+                let outfit = '';
+
+                if (useRandomOutfits) {
+                    // 랜덤 선택 ON인 경우 로컬 카탈로그에서 미리 할당
+                    if (gender === 'female') {
+                        outfit = pickFemaleOutfit(aiGenre, aiTopic, []);
+                    } else {
+                        outfit = pickMaleOutfit(aiTopic, []);
+                    }
+                }
+
+                return {
+                    id: slotId,
+                    name: '',
+                    slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man '),
+                    outfit: outfit
+                };
+            });
 
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
-                characters: characterList
+                characters: characterList,
+                enableWinterAccessories: enableWinterAccessories
             });
 
             showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
@@ -3139,7 +3242,20 @@ ${scriptInput}
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
-            const scenesSource = parsedResult.scenes || [];
+            let scenesSource = parsedResult.scenes || [];
+            const llmOutfits = parsedResult.lockedOutfits || {};
+
+            // [v3.5.4] 생성된 프롬프트에 겨울 룩(방한용품 및 정밀 필터링) 최종 적용
+            if (enableWinterAccessories && scenesSource.length > 0) {
+                scenesSource = scenesSource.map(s => {
+                    const gender = (s.characterIds?.[0]?.startsWith('Man')) ? 'male' : 'female';
+                    const winterApplied = applyWinterLookToExistingPrompt(s.longPrompt, '', gender);
+                    return {
+                        ...s,
+                        longPrompt: winterApplied.longPrompt
+                    };
+                });
+            }
 
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');
@@ -3151,6 +3267,7 @@ ${scriptInput}
                 scenes: scenesSource,
                 characters: extractedCharacters.characters || [],
                 lineCharacterNames: extractedCharacters.lineCharacterNames || [],
+                lockedOutfits: llmOutfits,
                 source: 'step2'
             };
 
@@ -3189,21 +3306,29 @@ ${scriptInput}
             }
 
             const characterIds = characterList.map(item => item.id);
-            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
+
+            // [v3.5.3] LLM 선택 모드일 경우 AI가 고른 의상을 맵에 덮어쓰기 + 마마님 겨울 변환 로직 적용
+            if (!useRandomOutfits && Object.keys(llmOutfits).length > 0) {
+                autoCharacterMap.forEach((meta, id) => {
+                    const slotKey = id.charAt(0).toLowerCase() + id.slice(1);
+                    let chosenOutfit = llmOutfits[id] || llmOutfits[slotKey] || meta.outfit;
+
+                    // 마마님의 철학: 겨울이면 딥브이넥->오프숄더, 짧은소매->긴팔로 강제 치환
+                    if (enableWinterAccessories && chosenOutfit) {
+                        chosenOutfit = convertToTightLongSleeveWithShoulderLine(chosenOutfit);
+                    }
+
+                    autoCharacterMap.set(id, { ...meta, outfit: chosenOutfit });
+                });
+            }
             if (enableWinterAccessories) {
                 const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
                 const updated = new Map<string, ManualCharacterPrompt>();
                 autoCharacterMap.forEach((meta, id) => {
-                    const winterOutfit = meta.gender === 'female' && meta.outfit
-                        ? convertToTightLongSleeveWithShoulderLine(meta.outfit)
-                        : meta.outfit;
-                    if (meta.gender !== 'female') {
-                        updated.set(id, { ...meta, outfit: winterOutfit });
-                        return;
-                    }
                     const winterAccessories = winterAccessoryMap.get(id) || [];
                     const accessories = Array.from(new Set([...meta.accessories, ...winterAccessories]));
-                    updated.set(id, { ...meta, outfit: winterOutfit, accessories });
+                    updated.set(id, { ...meta, accessories });
                 });
                 autoCharacterMap = updated;
             }
@@ -3211,6 +3336,7 @@ ${scriptInput}
             let lastExpressionKeyword = '';
             let lastCameraKeyword = '';
             let lastActionFlavor = '';
+            let lastGroupActionFlavor = '';
 
             const newScenes = scenesSource.map((scene, idx) => {
                 const sceneNumber = scene.sceneNumber || idx + 1;
@@ -3251,12 +3377,20 @@ ${scriptInput}
                 }
                 const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
                 lastActionFlavor = actionFlavor;
+                const isGroupShot = sceneCharacterIds.length >= 2;
+                const groupActionFlavor = isGroupShot
+                    ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
+                    : '';
+                if (groupActionFlavor) {
+                    lastGroupActionFlavor = groupActionFlavor;
+                }
                 const cleanedLongPrompt = stripCameraPrefix(stripLongPromptMarkers(scene.longPrompt || ''));
                 const narrativeParts = mergeNarrativeParts([
+                    scene.background,
                     scene.summary,
                     scene.action,
-                    scene.background,
                     actionFlavor,
+                    groupActionFlavor,
                     cleanedLongPrompt
                 ]);
                 const normalizedPrompt = composeManualPrompt(
@@ -3264,7 +3398,7 @@ ${scriptInput}
                     sceneNumber,
                     sceneCharacterIds,
                     autoCharacterMap,
-                    { expression, camera: cameraPrompt }
+                    { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
                 );
                 const characterInfos = sceneCharacterIds
                     .map((id) => autoCharacterMap.get(id))
@@ -3931,23 +4065,43 @@ ${scriptInput}
                             </div>
 
                             {activeTab === 'input' && (
-                                <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
-                                        <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
+                                                }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                            />
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                            enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
-                                        }`}
-                                    >
-                                        <span
-                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
-                                            }`}
-                                        />
-                                    </button>
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">
+                                                {useRandomOutfits ? '의상 랜덤 선택' : '의상 LLM 선택'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">
+                                                {useRandomOutfits ? 'ON: 랜덤 선택' : 'ON: LLM 선택'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => setUseRandomOutfits(!useRandomOutfits)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'
+                                                }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useRandomOutfits ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
@@ -4011,15 +4165,13 @@ ${scriptInput}
                                                 <span>인물 고정</span>
                                                 <button
                                                     onClick={() => setManualIdentityLockEnabled(!manualIdentityLockEnabled)}
-                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                                        manualIdentityLockEnabled ? 'bg-purple-600' : 'bg-slate-700'
-                                                    }`}
+                                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${manualIdentityLockEnabled ? 'bg-purple-600' : 'bg-slate-700'
+                                                        }`}
                                                     title="인물 고정 토글"
                                                 >
                                                     <span
-                                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                                            manualIdentityLockEnabled ? 'translate-x-5' : 'translate-x-1'
-                                                        }`}
+                                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${manualIdentityLockEnabled ? 'translate-x-5' : 'translate-x-1'
+                                                            }`}
                                                     />
                                                 </button>
                                             </div>
@@ -4920,9 +5072,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onDeleteFemaleCharacter,
     onDeleteMaleCharacter
 }) => {
-    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules'>('genres');
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
+
+    // 지침 전체 보기 모달 상태
+    const [isGuidelineViewOpen, setIsGuidelineViewOpen] = useState(false);
+    const [selectedGuidelineGenre, setSelectedGuidelineGenre] = useState<LabGenreGuidelineEntry | null>(null);
+
+    // 2단계 프롬프트 전체 보기 모달 상태
+    const [isStep2PromptViewOpen, setIsStep2PromptViewOpen] = useState(false);
 
     // Draggable state
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -5028,6 +5187,9 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [characterRulesBackupName, setCharacterRulesBackupName] = useState('');
     // 아코디언 상태 (펼쳐진 캐릭터 ID들)
     const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
+    // 섹션 아코디언 상태 (여성/남성 캐릭터 섹션 펼침/접힘)
+    const [isFemaleSectionExpanded, setIsFemaleSectionExpanded] = useState(true);
+    const [isMaleSectionExpanded, setIsMaleSectionExpanded] = useState(true);
 
     React.useEffect(() => {
         if (step2RulesDirty) return;
@@ -5555,14 +5717,85 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         return arr?.join('\n') || '';
     };
 
+    const formatGuidelineAsText = (genre: LabGenreGuidelineEntry): string => {
+        return `
+╔═════════════════════════════════════════════════════════════════╗
+║  📋 ${genre.name} - 전체 지침                              ║
+╚═════════════════════════════════════════════════════════════════╝
+
+📝 설명
+${genre.description || ''}
+
+🎭 감정 곡선 (Emotion Curve)
+${genre.emotionCurve || ''}
+
+📖 구조 (Structure)
+${genre.structure || ''}
+
+🎯 킬러 프레이즈 (Killer Phrases)
+${genre.killerPhrases?.map(p => `  - "${p}"`).join('\n') || '  - 없음'}
+
+💬 조연 캐릭터 패턴 (Supporting Character Patterns)
+${genre.supportingCharacterPhrasePatterns?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+🎭 신체 반응 (Body Reactions)
+${genre.bodyReactions?.map(p => `  - "${p}"`).join('\n') || '  - 없음'}
+
+🚫 금지 패턴 (Forbidden Patterns)
+${genre.forbiddenPatterns?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+✅ 좋은 반전 예시 (Good Twist Examples)
+${genre.goodTwistExamples?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+❌ 나쁜 반전 예시 (Bad Twist Examples)
+${genre.badTwistExamples?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+
+💬 조연 캐릭터 반전 패턴
+${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  - 없음'}
+`;
+    };
+
+    const handleOpenGuidelineView = (genre: LabGenreGuidelineEntry) => {
+        setSelectedGuidelineGenre(genre);
+        setIsGuidelineViewOpen(true);
+    };
+
+    const handleCopyGuidelines = async () => {
+        if (!selectedGuidelineGenre) return;
+        const text = formatGuidelineAsText(selectedGuidelineGenre);
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast('지침이 복사되었습니다.', 'success');
+        } catch (error) {
+            console.error('Failed to copy guidelines:', error);
+            showToast('복사 실패', 'error');
+        }
+    };
+
+    const handleDownloadGuidelines = () => {
+        if (!selectedGuidelineGenre) return;
+        const text = formatGuidelineAsText(selectedGuidelineGenre);
+        const fileName = `${selectedGuidelineGenre.name.replace(/[\/\\:*?"<>|]/g, '_')}_지침.txt`;
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('지침이 다운로드되었습니다.', 'success');
+    };
+
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onClick={onClose}
         >
-            <div 
+            <div
                 className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
                 style={{
                     transform: `translate(${position.x}px, ${position.y}px)`,
@@ -5571,7 +5804,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div 
+                <div
                     className="flex items-center justify-between p-6 border-b border-slate-800 cursor-move select-none"
                     onMouseDown={handleMouseDown}
                 >
@@ -5644,6 +5877,32 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                         >
                             의상규칙
                         </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('winter_accessories');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'winter_accessories'
+                                ? 'bg-cyan-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            겨울악세
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('outfit_selection');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'outfit_selection'
+                                ? 'bg-orange-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            의상선택
+                        </button>
                     </div>
                 </div>
 
@@ -5697,7 +5956,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                     <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
                                 ) : (
                                     <div className="space-y-2">
-                                {backups.map((backup) => (
+                                        {backups.map((backup) => (
                                             <div
                                                 key={backup.id}
                                                 className="flex flex-col md:flex-row md:items-center gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2"
@@ -6135,6 +6394,13 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                             </div>
                             <div className="space-y-4">
                                 <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+                                    <button
+                                        onClick={() => setIsStep2PromptViewOpen(true)}
+                                        className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        전체 프롬프트 보기
+                                    </button>
                                     <div className="grid grid-cols-3 gap-2">
                                         <button
                                             onClick={handleStep2BackupCreate}
@@ -6175,19 +6441,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             {step2Backups.map((backup, index) => (
                                                 <div
                                                     key={backup.id}
-                                                    className={`rounded-lg border transition-colors ${
-                                                        selectedStep2BackupId === backup.id
-                                                            ? 'border-blue-500 bg-blue-600/20'
-                                                            : 'border-slate-800 bg-slate-900'
-                                                    }`}
+                                                    className={`rounded-lg border transition-colors ${selectedStep2BackupId === backup.id
+                                                        ? 'border-blue-500 bg-blue-600/20'
+                                                        : 'border-slate-800 bg-slate-900'
+                                                        }`}
                                                 >
                                                     <button
                                                         onClick={() => setSelectedStep2BackupId(backup.id)}
-                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${
-                                                            selectedStep2BackupId === backup.id
-                                                                ? 'text-white'
-                                                                : 'text-slate-200 hover:text-white'
-                                                        }`}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedStep2BackupId === backup.id
+                                                            ? 'text-white'
+                                                            : 'text-slate-200 hover:text-white'
+                                                            }`}
                                                     >
                                                         <div>{backup.name || `백업 ${index + 1}`}</div>
                                                         <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
@@ -6218,11 +6482,21 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
                             <div className="space-y-6">
                                 {/* Female Characters */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div
+                                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                        onClick={() => setIsFemaleSectionExpanded(!isFemaleSectionExpanded)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                className={`w-5 h-5 text-blue-400 transition-transform ${isFemaleSectionExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                            <div className="text-lg font-bold text-blue-400">여성 캐릭터</div>
+                                            <span className="text-xs text-slate-500">({characterRulesState.females.length}명)</span>
+                                        </div>
                                         <button
-                                            onClick={async () => {
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
                                                 try {
                                                     if (!onAddFemaleCharacter) return;
                                                     const updated = await onAddFemaleCharacter();
@@ -6249,6 +6523,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             추가
                                         </button>
                                     </div>
+                                    {isFemaleSectionExpanded && (
+                                        <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.females.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
                                         return (
@@ -6303,89 +6579,101 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 gap-3">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Identity</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.identity}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="A stunning Korean woman"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Hair</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.hair}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="long soft-wave hairstyle"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Body</label>
-                                                    <textarea
-                                                        value={char.body}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
-                                                        rows={2}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                        placeholder="slim hourglass figure..."
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Style</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.style}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="perfectly managed sophisticated look"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.outfitFit}
-                                                        onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="tight-fitting, form-hugging"
-                                                    />
-                                                </div>
-                                                {char.id === 'femaleD' && (
-                                                    <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                                                            <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.identity}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="A stunning Korean woman"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.hair}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="long soft-wave hairstyle"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                <textarea
+                                                                    value={char.body}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
+                                                                    rows={2}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                    placeholder="slim hourglass figure..."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.style}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="perfectly managed sophisticated look"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.outfitFit}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="tight-fitting, form-hugging"
+                                                                />
+                                                            </div>
+                                                            {char.id === 'femaleD' && (
+                                                                <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                                                                        <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.fixedAge || 'in her early 20s'}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            disabled={!char.isFixedAge}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
-                                                            <input
-                                                                type="text"
-                                                                value={char.fixedAge || 'in her early 20s'}
-                                                                onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
-                                                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                disabled={!char.isFixedAge}
-                                                            />
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
-                                                    </div>
-                                                )}
-                                            </div>
                                                     </div>
                                                 )}
                                             </div>
                                         );
                                     })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Male Characters */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                    <div
+                                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                        onClick={() => setIsMaleSectionExpanded(!isMaleSectionExpanded)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                className={`w-5 h-5 text-blue-400 transition-transform ${isMaleSectionExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                            <div className="text-lg font-bold text-blue-400">남성 캐릭터</div>
+                                            <span className="text-xs text-slate-500">({characterRulesState.males.length}명)</span>
+                                        </div>
                                         <button
-                                            onClick={async () => {
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
                                                 try {
                                                     if (!onAddMaleCharacter) return;
                                                     const updated = await onAddMaleCharacter();
@@ -6412,6 +6700,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             추가
                                         </button>
                                     </div>
+                                    {isMaleSectionExpanded && (
+                                        <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.males.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
                                         return (
@@ -6459,62 +6749,64 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 gap-3">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Identity</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.identity}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="A handsome Korean man"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Hair</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.hair}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="short neat hairstyle"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Body</label>
-                                                    <textarea
-                                                        value={char.body}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
-                                                        rows={2}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                        placeholder="fit athletic build..."
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Style</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.style}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="dandy and refined presence"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                    <input
-                                                        type="text"
-                                                        value={char.outfitFit}
-                                                        onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="tailored slim-fit"
-                                                    />
-                                                </div>
-                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.identity}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="A handsome Korean man"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.hair}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="short neat hairstyle"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                <textarea
+                                                                    value={char.body}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
+                                                                    rows={2}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                    placeholder="fit athletic build..."
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.style}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="dandy and refined presence"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.outfitFit}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="tailored slim-fit"
+                                                                />
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
                                         );
                                     })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Common Settings */}
@@ -6594,19 +6886,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                                             {characterRulesBackups.map((backup, index) => (
                                                 <div
                                                     key={backup.id}
-                                                    className={`rounded-lg border transition-colors ${
-                                                        selectedCharacterRulesBackupId === backup.id
-                                                            ? 'border-blue-500 bg-blue-600/20'
-                                                            : 'border-slate-800 bg-slate-900'
-                                                    }`}
+                                                    className={`rounded-lg border transition-colors ${selectedCharacterRulesBackupId === backup.id
+                                                        ? 'border-blue-500 bg-blue-600/20'
+                                                        : 'border-slate-800 bg-slate-900'
+                                                        }`}
                                                 >
                                                     <button
                                                         onClick={() => setSelectedCharacterRulesBackupId(backup.id)}
-                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${
-                                                            selectedCharacterRulesBackupId === backup.id
-                                                                ? 'text-white'
-                                                                : 'text-slate-200 hover:text-white'
-                                                        }`}
+                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedCharacterRulesBackupId === backup.id
+                                                            ? 'text-white'
+                                                            : 'text-slate-200 hover:text-white'
+                                                            }`}
                                                     >
                                                         <div>{backup.name || `백업 ${index + 1}`}</div>
                                                         <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
@@ -6632,11 +6922,175 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* 겨울악세 탭 */}
+                    {activeTab === 'winter_accessories' && (
+                        <div className="space-y-6">
+                            {/* ON 상태 지침 */}
+                            <div className="bg-cyan-900/20 border border-cyan-700/30 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">❄️</span>
+                                    <h3 className="text-lg font-bold text-cyan-400">겨울 악세서리 ON</h3>
+                                </div>
+                                <p className="text-sm text-slate-300 mb-4">
+                                    모든 씬의 이미지 프롬프트에 겨울 악세서리가 자동으로 추가됩니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>beanie (비니), earmuffs (귀마개), scarf (목도리), gloves (장갑), winter boots (겨울 부츠) 중 1~2개를 자연스럽게 배치</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>겨울 키워드(눈, 스키, 겨울 등)가 있을 때 상의를 타이트한 긴팔 + 어깨/쇄골 노출 스타일로 변환</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>악세서리는 "accessorized with [item1], [item2]" 형식으로 프롬프트에 추가</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-cyan-500 mt-0.5">•</span>
+                                            <span>딥브이넥 → 오프숄더, 짧은소매 → 긴팔로 강제 치환</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-cyan-700/30">
+                                    <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider mb-2">예시</h4>
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-slate-500 font-mono">accessorized with stylish pom-pom beanie, leather gloves</p>
+                                        <p className="text-xs text-slate-500 font-mono">accessorized with fur earmuffs, cashmere scarf</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* OFF 상태 지침 */}
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">🚫</span>
+                                    <h3 className="text-lg font-bold text-slate-400">겨울 악세서리 OFF</h3>
+                                </div>
+                                <p className="text-sm text-slate-400 mb-4">
+                                    겨울 악세서리를 자동으로 추가하지 않습니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-500 flex items-start gap-2">
+                                            <span className="text-slate-600 mt-0.5">•</span>
+                                            <span>기존 의상 프롬프트를 그대로 사용</span>
+                                        </li>
+                                        <li className="text-xs text-slate-500 flex items-start gap-2">
+                                            <span className="text-slate-600 mt-0.5">•</span>
+                                            <span>수동으로 겨울 악세서리를 추가하려면 프롬프트에 직접 입력</span>
+                                        </li>
+                                        <li className="text-xs text-slate-500 flex items-start gap-2">
+                                            <span className="text-slate-600 mt-0.5">•</span>
+                                            <span>겨울 키워드가 있어도 상의 변환 없이 원본 의상 유지</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 의상선택 탭 */}
+                    {activeTab === 'outfit_selection' && (
+                        <div className="space-y-6">
+                            {/* 랜덤 선택 (ON) 지침 */}
+                            <div className="bg-orange-900/20 border border-orange-700/30 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">🎲</span>
+                                    <h3 className="text-lg font-bold text-orange-400">의상 랜덤 선택 ON</h3>
+                                </div>
+                                <p className="text-sm text-slate-300 mb-4">
+                                    로컬 카탈로그에서 미리 정의된 의상을 무작위로 선택합니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-orange-300 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>pickFemaleOutfit(), pickMaleOutfit() 함수가 로컬 의상 풀에서 랜덤 선택</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>같은 의상이 중복되지 않도록 필터링</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>Woman A, B, D와 Man A, B 각각 독립적으로 선택</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-orange-500 mt-0.5">•</span>
+                                            <span>빠른 처리 속도 (LLM 호출 없음)</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-orange-700/30">
+                                    <h4 className="text-xs font-semibold text-orange-300 uppercase tracking-wider mb-2">장점</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">⚡ 속도 빠름</span>
+                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">📊 결과 일관성</span>
+                                        <span className="px-2 py-1 bg-orange-600/20 text-orange-400 rounded text-xs">🎯 예측 가능한 스타일</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* LLM 선택 (OFF) 지침 */}
+                            <div className="bg-purple-900/20 border border-purple-700/30 rounded-xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-2xl">🤖</span>
+                                    <h3 className="text-lg font-bold text-purple-400">의상 LLM 선택 ON</h3>
+                                </div>
+                                <p className="text-sm text-slate-300 mb-4">
+                                    AI가 주제와 장르에 맞는 의상을 실시간으로 생성합니다.
+                                </p>
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-purple-300 uppercase tracking-wider">규칙</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>프롬프트 빌드 시 outfitPlaceholder로 표시</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>LLM이 주제, 장르, 캐릭터 특성을 고려하여 의상 생성</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>더 창의적이고 주제에 맞는 의상 가능</span>
+                                        </li>
+                                        <li className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-purple-500 mt-0.5">•</span>
+                                            <span>약간의 처리 시간 추가 소요</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-purple-700/30">
+                                    <h4 className="text-xs font-semibold text-purple-300 uppercase tracking-wider mb-2">장점</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">✨ 창의적인 의상</span>
+                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">🎭 주제 적합성</span>
+                                        <span className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs">🌈 다양성</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
                 {activeTab === 'genres' && (mode === 'edit' || mode === 'add') && (
                     <div className="p-6 border-t border-slate-800 flex justify-end gap-3">
+                        <button
+                            onClick={() => handleOpenGuidelineView(selectedGenre || formData)}
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                        >
+                            <FileText className="w-4 h-4" />
+                            전체보기
+                        </button>
                         <button
                             onClick={() => {
                                 setMode('list');
@@ -6665,6 +7119,176 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                         </button>
                     </div>
                 )}
+
+                {/* 지침 전체 보기 모달 */}
+                {isGuidelineViewOpen && selectedGuidelineGenre && (
+                    <div
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                        onClick={() => setIsGuidelineViewOpen(false)}
+                    >
+                        <div
+                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">📋 {selectedGuidelineGenre.name} - 전체 지침</h3>
+                                    <p className="text-xs text-slate-400 mt-1">{selectedGuidelineGenre.description}</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsGuidelineViewOpen(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50">
+                                <pre className="whitespace-pre-wrap text-sm text-slate-200 font-mono leading-relaxed">
+                                    {formatGuidelineAsText(selectedGuidelineGenre)}
+                                </pre>
+                            </div>
+
+                            <div className="flex justify-end gap-2 p-6 border-t border-slate-800">
+                                <button
+                                    onClick={handleCopyGuidelines}
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    복사
+                                </button>
+                                <button
+                                    onClick={handleDownloadGuidelines}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 2단계 프롬프트 전체 보기/편집 모달 */}
+                {isStep2PromptViewOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                        onClick={() => setIsStep2PromptViewOpen(false)}
+                    >
+                        <div
+                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">📋 2단계 프롬프트 - 보기/편집</h3>
+                                    <p className="text-xs text-slate-400 mt-1">대본생성, 캐릭터분석, 이미지프롬프트 생성 프롬프트를 수정하고 저장할 수 있습니다</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsStep2PromptViewOpen(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 bg-slate-800/50 space-y-6">
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-blue-400">📝 대본생성 프롬프트</h4>
+                                    <textarea
+                                        value={step2ScriptPrompt}
+                                        onChange={(e) => {
+                                            setStep2ScriptPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        placeholder="대본생성 프롬프트를 입력하세요..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-emerald-400">👤 캐릭터분석 프롬프트</h4>
+                                    <textarea
+                                        value={step2CharacterPrompt}
+                                        onChange={(e) => {
+                                            setStep2CharacterPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                        placeholder="캐릭터분석 프롬프트를 입력하세요..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-purple-400">🎨 이미지프롬프트 생성 프롬프트</h4>
+                                    <textarea
+                                        value={step2FinalPrompt}
+                                        onChange={(e) => {
+                                            setStep2FinalPrompt(e.target.value);
+                                            setStep2RulesDirty(true);
+                                            setStep2RulesEditError(null);
+                                        }}
+                                        rows={10}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                        placeholder="이미지프롬프트 생성 프롬프트를 입력하세요..."
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 p-6 border-t border-slate-800">
+                                <button
+                                    onClick={() => setIsStep2PromptViewOpen(false)}
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium"
+                                >
+                                    닫기
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        const fullText = `=== 대본생성 프롬프트 ===\n${step2ScriptPrompt}\n\n=== 캐릭터분석 프롬프트 ===\n${step2CharacterPrompt}\n\n=== 이미지프롬프트 생성 프롬프트 ===\n${step2FinalPrompt}`;
+                                        try {
+                                            await navigator.clipboard.writeText(fullText);
+                                            showToast('모든 프롬프트가 복사되었습니다.', 'success');
+                                        } catch (error) {
+                                            console.error('Failed to copy prompts:', error);
+                                            showToast('복사 실패', 'error');
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    복사
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await onStep2RulesSave({
+                                                scriptPrompt: step2ScriptPrompt,
+                                                characterPrompt: step2CharacterPrompt,
+                                                finalPrompt: step2FinalPrompt
+                                            });
+                                            setStep2RulesDirty(false);
+                                            showToast('프롬프트가 저장되었습니다.', 'success');
+                                            setIsStep2PromptViewOpen(false);
+                                        } catch (error) {
+                                            console.error('Failed to save step2 rules:', error);
+                                            showToast('저장 실패', 'error');
+                                        }
+                                    }}
+                                    disabled={!step2RulesDirty}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {step2RulesDirty ? '저장' : '저장됨'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             {editingBackupId && (

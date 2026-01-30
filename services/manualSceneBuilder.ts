@@ -32,6 +32,7 @@ export type ManualSceneSummary = {
 export type ManualSceneParseResult = {
   title?: string;
   scenes: ManualSceneSummary[];
+  lockedOutfits?: Record<string, string>; // AI가 자율적으로 선택한 캐릭터별 의상
 };
 
 export type CharacterExtractionResult = {
@@ -54,6 +55,9 @@ export const buildCharacterExtractionPrompt = (options: {
   const lines = scriptLines.filter(Boolean);
   const step2Rules = getShortsLabStep2PromptRules();
   const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
+
+
+
   const customPrompt = fillStep2PromptTemplate(step2Rules.characterPrompt, {
     DEFAULT_GENDER: defaultGender,
     SCRIPT_LINES: lineBlock
@@ -99,12 +103,12 @@ export const parseCharacterExtractionResponse = (rawText: string): CharacterExtr
 
   const characters = Array.isArray(parsed.characters)
     ? parsed.characters
-        .map((item: any) => ({
-          name: String(item?.name || '').trim(),
-          gender: item?.gender === 'female' || item?.gender === 'male' ? item.gender : 'unknown',
-          role: item?.role ? String(item.role) : undefined
-        }))
-        .filter((item: any) => item.name)
+      .map((item: any) => ({
+        name: String(item?.name || '').trim(),
+        gender: item?.gender === 'female' || item?.gender === 'male' ? item.gender : 'unknown',
+        role: item?.role ? String(item.role) : undefined
+      }))
+      .filter((item: any) => item.name)
     : [];
 
   const rawLineEntries = Array.isArray(parsed.lineCharacterNames)
@@ -134,48 +138,72 @@ export const buildManualSceneDecompositionPrompt = (options: {
   // 캐릭터 정보를 상세하게 포맷 (의상, identity, hair, body 포함)
   const characterLines = characters.length > 0
     ? characters
-        .map((char) => {
-          const nameLabel = char.name ? ` (${char.name})` : '';
-          const slotLabel = char.slotLabel ? ` / ${char.slotLabel}` : '';
-          let detailStr = `- ${char.id}${nameLabel}${slotLabel}`;
+      .map((char) => {
+        const nameLabel = char.name ? ` (${char.name})` : '';
+        const slotLabel = char.slotLabel ? ` / ${char.slotLabel}` : '';
+        let detailStr = `- ${char.id}${nameLabel}${slotLabel}`;
 
-          if (char.identity || char.hair || char.body || char.outfit) {
-            const details: string[] = [];
-            if (char.identity) details.push(`Identity: ${char.identity}`);
-            if (char.hair) details.push(`Hair: ${char.hair}`);
-            if (char.body) details.push(`Body: ${char.body}`);
-            if (char.outfit) details.push(`Outfit: wearing ${char.outfit}`);
-            if (char.winterAccessories && char.winterAccessories.length > 0) {
-              details.push(`Winter Accessories: accessorized with ${char.winterAccessories.join(', ')}`);
-            }
-            detailStr += `\n  ${details.join(' | ')}`;
+        if (char.identity || char.hair || char.body || char.outfit) {
+          const details: string[] = [];
+          if (char.identity) details.push(`Identity: ${char.identity}`);
+          if (char.hair) details.push(`Hair: ${char.hair}`);
+          if (char.body) details.push(`Body: ${char.body}`);
+          if (char.outfit) details.push(`Outfit: wearing ${char.outfit}`);
+          if (char.winterAccessories && char.winterAccessories.length > 0) {
+            details.push(`Winter Accessories: accessorized with ${char.winterAccessories.join(', ')}`);
           }
+          detailStr += `\n  ${details.join(' | ')}`;
+        }
 
-          return detailStr;
-        })
-        .join('\n')
+        return detailStr;
+      })
+      .join('\n')
     : '- (none)';
+
+  // [v3.5.3] 의상 전적 자율 선택 지시어 설계
+  const outfitSelectionInstruction = !options.characters.some(c => c.outfit)
+    ? `\n2. **의상 자율 선택 (LLM Selection)**: 
+   - 현재 캐릭터들의 의상이 지정되지 않았습니다. 
+   - 대본의 주제, 분위기, 장르를 종합적으로 분석하여 **각 캐릭터에게 가장 잘 어울리는 최상급 명품 의상 명칭**을 직접 선택하세요.
+   - **⚠️ 의상 정책 (Must Follow)**: 쇄골(Collarbone)과 어깨(Shoulder) 라인이 드러나는 스타일(Off-shoulder 등)은 허용되지만, **가슴골(Cleavage)이 깊게 파인 디자인(Deep V-neck, Plunging, Low-cut)은 절대 피하세요.**
+   - 선택한 의상은 아래 JSON의 "lockedOutfits" 객체에 담아야 합니다.`
+    : `\n2. **의상 일관성 준수**: 캐릭터 ID 목록에 명시된 의상을 한 글자도 바꾸지 말고 그대로 사용하세요.`;
 
   const step2Rules = getShortsLabStep2PromptRules();
   const lineBlock = lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
 
-  // 겨울 악세서리 규칙 추가
+  const shotQualityRule = `## 🎥 샷 품질 고도화 규칙 (매우 중요!)
+1) **배경 일관성 (Environment Continuity)**:
+   - 첫 씬에서 설정된 장소/배경은 대본에 명시된 이동이 없으면 끝까지 유지한다.
+   - 골프장/설산 배경을 실내/스튜디오로 바꾸지 말 것.
+2) **다인원 동작 다양성 (Action Diversity)**:
+   - 2명 이상 등장 시 각 인물의 동작을 서로 다르게 설정한다.
+   - 예: Person1=스윙 준비, Person2=박수/웃음, Person3=고개 돌림.
+3) **카메라 앵글 다양성**:
+   - 미디엄샷을 연속으로 사용하지 말 것.
+   - close-up, wide, POV, over-the-shoulder 등을 섞어라.
+4) **Candid Shot 스타일**:
+   - 자연스럽고 우연히 찍힌 느낌을 강조한다.
+   - 키워드 예: candid moment, natural interaction, captured mid-action.
+5) **배경 가시성 강화**:
+   - wide/establishing shot에서는 배경이 선명하게 보이도록 deep focus, sharp background를 포함한다.
+   - 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.`;
+
+  // 겨울 악세서리 규칙 (자율성 강화)
   const winterAccessoriesRule = enableWinterAccessories
-    ? `## ❄️ 겨울 악세서리 규칙 (필수!)
-1. **모든 씬의 이미지 프롬프트에는 각 캐릭터의 겨울 악세서리를 반드시 포함**한다.
-2. 위 "캐릭터 ID 목록"에 명시된 각 캐릭터의 Winter Accessories를 그대로 사용한다.
+    ? `## ❄️ 겨울 악세서리 규칙 (자율 코디 필수!)
+1. **모든 씬의 이미지 프롬프트에는 각 캐릭터의 겨울 방한용품을 조화롭게 포함**한다.
+2. 대본 상황(예: 눈오는 필드)에 맞춰 beanie(비니), earmuffs(귀도리), scarf(목도리), gloves(장갑) 등을 AI가 스스로 판단하여 자연스럽게 추가 코디한다.
 3. 악세서리는 shortPrompt/longPrompt 모두에 반영한다.
-4. **의상 명칭은 절대 변형하지 말고 악세서리만 추가**한다.
-5. **각 캐릭터마다 지정된 악세서리가 다르므로 혼동하지 말 것** (캐릭터별로 중복 없이 다른 악세서리 착용)`
+4. 선택한 의상과 악세서리를 조화롭게 매칭하여 최상급 겨울 룩을 완성할 것.`
     : '';
 
   // 의상 일관성 규칙
   const outfitConsistencyRule = `## 👗 의상 일관성 규칙 (절대 엄수!)
 1. **모든 씬에서 각 캐릭터의 identity/hair/body/outfit 문구를 100% 동일하게 사용**
-2. 위 "캐릭터 ID 목록"에 명시된 정보를 **한 글자도 바꾸지 말고** 그대로 복사
-3. **의상 명칭 보존**: "Pink & White Striped Knit + White Micro Short Pants" 같은 의상 명칭을 요약하거나 일부 생략 절대 금지
-4. **투샷/쓰리샷에서도 각 캐릭터별로 전체 정보(identity+hair+body+outfit${enableWinterAccessories ? '+accessories' : ''}) 개별 명시**
-5. Scene 1부터 마지막 Scene까지 **동일한 캐릭터는 동일한 의상**을 입어야 함 (랜덤 생성 금지)`;
+2. AI가 직접 선택한 의상이 있다면, Scene 1부터 마지막 Scene까지 한 글자도 바꾸지 말고 그대로 복사
+3. **투샷/쓰리샷에서도 각 캐릭터별로 전체 정보 개별 명시**
+4. 특정 캐릭터는 동일한 의상을 입어야 함 (장면마다 옷이 바뀌면 안 됨)`;
 
   // 겨울 악세서리 예시
   const winterAccessoriesExample = enableWinterAccessories
@@ -186,11 +214,11 @@ export const buildManualSceneDecompositionPrompt = (options: {
     SCRIPT_LINES: lineBlock,
     CHARACTER_LINES: characterLines,
     WINTER_ACCESSORIES_RULE: winterAccessoriesRule,
-    CHARACTER_OUTFIT_CONSISTENCY_RULE: outfitConsistencyRule,
-    WINTER_ACCESSORIES_EXAMPLE: winterAccessoriesExample
+    CHARACTER_OUTFIT_CONSISTENCY_RULE: `${outfitSelectionInstruction}\n${outfitConsistencyRule}`,
+    WINTER_ACCESSORIES_EXAMPLE: ''
   });
   if (customPrompt.trim()) {
-    return customPrompt;
+    return `${customPrompt}\n\n${shotQualityRule}`;
   }
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
@@ -207,6 +235,8 @@ export const buildManualSceneDecompositionPrompt = (options: {
 6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
 7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
 
+${shotQualityRule}
+
 ## 대본 라인
 ${lines.map((line, index) => `${index + 1}. ${line}`).join('\n')}
 
@@ -216,6 +246,10 @@ ${characterLines}
 ## 출력 JSON 스키마
 {
   "title": "string",
+  "lockedOutfits": {
+    "WomanA": "의상 명칭",
+    "ManA": "의상 명칭"
+  },
   "scenes": [
     {
       "sceneNumber": 1,
@@ -279,6 +313,7 @@ export const parseManualSceneDecompositionResponse = (rawText: string): ManualSc
 
   return {
     title: parsed.title || parsed.scripts?.[0]?.title || undefined,
+    lockedOutfits: parsed.lockedOutfits || {},
     scenes
   };
 };

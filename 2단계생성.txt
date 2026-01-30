@@ -18,34 +18,6 @@
 
 
 
-출력은 반드시 아래 JSON 형식 하나만:
-
-{
-
-"title": "제목",
-
-"titleOptions": ["옵션1", "옵션2", "옵션3"],
-
-"scriptBody": "문장1
-
-문장2... (8~12개 문장)",
-
-"punchline": "펀치라인",
-
-"hook": "HOOK 문장",
-
-"twist": "TWIST 문장",
-
-"foreshadowing": "복선 문장",
-
-"narrator": { "slot": "ManA", "name": "준호" },
-
-"emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음"
-
-}
-
-
-
 규칙:
 
 1) scriptBody는 8~12문장 (줄바꿈으로 구분)
@@ -64,7 +36,7 @@
 
 8) 마크다운 금지, JSON만 출력
 
-{ "title": "설원 위의 캐디와 그늘집 미스터리", "titleOptions": ["눈 오는 날 골프장 빌런", "캐디님이 너무 예뻐서 생긴 일", "화이트 아웃 골프 라운딩"], "scriptBody": "여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.", "punchline": "공은 잃어버려도 캐디님 번호는 못 물어보는 게 40대의 운명입니다.", "hook": "눈 오는 날 골프장 가면 공이 보일까요, 캐디님이 보일까요?", "twist": "내 공을 찾는 줄 알았던 캐디님이 본인 핫팩을 뜯고 있었습니다.", "foreshadowing": "오늘 스코어는 포기해도 좋다는 대목이 나중에 현실이 됩니다.", "narrator": { "slot": "ManA", "name": "준호" }, "emotionFlow": "😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음" }
+{ "scriptBody": "와, 설원 위의 요정이 여기 있었네?\n오늘 날씨 진짜 춥죠, 근데 캐디님 보니까 마음이 다 녹네!\n눈 덮인 페어웨이에서 라운딩 시작하는데 캐디님 비주얼이 거의 연예인급인 거예요.\n사장님 나이스샷 소리 들으려고 풀스윙 딱 돌렸거든요?\n근데 공이 눈 속에 푹 박혀서 보이지도 않는 상황인 거죠.\n캐디님이 생긋 웃으면서 '걱정 마세요, 제가 찾아드릴게요' 하고 달려가더라고요.\n뒤태가 너무 아름다워서 넋 놓고 보고 있는데 갑자기 멈춰 서네요?\n그러더니 발로 눈을 슥슥 파헤치더니 공을 손으로 쓱 꺼내요.\n'사장님, 여기 찾았어요! 근데 이거 타이틀리스트 아니고 로스트볼이죠?'\n아니, 감성은 파괴하고 팩트로 때리면 어떡해요!\n비주얼은 로맨스 멜로인데 진행은 완전 인간극장인 줄 알았잖아요.\n이래서 겨울 골프는 공이 아니라 멘탈을 잘 찾아야 한다니까요." }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -82,35 +54,37 @@
 
 
 
-기본 성별: male
+기본 성별: female
 
 
 
 ## 대본 라인
 
-1. 여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.
+1. 와, 설원 위의 요정이 여기 있었네?
 
+2. 오늘 날씨 진짜 춥죠, 근데 캐디님 보니까 마음이 다 녹네!
 
+3. 눈 덮인 페어웨이에서 라운딩 시작하는데 캐디님 비주얼이 거의 연예인급인 거예요.
 
-## 출력 JSON 스키마
+4. 사장님 나이스샷 소리 들으려고 풀스윙 딱 돌렸거든요?
 
-{
+5. 근데 공이 눈 속에 푹 박혀서 보이지도 않는 상황인 거죠.
 
-"characters": [
+6. 캐디님이 생긋 웃으면서 '걱정 마세요, 제가 찾아드릴게요' 하고 달려가더라고요.
 
-{ "name": "주인공", "gender": "male", "role": "narrator" }
+7. 뒤태가 너무 아름다워서 넋 놓고 보고 있는데 갑자기 멈춰 서네요?
 
-],
+8. 그러더니 발로 눈을 슥슥 파헤치더니 공을 손으로 쓱 꺼내요.
 
-"lineCharacterNames": [
+9. '사장님, 여기 찾았어요! 근데 이거 타이틀리스트 아니고 로스트볼이죠?'
 
-{ "line": 1, "characters": ["주인공"] }
+10. 아니, 감성은 파괴하고 팩트로 때리면 어떡해요!
 
-]
+11. 비주얼은 로맨스 멜로인데 진행은 완전 인간극장인 줄 알았잖아요.
 
-}
+12. 이래서 겨울 골프는 공이 아니라 멘탈을 잘 찾아야 한다니까요.
 
-{ "characters": [ { "name": "주인공", "gender": "male", "role": "narrator" }, { "name": "캐디", "gender": "female", "role": "supporting" }, { "name": "형님1", "gender": "male", "role": "supporting" }, { "name": "형님2", "gender": "male", "role": "supporting" }, { "name": "마누라", "gender": "female", "role": "supporting" } ], "lineCharacterNames": [ { "line": 1, "characters": [ "주인공", "캐디", "형님1", "형님2", "마누라" ] } ] }
+{ "characters": [ { "name": "주인공", "gender": "female" }, { "name": "캐디", "gender": "unknown" } ], "lines": [ { "line_number": 1, "character_names": [ "주인공" ] }, { "line_number": 2, "character_names": [ "주인공", "캐디" ] }, { "line_number": 3, "character_names": [ "주인공", "캐디" ] }, { "line_number": 4, "character_names": [ "주인공" ] }, { "line_number": 5, "character_names": [ "주인공" ] }, { "line_number": 6, "character_names": [ "캐디" ] }, { "line_number": 7, "character_names": [ "주인공", "캐디" ] }, { "line_number": 8, "character_names": [ "캐디" ] }, { "line_number": 9, "character_names": [ "캐디", "주인공" ] }, { "line_number": 10, "character_names": [ "주인공" ] }, { "line_number": 11, "character_names": [ "주인공" ] }, { "line_number": 12, "character_names": [ "주인공" ] } ] }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -136,65 +110,234 @@
 
 6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
 
-7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
+
+
+## 📸 샷 타입 규칙 (매우 중요!)
+
+### 등장 인물 수에 따른 샷 타입
+
+- **1명 등장**: shotType = "원샷"
+
+- **2명 등장**: shotType = "투샷"
+
+- **3명 등장**: shotType = "쓰리샷"
+
+
+
+### 투샷/쓰리샷 longPrompt 작성 필수 규칙
+
+**여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분!**
+
+
+
+✅ **원샷 예시** (1명):
+
+```
+
+unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress, smiling at camera, snowy golf course, ...
+
+```
+
+
+
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
+
+```
+
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, snowy golf course, ...
+
+```
+
+
+
+❌ **금지**: 캐릭터 구분 없이 쉼표로만 연결 (AI가 캐릭터를 혼동함!)
+
+
+
+## 📷 카메라 앵글 필수 규칙 (미디움샷만 쓰면 안됨!)
+
+각 씬마다 다른 앵글을 사용하여 영상 다양성 확보!
+
+
+
+| 씬 번호 | 권장 앵글 | 프롬프트 키워드 |
+
+|--------|----------|---------------|
+
+| Scene 1 (Hook) | **close-up** | close-up portrait shot, face in focus, shallow depth of field |
+
+| Scene 2 (Setup) | **wide** | wide establishing shot, full body visible, environment context |
+
+| Scene 3 | **medium** | medium shot, waist-up framing, natural pose |
+
+| Scene 4 | **over-the-shoulder** | over-the-shoulder shot, perspective view |
+
+| Scene 5 (Climax) | **close-up** | close-up shot, dramatic expression, face in focus |
+
+| Scene 6 | **POV** | first-person POV shot, subjective camera angle |
+
+| Scene 7 (Twist) | **wide** | wide shot, revealing context, full body visible |
+
+| Scene 8 (Outro) | **medium** | medium shot, natural pose, waist-up framing |
+
+
+
+**⚠️ 필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
+
+**⚠️ 금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용
+
+
+
+### 앵글 다양성 체크리스트
+
+- ✅ close-up 최소 2개 이상 (Hook, Climax 필수)
+
+- ✅ wide 최소 2개 이상 (Setup, Twist 권장)
+
+- ✅ medium 2-3개
+
+- ✅ over-the-shoulder 또는 POV 중 최소 1개
+
+- ❌ 같은 앵글 3연속 사용 금지
+
+
+
+## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️
+
+POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
+
+
+
+**필수 규칙:**
+
+1. ✅ **화면에 보이는 캐릭터만 longPrompt에 포함**
+
+- "지영의 시선에서 캐디가 웃으며" → 프롬프트에는 **캐디만** 포함
+
+2. ❌ **시점의 주인공(카메라 역할)은 절대 프롬프트에 포함 금지**
+
+- "지영의 시선" → 지영은 카메라이므로 프롬프트에서 완전히 제외
+
+3. ✅ **POV 대상 캐릭터는 카메라를 바라봄**
+
+- "looking at camera (POV target)" 필수
+
+
+
+**올바른 예시:**
+
+```
+
+한글: "지영의 시선에서 캐디가 손을 흔들며 인사하는 POV 샷"
+
+영문 longPrompt: "unfiltered raw photograph..., first-person POV shot, A stunning Korean woman in her early 20s (캐디만!), high-bun hairstyle, ..., waving hand, looking at camera (POV target), ..."
+
+```
+
+
+
+## ❄️ 겨울 악세서리 규칙 (자율 코디 필수!)
+
+1. **모든 씬의 이미지 프롬프트에는 각 캐릭터의 겨울 방한용품을 조화롭게 포함**한다.
+
+2. 대본 상황(예: 눈오는 필드)에 맞춰 beanie(비니), earmuffs(귀도리), scarf(목도리), gloves(장갑) 등을 AI가 스스로 판단하여 자연스럽게 추가 코디한다.
+
+3. 악세서리는 shortPrompt/longPrompt 모두에 반영한다.
+
+4. 선택한 의상과 악세서리를 조화롭게 매칭하여 최상급 겨울 룩을 완성할 것.
+
+
+
+
+
+2. **의상 일관성 준수**: 캐릭터 ID 목록에 명시된 의상을 한 글자도 바꾸지 말고 그대로 사용하세요.
+
+## 👗 의상 일관성 규칙 (절대 엄수!)
+
+1. **모든 씬에서 각 캐릭터의 identity/hair/body/outfit 문구를 100% 동일하게 사용**
+
+2. AI가 직접 선택한 의상이 있다면, Scene 1부터 마지막 Scene까지 한 글자도 바꾸지 말고 그대로 복사
+
+3. **투샷/쓰리샷에서도 각 캐릭터별로 전체 정보 개별 명시**
+
+4. 특정 캐릭터는 동일한 의상을 입어야 함 (장면마다 옷이 바뀌면 안 됨)
 
 
 
 ## 대본 라인
 
-1. 여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.
+1. 와, 설원 위의 요정이 여기 있었네?
+
+2. 오늘 날씨 진짜 춥죠, 근데 캐디님 보니까 마음이 다 녹네!
+
+3. 눈 덮인 페어웨이에서 라운딩 시작하는데 캐디님 비주얼이 거의 연예인급인 거예요.
+
+4. 사장님 나이스샷 소리 들으려고 풀스윙 딱 돌렸거든요?
+
+5. 근데 공이 눈 속에 푹 박혀서 보이지도 않는 상황인 거죠.
+
+6. 캐디님이 생긋 웃으면서 '걱정 마세요, 제가 찾아드릴게요' 하고 달려가더라고요.
+
+7. 뒤태가 너무 아름다워서 넋 놓고 보고 있는데 갑자기 멈춰 서네요?
+
+8. 그러더니 발로 눈을 슥슥 파헤치더니 공을 손으로 쓱 꺼내요.
+
+9. '사장님, 여기 찾았어요! 근데 이거 타이틀리스트 아니고 로스트볼이죠?'
+
+10. 아니, 감성은 파괴하고 팩트로 때리면 어떡해요!
+
+11. 비주얼은 로맨스 멜로인데 진행은 완전 인간극장인 줄 알았잖아요.
+
+12. 이래서 겨울 골프는 공이 아니라 멘탈을 잘 찾아야 한다니까요.
 
 
 
-## 캐릭터 ID 목록
+## 캐릭터 ID 목록 (의상 정보 포함)
 
 - WomanA / Woman A
 
+Outfit: wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version) with a sleek horizontal cut, tight-fitting silhouette with dense horizontal ruching and gathered fabric details along the sides and torso, crafted from a smooth matte stretch jersey or spandex blend with an opaque finish, mid-thigh length straight hemline, paired with a matching wide black fabric choker necklace in the same material and color, creating a seamless and coordinated monochromatic look, pull-on construction with no visible hardware or closures, clean finished edges for a contemporary streetwear aesthetic
+
 - WomanD / Woman D
 
-- ManA / Man A
-
-- ManB / Man B
+Outfit: wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt
 
 
 
-## 출력 JSON 스키마
 
-{
 
-"title": "string",
 
-"scenes": [
 
-{
+## 🎥 샷 품질 고도화 규칙 (매우 중요!)
 
-"sceneNumber": 1,
+1) **배경 일관성 (Environment Continuity)**:
 
-"scriptLine": "원문 그대로",
+- 첫 씬에서 설정된 장소/배경은 대본에 명시된 이동이 없으면 끝까지 유지한다.
 
-"summary": "short english summary",
+- 골프장/설산 배경을 실내/스튜디오로 바꾸지 말 것.
 
-"action": "short english action",
+2) **다인원 동작 다양성 (Action Diversity)**:
 
-"background": "short english background",
+- 2명 이상 등장 시 각 인물의 동작을 서로 다르게 설정한다.
 
-"shotType": "원샷/투샷/쓰리샷",
+- 예: Person1=스윙 준비, Person2=박수/웃음, Person3=고개 돌림.
 
-"cameraAngle": "close-up | wide | medium | canted (dutch) | over-the-shoulder | POV | low-angle | high-angle",
+3) **카메라 앵글 다양성**:
 
-"characterIds": ["WomanA"],
+- 미디엄샷을 연속으로 사용하지 말 것.
 
-"shortPrompt": "short image prompt",
+- close-up, wide, POV, over-the-shoulder 등을 섞어라.
 
-"longPrompt": "detailed image prompt",
+4) **Candid Shot 스타일**:
 
-"negativePrompt": "NOT cartoon, NOT anime, ..."
+- 자연스럽고 우연히 찍힌 느낌을 강조한다.
 
-}
+- 키워드 예: candid moment, natural interaction, captured mid-action.
 
-]
+5) **배경 가시성 강화**:
 
-}
+- wide/establishing shot에서는 배경이 선명하게 보이도록 deep focus, sharp background를 포함한다.
 
-{ "title": "Snowy Golf Course and the Beautiful Caddy", "scenes": [ { "sceneNumber": 1, "scriptLine": "여러분, 눈 오는 날 골프 치면 공이 보일까요, 캐디님만 보일까요? 영하 10도 추위에 미쳤다고 욕하면서도 우리는 티박스에 섭니다. 오늘 캐디님은 멀리서 봐도 연예인 급이라 형님들 입꼬리가 귀에 걸렸네요. '오라이~' 소리에 힘이 빡 들어가서 드라이버를 풀스윙으로 휘둘렀죠. 공은 눈밭 어딘가로 사라졌는데 캐디님이 환하게 웃으며 달려가십니다. 꽃사슴처럼 뛰어가는 뒷모습을 보며 '아, 오늘 스코어는 포기해도 좋다' 싶었죠. 그런데 캐디님이 멈춰 서서 갑자기 바지 주머니를 뒤적거리시네요? 슬쩍 다가가서 보니까 내 공을 찾는 게 아니라 핫팩을 뜯고 계시더라고요. '손님, 공은 아까 저 해저드 얼음 구멍으로 쏙 들어갔어요!' 해맑게 웃으면서 핫팩으로 자기 볼만 문지르는데 화도 못 내겠습니다. 결국 공은 못 찾고 캐디님 사진만 백 장 찍어주고 왔네요. 마누라한테는 눈 때문에 공 잃어버렸다고 석고대죄 중입니다.", "summary": "Comedy golf session in heavy snow with a beautiful caddy", "action": "A group of middle-aged men swinging golf clubs and a caddy holding a hot pack to her face while laughing", "background": "Luxurious golf course covered in thick white snow under a grey winter sky", "shotType": "쓰리샷", "cameraAngle": "wide", "characterIds": ["ManA", "ManB", "WomanA"], "shortPrompt": "Cinematic wide shot of men golfing in heavy snow, beautiful female caddy laughing", "longPrompt": "A cinematic wide-angle shot of a luxurious golf course completely covered in thick white snow. A group of 40-year-old Korean men in colorful winter golf attire are standing on the tee box. One man is mid-swing with a driver. To the side, a stunningly beautiful female caddy in a stylish white winter uniform and a pom-pom hat is holding a heat pack to her rosy cheek and laughing brightly. Snow is falling softly. High resolution, photorealistic, 8k, professional lighting.", "negativePrompt": "NOT cartoon, NOT anime, NOT drawing, distorted faces, bad anatomy, missing fingers, low resolution, blurry, watermark" } ] }
+- 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.
 
+{ "scenes": [ { "sceneNumber": 1, "scriptLine": "와, 설원 위의 요정이 여기 있었네?", "characterIds": ["WomanA"], "shotType": "원샷", "summary": "Close-up of WomanA admiring the caddy's beauty in the snow.", "action": "smiling brightly with sparkling eyes, mesmerized expression", "background": "snowy golf course with soft falling snowflakes", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] smiling brightly with sparkling eyes, mesmerized expression, snowy golf course with soft falling snowflakes, 8k resolution, highly detailed skin texture.", "shortPrompt": "close-up, 40s Korean woman, black bodycon dress, fur earmuffs, smiling, snowy golf course." }, { "sceneNumber": 2, "scriptLine": "오늘 날씨 진짜 춥죠, 근데 캐디님 보니까 마음이 다 녹네!", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "summary": "Wide shot of WomanA talking to WomanD on the field.", "action": "WomanA shivering slightly while talking, WomanD standing politely smiling", "background": "wide snowy fairway with winter trees in the background", "longPrompt": "unfiltered raw photograph, wide establishing shot, full body visible, environment context, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] shivering slightly while talking, [Person 2: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] standing politely smiling, snowy golf course, deep focus, sharp background.", "shortPrompt": "wide shot, two women in winter golf course, black dress vs blue skirt, snowy field." }, { "sceneNumber": 3, "scriptLine": "눈 덮인 페어웨이에서 라운딩 시작하는데 캐디님 비주얼이 거의 연예인급인 거예요.", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "summary": "Medium shot of WomanA looking at WomanD's stunning visuals.", "action": "WomanA looking with admiration, WomanD checking the golf bag naturally", "background": "snowy golf course with a luxury golf cart visible", "longPrompt": "unfiltered raw photograph, medium shot, waist-up framing, natural pose, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] looking with admiration, [Person 2: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] checking the golf bag naturally, snowy golf course, candid moment.", "shortPrompt": "medium shot, woman admiring caddy, elegant winter golf style, snowy course." }, { "sceneNumber": 4, "scriptLine": "사장님 나이스샷 소리 들으려고 풀스윙 딱 돌렸거든요?", "characterIds": ["WomanA"], "shotType": "over-the-shoulder", "summary": "WomanA performing a full golf swing in the snow.", "action": "mid-action full swing with a golf club, focused expression", "background": "over-the-shoulder view looking out into the snowy white field", "longPrompt": "unfiltered raw photograph, over-the-shoulder shot, perspective view, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] performing a full golf swing with a club, focused expression, looking out into the vast snowy white fairway, captured mid-action.", "shortPrompt": "over-the-shoulder, woman swinging golf club, black dress, snowy field." }, { "sceneNumber": 5, "scriptLine": "근데 공이 눈 속에 푹 박혀서 보이지도 않는 상황인 거죠.", "characterIds": ["WomanA"], "shotType": "close-up", "summary": "Climax - WomanA's confused and flustered face.", "action": "squinting eyes and searching the ground with a flustered expression", "background": "extreme close-up of a snow-covered ground with a hole", "longPrompt": "unfiltered raw photograph, close-up shot, dramatic expression, face in focus, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] squinting eyes and searching the ground with a flustered expression, snowy background, high resolution.", "shortPrompt": "close-up, flustered 40s woman, searching for golf ball, snowy background." }, { "sceneNumber": 6, "scriptLine": "캐디님이 생긋 웃으면서 '걱정 마세요, 제가 찾아드릴게요' 하고 달려가더라고요.", "characterIds": ["WomanD"], "shotType": "POV", "summary": "POV shot of WomanD smiling and running to find the ball.", "action": "smiling brightly at camera, starting to run toward the field", "background": "snowy fairway under the winter sun", "longPrompt": "unfiltered raw photograph, first-person POV shot, [Person 1: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] looking at camera (POV target) with a bright smile, waving hand and starting to run, snowy golf course, sunny winter day.", "shortPrompt": "POV shot, beautiful caddy smiling and running, blue skirt, snowy field." }, { "sceneNumber": 7, "scriptLine": "뒤태가 너무 아름다워서 넋 놓고 보고 있는데 갑자기 멈춰 서네요?", "characterIds": ["WomanA", "WomanD"], "shotType": "wide", "summary": "Twist - WomanA watching WomanD stop in the distance.", "action": "WomanA standing still watching, WomanD stopping abruptly in deep snow", "background": "wide snowy field, revealing the distance between the two", "longPrompt": "unfiltered raw photograph, wide shot, revealing context, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] standing still and watching, [Person 2: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] stopping abruptly in deep snow, snowy golf course landscape, deep focus.", "shortPrompt": "wide shot, two women on snowy golf course, one watching the other stop." }, { "sceneNumber": 8, "scriptLine": "그러더니 발로 눈을 슥슥 파헤치더니 공을 손으로 쓱 꺼내요.", "characterIds": ["WomanD"], "shotType": "medium", "summary": "WomanD digging in the snow with her foot.", "action": "kicking snow with her foot and reaching down to pick up a ball", "background": "close view of the snowy ground and the blue skirt", "longPrompt": "unfiltered raw photograph, medium shot, natural pose, waist-up framing, [Person 1: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] kicking snow with her foot and reaching down to pick up a ball, snowy ground, captured mid-action.", "shortPrompt": "medium shot, caddy picking up ball from snow, blue skirt, winter action." }, { "sceneNumber": 9, "scriptLine": "'사장님, 여기 찾았어요! 근데 이거 타이틀리스트 아니고 로스트볼이죠?'", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "summary": "WomanD showing the dirty ball to WomanA.", "action": "WomanD holding up a ball with a blunt face, WomanA looking shocked", "background": "snowy golf course, medium framing of both", "longPrompt": "unfiltered raw photograph, medium shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] looking shocked and embarrassed, [Person 2: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] holding up a dirty golf ball with a blunt expression, snowy background.", "shortPrompt": "투샷, caddy showing ball to shocked woman, winter golf course." }, { "sceneNumber": 10, "scriptLine": "아니, 감성은 파괴하고 팩트로 때리면 어떡해요!", "characterIds": ["WomanA"], "shotType": "close-up", "summary": "WomanA's comical 'hurt' reaction.", "action": "pouting with a comical 'betrayed' expression, looking at the camera", "background": "snowy golf course background with soft focus", "longPrompt": "unfiltered raw photograph, close-up shot, dramatic expression, face in focus, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] pouting with a comical betrayed expression, looking at the camera, snowy background, 8k resolution.", "shortPrompt": "close-up, pouting 40s woman, comical reaction, snowy golf course." }, { "sceneNumber": 11, "scriptLine": "비주얼은 로맨스 멜로인데 진행은 완전 인간극장인 줄 알았잖아요.", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "summary": "WomanA laughing at the situation with WomanD.", "action": "WomanA laughing with her hand over her mouth, WomanD tilting her head curiously", "background": "wide view of the snowy fairway under the sun", "longPrompt": "unfiltered raw photograph, wide shot, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] laughing with her hand over her mouth, [Person 2: A beautiful young Korean woman in her early 20s, high-bun hairstyle, petite and fit build, wearing White Elegant fitted top with inner panel Blouse + Royal Blue Tight Micro Skirt, and a white fluffy scarf with matching gloves] tilting her head curiously, snowy golf course environment.", "shortPrompt": "wide shot, laughing woman and curious caddy, winter golf, sunny snow." }, { "sceneNumber": 12, "scriptLine": "이래서 겨울 골프는 공이 아니라 멘탈을 잘 찾아야 한다니까요.", "characterIds": ["WomanA"], "shotType": "medium", "summary": "Outro - WomanA walking and giving a life lesson.", "action": "walking toward the camera, smiling and sighing, holding a golf club", "background": "snowy golf course with the horizon in the back", "longPrompt": "unfiltered raw photograph, medium shot, natural pose, waist-up framing, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing minimalist jet black bodycon mini dress featuring a strapless bandeau neckline (Tight-fitting long-sleeve version), paired with a matching wide black fabric choker necklace, and elegant white fur earmuffs with black leather gloves] walking toward the camera, smiling and sighing, holding a golf club over her shoulder, snowy golf course, candid shot.", "shortPrompt": "medium shot, woman walking and smiling, holding golf club, snowy field." } ] }

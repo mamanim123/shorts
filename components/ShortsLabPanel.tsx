@@ -7300,120 +7300,28 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 
             </div>
 
-            {editingBackupId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                    onClick={handleCloseBackupEditor}
-                >
-                    <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">백업 프롬프트 보기/편집</h3>
-                                <p className="text-xs text-slate-400">장르 가이드라인 JSON을 수정한 뒤 저장하세요.</p>
-                            </div>
-                            <button
-                                onClick={handleCloseBackupEditor}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            <textarea
-                                value={backupEditText}
-                                onChange={(e) => {
-                                    setBackupEditText(e.target.value);
-                                    setBackupEditError(null);
-                                }}
-                                rows={24}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                            />
-                            {backupEditError && (
-                                <div className="text-xs text-rose-400">{backupEditError}</div>
-                            )}
-                        </div>
-                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
-                            <button
-                                onClick={handleCloseBackupEditor}
-                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={handleBackupSaveContent}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {editingRulesBackupId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                    onClick={handleClosePromptRulesBackupEditor}
-                >
-                    <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">프롬프트 규칙 백업 보기/편집</h3>
-                                <p className="text-xs text-slate-400">JSON을 수정한 뒤 저장하세요.</p>
-                            </div>
-                            <button
-                                onClick={handleClosePromptRulesBackupEditor}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            <textarea
-                                value={rulesBackupEditText}
-                                onChange={(e) => {
-                                    setRulesBackupEditText(e.target.value);
-                                    setRulesBackupEditError(null);
-                                }}
-                                rows={24}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                            />
-                            {rulesBackupEditError && (
-                                <div className="text-xs text-rose-400">{rulesBackupEditError}</div>
-                            )}
-                        </div>
-                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
-                            <button
-                                onClick={handleClosePromptRulesBackupEditor}
-                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={handleSavePromptRulesBackupContent}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Backup Editor Modal */}
+            {/* Backup Editor Modal - Consolidated and Enlarged */}
             {(editingBackupId || editingRulesBackupId || editingStep2BackupId) && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                            <h3 className="text-lg font-bold text-white">
-                                {editingBackupId ? '백업 내용 편집' : (editingRulesBackupId ? '프롬프트 규칙 백업 편집' : '2단계 규칙 백업 편집')}
-                            </h3>
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+                    onClick={() => {
+                        if (editingBackupId) handleCloseBackupEditor();
+                        else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
+                        else handleCloseStep2BackupEditor();
+                    }}
+                >
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+                            <div>
+                                <h3 className="text-lg font-bold text-white">
+                                    {editingBackupId ? '백업 내용 편집' : (editingRulesBackupId ? '프롬프트 규칙 백업 편집' : '2단계 규칙 백업 편집')}
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    {editingBackupId ? '장르 가이드라인 JSON을 수정한 뒤 저장하세요.' : 'JSON 데이터를 수정한 뒤 저장하세요.'}
+                                </p>
+                            </div>
                             <button
                                 onClick={() => {
                                     if (editingBackupId) handleCloseBackupEditor();
@@ -7425,7 +7333,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="flex-1 p-4 overflow-hidden flex flex-col">
+                        <div className="flex-1 p-5 overflow-hidden flex flex-col">
                             <textarea
                                 value={editingBackupId ? backupEditText : (editingRulesBackupId ? rulesBackupEditText : step2BackupEditText)}
                                 onChange={(e) => {
@@ -7441,6 +7349,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     }
                                 }}
                                 className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                rows={25}
                             />
                             {(backupEditError || rulesBackupEditError || step2BackupEditError) && (
                                 <div className="mt-2 text-xs text-rose-400">
@@ -7448,14 +7357,14 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 </div>
                             )}
                         </div>
-                        <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
                             <button
                                 onClick={() => {
                                     if (editingBackupId) handleCloseBackupEditor();
                                     else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
                                     else handleCloseStep2BackupEditor();
                                 }}
-                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium"
+                                className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-sm font-medium"
                             >
                                 취소
                             </button>
@@ -7465,7 +7374,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     else if (editingRulesBackupId) handleSavePromptRulesBackupContent();
                                     else handleSaveStep2BackupContent();
                                 }}
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium"
+                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
                             >
                                 저장
                             </button>

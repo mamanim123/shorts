@@ -208,7 +208,7 @@ export const distributeUniqueWinterItems = (
   const result: Record<string, { categories: AccessoryCategory[]; items: string[] }> = {};
   const usedCombinations = new Set<string>();
   const allCategories: AccessoryCategory[] = ['Head', 'Neck', 'Arms', 'Legs'];
-  
+
   // 2개 카테고리 조합 생성 (6가지: Head+Neck, Head+Arms, Head+Legs, Neck+Arms, Neck+Legs, Arms+Legs)
   const generateCombinations = (): AccessoryCategory[][] => {
     const combos: AccessoryCategory[][] = [];
@@ -219,16 +219,16 @@ export const distributeUniqueWinterItems = (
     }
     return combos.sort(() => 0.5 - Math.random()); // 랜덤 셔플
   };
-  
+
   const pick = (arr: readonly string[]) => arr[Math.floor(Math.random() * arr.length)];
-  
+
   const availableCombos = generateCombinations();
   let comboIndex = 0;
-  
+
   for (const charId of characterIds) {
     let combo: AccessoryCategory[];
     let comboKey: string;
-    
+
     // 고유한 조합 찾기
     let attempts = 0;
     do {
@@ -243,18 +243,18 @@ export const distributeUniqueWinterItems = (
       comboKey = combo.sort().join('+');
       attempts++;
     } while (usedCombinations.has(comboKey) && attempts < 20);
-    
+
     usedCombinations.add(comboKey);
-    
+
     // 각 카테고리에서 아이템 선택
     const items = combo.map(cat => pick(ACCESSORY_CATEGORIES[cat]));
-    
+
     result[charId] = {
       categories: combo,
       items
     };
   }
-  
+
   return result;
 };
 
@@ -677,10 +677,10 @@ export const resetAngleHistory = (): void => {
 export const getSmartCameraPrompt = (sceneNumber: number, totalScenes: number = 12): { angle: string; prompt: string } => {
   // 기본 권장 앵글 가져오기
   const recommended = SCENE_ANGLE_MAP[sceneNumber] || SCENE_ANGLE_MAP[Math.min(sceneNumber, 12)];
-  
+
   // 연속 중복 체크
   const lastTwo = angleHistory.slice(-2);
-  
+
   // 같은 앵글이 2번 연속이면 대체 앵글 선택
   if (lastTwo.length >= 2 && lastTwo.every(a => a === recommended.angle)) {
     const alternates: { angle: string; prompt: string }[] = [
@@ -688,12 +688,12 @@ export const getSmartCameraPrompt = (sceneNumber: number, totalScenes: number = 
       { angle: 'medium', prompt: 'medium shot, waist-up framing, natural pose' },
       { angle: 'over-the-shoulder', prompt: 'over-the-shoulder shot, perspective view' }
     ].filter(alt => alt.angle !== recommended.angle);
-    
+
     const chosen = alternates[0];
     angleHistory.push(chosen.angle);
     return chosen;
   }
-  
+
   angleHistory.push(recommended.angle);
   return recommended;
 };
@@ -1859,22 +1859,22 @@ ${imagePromptRulesExtra ? `\n${imagePromptRulesExtra}\n` : ''}
 
 ✅ **원샷 예시** (1명):
 \`\`\`
-unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress, smiling at camera, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 30s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress], smiling at camera, snowy golf course, ...
 \`\`\`
 
 ✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, snowy golf course, ...
 \`\`\`
 
 ✅ **쓰리샷 예시** (3명) - [Person 1], [Person 2], [Person 3] 필수:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 50s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, snowy golf course, ...
 \`\`\`
 
 ✅ **남성 2명 투샷 예시** - [Person 1], [Person 2] 필수:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Navy Polo] [Person 2: A handsome Korean man in his 40s, clean short cut hair, well-built physique..., wearing White Polo] walking together on a golf course...
+unfiltered raw photograph..., [Person 1: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Navy Polo] [Person 2: A handsome Korean man in his 50s, clean short cut hair, well-built physique..., wearing White Polo] walking together on a golf course...
 \`\`\`
 
 ❌ **금지 (캐릭터 혼동 발생)**:
@@ -1922,7 +1922,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 **잘못된 예시 (절대 금지):**
 \`\`\`
-❌ "A stunning Korean woman in her 40s (지영), POV shot, A stunning Korean woman in her early 20s (캐디)..."
+❌ "[Person 1: A stunning Korean woman in her 30s (상대방 시점 주인공), POV shot], [Person 2: A stunning Korean woman in her early 20s (대상 캐릭터)]..."
 → 지영이 POV 시점 주인공이므로 프롬프트에서 완전히 제외해야 함!
 → 이렇게 하면 반반 이미지 생성됨!
 \`\`\`
@@ -2117,7 +2117,9 @@ export const pickRandomOutfit = (gender: 'female' | 'male', category: string): s
 
 export const convertAgeToEnglish = (koreanAge: string): string => {
   const match = koreanAge.match(/(\d+)/);
-  return match ? `${match[1]}s` : '40s';
+  if (!match) return '';
+  const age = parseInt(match[1]);
+  return `${age}s`;
 };
 
 export default {

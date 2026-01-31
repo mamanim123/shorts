@@ -2240,24 +2240,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
             // 5단계: 캐릭터 맵 생성
             const characterIds = characterList.map(item => item.id);
-            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
-            if (enableWinterAccessories) {
-                const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
-                const updated = new Map<string, ManualCharacterPrompt>();
-                autoCharacterMap.forEach((meta, id) => {
-                    const winterOutfit = meta.gender === 'female' && meta.outfit
-                        ? convertToTightLongSleeveWithShoulderLine(meta.outfit)
-                        : meta.outfit;
-                    if (meta.gender !== 'female') {
-                        updated.set(id, { ...meta, outfit: winterOutfit });
-                        return;
-                    }
-                    const winterAccessories = winterAccessoryMap.get(id) || [];
-                    const accessories = Array.from(new Set([...meta.accessories, ...winterAccessories]));
-                    updated.set(id, { ...meta, outfit: winterOutfit, accessories });
-                });
-                autoCharacterMap = updated;
-            }
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
 
             // 6단계: 씬별 프롬프트 구성
             const totalScenes = scenesSource.length || scriptLines.length || 8;
@@ -4064,7 +4047,7 @@ ${scriptInput}
                                 </div>
                             </div>
 
-                            {activeTab === 'input' && (
+                            {(activeTab === 'input' || activeTab === 'manual') && (
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
                                         <div className="flex items-center gap-2">
@@ -6534,135 +6517,135 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                     {isFemaleSectionExpanded && (
                                         <div className="px-4 pb-4 space-y-3">
-                                    {characterRulesState.females.map((char, idx) => {
-                                        const isExpanded = expandedCharacters.has(char.id);
-                                        return (
-                                            <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
-                                                <div
-                                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
-                                                    onClick={() => toggleCharacterExpand(char.id)}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <ChevronDown
-                                                            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                                        />
-                                                        <div className="text-sm font-semibold text-slate-200">
-                                                            Female {String.fromCharCode(65 + idx)}
-                                                            {char.id === 'femaleD' && (
-                                                                <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <button
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                handleOpenImportModal('female', char.id);
-                                                            }}
-                                                            className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                            {characterRulesState.females.map((char, idx) => {
+                                                const isExpanded = expandedCharacters.has(char.id);
+                                                return (
+                                                    <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                                        <div
+                                                            className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                                            onClick={() => toggleCharacterExpand(char.id)}
                                                         >
-                                                            <Download className="w-3 h-3" />
-                                                            가져오기
-                                                        </button>
-                                                        {char.id !== 'femaleD' && (
-                                                            <button
-                                                                onClick={async (e) => {
-                                                                    e.stopPropagation();
-                                                                    try {
-                                                                        if (!onDeleteFemaleCharacter) return;
-                                                                        await onDeleteFemaleCharacter(char.id);
-                                                                        showToast('캐릭터가 삭제되었습니다.', 'success');
-                                                                    } catch (err) {
-                                                                        const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
-                                                                        showToast(message, 'error');
-                                                                    }
-                                                                }}
-                                                                className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
-                                                            >
-                                                                <Trash2 className="w-3 h-3" />
-                                                                삭제
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {isExpanded && (
-                                                    <div className="px-4 pb-4 space-y-3">
-                                                        <div className="grid grid-cols-1 gap-3">
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.identity}
-                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="A stunning Korean woman"
+                                                            <div className="flex items-center gap-2">
+                                                                <ChevronDown
+                                                                    className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                                 />
+                                                                <div className="text-sm font-semibold text-slate-200">
+                                                                    Female {String.fromCharCode(65 + idx)}
+                                                                    {char.id === 'femaleD' && (
+                                                                        <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.hair}
-                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="long soft-wave hairstyle"
-                                                                />
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        handleOpenImportModal('female', char.id);
+                                                                    }}
+                                                                    className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                                >
+                                                                    <Download className="w-3 h-3" />
+                                                                    가져오기
+                                                                </button>
+                                                                {char.id !== 'femaleD' && (
+                                                                    <button
+                                                                        onClick={async (e) => {
+                                                                            e.stopPropagation();
+                                                                            try {
+                                                                                if (!onDeleteFemaleCharacter) return;
+                                                                                await onDeleteFemaleCharacter(char.id);
+                                                                                showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                                            } catch (err) {
+                                                                                const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                                showToast(message, 'error');
+                                                                            }
+                                                                        }}
+                                                                        className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3" />
+                                                                        삭제
+                                                                    </button>
+                                                                )}
                                                             </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
-                                                                <textarea
-                                                                    value={char.body}
-                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
-                                                                    rows={2}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                                    placeholder="slim hourglass figure..."
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.style}
-                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="perfectly managed sophisticated look"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.outfitFit}
-                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="tight-fitting, form-hugging"
-                                                                />
-                                                            </div>
-                                                            {char.id === 'femaleD' && (
-                                                                <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                                                                        <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
-                                                                    </div>
+                                                        </div>
+                                                        {isExpanded && (
+                                                            <div className="px-4 pb-4 space-y-3">
+                                                                <div className="grid grid-cols-1 gap-3">
                                                                     <div>
-                                                                        <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Identity</label>
                                                                         <input
                                                                             type="text"
-                                                                            value={char.fixedAge || 'in her early 20s'}
-                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
-                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                            disabled={!char.isFixedAge}
+                                                                            value={char.identity}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'identity', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="A stunning Korean woman"
                                                                         />
                                                                     </div>
-                                                                    <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.hair}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'hair', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="long soft-wave hairstyle"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                        <textarea
+                                                                            value={char.body}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'body', e.target.value)}
+                                                                            rows={2}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                            placeholder="slim hourglass figure..."
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.style}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'style', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="perfectly managed sophisticated look"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.outfitFit}
+                                                                            onChange={(e) => updateCharacterRulesField('female', char.id, 'outfitFit', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="tight-fitting, form-hugging"
+                                                                        />
+                                                                    </div>
+                                                                    {char.id === 'femaleD' && (
+                                                                        <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                                                                                <span className="text-xs font-semibold text-emerald-300">나이 고정 (캐디 전용)</span>
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="text-xs text-slate-400 mb-1 block">Fixed Age</label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={char.fixedAge || 'in her early 20s'}
+                                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'fixedAge', e.target.value)}
+                                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                                    disabled={!char.isFixedAge}
+                                                                                />
+                                                                            </div>
+                                                                            <div className="text-[10px] text-slate-500">캐디는 항상 20대 초반으로 고정됩니다</div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                        </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
@@ -6711,109 +6694,109 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                     {isMaleSectionExpanded && (
                                         <div className="px-4 pb-4 space-y-3">
-                                    {characterRulesState.males.map((char, idx) => {
-                                        const isExpanded = expandedCharacters.has(char.id);
-                                        return (
-                                            <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
-                                                <div
-                                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
-                                                    onClick={() => toggleCharacterExpand(char.id)}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <ChevronDown
-                                                            className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                                        />
-                                                        <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <button
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                handleOpenImportModal('male', char.id);
-                                                            }}
-                                                            className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                            {characterRulesState.males.map((char, idx) => {
+                                                const isExpanded = expandedCharacters.has(char.id);
+                                                return (
+                                                    <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
+                                                        <div
+                                                            className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                                                            onClick={() => toggleCharacterExpand(char.id)}
                                                         >
-                                                            <Download className="w-3 h-3" />
-                                                            가져오기
-                                                        </button>
-                                                        <button
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                try {
-                                                                    if (!onDeleteMaleCharacter) return;
-                                                                    await onDeleteMaleCharacter(char.id);
-                                                                    showToast('캐릭터가 삭제되었습니다.', 'success');
-                                                                } catch (err) {
-                                                                    const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
-                                                                    showToast(message, 'error');
-                                                                }
-                                                            }}
-                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
-                                                        >
-                                                            <Trash2 className="w-3 h-3" />
-                                                            삭제
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {isExpanded && (
-                                                    <div className="px-4 pb-4 space-y-3">
-                                                        <div className="grid grid-cols-1 gap-3">
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Identity</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.identity}
-                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="A handsome Korean man"
+                                                            <div className="flex items-center gap-2">
+                                                                <ChevronDown
+                                                                    className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                                 />
+                                                                <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
                                                             </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Hair</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.hair}
-                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="short neat hairstyle"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Body</label>
-                                                                <textarea
-                                                                    value={char.body}
-                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
-                                                                    rows={2}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                                                    placeholder="fit athletic build..."
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Style</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.style}
-                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="dandy and refined presence"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                                <input
-                                                                    type="text"
-                                                                    value={char.outfitFit}
-                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="tailored slim-fit"
-                                                                />
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        handleOpenImportModal('male', char.id);
+                                                                    }}
+                                                                    className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                                >
+                                                                    <Download className="w-3 h-3" />
+                                                                    가져오기
+                                                                </button>
+                                                                <button
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        try {
+                                                                            if (!onDeleteMaleCharacter) return;
+                                                                            await onDeleteMaleCharacter(char.id);
+                                                                            showToast('캐릭터가 삭제되었습니다.', 'success');
+                                                                        } catch (err) {
+                                                                            const message = err instanceof Error ? err.message : '캐릭터 삭제 실패';
+                                                                            showToast(message, 'error');
+                                                                        }
+                                                                    }}
+                                                                    className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+                                                                >
+                                                                    <Trash2 className="w-3 h-3" />
+                                                                    삭제
+                                                                </button>
                                                             </div>
                                                         </div>
+                                                        {isExpanded && (
+                                                            <div className="px-4 pb-4 space-y-3">
+                                                                <div className="grid grid-cols-1 gap-3">
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Identity</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.identity}
+                                                                            onChange={(e) => updateCharacterRulesField('male', char.id, 'identity', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="A handsome Korean man"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Hair</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.hair}
+                                                                            onChange={(e) => updateCharacterRulesField('male', char.id, 'hair', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="short neat hairstyle"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Body</label>
+                                                                        <textarea
+                                                                            value={char.body}
+                                                                            onChange={(e) => updateCharacterRulesField('male', char.id, 'body', e.target.value)}
+                                                                            rows={2}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                                            placeholder="fit athletic build..."
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Style</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.style}
+                                                                            onChange={(e) => updateCharacterRulesField('male', char.id, 'style', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="dandy and refined presence"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={char.outfitFit}
+                                                                            onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
+                                                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            placeholder="tailored slim-fit"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>

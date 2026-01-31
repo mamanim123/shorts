@@ -76,12 +76,12 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 
 ✅ **원샷 예시** (1명):
 \`\`\`
-unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}, smiling at camera, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 30s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}], smiling at camera, snowy golf course, ...
 \`\`\`
 
 ✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit{{WINTER_ACCESSORIES_EXAMPLE}}] walking together, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}] [Person 2: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit{{WINTER_ACCESSORIES_EXAMPLE}}] walking together, snowy golf course, ...
 \`\`\`
 
 ❌ **금지**: 캐릭터 구분 없이 쉼표로만 연결 (AI가 캐릭터를 혼동함!)

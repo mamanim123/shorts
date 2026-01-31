@@ -92,15 +92,15 @@ unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, lon
 | 씬 번호 | 권장 앵글 | 프롬프트 키워드 |
 |--------|----------|---------------|
 | Scene 1 (Hook) | **close-up** | close-up portrait shot, face in focus, shallow depth of field |
-| Scene 2 (Setup) | **wide** | wide establishing shot, full body visible, environment context, deep focus |
+| Scene 2 (Setup) | **drone/wide** | drone shot, bird's-eye view, wide establishing shot, full body visible, environment context |
 | Scene 3 | **medium** | medium shot, waist-up framing, natural pose |
-| Scene 4 | **wide** | wide shot, full body, background emphasis, deep focus |
+| Scene 4 | **wide/landscape** | wide landscape shot, full body, background emphasis, deep focus |
 | Scene 5 (Climax) | **close-up** | close-up shot, dramatic expression, face in focus |
 | Scene 6 | **over-the-shoulder** | over-the-shoulder shot, perspective view |
-| Scene 7 (Twist) | **wide** | wide shot, revealing context, full body visible, environment storytelling |
+| Scene 7 (Twist) | **low-angle/wide** | low-angle wide shot, revealing context, full body visible, environment storytelling |
 | Scene 8 | **POV** | first-person POV shot, subjective camera angle |
-| Scene 9-10 | **medium/wide** | 상황에 맞게 선택, 단 연속 중복 금지 |
-| Scene 11-12 (Outro) | **wide** | wide shot, final scene, background visible, deep focus |
+| Scene 9-10 | **aerial/drone** | aerial view, drone shot, landscape focus |
+| Scene 11-12 (Outro) | **wide/birds-eye** | wide shot, bird's-eye view, final scene, background visible, deep focus |
 
 **⚠️ 필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
 **⚠️ 금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용

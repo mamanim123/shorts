@@ -100,24 +100,24 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
       prompt: 'close-up portrait shot, face in focus, shallow depth of field, dramatic lighting'
     },
     setup: {
-      angle: 'wide',
-      prompt: 'wide establishing shot, full body visible, environment context, cinematic framing'
+      angle: 'drone/wide',
+      prompt: 'drone shot, bird\'s-eye view, wide establishing shot, full body visible, environment context, cinematic framing'
     },
     buildup: {
       angle: 'over-the-shoulder',
-      prompt: 'over-the-shoulder shot, conversational distance, layered depth, natural interaction'
+      prompt: 'over-the-shoulder shot, conversational distance, layered depth, natural interaction, medium-wide framing'
     },
     climax: {
-      angle: 'low-angle',
-      prompt: 'low angle shot, heightened tension, dynamic perspective, cinematic framing'
+      angle: 'low-angle/wide',
+      prompt: 'low angle wide shot, full body visible, heightened tension, dynamic perspective, cinematic framing'
     },
     twist: {
-      angle: 'POV',
-      prompt: 'first-person POV shot, subjective camera angle, target looking at camera, heightened immersion'
+      angle: 'birds-eye/POV',
+      prompt: 'bird\'s-eye view POV shot, unique perspective looking down, target looking at camera, heightened immersion'
     },
     outro: {
-      angle: 'medium-wide',
-      prompt: 'medium-wide shot, relaxed framing, full upper body visible, warm natural lighting'
+      angle: 'landscape/wide',
+      prompt: 'wide landscape shot, relaxed framing, full body visible, warm natural lighting, detailed background'
     }
   },
   outfitSelection: {

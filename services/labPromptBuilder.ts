@@ -639,16 +639,16 @@ export const getCameraPromptForScene = (storyStage: string): string => {
  */
 const SCENE_ANGLE_MAP: Record<number, { angle: string; prompt: string }> = {
   1: { angle: 'close-up', prompt: 'close-up portrait shot, face in focus, shallow depth of field, dramatic lighting' },
-  2: { angle: 'wide', prompt: 'wide establishing shot, full body visible, environment context, deep focus, detailed background' },
+  2: { angle: 'drone', prompt: 'drone shot, bird\'s-eye view, wide establishing shot, full body visible, environment context, detailed landscape' },
   3: { angle: 'medium', prompt: 'medium shot, waist-up framing, natural pose' },
-  4: { angle: 'wide', prompt: 'wide shot, full body, background emphasis, deep focus, environment storytelling' },
+  4: { angle: 'wide/landscape', prompt: 'wide landscape shot, full body visible, background emphasis, deep focus, environment storytelling' },
   5: { angle: 'close-up', prompt: 'close-up shot, dramatic expression, face in focus, shallow depth of field' },
-  6: { angle: 'over-the-shoulder', prompt: 'over-the-shoulder shot, perspective view, layered depth' },
-  7: { angle: 'wide', prompt: 'wide shot, revealing context, full body visible, environment storytelling, deep focus' },
+  6: { angle: 'aerial', prompt: 'aerial drone view, looking down at the scene, panoramic background focus' },
+  7: { angle: 'low-angle/wide', prompt: 'low-angle wide shot, revealing context, full body visible, environment storytelling, deep focus' },
   8: { angle: 'POV', prompt: 'first-person POV shot, subjective camera angle, target looking at camera' },
-  9: { angle: 'medium', prompt: 'medium shot, waist-up framing, natural interaction' },
+  9: { angle: 'drone/side', prompt: 'drone side-view shot, sweeping landscape, character full body in the environment' },
   10: { angle: 'wide', prompt: 'wide shot, context visible, full body, background details, deep focus' },
-  11: { angle: 'medium', prompt: 'medium shot, natural pose, waist-up framing' },
+  11: { angle: 'birds-eye', prompt: 'bird\'s-eye view, looking straight down, unique perspective, high-angle' },
   12: { angle: 'wide', prompt: 'wide establishing shot, final scene, background visible, deep focus, environment context' }
 };
 
@@ -1886,13 +1886,13 @@ A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man...
 | 씬 | 권장 앵글 | 프롬프트 키워드 |
 |---|----------|---------------|
 | Scene 1 (Hook) | **클로즈업** | close-up portrait shot, face in focus |
-| Scene 2 (Setup) | **와이드샷** | wide establishing shot, full body visible |
+| Scene 2 (Setup) | **드론/와이드** | drone shot, bird's-eye view, wide establishing shot, full body visible |
 | Scene 3 | **미디엄샷** | medium shot, waist-up framing |
-| Scene 4 | **오버숄더** | over-the-shoulder shot |
+| Scene 4 | **배경위주** | wide landscape shot, background emphasis, deep focus |
 | Scene 5 (Climax) | **클로즈업** | close-up shot, dramatic expression |
-| Scene 6 | **POV** | first-person POV shot |
-| Scene 7 (Twist) | **와이드샷** | wide shot, revealing context |
-| Scene 8 (Outro) | **미디엄샷** | medium shot, natural pose |
+| Scene 6 | **오버숄더** | over-the-shoulder shot |
+| Scene 7 (Twist) | **로우앵글/와이드** | low-angle wide shot, full body visible, revealing context |
+| Scene 8 (Outro) | **항공/와이드** | aerial view, drone shot, wide shot, final scene |
 
 ⚠️ **필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
 ⚠️ **금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용

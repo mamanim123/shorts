@@ -43,41 +43,45 @@ const normalizePromptRules = (input?: Partial<ShortsLabPromptRules>): ShortsLabP
     return cachedRules || DEFAULT_PROMPT_RULES;
   }
 
-  const source = input as Partial<ShortsLabPromptRules>;
+  const source = input as any; // 커스텀 필드 허용을 위해 any 타입 캐스팅
   console.log('[DEBUG NORMALIZE] input keys:', Object.keys(source));
 
+  // 🔧 수정: 파괴적인 재구성 대신 보존형 병합(Additive Merge) 수행
+  // 마마님이 추가하신 커스텀 필드(genreMapping 등)를 모두 보존하면서 
+  // 필수 필드가 누락된 경우에만 기본값을 채워넣습니다.
   const result = {
-    // 각 필드가 존재하면 그대로 사용, 없으면 기본값
-    promptConstants: source.promptConstants !== undefined
-      ? source.promptConstants
-      : DEFAULT_PROMPT_RULES.promptConstants,
-    noTextTag: source.noTextTag !== undefined
-      ? source.noTextTag
-      : DEFAULT_PROMPT_RULES.noTextTag,
-    enforceKoreanIdentity: source.enforceKoreanIdentity !== undefined
-      ? source.enforceKoreanIdentity
-      : DEFAULT_PROMPT_RULES.enforceKoreanIdentity,
-    expressionKeywords: source.expressionKeywords !== undefined
-      ? source.expressionKeywords
-      : DEFAULT_PROMPT_RULES.expressionKeywords,
-    cameraMapping: source.cameraMapping !== undefined
-      ? source.cameraMapping
-      : DEFAULT_PROMPT_RULES.cameraMapping,
-    outfitSelection: source.outfitSelection !== undefined
-      ? { ...DEFAULT_PROMPT_RULES.outfitSelection, ...source.outfitSelection }
-      : DEFAULT_PROMPT_RULES.outfitSelection,
-    promptSections: source.promptSections !== undefined
-      ? { ...DEFAULT_PROMPT_RULES.promptSections, ...source.promptSections }
-      : DEFAULT_PROMPT_RULES.promptSections
+    ...DEFAULT_PROMPT_RULES,
+    ...source,
+    // 중첩된 객체들도 보존형 병합 수행
+    promptConstants: {
+      ...DEFAULT_PROMPT_RULES.promptConstants,
+      ...(source.promptConstants || {})
+    },
+    expressionKeywords: {
+      ...DEFAULT_PROMPT_RULES.expressionKeywords,
+      ...(source.expressionKeywords || {})
+    },
+    cameraMapping: {
+      ...DEFAULT_PROMPT_RULES.cameraMapping,
+      ...(source.cameraMapping || {})
+    },
+    outfitSelection: {
+      ...DEFAULT_PROMPT_RULES.outfitSelection,
+      ...(source.outfitSelection || {})
+    },
+    promptSections: {
+      ...DEFAULT_PROMPT_RULES.promptSections,
+      ...(source.promptSections || {})
+    }
   };
 
   console.log('[DEBUG NORMALIZE] Field check:');
   console.log('  - promptConstants from:', source.promptConstants !== undefined ? 'INPUT' : 'DEFAULT');
   console.log('  - noTextTag from:', source.noTextTag !== undefined ? 'INPUT' : 'DEFAULT');
-  console.log('  - enforceKoreanIdentity from:', source.enforceKoreanIdentity !== undefined ? 'INPUT' : 'DEFAULT');
+  console.log('  - custom fields preserved:', Object.keys(result).length >= Object.keys(DEFAULT_PROMPT_RULES).length);
   console.log('[DEBUG NORMALIZE] ========== normalizePromptRules END ==========');
 
-  return result;
+  return result as ShortsLabPromptRules;
 };
 
 const normalizeBackup = (backup: Partial<ShortsLabPromptRulesBackup> & { id: string }): ShortsLabPromptRulesBackup => ({

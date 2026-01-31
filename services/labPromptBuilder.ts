@@ -1669,6 +1669,32 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 
   // 겨울 악세서리 자동 적용 제거 (의상은 겨울 키워드에서만 긴팔 변환)
 
+  const ageValue = targetAge.replace('s', '');
+  const ageLabel = `${ageValue}대`;
+
+  const defaultHairSection = `## 💇 헤어스타일
+- **Woman A (지영)**: long soft-wave hairstyle
+- **Woman B (혜경)**: short chic bob cut
+- **Woman D (캐디)**: high-bun hairstyle (Professional golf caddy look)
+- **Man A (준호)**: short neat hairstyle
+- **Man B (민수)**: clean short cut`;
+
+  const defaultCharacterSection = `## 👥 캐릭터 설정
+- **Woman A (지영)**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성
+- **Woman B (혜경)**: ${ageLabel} 친구, 활발하고 장난기 있는 성격
+- **Woman D (캐디)**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional 20-something golf caddy)
+  - **말투 규칙**: 캐디는 항상 정중하고 상냥한 **존댓말**(~해요, ~하세요)을 사용하며, 사회초년생의 밝은 에너지가 느껴져야 함.
+- **Man A (준호)**: ${ageLabel} 남성, 댄디하고 세련된 신사
+- **Man B (민수)**: ${ageLabel} 남성 친구, 솔직하고 유머러스함`;
+
+  const maleNarratorInstruction = gender === 'male' ? `
+13. **남성 주인공(준호) 시점 최적화**: 당신은 매너 있는 ${ageLabel} 남성 '준호'입니다. 
+    - 주변의 아름다운 여성들이나 캐디를 대할 때 '중년 남성의 시선'에서 느끼는 관찰과 감상을 1인칭 수다체로 서술하세요.
+    - **장르별 상호작용**: 
+      - 코미디: 그녀들 앞에서 멋져 보이려다 허당끼 있게 망가지는 상황 유도.
+      - 로맨스: 정중한 매너 속에 느껴지는 중년의 은은한 설렘 표현.
+      - 불륜/의심: 그녀들의 수상한 행동에 전전긍긍하며 오해하는 상황.` : '';
+
   const narratorSlot = gender === 'female' ? 'Woman A (지영)' : 'Man A (준호)';
   const narratorName = gender === 'female' ? '지영' : '준호';
   const promptRules = getActivePromptRules();
@@ -1697,18 +1723,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 4) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
 5) 의상 명칭은 한 글자도 바꾸지 말고 리스트의 원문 그대로 사용하세요.
 6) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
-  const defaultHairSection = `## 💇 헤어스타일
-- **Woman A (지영)**: long soft-wave hairstyle
-- **Woman B (혜경)**: short chic bob cut
-- **Woman D (캐디)**: high-bun hairstyle (Professional golf caddy look)
-- **Man A (준호)**: short neat hairstyle
-- **Man B (민수)**: clean short cut`;
-  const defaultCharacterSection = `## 👥 캐릭터 설정
-- **Woman A (지영)**: 40대 주인공, 우아하고 자신감 있는 여성
-- **Woman B (혜경)**: 40대 친구, 활발하고 장난기 있는 성격
-- **Woman D (캐디)**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional golf caddy)
-- **Man A (준호)**: 40대 남성, 댄디하고 세련된 신사
-- **Man B (민수)**: 40대 남성 친구, 솔직하고 유머러스함`;
+
   const outfitRulesSection = promptSections.outfitRulesSection?.trim() || defaultOutfitRulesSection;
   const hairSection = promptSections.hairstyleSection?.trim() || defaultHairSection;
   const characterSection = promptSections.characterSection?.trim() || defaultCharacterSection;
@@ -1734,7 +1749,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 주제: "${topic}"
 📌 장르: ${genreGuide?.name || '일반'}
-📌 타겟: 대한민국 모든 **중년** 시청자 (40~60대)
+📌 타겟: 대한민국 모든 **중년** 시청자 (${ageLabel})
 📌 화자: ${narratorSlot} (${narratorName})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1792,7 +1807,7 @@ ${genreGuide?.forbiddenPatterns.map(p => `• ${p}`).join('\n') || ''}
 3. 반전이 있으면 SETUP(2~3문장)에 **힌트 1개**.
 4. 감정 직접 서술 금지. **행동/신체반응으로 표현**.
 5. 제목은 구체적 상황으로 ("충격/반전" 같은 추상어 금지).
-6. **항상 새로운 소재/상황/소품 조합**으로 창작 (기존 예시·전개 복제 금지).
+6. **항상 새로운 소재/상황/소품 조합**으로 창작 (기존 예시·전개 복제 금지).${maleNarratorInstruction}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 📝 대본 형식 규칙

@@ -7136,7 +7136,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         onClick={() => setIsGuidelineViewOpen(false)}
                     >
                         <div
-                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between p-6 border-b border-slate-800">
@@ -7185,7 +7185,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         onClick={() => setIsStep2PromptViewOpen(false)}
                     >
                         <div
-                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between p-6 border-b border-slate-800">
@@ -7211,7 +7211,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             setStep2RulesDirty(true);
                                             setStep2RulesEditError(null);
                                         }}
-                                        rows={8}
+                                        rows={12}
                                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                         placeholder="대본생성 프롬프트를 입력하세요..."
                                     />
@@ -7226,7 +7226,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             setStep2RulesDirty(true);
                                             setStep2RulesEditError(null);
                                         }}
-                                        rows={8}
+                                        rows={12}
                                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                                         placeholder="캐릭터분석 프롬프트를 입력하세요..."
                                     />
@@ -7241,7 +7241,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             setStep2RulesDirty(true);
                                             setStep2RulesEditError(null);
                                         }}
-                                        rows={10}
+                                        rows={16}
                                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                                         placeholder="이미지프롬프트 생성 프롬프트를 입력하세요..."
                                     />
@@ -7306,7 +7306,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                     onClick={handleCloseBackupEditor}
                 >
                     <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between p-5 border-b border-slate-800">
@@ -7328,7 +7328,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     setBackupEditText(e.target.value);
                                     setBackupEditError(null);
                                 }}
-                                rows={16}
+                                rows={24}
                                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                             />
                             {backupEditError && (
@@ -7359,7 +7359,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                     onClick={handleClosePromptRulesBackupEditor}
                 >
                     <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between p-5 border-b border-slate-800">
@@ -7381,7 +7381,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     setRulesBackupEditText(e.target.value);
                                     setRulesBackupEditError(null);
                                 }}
-                                rows={16}
+                                rows={24}
                                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                             />
                             {rulesBackupEditError && (

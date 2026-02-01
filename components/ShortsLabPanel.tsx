@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -976,6 +976,8 @@ const postProcessAiScenes = (
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
 
+    resetAngleHistory();
+
     const totalScenes = options.totalScenes || scenes.length || 12;
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
     let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
@@ -1144,6 +1146,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [aiTopic, setAiTopic] = useState('');
     const [aiGenre, setAiGenre] = useState('comedy-humor');
     const [aiTargetAge, setAiTargetAge] = useState('40대');
+    const [scriptCharacterMode, setScriptCharacterMode] = useState<'slot-only' | 'slot+name'>('slot-only');
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
@@ -1199,9 +1202,18 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [promptEditOriginal, setPromptEditOriginal] = useState('');
     const [promptEditText, setPromptEditText] = useState('');
     const [promptEditLoading, setPromptEditLoading] = useState(false);
+    const [promptEditLoadingType, setPromptEditLoadingType] = useState<'element' | 'detailed' | 'style' | null>(null);
     const [promptEditError, setPromptEditError] = useState<string | null>(null);
     const [promptElementAnalysis, setPromptElementAnalysis] = useState<ElementAnalysis>({});
     const [detailedAnalysis, setDetailedAnalysis] = useState<DetailedAnalysis | null>(null);
+    const [promptAnalysisBase, setPromptAnalysisBase] = useState('');
+    const promptAnalysisCacheRef = useRef<Record<number, {
+        original: string;
+        editing: string;
+        elementAnalysis: ElementAnalysis;
+        detailedAnalysis: DetailedAnalysis | null;
+        analysisBase: string;
+    }>>({});
 
     /**
      * 프롬프트 설정 업데이트 헬퍼
@@ -1216,6 +1228,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         promptEditLoading,
         targetService,
         setPromptEditLoading,
+        setPromptEditLoadingType,
         setPromptEditError,
         setPromptElementAnalysis
     });
@@ -1223,24 +1236,62 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 프롬프트 수정 모달 함수들
     const openPromptEditModal = useCallback((sceneNumber: number, currentPrompt: string) => {
         console.log('🔍 [ShortsLab] 상세 분석 모달 열기:', { sceneNumber, promptLength: currentPrompt?.length });
-        setPromptEditSceneNumber(sceneNumber);
-        setPromptEditOriginal(currentPrompt || '');
-        setPromptEditText(currentPrompt || '');
-        setPromptEditError(null);
-        setPromptElementAnalysis({});
-        setDetailedAnalysis(null); // Reset previous analysis when opening for new scene
+        const cache = promptAnalysisCacheRef.current[sceneNumber];
+        if (cache) {
+            setPromptEditSceneNumber(sceneNumber);
+            setPromptEditOriginal(cache.original);
+            setPromptEditText(cache.editing);
+            setPromptEditError(null);
+            setPromptElementAnalysis(cache.elementAnalysis || {});
+            setDetailedAnalysis(cache.detailedAnalysis || null);
+            setPromptAnalysisBase(cache.analysisBase || cache.editing || currentPrompt || '');
+        } else {
+            setPromptEditSceneNumber(sceneNumber);
+            setPromptEditOriginal(currentPrompt || '');
+            setPromptEditText(currentPrompt || '');
+            setPromptEditError(null);
+            setPromptElementAnalysis({});
+            setDetailedAnalysis(null); // Reset previous analysis when opening for new scene
+            setPromptAnalysisBase(currentPrompt || '');
+        }
         setShowPromptEditModal(true);
         console.log('🔍 [ShortsLab] 모달 상태 변경 완료');
     }, []);
 
     const closePromptEditModal = useCallback(() => {
         setShowPromptEditModal(false);
+    }, []);
+
+    const resetPromptEditModal = useCallback(() => {
+        if (promptEditSceneNumber !== null) {
+            delete promptAnalysisCacheRef.current[promptEditSceneNumber];
+        }
         setPromptEditSceneNumber(null);
         setPromptEditOriginal('');
         setPromptEditText('');
         setPromptEditError(null);
         setPromptElementAnalysis({});
-    }, []);
+        setDetailedAnalysis(null);
+        setPromptAnalysisBase('');
+    }, [promptEditSceneNumber]);
+
+    useEffect(() => {
+        if (promptEditSceneNumber === null) return;
+        promptAnalysisCacheRef.current[promptEditSceneNumber] = {
+            original: promptEditOriginal,
+            editing: promptEditText,
+            elementAnalysis: promptElementAnalysis,
+            detailedAnalysis,
+            analysisBase: promptAnalysisBase || promptEditText || promptEditOriginal
+        };
+    }, [
+        promptEditSceneNumber,
+        promptEditOriginal,
+        promptEditText,
+        promptElementAnalysis,
+        detailedAnalysis,
+        promptAnalysisBase
+    ]);
 
     // 디버깅: 모달 상태 변화 추적
     useEffect(() => {
@@ -1255,6 +1306,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 스타일 적용 함수
     const handleApplyStyle = useCallback(async (styleId: string, model?: string) => {
         setPromptEditLoading(true);
+        setPromptEditLoadingType('style');
         try {
             const response = await fetch('http://localhost:3002/api/prompt-style-convert', {
                 method: 'POST',
@@ -1283,6 +1335,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             setPromptEditError(error instanceof Error ? error.message : '스타일 변환에 실패했습니다.');
         } finally {
             setPromptEditLoading(false);
+            setPromptEditLoadingType(null);
         }
     }, [promptEditText]);
 
@@ -1294,6 +1347,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         }
 
         setPromptEditLoading(true);
+        setPromptEditLoadingType('detailed');
         setPromptEditError(null);
 
         try {
@@ -1315,6 +1369,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             console.log('🔍 [ShortsLab] 상세 분석 응답:', data);
             if (data.success && data.analysis) {
                 setDetailedAnalysis(data.analysis);
+                setPromptAnalysisBase(promptEditText);
                 showToast('상세 분석이 완료되었습니다.', 'success');
             } else {
                 throw new Error(data.error || data.details || '분석 결과가 없습니다.');
@@ -1324,6 +1379,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             setPromptEditError(error instanceof Error ? error.message : '상세 분석에 실패했습니다.');
         } finally {
             setPromptEditLoading(false);
+            setPromptEditLoadingType(null);
         }
     }, [promptEditText, targetService]);
 
@@ -3047,7 +3103,8 @@ ${scriptInput}
                 genreGuideOverride,
                 enableWinterAccessories: enableWinterAccessories,
                 useRandomOutfits,
-                allowedOutfitCategories
+                allowedOutfitCategories,
+                characterSlotMode: scriptCharacterMode
             });
 
             // 선택된 AI 서비스 (기본값: GEMINI)
@@ -3296,7 +3353,8 @@ ${scriptInput}
                 gender: inferredTopicGender,
                 genreGuideOverride,
                 enableWinterAccessories,
-                allowedOutfitCategories
+                allowedOutfitCategories,
+                characterSlotMode: scriptCharacterMode
             });
 
             const selectedService = targetService || 'GEMINI';
@@ -4239,6 +4297,33 @@ ${scriptInput}
                                         </div>
                                     </div>
 
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div>
+                                            <div className="text-sm font-medium text-slate-300">캐릭터 고정 방식</div>
+                                            <div className="text-[10px] text-slate-500 mt-0.5">캐디는 WomanD 고정</div>
+                                        </div>
+                                        <div className="flex items-center bg-slate-900/60 border border-slate-700 rounded-full p-0.5">
+                                            <button
+                                                onClick={() => setScriptCharacterMode('slot-only')}
+                                                className={`px-3 py-1 text-[11px] font-bold rounded-full transition-all ${scriptCharacterMode === 'slot-only'
+                                                    ? 'bg-purple-600 text-white shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-200'
+                                                    }`}
+                                            >
+                                                슬롯만
+                                            </button>
+                                            <button
+                                                onClick={() => setScriptCharacterMode('slot+name')}
+                                                className={`px-3 py-1 text-[11px] font-bold rounded-full transition-all ${scriptCharacterMode === 'slot+name'
+                                                    ? 'bg-purple-600 text-white shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-200'
+                                                    }`}
+                                            >
+                                                슬롯+이름
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <button
                                             onClick={handleAiGenerate}
@@ -5120,10 +5205,13 @@ ${scriptInput}
                 originalPrompt={promptEditOriginal}
                 editingPrompt={promptEditText}
                 isLoading={promptEditLoading}
+                loadingType={promptEditLoadingType}
                 error={promptEditError}
                 elementAnalysis={promptElementAnalysis}
                 detailedAnalysis={detailedAnalysis}
+                analysisBasePrompt={promptAnalysisBase}
                 onClose={closePromptEditModal}
+                onReset={resetPromptEditModal}
                 onEditingChange={setPromptEditText}
                 onAnalyze={handleAnalyzePromptByElement}
                 onDetailedAnalyze={handleDetailedAnalysis}

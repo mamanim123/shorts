@@ -132,9 +132,11 @@ interface PromptEditModalProps {
     originalPrompt: string;
     editingPrompt: string;
     isLoading: boolean;
+    loadingType?: 'element' | 'detailed' | 'style' | null;
     error: string | null;
     elementAnalysis: ElementAnalysis;
     detailedAnalysis?: DetailedAnalysis | null;
+    analysisBasePrompt?: string;
     onClose: () => void;
     onOriginalChange?: (text: string) => void;
     onEditingChange: (text: string) => void;
@@ -144,6 +146,7 @@ interface PromptEditModalProps {
     onApply?: () => void;
     onGenerateImage?: () => void;
     onAiGenerate?: () => void;
+    onReset?: () => void;
 }
 
 export const PromptEditModal: React.FC<PromptEditModalProps> = ({
@@ -152,9 +155,11 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
     originalPrompt,
     editingPrompt,
     isLoading,
+    loadingType,
     error,
     elementAnalysis,
     detailedAnalysis,
+    analysisBasePrompt,
     onClose,
     onOriginalChange,
     onEditingChange,
@@ -163,7 +168,8 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
     onApplyStyle,
     onApply,
     onGenerateImage,
-    onAiGenerate
+    onAiGenerate,
+    onReset
 }) => {
     console.log('🚀 [PromptEditModal] Component Called - isOpen:', isOpen, 'sceneNumber:', sceneNumber);
     console.log('📊 [PromptEditModal] Props:', {
@@ -217,6 +223,127 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
     const [isChatLoading, setIsChatLoading] = React.useState(false);
     const [showChat, setShowChat] = React.useState(false);
     const chatInputRef = React.useRef<HTMLInputElement>(null);
+    const modalRef = React.useRef<HTMLDivElement>(null);
+    const [modalPosition, setModalPosition] = React.useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = React.useState(false);
+    const dragOffsetRef = React.useRef({ x: 0, y: 0 });
+
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const rect = modalRef.current?.getBoundingClientRect();
+        const width = rect?.width || 640;
+        const height = rect?.height || 480;
+        const left = Math.max(16, (window.innerWidth - width) / 2);
+        const top = Math.max(16, (window.innerHeight - height) / 2);
+        setModalPosition({ x: left, y: top });
+    }, [isOpen]);
+
+    React.useEffect(() => {
+        if (!isDragging) return;
+        const handleMove = (event: PointerEvent) => {
+            const rect = modalRef.current?.getBoundingClientRect();
+            const width = rect?.width || 640;
+            const height = rect?.height || 480;
+            const nextX = event.clientX - dragOffsetRef.current.x;
+            const nextY = event.clientY - dragOffsetRef.current.y;
+            const maxX = Math.max(16, window.innerWidth - width - 16);
+            const maxY = Math.max(16, window.innerHeight - height - 16);
+            const clampedX = Math.min(Math.max(16, nextX), maxX);
+            const clampedY = Math.min(Math.max(16, nextY), maxY);
+            setModalPosition({ x: clampedX, y: clampedY });
+        };
+        const handleUp = () => {
+            setIsDragging(false);
+        };
+        window.addEventListener('pointermove', handleMove);
+        window.addEventListener('pointerup', handleUp);
+        return () => {
+            window.removeEventListener('pointermove', handleMove);
+            window.removeEventListener('pointerup', handleUp);
+        };
+    }, [isDragging]);
+
+    const [selectedProblemIndices, setSelectedProblemIndices] = React.useState<number[]>([]);
+    const [showEditHighlight, setShowEditHighlight] = React.useState(false);
+
+    React.useEffect(() => {
+        setSelectedProblemIndices([]);
+    }, [detailedAnalysis]);
+
+    const toggleProblemSelection = (index: number) => {
+        setSelectedProblemIndices((prev) =>
+            prev.includes(index) ? prev.filter((id) => id !== index) : [...prev, index]
+        );
+    };
+
+    const selectionBasePrompt = (analysisBasePrompt && analysisBasePrompt.trim()) ? analysisBasePrompt : editingPrompt;
+
+    const buildPreviewPrompt = () => {
+        if (!detailedAnalysis?.problems?.length) return { text: editingPrompt, applied: 0 };
+        if (selectedProblemIndices.length === 0) return { text: editingPrompt, applied: 0 };
+        let updated = selectionBasePrompt;
+        let applied = 0;
+        selectedProblemIndices.forEach((index) => {
+            const problem = detailedAnalysis.problems?.[index];
+            if (!problem?.original || !problem?.corrected) return;
+            const escaped = problem.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const match = updated.match(new RegExp(escaped, 'gi'));
+            if (match) {
+                applied += match.length;
+            }
+            updated = updated.replace(new RegExp(escaped, 'gi'), problem.corrected);
+        });
+        return { text: updated, applied };
+    };
+
+    const previewResult = React.useMemo(
+        () => buildPreviewPrompt(),
+        [editingPrompt, selectionBasePrompt, detailedAnalysis, selectedProblemIndices]
+    );
+    const previewPrompt = previewResult.text;
+    const previewAppliedCount = previewResult.applied;
+
+    const applySelectedProblemFixes = () => {
+        if (selectedProblemIndices.length === 0) return;
+        onEditingChange(previewPrompt);
+    };
+
+    const simplifyProblemType = (type?: string) => {
+        switch (type) {
+            case '중복':
+                return '같은 말이 두 번 나왔어요. 하나만 남겨요.';
+            case '모순':
+                return '서로 다른 말이 충돌해요. 하나만 선택해요.';
+            case '불명확':
+                return '말이 애매해요. 더 자세히 써요.';
+            case '정책위반':
+                return '규칙에 맞지 않아요. 안전한 말로 바꿔요.';
+            default:
+                return '문장이 헷갈려요. 더 간단하고 정확하게 써요.';
+        }
+    };
+
+    const buildSimpleTips = () => {
+        const tips: Array<{ title: string; fix?: string; reason?: string }> = [];
+        if (detailedAnalysis?.problems?.length) {
+            detailedAnalysis.problems.forEach((problem, index) => {
+                tips.push({
+                    title: `${index + 1}. ${problem.type || '문제'}: ${problem.original || '표현'}`,
+                    reason: simplifyProblemType(problem.type),
+                    fix: problem.corrected || problem.fix
+                });
+            });
+        } else if (elementAnalysis?.problems?.length) {
+            elementAnalysis.problems.forEach((problem, index) => {
+                tips.push({
+                    title: `${index + 1}. ${problem}`,
+                    reason: getProblemExplanation(problem),
+                    fix: simplifyProblemType(problem.includes('중복') ? '중복' : problem.includes('모순') ? '모순' : problem.includes('불명확') ? '불명확' : undefined)
+                });
+            });
+        }
+        return tips;
+    };
 
     // Keyboard shortcut: Ctrl+L to toggle chat
     React.useEffect(() => {
@@ -333,11 +460,25 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
             onClick={onClose}
         >
             <div
-                className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden"
+                ref={modalRef}
+                className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden absolute"
+                style={{ left: modalPosition.x, top: modalPosition.y }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 헤더 */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0">
+                <div
+                    className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                    onPointerDown={(event) => {
+                        if (event.button !== 0) return;
+                        const rect = modalRef.current?.getBoundingClientRect();
+                        if (!rect) return;
+                        dragOffsetRef.current = {
+                            x: event.clientX - rect.left,
+                            y: event.clientY - rect.top
+                        };
+                        setIsDragging(true);
+                    }}
+                >
                     <div>
                         <h3 className="text-sm font-bold text-emerald-300">
                             프롬프트 수정 (씬 #{sceneNumber})
@@ -387,12 +528,25 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                         })}
                     </div>
 
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {onReset && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onReset();
+                                }}
+                                className="px-3 py-1 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+                            >
+                                초기화
+                            </button>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* 본체 */}
@@ -459,15 +613,74 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
 
                         {/* 수정 프롬프트 */}
                         <div>
-                            <label className="text-[10px] font-semibold text-slate-400 block mb-2">
-                                수정 프롬프트
-                            </label>
-                            <textarea
-                                value={editingPrompt}
-                                onChange={(e) => onEditingChange(e.target.value)}
-                                rows={10}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[11px] text-slate-200 font-mono outline-none resize-none"
-                            />
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-[10px] font-semibold text-slate-400 block">
+                                    수정 프롬프트
+                                </label>
+                                {originalPrompt.trim() && editingPrompt.trim() && originalPrompt !== editingPrompt && (
+                                    <button
+                                        onClick={() => setShowEditHighlight((prev) => !prev)}
+                                        className="text-[9px] px-2 py-0.5 rounded-full border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
+                                    >
+                                        {showEditHighlight ? '편집 모드' : '변경 표시'}
+                                    </button>
+                                )}
+                            </div>
+                            {showEditHighlight ? (
+                                <div className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[11px] text-slate-200 font-mono outline-none resize-none min-h-[220px]">
+                                    <div className="flex gap-2 text-[9px] mb-2">
+                                        <span className="text-red-400">● 삭제</span>
+                                        <span className="text-green-400">● 추가</span>
+                                    </div>
+                                    <div className="text-[10px] leading-relaxed whitespace-pre-wrap break-words">
+                                        {computeDiff(originalPrompt, editingPrompt).map((part, idx) => {
+                                            if (part.type === 'added') {
+                                                return <span key={idx} className="bg-green-500/30 text-green-300 px-0.5 rounded">{part.text}</span>;
+                                            }
+                                            if (part.type === 'removed') {
+                                                return <span key={idx} className="bg-red-500/30 text-red-300 px-0.5 rounded line-through opacity-70">{part.text}</span>;
+                                            }
+                                            return <span key={idx} className="text-slate-300">{part.text}</span>;
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <textarea
+                                    value={editingPrompt}
+                                    onChange={(e) => onEditingChange(e.target.value)}
+                                    rows={10}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[11px] text-slate-200 font-mono outline-none resize-none"
+                                />
+                            )}
+                            {selectedProblemIndices.length > 0 && previewPrompt !== editingPrompt && (
+                                <div className="mt-2 bg-emerald-950/30 border border-emerald-500/40 rounded-lg p-2">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[9px] font-semibold text-emerald-300">선택 적용 미리보기</span>
+                                        <span className="text-[9px] text-emerald-200/70">체크 즉시 반영됨</span>
+                                        <span className="text-[9px] text-emerald-200/70 ml-auto">적용 {previewAppliedCount}곳</span>
+                                        <div className="flex gap-2 text-[9px] ml-auto">
+                                            <span className="text-red-400">● 삭제</span>
+                                            <span className="text-green-400">● 추가</span>
+                                        </div>
+                                    </div>
+                                    {previewAppliedCount === 0 && (
+                                        <div className="text-[9px] text-emerald-200/80 mb-1">
+                                            현재 수정본에 해당 문장이 없어서 변화가 없습니다.
+                                        </div>
+                                    )}
+                                    <div className="text-[10px] leading-relaxed whitespace-pre-wrap break-words">
+                                        {computeDiff(selectionBasePrompt, previewPrompt).map((part, idx) => {
+                                            if (part.type === 'added') {
+                                                return <span key={idx} className="bg-green-500/30 text-green-300 px-0.5 rounded">{part.text}</span>;
+                                            }
+                                            if (part.type === 'removed') {
+                                                return <span key={idx} className="bg-red-500/30 text-red-300 px-0.5 rounded line-through opacity-70">{part.text}</span>;
+                                            }
+                                            return <span key={idx} className="text-slate-300">{part.text}</span>;
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -478,10 +691,45 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                         </div>
                     )}
 
+                    {/* 쉬운 요약 */}
+                    {(detailedAnalysis || (elementAnalysis?.problems && elementAnalysis.problems.length > 0)) && (
+                        <details className="bg-amber-950/30 border border-amber-500/40 rounded-lg p-3 open:bg-amber-950/40">
+                            <summary className="cursor-pointer select-none text-[10px] font-semibold text-amber-300">
+                                쉬운 요약 (초등학생 버전)
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                                {buildSimpleTips().length === 0 ? (
+                                    <div className="text-[10px] text-amber-200">큰 문제는 안 보였어요. 지금도 잘 만들고 있어요!</div>
+                                ) : (
+                                    <ul className="space-y-2">
+                                        {buildSimpleTips().map((tip, idx) => (
+                                            <li key={`simple-tip-${idx}`} className="bg-amber-900/30 border border-amber-500/30 rounded-md p-2">
+                                                <div className="text-[10px] font-semibold text-amber-100">{tip.title}</div>
+                                                {tip.reason && <div className="text-[10px] text-amber-200 mt-1">이유: {tip.reason}</div>}
+                                                {tip.fix && <div className="text-[10px] text-amber-100 mt-1">이렇게 고쳐요: {tip.fix}</div>}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                {detailedAnalysis?.correctedPrompt && (
+                                    <button
+                                        onClick={() => onEditingChange(detailedAnalysis.correctedPrompt || '')}
+                                        className="w-full px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-[10px] font-semibold transition-colors"
+                                    >
+                                        쉬운 수정본 바로 적용
+                                    </button>
+                                )}
+                            </div>
+                        </details>
+                    )}
+
                     {/* 상세 분석 결과 */}
                     {detailedAnalysis && (
-                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-3">
-                            <h4 className="text-[10px] font-semibold text-emerald-300">상세 분석 결과</h4>
+                        <details className="bg-slate-950 border border-slate-800 rounded-lg p-3 open:bg-slate-950/70">
+                            <summary className="cursor-pointer select-none text-[10px] font-semibold text-emerald-300">
+                                상세 분석 결과 (전문가용)
+                            </summary>
+                            <div className="mt-2 space-y-3">
 
                             {/* 문제점 상세 분석 - Before/After 비교 */}
                             {Array.isArray(detailedAnalysis.problems) && detailedAnalysis.problems.length > 0 && (
@@ -490,6 +738,16 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                         <span className="text-red-400 text-xl">⚠️</span>
                                         <span className="text-sm font-bold text-red-300">발견된 문제 및 수정 방법</span>
                                         <span className="text-xs text-red-400 ml-auto">{detailedAnalysis.problems.length}건</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <button
+                                            onClick={applySelectedProblemFixes}
+                                            disabled={selectedProblemIndices.length === 0}
+                                            className="px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-600 text-white disabled:bg-slate-700 disabled:text-slate-400"
+                                        >
+                                            선택 적용
+                                        </button>
+                                        <span className="text-[9px] text-red-200">체크한 항목만 수정 프롬프트에 반영됩니다.</span>
                                     </div>
                                     <div className="space-y-3">
                                         {detailedAnalysis.problems.map((problem, i) => {
@@ -508,6 +766,12 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                             return (
                                                 <div key={i} className={`border rounded-lg p-2 ${typeColors[problem.type] || 'bg-gray-900/30 border-gray-500/50'}`}>
                                                     <div className="flex items-center gap-2 mb-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedProblemIndices.includes(i)}
+                                                            onChange={() => toggleProblemSelection(i)}
+                                                            className="accent-emerald-500"
+                                                        />
                                                         <span className="text-sm">{typeEmojis[problem.type]}</span>
                                                         <span className="text-[10px] font-bold">{problem.type}</span>
                                                     </div>
@@ -539,22 +803,24 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                 </div>
                             )}
 
-                            {/* 평가 점수 */}
+                            {/* 품질 점수 + 상세 요소 */}
                             {detailedAnalysis.score !== undefined && (
-                                <div className="flex items-center gap-2 p-2 bg-slate-900 rounded-lg">
-                                    <span className="text-[10px] text-slate-400">품질 점수:</span>
-                                    <div className="flex gap-0.5">
-                                        {[...Array(5)].map((_, i) => (
-                                            <span key={i} className={i < Math.round(detailedAnalysis.score! / 20) ? 'text-yellow-400' : 'text-slate-700'}>
-                                                ⭐
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <span className="text-xs text-slate-300 ml-1">{detailedAnalysis.score}/100</span>
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-2">
+                                <details className="bg-slate-900/50 border border-slate-700 rounded-lg p-2 open:bg-slate-900/70">
+                                    <summary className="cursor-pointer select-none text-[10px] font-semibold text-slate-200">
+                                        품질 점수: {detailedAnalysis.score}/100
+                                    </summary>
+                                    <div className="mt-2 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-0.5">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <span key={i} className={i < Math.round(detailedAnalysis.score! / 20) ? 'text-yellow-400' : 'text-slate-700'}>
+                                                        ⭐
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <span className="text-[10px] text-slate-400">점수는 참고용입니다.</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
                                 {/* 스타일 */}
                                 {Array.isArray(detailedAnalysis.style) && detailedAnalysis.style.length > 0 && (
                                     <div className="bg-purple-950/20 border border-purple-500/30 rounded-lg p-2">
@@ -635,21 +901,24 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                         </ul>
                                     </div>
                                 )}
-                            </div>
+                                        </div>
 
-                            {/* 개선 제안 */}
-                            {Array.isArray(detailedAnalysis.suggestions) && detailedAnalysis.suggestions.length > 0 && (
-                                <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-lg p-2">
-                                    <div className="text-[10px] font-semibold text-cyan-300 mb-1">개선 제안</div>
-                                    <ul className="space-y-1">
-                                        {detailedAnalysis.suggestions.map((item, i) => (
-                                            <li key={i} className="text-[10px] text-cyan-200 flex items-start gap-1">
-                                                <span className="text-cyan-400">✓</span>
-                                                <span>{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
+                                        {/* 개선 제안 */}
+                                        {Array.isArray(detailedAnalysis.suggestions) && detailedAnalysis.suggestions.length > 0 && (
+                                            <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-lg p-2">
+                                                <div className="text-[10px] font-semibold text-cyan-300 mb-1">개선 제안</div>
+                                                <ul className="space-y-1">
+                                                    {detailedAnalysis.suggestions.map((item, i) => (
+                                                        <li key={i} className="text-[10px] text-cyan-200 flex items-start gap-1">
+                                                            <span className="text-cyan-400">✓</span>
+                                                            <span>{item}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                </details>
                             )}
 
                             {/* 수정된 전체 프롬프트 */}
@@ -711,7 +980,8 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                     </div>
                                 </div>
                             )}
-                        </div>
+                            </div>
+                        </details>
                     )}
 
                     {/* 분석 결과 - 요소별 하이라이트 */}
@@ -746,9 +1016,10 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                                 <li
                                                     key={`problem-${idx}`}
                                                     title={getProblemExplanation(problem)}
-                                                    className="cursor-help hover:bg-red-900/30 px-2 py-1 rounded"
+                                                    className="hover:bg-red-900/30 px-2 py-1 rounded"
                                                 >
-                                                    ⚠️ {problem}
+                                                    <div>⚠️ {problem}</div>
+                                                    <div className="text-[9px] text-red-200/80 mt-0.5">쉽게 말하면: {getProblemExplanation(problem)}</div>
                                                 </li>
                                             ))}
                                         </ul>
@@ -843,7 +1114,7 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                             disabled={isLoading || !originalPrompt.trim()}
                             className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                         >
-                            {isLoading ? (
+                            {loadingType === 'element' ? (
                                 <>
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                     분석 중...
@@ -861,8 +1132,17 @@ export const PromptEditModal: React.FC<PromptEditModalProps> = ({
                                 disabled={isLoading || !editingPrompt.trim()}
                                 className="px-3 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                             >
-                                <Sparkles className="w-3 h-3" />
-                                상세 분석
+                                {loadingType === 'detailed' ? (
+                                    <>
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        분석 중...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-3 h-3" />
+                                        상세 분석
+                                    </>
+                                )}
                             </button>
                         )}
                         {onGenerateImage && (

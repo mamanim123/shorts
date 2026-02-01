@@ -4536,6 +4536,7 @@ app.get('/api/video/download-folder-info', (req, res) => {
 // 프롬프트 상세 분석 API
 app.post('/api/prompt-analyze-detailed', async (req, res) => {
     const { prompt, service, model } = req.body;
+    const requestedService = typeof service === 'string' && service.trim() ? service : 'GEMINI';
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });
@@ -4658,6 +4659,7 @@ ${prompt}
 // 스타일 변환 API
 app.post('/api/prompt-style-convert', async (req, res) => {
     const { prompt, targetStyle, service } = req.body;
+    const requestedService = typeof service === 'string' && service.trim() ? service : 'GEMINI';
 
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });

@@ -192,11 +192,11 @@ export const buildElementAnalysisPrompt = (originalPrompt: string): string => {
 
 export const getProblemExplanation = (problem: string): string => {
     const explanations: Record<string, string> = {
-        '중복': '같은 표현이 여러 번 반복되었습니다. 한 번만 사용하세요.',
-        '모순': '서로 다르거나 충돌하는 표현이 있습니다. 하나를 선택하거나 수정하세요.',
-        '불명확': '표현이 불명확하거나 애매합니다. 더 구체적으로 작성하세요.',
-        '과도': '같은 스타일의 표현이 너무 많습니다. 일부를 제거하세요.',
-        '문법': '문법이 잘못되었습니다. 수정하세요.'
+        '중복': '같은 말이 여러 번 나왔어요. 하나만 남겨요.',
+        '모순': '말이 서로 다르게 말해요. 하나만 고르세요.',
+        '불명확': '말이 애매해요. 더 자세히 써요.',
+        '과도': '말이 너무 많아요. 조금 줄여요.',
+        '문법': '글이 어색해요. 자연스럽게 고쳐요.'
     };
 
     for (const [key, explanation] of Object.entries(explanations)) {
@@ -205,7 +205,7 @@ export const getProblemExplanation = (problem: string): string => {
         }
     }
 
-    return '프롬프트를 검토하고 개선하세요.';
+    return '쉽게 고치면 더 잘돼요.';
 };
 
 // ==========================================

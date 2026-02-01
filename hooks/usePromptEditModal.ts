@@ -12,6 +12,7 @@ interface UsePromptEditModalParams {
     promptEditLoading: boolean;
     targetService?: string;
     setPromptEditLoading: (loading: boolean) => void;
+    setPromptEditLoadingType: (type: 'element' | 'detailed' | 'style' | null) => void;
     setPromptEditError: (error: string | null) => void;
     setPromptElementAnalysis: (analysis: ElementAnalysis) => void;
 }
@@ -21,6 +22,7 @@ export const usePromptEditModal = ({
     promptEditLoading,
     targetService,
     setPromptEditLoading,
+    setPromptEditLoadingType,
     setPromptEditError,
     setPromptElementAnalysis
 }: UsePromptEditModalParams) => {
@@ -34,6 +36,7 @@ export const usePromptEditModal = ({
         if (promptEditLoading) return;
 
         setPromptEditLoading(true);
+        setPromptEditLoadingType('element');
         setPromptEditError(null);
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 45000);
@@ -98,8 +101,17 @@ export const usePromptEditModal = ({
         } finally {
             window.clearTimeout(timeoutId);
             setPromptEditLoading(false);
+            setPromptEditLoadingType(null);
         }
-    }, [promptEditOriginal, promptEditLoading, targetService, setPromptEditLoading, setPromptEditError, setPromptElementAnalysis]);
+    }, [
+        promptEditOriginal,
+        promptEditLoading,
+        targetService,
+        setPromptEditLoading,
+        setPromptEditLoadingType,
+        setPromptEditError,
+        setPromptElementAnalysis
+    ]);
 
     return {
         handleAnalyzePromptByElement

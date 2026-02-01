@@ -1,55 +1,3 @@
-당신은 이미지 프롬프트 분석가입니다.
-
-주어진 프롬프트를 다음 요소별로 분석하여 각 요소에 해당하는 텍스트를 추출하세요.
-
-
-
-요소 정의:
-
-- style: 화풍, 렌더링 스타일, 아트 스타일 (예: cinematic, photorealistic, oil painting)
-
-- lighting: 조명 관련 표현 (예: dramatic lighting, soft lighting, neon lights)
-
-- camera: 카메라 앵글, 렌즈, 프레이밍 (예: close-up, wide shot, 50mm lens)
-
-- composition: 구도, 배치, 레이아웃 (예: rule of thirds, centered composition)
-
-- character: 인물 관련 표현 (예: woman, Korean, dressed in red)
-
-- background: 배경 관련 표현 (예: urban background, forest, night sky)
-
-- problems: 중복된 표현이나 모순되는 표현 (예: "cinematic cinematic")
-
-
-
-출력 형식: 다음 JSON만 출력하세요. JSON 객체만 반환하고 다른 텍스트는 금지입니다.
-
-{
-
-"style": ["항목1", "항목2", ...],
-
-"lighting": ["항목1", ...],
-
-"camera": ["항목1", ...],
-
-"composition": ["항목1", ...],
-
-"character": ["항목1", ...],
-
-"background": ["항목1", ...],
-
-"problems": ["문제1", "문제2", ...]
-
-}
-
-
-
-프롬프트:
-
-unfiltered raw photograph, medium two-shot, [Person 1 (Woman D): on the left, wearing vibrant magenta pink Tight-fitting long-sleeve bodycon mini dress with horizontal ruching, holding a white coffee cup with elegant hand gesture, gentle smile, looking at Person 2] [Person 2 (Woman B): on the right, wearing Beige & White Argyle Check V-neck Set, looking at Person 1 with a bright smile], facing each other, soft indoor lighting, 8k resolution
-
-{ "style": ["unfiltered raw photograph", "8k resolution"], "lighting": ["soft indoor lighting"], "camera": ["medium two-shot"], "composition": ["facing each other", "Person 1 on the left", "Person 2 on the right"], "character": ["Person 1 (Woman D): wearing vibrant magenta pink Tight-fitting long-sleeve bodycon mini dress with horizontal ruching, holding a white coffee cup with elegant hand gesture, gentle smile, looking at Person 2", "Person 2 (Woman B): wearing Beige & White Argyle Check V-neck Set, looking at Person 1 with a bright smile"], "background": [], "problems": [] }
-
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
 
@@ -62,7 +10,7 @@ unfiltered raw photograph, medium two-shot, [Person 1 (Woman D): on the left, we
 
 
 
-주제: 눈오는 골프장에 아름다움캐디
+주제: 눈오는 골프장에 아름다운 사모들
 
 장르: 코미디 / 유머
 
@@ -150,7 +98,7 @@ unfiltered raw photograph, medium two-shot, [Person 1 (Woman D): on the left, we
 
 }
 
-{ "scriptBody": "여러분, 눈 덮인 골프장에서 하늘에서 내려온 요정 같은 캐디님 본 적 있으세요?\n오늘 라운딩 나갔다가 진짜 연예인 뺨치는 비주얼의 캐디님을 만났지 뭡니까.\n하얀 눈밭 위에 서 있는데 투명한 피부에 눈웃음이 정말 예술이더라고요.\n공은 안 치고 다들 그분 얼굴만 보느라 정신줄을 꽉 놓고 있었죠.\n캐디님이 생긋 웃으면서 '사장님, 이번 홀은 서비스예요' 하고 달려가는데 뒤태가 진짜 영화의 한 장면인 줄 알았어요.\n가까이서 보니까 눈빛이 어찌나 초롱초롱한지 제 마음까지 다 녹아내리는 기분이었거든요.\n그런데 제가 폼 잡으면서 '저기, 번호 좀...' 하고 멋지게 물어본 순간이었죠.\n캐디님이 저를 쓱 보더니 아주 쿨하고 치명적인 목소리로 딱 한마디 하더라고요.\n'사장님, 번호는 모르겠고 지금 사장님 공은 해저드에 퐁당 빠졌는데요?'\n알고 보니 제가 설레서 쳐다보던 그분이 제 공을 아주 정확하게 사망 선고 내리신 거였죠.\n'아이고 사장님, 공 찾으러 가실래요? 아님 저랑 계속 눈 맞추실래요?'\n40대 형님들, 겨울 골프장에서 미녀 캐디 조심하세요, 마음은 녹아도 내 스코어는 꽁꽁 얼어붙습니다!", "visualCharacter": "캐디", "visualMoments": [1, 2, 3, 5, 6, 8] }
+{ "scriptBody": "아니, 설원 위에 웬 여신들이 내려오신 줄 알았다니까요?\n함박눈 내리는 골프장에 풀메이크업하고 나타난 우리 사모님들, 진짜 눈이 부시더라고요.\n새하얀 털 귀도리에 핑크색 스커트까지, 필드 위의 요정이 따로 없었죠.\n생긋 웃으면서 드라이버를 잡는데 그 가느다란 팔 라인이 정말 예술이더라고요.\n우아하게 웨이브 머리 휘날리며 스윙 폼 잡는 뒤태가 완전 연예인급이었거든요.\n사모님이 딱 한마디 하시는데 목소리도 완전 꿀 떨어지는 줄 알았죠.\n"어머, 눈 오니까 분위기 너무 좋다, 그치?" 하시며 풀스윙을 딱 날리는데!\n근데 공이 앞으로 안 가고 옆에 있는 눈더미 속으로 쏙 박히는 거 아니겠어요?\n당황해서 달려가시는데 우아하던 걸음걸이는 어디 가고 펭귄처럼 뒤뚱뒤뚱!\n알고 보니 추워서 핫팩을 온몸에 서른 개는 붙여서 몸이 안 움직였던 거예요.\n"야, 나 등 굽어서 채 안 휘둘러져!" 하며 소리 지르는데 진짜 배꼽 빠지는 줄 알았네요.\n역시 우리 사모님들, 미모는 챙겨도 스코어는 눈 속에 묻어두고 오셨더라고요.", "visualCharacter": "아름다운 사모님", "visualMoments": [1, 3, 4, 5, 7] }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -170,29 +118,29 @@ unfiltered raw photograph, medium two-shot, [Person 1 (Woman D): on the left, we
 
 ## 대본 라인
 
-1. 여러분, 눈 덮인 골프장에서 하늘에서 내려온 요정 같은 캐디님 본 적 있으세요?
+1. 아니, 설원 위에 웬 여신들이 내려오신 줄 알았다니까요?
 
-2. 오늘 라운딩 나갔다가 진짜 연예인 뺨치는 비주얼의 캐디님을 만났지 뭡니까.
+2. 함박눈 내리는 골프장에 풀메이크업하고 나타난 우리 사모님들, 진짜 눈이 부시더라고요.
 
-3. 하얀 눈밭 위에 서 있는데 투명한 피부에 눈웃음이 정말 예술이더라고요.
+3. 새하얀 털 귀도리에 핑크색 스커트까지, 필드 위의 요정이 따로 없었죠.
 
-4. 공은 안 치고 다들 그분 얼굴만 보느라 정신줄을 꽉 놓고 있었죠.
+4. 생긋 웃으면서 드라이버를 잡는데 그 가느다란 팔 라인이 정말 예술이더라고요.
 
-5. 캐디님이 생긋 웃으면서 '사장님, 이번 홀은 서비스예요' 하고 달려가는데 뒤태가 진짜 영화의 한 장면인 줄 알았어요.
+5. 우아하게 웨이브 머리 휘날리며 스윙 폼 잡는 뒤태가 완전 연예인급이었거든요.
 
-6. 가까이서 보니까 눈빛이 어찌나 초롱초롱한지 제 마음까지 다 녹아내리는 기분이었거든요.
+6. 사모님이 딱 한마디 하시는데 목소리도 완전 꿀 떨어지는 줄 알았죠.
 
-7. 그런데 제가 폼 잡으면서 '저기, 번호 좀...' 하고 멋지게 물어본 순간이었죠.
+7. "어머, 눈 오니까 분위기 너무 좋다, 그치?" 하시며 풀스윙을 딱 날리는데!
 
-8. 캐디님이 저를 쓱 보더니 아주 쿨하고 치명적인 목소리로 딱 한마디 하더라고요.
+8. 근데 공이 앞으로 안 가고 옆에 있는 눈더미 속으로 쏙 박히는 거 아니겠어요?
 
-9. '사장님, 번호는 모르겠고 지금 사장님 공은 해저드에 퐁당 빠졌는데요?'
+9. 당황해서 달려가시는데 우아하던 걸음걸이는 어디 가고 펭귄처럼 뒤뚱뒤뚱!
 
-10. 알고 보니 제가 설레서 쳐다보던 그분이 제 공을 아주 정확하게 사망 선고 내리신 거였죠.
+10. 알고 보니 추워서 핫팩을 온몸에 서른 개는 붙여서 몸이 안 움직였던 거예요.
 
-11. '아이고 사장님, 공 찾으러 가실래요? 아님 저랑 계속 눈 맞추실래요?'
+11. "야, 나 등 굽어서 채 안 휘둘러져!" 하며 소리 지르는데 진짜 배꼽 빠지는 줄 알았네요.
 
-12. 40대 형님들, 겨울 골프장에서 미녀 캐디 조심하세요, 마음은 녹아도 내 스코어는 꽁꽁 얼어붙습니다!
+12. 역시 우리 사모님들, 미모는 챙겨도 스코어는 눈 속에 묻어두고 오셨더라고요.
 
 
 
@@ -302,7 +250,7 @@ unfiltered raw photograph, medium two-shot, [Person 1 (Woman D): on the left, we
 
 }
 
-{ "characters": [ { "name": "주인공", "gender": "female", "role": "narrator", "visualFocus": false }, { "name": "캐디", "gender": "female", "role": "visual_focus", "visualFocus": true, "visualMentions": [ { "line": 1, "mention": "하늘에서 내려온 요정 같은", "type": "overall" }, { "line": 2, "mention": "연예인 뺨치는 비주얼", "type": "overall" }, { "line": 3, "mention": "투명한 피부에 눈웃음", "type": "smile" }, { "line": 5, "mention": "생긋 웃으면서", "type": "smile" }, { "line": 5, "mention": "뒤태가 진짜 영화의 한 장면", "type": "back_view" }, { "line": 6, "mention": "눈빛이 어찌나 초롱초롱한지", "type": "eye_contact" }, { "line": 12, "mention": "미녀 캐디", "type": "overall" } ] }, { "name": "지인1", "gender": "unknown", "role": "supporting", "visualFocus": false } ], "lines": [ { "line_number": 1, "character_names": ["주인공"], "focus_character": "캐디", "focus_type": "overall" }, { "line_number": 2, "character_names": ["주인공", "캐디"], "focus_character": "캐디", "focus_type": "overall" }, { "line_number": 3, "character_names": ["주인공", "캐디"], "focus_character": "캐디", "focus_type": "smile" }, { "line_number": 4, "character_names": ["주인공", "지인1", "캐디"], "focus_character": "캐디", "focus_type": "overall" }, { "line_number": 5, "character_names": ["주인공", "캐디"], "focus_character": "캐디", "focus_type": "back_view" }, { "line_number": 6, "character_names": ["주인공", "캐디"], "focus_character": "캐디", "focus_type": "eye_contact" }, { "line_number": 7, "character_names": ["주인공"], "focus_character": null, "focus_type": null }, { "line_number": 8, "character_names": ["주인공", "캐디"], "focus_character": "캐디", "focus_type": "overall" }, { "line_number": 9, "character_names": ["캐디"], "focus_character": null, "focus_type": null }, { "line_number": 10, "character_names": ["주인공", "캐디"], "focus_character": null, "focus_type": null }, { "line_number": 11, "character_names": ["캐디"], "focus_character": null, "focus_type": null }, { "line_number": 12, "character_names": ["주인공"], "focus_character": "캐디", "focus_type": "overall" } ], "visualFocusInfo": { "character": "캐디", "characterId": "WomanD", "totalFocusLines": [1, 2, 3, 5, 6, 8, 12], "backViewLines": [5], "smileLines": [3, 5], "closeUpLines": [3, 6] } }
+{ "characters": [ { "name": "주인공", "gender": "female", "role": "narrator", "visualFocus": false }, { "name": "사모님들", "gender": "female", "role": "visual_focus", "visualFocus": true, "visualMentions": [ { "line": 1, "mention": "여신들이 내려오신 줄", "type": "overall" }, { "line": 3, "mention": "필드 위의 요정", "type": "overall" }, { "line": 4, "mention": "생긋 웃으면서", "type": "smile" }, { "line": 4, "mention": "가느다란 팔 라인이 정말 예술", "type": "overall" }, { "line": 5, "mention": "뒤태가 완전 연예인급", "type": "back_view" } ] } ], "lines": [ { "line_number": 1, "character_names": ["주인공"], "focus_character": "사모님들", "focus_type": "overall" }, { "line_number": 2, "character_names": ["주인공", "사모님들"], "focus_character": "사모님들", "focus_type": "overall" }, { "line_number": 3, "character_names": ["주인공", "사모님들"], "focus_character": "사모님들", "focus_type": "overall" }, { "line_number": 4, "character_names": ["주인공", "사모님들"], "focus_character": "사모님들", "focus_type": "smile" }, { "line_number": 5, "character_names": ["주인공", "사모님들"], "focus_character": "사모님들", "focus_type": "back_view" }, { "line_number": 6, "character_names": ["주인공", "사모님들"], "focus_character": "사모님들", "focus_type": "overall" }, { "line_number": 7, "character_names": ["주인공", "사모님들"], "focus_character": null, "focus_type": null }, { "line_number": 8, "character_names": ["주인공", "사모님들"], "focus_character": null, "focus_type": null }, { "line_number": 9, "character_names": ["주인공", "사모님들"], "focus_character": null, "focus_type": null }, { "line_number": 10, "character_names": ["주인공", "사모님들"], "focus_character": null, "focus_type": null }, { "line_number": 11, "character_names": ["주인공", "사모님들"], "focus_character": null, "focus_type": null }, { "line_number": 12, "character_names": ["주인공", "사모님들"], "focus_character": null, "focus_type": null } ], "visualFocusInfo": { "character": "사모님들", "characterId": "WomanD", "totalFocusLines": [1, 3, 4, 5], "backViewLines": [5], "smileLines": [4], "closeUpLines": [1, 4] } }
 
 [SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -598,29 +546,29 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 
 ## 대본 라인
 
-1. 여러분, 눈 덮인 골프장에서 하늘에서 내려온 요정 같은 캐디님 본 적 있으세요?
+1. 아니, 설원 위에 웬 여신들이 내려오신 줄 알았다니까요?
 
-2. 오늘 라운딩 나갔다가 진짜 연예인 뺨치는 비주얼의 캐디님을 만났지 뭡니까.
+2. 함박눈 내리는 골프장에 풀메이크업하고 나타난 우리 사모님들, 진짜 눈이 부시더라고요.
 
-3. 하얀 눈밭 위에 서 있는데 투명한 피부에 눈웃음이 정말 예술이더라고요.
+3. 새하얀 털 귀도리에 핑크색 스커트까지, 필드 위의 요정이 따로 없었죠.
 
-4. 공은 안 치고 다들 그분 얼굴만 보느라 정신줄을 꽉 놓고 있었죠.
+4. 생긋 웃으면서 드라이버를 잡는데 그 가느다란 팔 라인이 정말 예술이더라고요.
 
-5. 캐디님이 생긋 웃으면서 '사장님, 이번 홀은 서비스예요' 하고 달려가는데 뒤태가 진짜 영화의 한 장면인 줄 알았어요.
+5. 우아하게 웨이브 머리 휘날리며 스윙 폼 잡는 뒤태가 완전 연예인급이었거든요.
 
-6. 가까이서 보니까 눈빛이 어찌나 초롱초롱한지 제 마음까지 다 녹아내리는 기분이었거든요.
+6. 사모님이 딱 한마디 하시는데 목소리도 완전 꿀 떨어지는 줄 알았죠.
 
-7. 그런데 제가 폼 잡으면서 '저기, 번호 좀...' 하고 멋지게 물어본 순간이었죠.
+7. "어머, 눈 오니까 분위기 너무 좋다, 그치?" 하시며 풀스윙을 딱 날리는데!
 
-8. 캐디님이 저를 쓱 보더니 아주 쿨하고 치명적인 목소리로 딱 한마디 하더라고요.
+8. 근데 공이 앞으로 안 가고 옆에 있는 눈더미 속으로 쏙 박히는 거 아니겠어요?
 
-9. '사장님, 번호는 모르겠고 지금 사장님 공은 해저드에 퐁당 빠졌는데요?'
+9. 당황해서 달려가시는데 우아하던 걸음걸이는 어디 가고 펭귄처럼 뒤뚱뒤뚱!
 
-10. 알고 보니 제가 설레서 쳐다보던 그분이 제 공을 아주 정확하게 사망 선고 내리신 거였죠.
+10. 알고 보니 추워서 핫팩을 온몸에 서른 개는 붙여서 몸이 안 움직였던 거예요.
 
-11. '아이고 사장님, 공 찾으러 가실래요? 아님 저랑 계속 눈 맞추실래요?'
+11. "야, 나 등 굽어서 채 안 휘둘러져!" 하며 소리 지르는데 진짜 배꼽 빠지는 줄 알았네요.
 
-12. 40대 형님들, 겨울 골프장에서 미녀 캐디 조심하세요, 마음은 녹아도 내 스코어는 꽁꽁 얼어붙습니다!
+12. 역시 우리 사모님들, 미모는 챙겨도 스코어는 눈 속에 묻어두고 오셨더라고요.
 
 
 
@@ -628,15 +576,11 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 
 - WomanA / Woman A
 
-Outfit: wearing Grey Elegant high-cut off-shoulder long-sleeve Tight Mini Dress (Sleek)
+Outfit: wearing Lavender Structured Puff-sleeve Mini Dress (Tight-fitting long-sleeve version)
 
 - WomanB / Woman B
 
-Outfit: wearing elegant snow white mini bodycon dress featuring a sophisticated halter neckline (Tight-fitting long-sleeve version) with a wraparound neck strap, sleeveless design revealing shoulders, fitted bodice with subtle horizontal ruching and gathered detailing along the side seams for a textured effect, lightweight stretch jersey fabric with a clean matte-to-semi-glossy finish, opaque material, mini length hitting upper thigh, sleek straight hemline, open back construction with decorative fabric panels or ribbons cascading from the neck fastening, minimalist aesthetic without visible hardware or patterns, paired with small silver drop earrings and a delicate silver chain bracelet on the left wrist
-
-- WomanD / Woman D
-
-Outfit: wearing minimalist summer outfit featuring a crisp white Tight-fitting long-sleeve ribbed knit tank top with a deep scoop neckline and wide straps, form-fitting silhouette highlighting the upper body, fine vertical ribbing texture throughout the fabric, paired with a soft pastel candy pink A-line mini skirt made of smooth structured cotton-twill material, high-waisted fit with visible topstitching along the waistline and vertical seams for structure, clean finished hemline, accessorized with a delicate thin gold chain necklace with a small circular pendant and subtle gold stud earrings, simple and clean aesthetic with a focus on contrasting textures between the knit top and smooth skirt
+Outfit: wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant)
 
 
 
@@ -792,4 +736,4 @@ Outfit: wearing minimalist summer outfit featuring a crisp white Tight-fitting l
 
 - 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.
 
-{ "scenes": [ { "sceneNumber": 1, "scriptLine": "여러분, 눈 덮인 골프장에서 하늘에서 내려온 요정 같은 캐디님 본 적 있으세요?", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "overall", "cameraAngle": "close-up", "emotion": "호기심", "summary": "Caddy appears like a snow fairy", "action": "standing gracefully with a mysterious smile", "background": "snowy golf course with soft falling snow", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, A stunning Korean woman in her 20s, high-bun hairstyle, slim figure, wearing minimalist summer outfit featuring a crisp white Tight-fitting long-sleeve ribbed knit tank top with a deep scoop neckline and wide straps, form-fitting silhouette highlighting the upper body, fine vertical ribbing texture throughout the fabric, paired with a soft pastel candy pink A-line mini skirt, accessorized with white fur earmuffs and a delicate thin gold chain necklace, gentle smile, looking at camera, stunning beauty, snowy golf course background, soft falling snow, 8k resolution", "shortPrompt": "close-up, stunning Korean caddy, white knit top, pink skirt, white earmuffs, snowy golf course" }, { "sceneNumber": 2, "scriptLine": "오늘 라운딩 나갔다가 진짜 연예인 뺨치는 비주얼의 캐디님을 만났지 뭡니까.", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "focusCharacter": "캐디", "focusType": "overall", "cameraAngle": "wide", "emotion": "긴장", "summary": "Meeting the stunning caddy on the field", "action": "Person 1 looking surprised, Person 2 standing professionally", "background": "wide view of a golf course covered in thick white snow", "longPrompt": "unfiltered raw photograph, wide establishing shot, [Person 1: A beautiful Korean woman in her 40s (WomanA), long soft-wave hairstyle, wearing Grey Elegant high-cut off-shoulder long-sleeve Tight Mini Dress, grey knitted beanie and gloves, looking at Person 2 with wide eyes, standing on the left] [Person 2: A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, pastel candy pink A-line mini skirt, white fur earmuffs, holding a golf flag, standing on the right], facing each other, snowy golf course, deep focus, sharp background, 8k resolution", "shortPrompt": "wide shot, two Korean women on snowy golf course, WomanA surprised, WomanD standing with flag" }, { "sceneNumber": 3, "scriptLine": "하얀 눈밭 위에 서 있는데 투명한 피부에 눈웃음이 정말 예술이더라고요.", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "smile", "cameraAngle": "close-up", "emotion": "일상", "summary": "Close-up of the caddy's beautiful eye smile", "action": "smiling brightly with eyes squinting beautifully", "background": "blurred snowy field background", "longPrompt": "unfiltered raw photograph, close-up portrait shot, focus on eyes and smile, A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, white fur earmuffs, captivating eye-smile, radiant clear skin, looking at camera (POV target), soft expression, snowy golf course background, 8k resolution, highly detailed", "shortPrompt": "close-up eye-smile, stunning Korean caddy, white knit top, clear skin, snowy background" }, { "sceneNumber": 4, "scriptLine": "공은 안 치고 다들 그분 얼굴만 보느라 정신줄을 꽉 놓고 있었죠.", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "focusCharacter": "캐디", "focusType": "overall", "cameraAngle": "medium", "emotion": "설렘", "summary": "Staring at the caddy instead of playing golf", "action": "Person 1 distracted, Person 2 checking the golf course", "background": "golf course with snowy bunkers", "longPrompt": "unfiltered raw photograph, medium two-shot, [Person 1: A beautiful Korean woman in her 40s (WomanA), wearing Grey Elegant high-cut off-shoulder long-sleeve Tight Mini Dress, holding a golf club but staring blankly at Person 2 on the left] [Person 2: A stunning Korean woman in her 20s (WomanD), wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, pastel candy pink A-line mini skirt, checking the distance with a hand over her eyes on the right], natural interaction, candid moment, snowy golf course, 8k resolution", "shortPrompt": "medium shot, WomanA staring at WomanD, WomanD checking distance, snowy golf course" }, { "sceneNumber": 5, "scriptLine": "캐디님이 생긋 웃으면서 '사장님, 이번 홀은 서비스예요' 하고 달려가는데 뒤태가 진짜 영화의 한 장면인 줄 알았어요.", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "back_view", "cameraAngle": "medium", "emotion": "기대", "summary": "Caddy running away showing her back view", "action": "running gracefully across the snow away from camera", "background": "vast snowy fairway", "longPrompt": "unfiltered raw photograph, medium shot from behind, back view, rear view, A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, slim hourglass figure, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, pastel candy pink A-line mini skirt, white fur earmuffs, beautiful silhouette, running gracefully away on snowy golf course, capturing a cinematic moment, 8k resolution", "shortPrompt": "back view, Korean caddy running away, pink skirt, white knit top, beautiful silhouette, snowy fairway" }, { "sceneNumber": 6, "scriptLine": "가까이서 보니까 눈빛이 어찌나 초롱초롱한지 제 마음까지 다 녹아내리는 기분이었거든요.", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "gaze", "cameraAngle": "close-up", "emotion": "설렘", "summary": "Caddy's sparkling eyes up close", "action": "looking directly into the lens with clear eyes", "background": "soft bokeh of snowy field", "longPrompt": "unfiltered raw photograph, extreme close-up shot, eyes in focus, captivating gaze, A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, white fur earmuffs, large sparkling eyes, soft and mesmerizing expression, looking at camera (POV target), snowy golf course bokeh, 8k resolution, highly detailed skin texture", "shortPrompt": "extreme close-up, sparkling eyes, stunning Korean caddy, captivating gaze, snowy bokeh" }, { "sceneNumber": 7, "scriptLine": "그런데 제가 폼 잡으면서 '저기, 번호 좀...' 하고 멋지게 물어본 순간이었죠.", "characterIds": ["WomanA"], "shotType": "원샷", "focusCharacter": "주인공", "focusType": null, "cameraAngle": "medium", "emotion": "기대", "summary": "Protagonist trying to look cool asking for number", "action": "posing with a golf club, looking confident", "background": "golf course with a snowy golf cart nearby", "longPrompt": "unfiltered raw photograph, medium shot, A beautiful Korean woman in her 40s (WomanA), long soft-wave hairstyle, wearing Grey Elegant high-cut off-shoulder long-sleeve Tight Mini Dress, grey beanie, posing confidently with a golf club, leaning slightly with a smirk, looking off-camera as if talking to someone, snowy golf course background, 8k resolution", "shortPrompt": "medium shot, WomanA posing with golf club, confident expression, snowy golf course" }, { "sceneNumber": 8, "scriptLine": "캐디님이 저를 쓱 보더니 아주 쿨하고 치명적인 목소리로 딱 한마디 하더라고요.", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "overall", "cameraAngle": "over-the-shoulder", "emotion": "충격", "summary": "Caddy's cool reaction to the question", "action": "looking back with a slightly cold yet stunning expression", "background": "snowy golf course", "longPrompt": "unfiltered raw photograph, over-the-shoulder shot from WomanA's perspective, A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, white fur earmuffs, looking back at camera with a cool and chic expression, slightly tilted head, looking at camera (POV target), snowy background, 8k resolution", "shortPrompt": "over-the-shoulder POV, cool expression Korean caddy, white knit top, chic look" }, { "sceneNumber": 9, "scriptLine": "'사장님, 번호는 모르겠고 지금 사장님 공은 해저드에 퐁당 빠졌는데요?'", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "overall", "cameraAngle": "medium", "emotion": "당황", "summary": "Caddy pointing out the lost ball", "action": "pointing towards the water with a straight face", "background": "a frozen pond (hazard) on the golf course", "longPrompt": "unfiltered raw photograph, medium shot, A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, pastel candy pink A-line mini skirt, pointing with her left hand towards a distant frozen pond, serious but beautiful expression, looking at camera (POV target), snowy golf course, 8k resolution", "shortPrompt": "medium shot, Korean caddy pointing at hazard, white knit top, pink skirt, serious face" }, { "sceneNumber": 10, "scriptLine": "알고 보니 제가 설레서 쳐다보던 그분이 제 공을 아주 정확하게 사망 선고 내리신 거였죠.", "characterIds": ["WomanA", "WomanD"], "shotType": "투샷", "focusCharacter": null, "focusType": null, "cameraAngle": "wide", "emotion": "민망", "summary": "Wide view of the awkward situation", "action": "WomanA looking devastated, WomanD standing unfazed", "background": "wide snowy golf course with a water hazard", "longPrompt": "unfiltered raw photograph, wide shot, [Person 1: A beautiful Korean woman in her 40s (WomanA), wearing Grey Elegant high-cut off-shoulder long-sleeve Tight Mini Dress, slumped shoulders, looking down at the frozen pond in despair on the left] [Person 2: A stunning Korean woman in her 20s (WomanD), wearing white ribbed knit tank top, pink mini skirt, standing tall and professional on the right], snowy landscape, deep focus, 8k resolution", "shortPrompt": "wide shot, WomanA disappointed by frozen pond, WomanD standing professionally, snowy golf course" }, { "sceneNumber": 11, "scriptLine": "'아이고 사장님, 공 찾으러 가실래요? 아님 저랑 계속 눈 맞추실래요?'", "characterIds": ["WomanD"], "shotType": "원샷", "focusCharacter": "캐디", "focusType": "smile", "cameraAngle": "close-up", "emotion": "깨달음", "summary": "Caddy teasing the protagonist", "action": "leaning in slightly with a playful wink", "background": "soft snowy background", "longPrompt": "unfiltered raw photograph, first-person POV shot, close-up, A stunning Korean woman in her 20s (WomanD), high-bun hairstyle, wearing crisp white Tight-fitting long-sleeve ribbed knit tank top, white fur earmuffs, leaning slightly toward camera with a playful wink and a mischievous smile, looking at camera (POV target), flirtatious atmosphere, snowy background, 8k resolution", "shortPrompt": "POV close-up, Korean caddy winking playfully, white knit top, mischievous smile" }, { "sceneNumber": 12, "scriptLine": "40대 형님들, 겨울 골프장에서 미녀 캐디 조심하세요, 마음은 녹아도 내 스코어는 꽁꽁 얼어붙습니다!", "characterIds": ["WomanA"], "shotType": "원샷", "focusCharacter": "주인공", "focusType": null, "cameraAngle": "medium", "emotion": "웃음", "summary": "Protagonist laughing at the lesson learned", "action": "laughing heartily, holding her head", "background": "golf course at sunset with snow", "longPrompt": "unfiltered raw photograph, medium shot, A beautiful Korean woman in her 40s (WomanA), long soft-wave hairstyle, wearing Grey Elegant high-cut off-shoulder long-sleeve Tight Mini Dress, laughing heartily with one hand on her forehead, holding a golf club, sunset light reflecting on the snow, captured mid-action, snowy golf course, 8k resolution", "shortPrompt": "medium shot, WomanA laughing heartily, sunset on snow, golf course" } ] }
+{ "scenes": [ { "sceneNumber": 1, "scriptLine": "아니, 설원 위에 웬 여신들이 내려오신 줄 알았다니까요?", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "close-up", "emotion": "호기심", "summary": "Stunning appearance of a woman on a snowy field", "action": "standing elegantly, looking at camera with a mysterious gaze", "background": "wide snowy golf course with soft falling snow", "longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, [Person: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), accessorized with white fur earmuffs], stunning beauty, goddess-like aura, looking at camera, snowy golf course, soft falling snow, 8k resolution", "shortPrompt": "close-up, stunning Korean woman, beige knit, navy skirt, white earmuffs, goddess-like, snowy golf course" }, { "sceneNumber": 2, "scriptLine": "함박눈 내리는 골프장에 풀메이크업하고 나타난 우리 사모님들, 진짜 눈이 부시더라고요.", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "wide", "emotion": "일상", "summary": "Two elegant women arriving at the snowy golf course", "action": "walking together, laughing and talking", "background": "wide establishing shot of a snow-covered golf course, deep focus", "longPrompt": "unfiltered raw photograph, wide establishing shot, deep focus, [Person 1: A beautiful Korean woman in her 40s, Lavender Structured Puff-sleeve Mini Dress (Tight-fitting long-sleeve version), white beanie, standing on the left laughing] [Person 2: A stunning Korean woman in her 40s, long soft-wave hairstyle, Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), white fur earmuffs, walking on the right], natural interaction, full body visible, heavy snow falling, expansive snowy golf course background, 8k resolution", "shortPrompt": "wide shot, two elegant Korean women, winter golf outfits, walking together, heavy snow, golf course" }, { "sceneNumber": 3, "scriptLine": "새하얀 털 귀도리에 핑크색 스커트까지, 필드 위의 요정이 따로 없었죠.", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "medium", "emotion": "일상", "summary": "Detailed shot of the winter golf fashion", "action": "posing gracefully with a golf club", "background": "snowy fairway with frosted trees", "longPrompt": "unfiltered raw photograph, medium shot, [Person: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), accessorized with fluffy white fur earmuffs and white gloves], looking like a snow fairy, elegant posture, snowy golf course, 8k resolution", "shortPrompt": "medium shot, elegant Korean woman, beige knit, navy skirt, white earmuffs, snow fairy vibe" }, { "sceneNumber": 4, "scriptLine": "생긋 웃으면서 드라이버를 잡는데 그 가느다란 팔 라인이 정말 예술이더라고요.", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "smile", "cameraAngle": "close-up", "emotion": "설렘", "summary": "Close-up of her smiling while holding a driver", "action": "holding a golf driver, gentle smile, slim arms visible", "background": "blurred snowy background, shallow depth of field", "longPrompt": "unfiltered raw photograph, close-up shot, smile in focus, [Person: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit, white gloves holding a golf driver, gentle smile, soft expression, slender arms], looking at camera, snowy golf course, 8k resolution", "shortPrompt": "close-up, smile, Korean woman holding golf driver, beige knit, soft expression, snowy background" }, { "sceneNumber": 5, "scriptLine": "우아하게 웨이브 머리 휘날리며 스윙 폼 잡는 뒤태가 완전 연예인급이었거든요.", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "back_view", "cameraAngle": "medium", "emotion": "설렘", "summary": "Elegant back view of her preparing to swing", "action": "taking a golf swing stance, hair fluttering in the wind", "background": "pristine white snow fairway", "longPrompt": "unfiltered raw photograph, medium shot from behind, back view, rear view, [Person: A stunning Korean woman in her 40s, long soft-wave hair fluttering in the wind, slim hourglass figure, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant)], beautiful silhouette, taking a golf swing stance, back view, snowy golf course, 8k resolution", "shortPrompt": "back view, Korean woman, fluttering wave hair, elegant silhouette, golf swing stance, snowy field" }, { "sceneNumber": 6, "scriptLine": "사모님이 딱 한마디 하시는데 목소리도 완전 꿀 떨어지는 줄 알았죠.", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "over-the-shoulder", "emotion": "기대", "summary": "Over-the-shoulder shot as she speaks", "action": "turning head slightly to speak, elegant expression", "background": "snowy golf course", "longPrompt": "unfiltered raw photograph, over-the-shoulder shot, [Person: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit, white fur earmuffs, turning her head slightly towards the camera with a beautiful expression], captured mid-speech, snowy background, 8k resolution", "shortPrompt": "over-the-shoulder, elegant woman turning head, beige knit, snowy golf course" }, { "sceneNumber": 7, "scriptLine": ""어머, 눈 오니까 분위기 너무 좋다, 그치?" 하시며 풀스윙을 딱 날리는데!", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "close-up", "emotion": "설렘", "summary": "Full swing action shot", "action": "performing a full golf swing, eyes focused", "background": "snowflakes scattering by the swing", "longPrompt": "unfiltered raw photograph, close-up shot, face in focus, [Person: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit, determined yet elegant expression, mid-action of a full golf swing], snow dust rising, 8k resolution", "shortPrompt": "close-up, woman making a full swing, elegant expression, beige knit, golf course" }, { "sceneNumber": 8, "scriptLine": "근데 공이 앞으로 안 가고 옆에 있는 눈더미 속으로 쏙 박히는 거 아니겠어요?", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": null, "focusType": null, "cameraAngle": "medium", "emotion": "당황", "summary": "The ball lands in a snow pile", "action": "looking at the snow pile with a shocked expression", "background": "golf ball partially buried in a mound of snow", "longPrompt": "unfiltered raw photograph, medium shot, [Person: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), white earmuffs, looking down at a golf ball stuck in a large snow pile with a shocked and confused expression], candid moment, snowy golf course, 8k resolution", "shortPrompt": "medium shot, woman looking at ball in snow, shocked expression, beige knit, navy skirt" }, { "sceneNumber": 9, "scriptLine": "당황해서 달려가시는데 우아하던 걸음걸이는 어디 가고 펭귄처럼 뒤뚱뒤뚱!", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "wide", "emotion": "당황", "summary": "Waddling through the snow like a penguin", "action": "waddling awkwardly through deep snow, arms out for balance", "background": "deep snow on the golf course", "longPrompt": "unfiltered raw photograph, wide shot, full body visible, [Person: A stunning Korean woman in her 40s, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), white fur earmuffs, waddling awkwardly through deep snow with arms outstretched for balance like a penguin], funny movement, snowy golf course, 8k resolution", "shortPrompt": "wide shot, woman waddling in deep snow, awkward pose, funny, winter golf outfit" }, { "sceneNumber": 10, "scriptLine": "알고 보니 추워서 핫팩을 온몸에 서른 개는 붙여서 몸이 안 움직였던 거예요.", "characterIds": ["WomanB"], "shotType": "원샷", "focusCharacter": "WomanB", "focusType": "overall", "cameraAngle": "medium", "emotion": "깨달음", "summary": "Revealing the stiffness caused by heat packs", "action": "standing stiffly, trying to bend but failing", "background": "snowy golf course", "longPrompt": "unfiltered raw photograph, medium shot, [Person: A stunning Korean woman in her 40s, wearing Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), looking stiff and frozen, unable to move naturally due to bulky heat packs hidden under clothes, funny posture, snowy golf course background, 8k resolution", "shortPrompt": "medium shot, woman standing stiffly, funny frozen pose, beige knit, navy skirt, snowy background" }, { "sceneNumber": 11, "scriptLine": ""야, 나 등 굽어서 채 안 휘둘러져!" 하며 소리 지르는데 진짜 배꼽 빠지는 줄 알았네요.", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "focusCharacter": null, "focusType": null, "cameraAngle": "medium", "emotion": "민망", "summary": "Complaining about the stiffness to her friend", "action": "Person 2 shouting humorously, Person 1 doubling over with laughter", "background": "snowy golf course", "longPrompt": "unfiltered raw photograph, medium two-shot, [Person 1: A beautiful Korean woman in her 40s, Lavender Structured Puff-sleeve Mini Dress, white beanie, laughing hysterically on the left] [Person 2: A stunning Korean woman in her 40s, Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), white fur earmuffs, shouting with a frustrated yet funny expression on the right, arms stiff at her sides], natural interaction, snowy golf course, 8k resolution", "shortPrompt": "two-shot, one woman laughing, other woman shouting stiffly, winter golf course, comedy" }, { "sceneNumber": 12, "scriptLine": "역시 우리 사모님들, 미모는 챙겨도 스코어는 눈 속에 묻어두고 오셨더라고요.", "characterIds": ["WomanA", "WomanB"], "shotType": "투샷", "focusCharacter": null, "focusType": null, "cameraAngle": "medium", "emotion": "웃음", "summary": "Both women laughing together despite the score", "action": "walking away from the camera, arms around each other, laughing", "background": "snowy golf course at sunset", "longPrompt": "unfiltered raw photograph, medium shot from behind, [Person 1: A beautiful Korean woman in her 40s, Lavender Structured Puff-sleeve Mini Dress, white beanie, on the left] [Person 2: A stunning Korean woman in her 40s, Beige Elegant high-cut off-shoulder long-sleeve Knit + Navy Tight Mini Skirt (Elegant), white fur earmuffs, on the right], both walking away together, arms around each other, looking at each other and laughing, snowy golf course background, 8k resolution", "shortPrompt": "two-shot from behind, two women walking together, laughing, snowy golf course, sunset" } ] }

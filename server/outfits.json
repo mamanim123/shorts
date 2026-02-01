@@ -4,7 +4,7 @@
       "id": "outfit-1769055244556",
       "name": "추출된 의상",
       "prompt": "A high-realism portrait of a young Korean woman with a slender yet curvy hourglass figure, featuring a narrow waist and elegant posture. She is wearing a tight-fitting light gray mock-neck top made of soft, breathable cotton-stretch fabric, detailed with a small black crest embroidery on the left chest. The lower half features a high-waisted black midi pencil skirt with intricate horizontal ruching and pleated textures, hugging the hips and thighs in a sophisticated bodycon fit. The scene is illuminated by natural soft daylight, showcasing ultra-detailed skin textures, fine pores, and realistic fabric fibers. 8k UHD, cinematic lighting, sharp focus on textile details and natural human skin.",
-      "category": "사용자 정의",
+      "category": "ROYAL",
       "createdAt": "2026-01-22T04:14:04.556Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769055244556_2026-01-25T02-24-57-527Z.png"
     },
@@ -239,6 +239,14 @@
       "category": "GOLF LUXURY",
       "createdAt": "2026-02-01T00:07:43.865Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769904463865_2026-02-01T00-08-11-743Z.png"
+    },
+    {
+      "id": "outfit-1769905304406",
+      "name": "차콜 슬리브리스 목넥 + 블랙 마이크로 플리츠 스커트",
+      "prompt": "Charcoal Sleeveless Mock-neck + Black Micro Skirt",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-02-01T00:21:44.406Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769905304406_2026-02-01T00-22-04-137Z.png"
     }
   ],
   "categories": [

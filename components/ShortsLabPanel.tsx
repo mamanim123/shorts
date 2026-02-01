@@ -36,6 +36,9 @@ import { UNIFIED_OUTFIT_LIST } from '../constants';
 import { fetchCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager } from '../services/shortsLabCharacterRulesManager';
+import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, ElementAnalysis, getProblemExplanation } from '../utils/promptHighlightSystem';
+import { usePromptEditModal } from '../hooks/usePromptEditModal';
+import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -1190,12 +1193,139 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [manualExtractionNotice, setManualExtractionNotice] = useState('');
     const [manualAnalyzing, setManualAnalyzing] = useState(false);
 
+    // 프롬프트 수정 모달 상태
+    const [showPromptEditModal, setShowPromptEditModal] = useState(false);
+    const [promptEditSceneNumber, setPromptEditSceneNumber] = useState<number | null>(null);
+    const [promptEditOriginal, setPromptEditOriginal] = useState('');
+    const [promptEditText, setPromptEditText] = useState('');
+    const [promptEditLoading, setPromptEditLoading] = useState(false);
+    const [promptEditError, setPromptEditError] = useState<string | null>(null);
+    const [promptElementAnalysis, setPromptElementAnalysis] = useState<ElementAnalysis>({});
+    const [detailedAnalysis, setDetailedAnalysis] = useState<DetailedAnalysis | null>(null);
+
     /**
      * 프롬프트 설정 업데이트 헬퍼
      */
     const updateSetting = useCallback(<K extends keyof PromptSettings>(key: K, value: PromptSettings[K]) => {
         setSettings(prev => ({ ...prev, [key]: value }));
     }, []);
+
+    // 프롬프트 수정 모달 hook
+    const { handleAnalyzePromptByElement } = usePromptEditModal({
+        promptEditOriginal,
+        promptEditLoading,
+        targetService,
+        setPromptEditLoading,
+        setPromptEditError,
+        setPromptElementAnalysis
+    });
+
+    // 프롬프트 수정 모달 함수들
+    const openPromptEditModal = useCallback((sceneNumber: number, currentPrompt: string) => {
+        console.log('🔍 [ShortsLab] 상세 분석 모달 열기:', { sceneNumber, promptLength: currentPrompt?.length });
+        setPromptEditSceneNumber(sceneNumber);
+        setPromptEditOriginal(currentPrompt || '');
+        setPromptEditText(currentPrompt || '');
+        setPromptEditError(null);
+        setPromptElementAnalysis({});
+        setDetailedAnalysis(null); // Reset previous analysis when opening for new scene
+        setShowPromptEditModal(true);
+        console.log('🔍 [ShortsLab] 모달 상태 변경 완료');
+    }, []);
+
+    const closePromptEditModal = useCallback(() => {
+        setShowPromptEditModal(false);
+        setPromptEditSceneNumber(null);
+        setPromptEditOriginal('');
+        setPromptEditText('');
+        setPromptEditError(null);
+        setPromptElementAnalysis({});
+    }, []);
+
+    // 디버깅: 모달 상태 변화 추적
+    useEffect(() => {
+        console.log('🔄 [ShortsLab] Modal State Changed:', {
+            showPromptEditModal,
+            promptEditSceneNumber,
+            promptEditTextLength: promptEditText?.length,
+            hasDetailedAnalysis: !!detailedAnalysis
+        });
+    }, [showPromptEditModal, promptEditSceneNumber, promptEditText, detailedAnalysis]);
+
+    // 스타일 적용 함수
+    const handleApplyStyle = useCallback(async (styleId: string, model?: string) => {
+        setPromptEditLoading(true);
+        try {
+            const response = await fetch('http://localhost:3002/api/prompt-style-convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: promptEditText,
+                    targetStyle: styleId,
+                    model: model
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 오류: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.result?.prompt) {
+                setPromptEditText(data.result.prompt);
+                const styleName = STYLE_PRESETS.find(p => p.id === styleId)?.name || styleId;
+                showToast(`${styleName} 스타일이 적용되었습니다.`, 'success');
+            } else {
+                throw new Error('스타일 변환 결과가 없습니다.');
+            }
+        } catch (error) {
+            console.error('스타일 변환 실패:', error);
+            setPromptEditError(error instanceof Error ? error.message : '스타일 변환에 실패했습니다.');
+        } finally {
+            setPromptEditLoading(false);
+        }
+    }, [promptEditText]);
+
+    // 상세 분석 함수
+    const handleDetailedAnalysis = useCallback(async (model?: string) => {
+        if (!promptEditText.trim()) {
+            setPromptEditError('분석할 프롬프트가 없습니다.');
+            return;
+        }
+
+        setPromptEditLoading(true);
+        setPromptEditError(null);
+
+        try {
+            const response = await fetch('http://localhost:3002/api/prompt-analyze-detailed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: promptEditText,
+                    model: model
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API 오류 (${response.status}): ${errorData.error || errorData.details || '서버 응답 실패'}`);
+            }
+
+            const data = await response.json();
+            console.log('🔍 [ShortsLab] 상세 분석 응답:', data);
+            if (data.success && data.analysis) {
+                setDetailedAnalysis(data.analysis);
+                showToast('상세 분석이 완료되었습니다.', 'success');
+            } else {
+                throw new Error(data.error || data.details || '분석 결과가 없습니다.');
+            }
+        } catch (error) {
+            console.error('상세 분석 실패:', error);
+            setPromptEditError(error instanceof Error ? error.message : '상세 분석에 실패했습니다.');
+        } finally {
+            setPromptEditLoading(false);
+        }
+    }, [promptEditText, targetService]);
 
     useEffect(() => {
         let alive = true;
@@ -3855,6 +3985,18 @@ ${scriptInput}
                             불러오기
                         </button>
 
+                        {/* 테스트: 모달 강제 열기 버튼 (임시) */}
+                        <button
+                            onClick={() => {
+                                console.log('🧪 [TEST] 강제 모달 열기 테스트');
+                                openPromptEditModal(1, 'A stunning Korean woman in her mid-20s');
+                            }}
+                            className="px-3 py-1.5 bg-yellow-600/80 hover:bg-yellow-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                        >
+                            <Edit3 className="w-4 h-4" />
+                            모달 테스트
+                        </button>
+
                         {/* 전체 이미지 생성 버튼 */}
                         <button
                             onClick={handleGenerateAllImages}
@@ -4503,6 +4645,14 @@ ${scriptInput}
                                                                         <Sparkles className="w-2.5 h-2.5" />
                                                                         겨울 룩 적용
                                                                     </button>
+                                                                    <button
+                                                                        onClick={() => openPromptEditModal(scene.number, scene.prompt)}
+                                                                        className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded text-[9px] text-purple-400 transition-all"
+                                                                        title="프롬프트 상세 분석 및 스타일 변환"
+                                                                    >
+                                                                        <Sparkles className="w-2.5 h-2.5" />
+                                                                        상세 분석
+                                                                    </button>
                                                                 </div>
                                                                 <button onClick={() => handleStartEdit(scene.number, 'en', scene.prompt)} className="opacity-0 group-hover/edit:opacity-100 p-1 hover:bg-slate-800 rounded transition-all"><Edit3 className="w-3 h-3 text-slate-400" /></button>
                                                             </div>
@@ -4960,6 +5110,34 @@ ${scriptInput}
                     onDeleteFemaleCharacter={deleteFemaleCharacter}
                     onDeleteMaleCharacter={deleteMaleCharacter}
                 />
+            )}
+
+            {/* 프롬프트 수정 모달 */}
+            {console.log('🎯 [ShortsLab RENDER] showPromptEditModal:', showPromptEditModal, 'sceneNumber:', promptEditSceneNumber, 'promptEditText:', promptEditText?.substring(0, 50))}
+            <PromptEditModal
+                isOpen={showPromptEditModal}
+                sceneNumber={promptEditSceneNumber}
+                originalPrompt={promptEditOriginal}
+                editingPrompt={promptEditText}
+                isLoading={promptEditLoading}
+                error={promptEditError}
+                elementAnalysis={promptElementAnalysis}
+                detailedAnalysis={detailedAnalysis}
+                onClose={closePromptEditModal}
+                onEditingChange={setPromptEditText}
+                onAnalyze={handleAnalyzePromptByElement}
+                onDetailedAnalyze={handleDetailedAnalysis}
+                onApplyStyle={handleApplyStyle}
+            />
+
+            {/* 디버그: 강제 오픈 테스트 모달 (임시) */}
+            {showPromptEditModal && (
+                <div className="fixed top-4 right-4 z-[10000] bg-yellow-500 text-black p-4 rounded-lg shadow-xl text-xs">
+                    <div className="font-bold mb-2">디버그: 모달 상태</div>
+                    <div>isOpen: {String(showPromptEditModal)}</div>
+                    <div>sceneNumber: {promptEditSceneNumber}</div>
+                    <div>textLength: {promptEditText?.length || 0}</div>
+                </div>
             )}
         </div>
     );
@@ -7647,6 +7825,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                     </div>
                 </div>
             )}
+
         </div>
     );
 };

@@ -1,0 +1,388 @@
+{
+  "presets": [
+    {
+      "id": "pixar",
+      "name": "픽사 스타일",
+      "nameEn": "Pixar Style",
+      "emoji": "🎬",
+      "description": "3D 애니메이션, 생동감 있는 캐릭터, 생생한 색감",
+      "basePrompt": "Pixar style, 3D animation, vibrant colors, expressive characters, smooth rendering, family-friendly aesthetic, detailed textures, warm lighting, cinematic composition",
+      "recommendedCamera": [
+        "medium shot",
+        "close-up",
+        "slightly low angle"
+      ],
+      "recommendedComposition": [
+        "rule of thirds",
+        "centered composition",
+        "dynamic framing"
+      ],
+      "recommendedLighting": [
+        "soft natural light",
+        "warm ambient lighting",
+        "slight rim lighting",
+        "color-graded lighting"
+      ],
+      "keywords": [
+        "animation",
+        "3d",
+        "colorful",
+        "expressive",
+        "Disney",
+        "playful",
+        "polished"
+      ],
+      "examples": [
+        "A Korean woman in her 40s, Pixar style, 3D animation, vibrant colors, expressive face, wearing a elegant cream-colored blouse, warm lighting, detailed fabric textures, cinematic composition, 8k quality",
+        "Young girl with bright eyes, Pixar animation style, glossy skin, soft shadows, wearing casual summer dress, natural warm lighting, smooth 3D rendering, family-friendly",
+        "Professional woman in business attire, Pixar 3D style, polished appearance, expressive facial features, subtle color grading, warm studio lighting, cinematic depth"
+      ]
+    },
+    {
+      "id": "photorealistic",
+      "name": "포토리얼리스틱",
+      "nameEn": "Photorealistic",
+      "emoji": "📸",
+      "description": "사진처럼 현실적인 표현, 최고 수준의 디테일",
+      "basePrompt": "photorealistic, hyperrealistic, high definition, 8k UHD, detailed skin texture, realistic fabric fibers, natural skin pores, cinematic lighting, professional photography, color graded, sharp focus, intricate details, anatomically correct",
+      "recommendedCamera": [
+        "close-up portrait",
+        "medium shot",
+        "three-quarter view"
+      ],
+      "recommendedComposition": [
+        "shallow depth of field",
+        "professional framing",
+        "soft focus background"
+      ],
+      "recommendedLighting": [
+        "soft natural daylight",
+        "studio key light",
+        "fill light",
+        "subtle rim lighting",
+        "golden hour light"
+      ],
+      "keywords": [
+        "photographic",
+        "ultra-detailed",
+        "realistic",
+        "professional",
+        "sharp",
+        "high-resolution",
+        "natural"
+      ],
+      "examples": [
+        "A young Korean woman with porcelain skin, photorealistic portrait, 8k UHD, wearing elegant pearl necklace, soft natural daylight, professional photography style, detailed pores and skin texture, shallow depth of field",
+        "Close-up portrait of a mature woman, photorealistic, sharp focus, intricate wrinkle details, natural skin tones, warm studio lighting, professional makeup, 8k quality, studio background",
+        "Full body portrait, photorealistic style, wearing designer dress, detailed fabric textures, natural poses, professional lighting, color graded, magazine cover quality, cinematic composition"
+      ]
+    },
+    {
+      "id": "anime",
+      "name": "애니메이션",
+      "nameEn": "Anime",
+      "emoji": "🎨",
+      "description": "일본 애니메이션 스타일, 큰 눈과 세밀한 표현",
+      "basePrompt": "anime style, Japanese animation, large expressive eyes, smooth shading, vibrant colors, detailed hair, sharp lines, cel shading, manga influence, expressive facial features, anime character design",
+      "recommendedCamera": [
+        "close-up face focus",
+        "three-quarter angle",
+        "dynamic perspective"
+      ],
+      "recommendedComposition": [
+        "centered focus",
+        "dramatic framing",
+        "eye-catching angles"
+      ],
+      "recommendedLighting": [
+        "bright flat lighting",
+        "anime-style shadows",
+        "color-saturated light",
+        "high-key lighting"
+      ],
+      "keywords": [
+        "anime",
+        "manga",
+        "Japanese",
+        "cel-shading",
+        "expressive eyes",
+        "sharp lines",
+        "vibrant"
+      ],
+      "examples": [
+        "Anime style character, Korean woman, large expressive eyes, detailed hair with shine, vibrant colors, smooth shading, wearing casual school uniform, dynamic angle, high-quality anime art",
+        "Manga-inspired portrait, beautiful woman with glossy hair, big anime eyes, sharp facial features, flat color backgrounds, cel-shading style, vibrant outfit, professional anime illustration",
+        "Anime character design, mature woman, detailed expressions, Japanese animation quality, smooth gradients, characteristic thick lines, colorful composition, expressive pose"
+      ]
+    },
+    {
+      "id": "oil_painting",
+      "name": "유화",
+      "nameEn": "Oil Painting",
+      "emoji": "🖼️",
+      "description": "고전 유화의 감각, 풍부한 색감과 질감",
+      "basePrompt": "oil painting, classical art style, impressionist influences, thick brushstrokes, rich color palette, textured canvas, masterpiece, gallery quality, soft blending, warm tones, artistic technique",
+      "recommendedCamera": [
+        "three-quarter view",
+        "medium shot",
+        "slightly elevated angle"
+      ],
+      "recommendedComposition": [
+        "balanced composition",
+        "classic portraiture",
+        "soft focal point"
+      ],
+      "recommendedLighting": [
+        "warm golden light",
+        "soft diffused lighting",
+        "classical studio light",
+        "candlelit ambiance"
+      ],
+      "keywords": [
+        "painting",
+        "impressionist",
+        "masterpiece",
+        "classical",
+        "brushstrokes",
+        "texture",
+        "artistic"
+      ],
+      "examples": [
+        "Oil painting of a woman, classical style, thick brushstrokes, rich warm colors, textured canvas appearance, masterpiece quality, soft golden lighting, impressionist influence",
+        "Portrait painting in oil, detailed facial features, blended colors, Renaissance-inspired composition, gallery-quality work, soft transitions, classic beauty",
+        "Impressionist oil painting, woman wearing elegant dress, loose brushwork, vibrant palette, soft focus background, artistic expression, 19th century painting style"
+      ]
+    },
+    {
+      "id": "watercolor",
+      "name": "수채화",
+      "nameEn": "Watercolor",
+      "emoji": "🌈",
+      "description": "부드러운 수채화 감각, 투명한 색감과 유동성",
+      "basePrompt": "watercolor painting, watercolor style, soft washes, flowing colors, translucent layers, delicate brushwork, artistic medium, soft edges, color bleeding, light and airy, elegant simplicity",
+      "recommendedCamera": [
+        "gentle angle",
+        "relaxed framing",
+        "natural composition"
+      ],
+      "recommendedComposition": [
+        "balanced composition",
+        "soft focus areas",
+        "flowing layout"
+      ],
+      "recommendedLighting": [
+        "diffused natural light",
+        "soft overall lighting",
+        "gentle highlights",
+        "pastel tones"
+      ],
+      "keywords": [
+        "watercolor",
+        "painting",
+        "delicate",
+        "flowing",
+        "soft",
+        "artistic",
+        "translucent"
+      ],
+      "examples": [
+        "Watercolor painting of a woman, soft color washes, translucent layers, flowing brushwork, elegant simplicity, light and airy, pastel tones, artistic expression",
+        "Watercolor portrait, delicate rendering, soft edges, subtle color transitions, flowing composition, light washes, artistic medium, dreamy quality",
+        "Woman in watercolor style, loose brushwork, flowing colors, soft background, artistic interpretation, gentle color bleeding, light-filled composition"
+      ]
+    },
+    {
+      "id": "cyberpunk",
+      "name": "사이버펑크",
+      "nameEn": "Cyberpunk",
+      "emoji": "🤖",
+      "description": "미래지향적 디스토피아, 네온 색감과 하이테크 요소",
+      "basePrompt": "cyberpunk aesthetic, neon colors, futuristic style, high-tech elements, holographic effects, circuit patterns, dark moody lighting, dystopian atmosphere, vibrant neon accents, sci-fi fashion, digital art style",
+      "recommendedCamera": [
+        "low angle",
+        "dramatic perspective",
+        "close-up focus"
+      ],
+      "recommendedComposition": [
+        "dynamic angles",
+        "asymmetrical framing",
+        "technological elements"
+      ],
+      "recommendedLighting": [
+        "neon lighting",
+        "glowing neon accents",
+        "high-contrast shadows",
+        "fluorescent highlights",
+        "dark moody atmosphere"
+      ],
+      "keywords": [
+        "cyberpunk",
+        "neon",
+        "futuristic",
+        "dystopian",
+        "holographic",
+        "hi-tech",
+        "sci-fi"
+      ],
+      "examples": [
+        "Cyberpunk style woman, neon lighting, futuristic outfit with holographic accents, glowing elements, dark atmospheric background, purple and blue neon lights, hi-tech aesthetic",
+        "Dystopian cyberpunk character, neon color grading, circuit patterns, holographic effects, dark shadows, vibrant neon accents, sci-fi fashion, futuristic composition",
+        "Woman in cyberpunk setting, neon glow, technological elements, dark moody lighting, fluorescent colors, futuristic hairstyle and makeup, digital art quality"
+      ]
+    },
+    {
+      "id": "vintage",
+      "name": "빈티지",
+      "nameEn": "Vintage",
+      "emoji": "📼",
+      "description": "과거의 감성, 따뜻한 톤과 레트로 느낌",
+      "basePrompt": "vintage style, retro aesthetic, old photograph, warm color grading, faded colors, nostalgic atmosphere, classical elegance, warm tones, film grain, 1960s-1980s style, classic fashion",
+      "recommendedCamera": [
+        "medium shot",
+        "relaxed framing",
+        "natural angle"
+      ],
+      "recommendedComposition": [
+        "classic portraiture",
+        "centered framing",
+        "timeless composition"
+      ],
+      "recommendedLighting": [
+        "warm golden light",
+        "soft diffused light",
+        "natural window light",
+        "warm color cast"
+      ],
+      "keywords": [
+        "vintage",
+        "retro",
+        "nostalgic",
+        "old photograph",
+        "warm tones",
+        "classic",
+        "timeless"
+      ],
+      "examples": [
+        "Vintage style portrait, warm color grading, faded aesthetic, nostalgic atmosphere, 1970s fashion, soft warm lighting, film grain effect, classical elegance",
+        "Retro photograph style, woman in vintage dress, warm tones, old film aesthetic, grainy texture, classic makeup, natural lighting, timeless composition",
+        "Vintage fashion shoot, 1960s aesthetic, warm color palette, faded effect, nostalgic mood, classic style, soft focus, elegant retro composition"
+      ]
+    },
+    {
+      "id": "minimalist",
+      "name": "미니멀리스트",
+      "nameEn": "Minimalist",
+      "emoji": "◻️",
+      "description": "단순하고 세련된, 불필요한 요소 제거",
+      "basePrompt": "minimalist style, minimalist art, clean composition, simple elegant design, negative space, monochromatic, subtle details, refined aesthetics, simple color palette, contemporary minimalism",
+      "recommendedCamera": [
+        "direct frontal",
+        "centered composition",
+        "clean angle"
+      ],
+      "recommendedComposition": [
+        "negative space",
+        "centered framing",
+        "geometric clarity"
+      ],
+      "recommendedLighting": [
+        "flat even lighting",
+        "clean bright light",
+        "neutral tones",
+        "shadowless or subtle shadows"
+      ],
+      "keywords": [
+        "minimalist",
+        "simple",
+        "clean",
+        "elegant",
+        "monochromatic",
+        "contemporary",
+        "refined"
+      ],
+      "examples": [
+        "Minimalist portrait, clean composition, neutral background, simple color palette, elegant simplicity, monochromatic elements, negative space, refined aesthetic",
+        "Minimalist fashion image, simple elegant outfit, clean framing, neutral tones, sparse background, contemporary design, geometric clarity",
+        "Minimalist style woman, clean lines, negative space, monochromatic or limited color palette, refined elegance, contemporary minimalism, uncluttered composition"
+      ]
+    },
+    {
+      "id": "film_noir",
+      "name": "필름 누아르",
+      "nameEn": "Film Noir",
+      "emoji": "🎭",
+      "description": "흑백 영화 느낌, 극적인 명암과 신비로운 분위기",
+      "basePrompt": "film noir style, black and white photography, high contrast, dramatic shadows, moody atmosphere, cinematic lighting, classic noir aesthetic, mysterious ambiance, dramatic composition, 1940s-1950s style",
+      "recommendedCamera": [
+        "dramatic angle",
+        "side lighting",
+        "close-up portrait"
+      ],
+      "recommendedComposition": [
+        "dramatic shadows",
+        "asymmetrical framing",
+        "mysterious composition"
+      ],
+      "recommendedLighting": [
+        "high contrast lighting",
+        "dramatic side light",
+        "strong shadows",
+        "focused key light",
+        "shadowy ambient"
+      ],
+      "keywords": [
+        "film noir",
+        "black and white",
+        "dramatic",
+        "mysterious",
+        "cinematic",
+        "moody",
+        "classic"
+      ],
+      "examples": [
+        "Film noir style portrait, black and white, high contrast dramatic lighting, mysterious moody atmosphere, classic 1940s aesthetic, strong shadows, cinematic composition",
+        "Noir photography, woman with dramatic shadow on face, high-key highlights and deep shadows, monochromatic, mysterious ambiance, classic Hollywood style",
+        "Film noir character, black and white image, dramatic side lighting, enigmatic expression, moody atmospheric background, cinematic quality, noir aesthetic"
+      ]
+    },
+    {
+      "id": "fantasy",
+      "name": "판타지",
+      "nameEn": "Fantasy",
+      "emoji": "🧙",
+      "description": "마법과 신비, 초현실적이고 드라마틱한 표현",
+      "basePrompt": "fantasy art, magical atmosphere, fantasy style, mystical elements, ethereal lighting, supernatural effects, glowing effects, magical aura, dramatic fantasy composition, otherworldly aesthetic, enchanted atmosphere",
+      "recommendedCamera": [
+        "dramatic angle",
+        "medium shot",
+        "heroic perspective"
+      ],
+      "recommendedComposition": [
+        "dynamic composition",
+        "mystical elements",
+        "dramatic framing"
+      ],
+      "recommendedLighting": [
+        "magical glowing light",
+        "ethereal lighting",
+        "mystical aura",
+        "supernatural glow",
+        "dramatic highlights"
+      ],
+      "keywords": [
+        "fantasy",
+        "magical",
+        "mystical",
+        "ethereal",
+        "supernatural",
+        "enchanted",
+        "otherworldly"
+      ],
+      "examples": [
+        "Fantasy character, magical atmosphere, ethereal lighting, mystical aura around figure, glowing magical effects, dramatic fantasy composition, otherworldly aesthetic, detailed fantasy clothing",
+        "Fantasy art style, woman with magical elements, enchanted atmosphere, supernatural glow, mystical background, dramatic lighting, fantasy fashion, digital fantasy art",
+        "Fantasy illustration, magical character, ethereal beauty, mystical elements, glowing aura, dramatic composition, otherworldly setting, enchanted atmosphere, detailed fantasy style"
+      ]
+    }
+  ]
+}

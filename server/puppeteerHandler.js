@@ -1112,6 +1112,24 @@ export async function generateContent(serviceName, prompt, files = [], options =
                 return elements[elements.length - 1].innerText;
             }
 
+            // 1-1. Gemini fallback: prefer markdown text inside latest model-response
+            if (serviceName === 'GEMINI') {
+                const responses = Array.from(document.querySelectorAll('model-response'));
+                for (let i = responses.length - 1; i >= 0; i--) {
+                    const el = responses[i];
+                    const hasImage = el.querySelector('generated-image, .generated-image, img');
+                    const markdownNodes = el.querySelectorAll('.markdown, .markdown-main-panel, .model-response-text, message-content');
+                    let text = '';
+                    for (const node of markdownNodes) {
+                        const t = (node.innerText || '').trim();
+                        if (t.length > text.length) text = t;
+                    }
+                    if (text.length > 0) return text;
+                    // 이미지 응답인데 텍스트가 없으면 이전 응답으로 계속 탐색
+                    if (hasImage) continue;
+                }
+            }
+
             // 2. Fallback: Content-based search (Critical for Claude if selectors change)
             if (serviceName === 'CLAUDE') {
                 const aiMsgSelectors = [
@@ -1147,8 +1165,8 @@ export async function generateContent(serviceName, prompt, files = [], options =
 
         // [SMART JSON CHECK + STABILITY FALLBACK]
         // 100자로 낮춤 (의상/얼굴 추출 JSON은 200~300자 정도로 짧음)
-        if (currentText && currentText.length > 100) {
-            // 1. Try to PARSE (Fast Path)
+        if (currentText) {
+            // 1. Try to PARSE (Fast Path) - allow short JSON like {"prompt":"..."}
             try {
                 let cleanText = currentText.trim();
                 if (cleanText.startsWith('```')) {
@@ -1156,12 +1174,7 @@ export async function generateContent(serviceName, prompt, files = [], options =
                 }
                 const parsed = JSON.parse(cleanText);
 
-                // [DEBUG] Log actual JSON structure
-                console.log("🔍 DEBUG: Parsed JSON keys:", Object.keys(parsed));
-                console.log("🔍 DEBUG: Has 'scripts' array?", Array.isArray(parsed.scripts));
-                if (parsed.scripts && Array.isArray(parsed.scripts) && parsed.scripts.length > 0) {
-                    console.log("🔍 DEBUG: First script keys:", Object.keys(parsed.scripts[0]));
-                }
+                // [DEBUG] Log actual JSON structure (disabled by default)
 
                 // [ENHANCED] Support both direct format and { scripts: [...] } format
                 let dataToCheck = parsed;
@@ -1176,18 +1189,24 @@ export async function generateContent(serviceName, prompt, files = [], options =
                     dataToCheck.hook || dataToCheck.twist;
                 const isTemplate = dataToCheck.templateName && dataToCheck.structure;
                 const isAnalysis = dataToCheck.scores && (dataToCheck.totalScore !== undefined || dataToCheck.improvements);
+                const isDetailedAnalysis = dataToCheck.style && dataToCheck.lighting && dataToCheck.camera && dataToCheck.score !== undefined;
+                const isElementAnalysis = dataToCheck.style && dataToCheck.lighting && dataToCheck.camera && dataToCheck.problems;
                 const isCharacterAnalysis = Array.isArray(parsed) ||
                     (parsed.characters && Array.isArray(parsed.characters)) ||
                     (Object.keys(parsed).length > 0 && Object.keys(parsed).every(k => !isNaN(parseInt(k))));
 
                 // [NEW] 의상/얼굴 추출 포맷 지원 ({ en: "...", ko: "..." })
                 const isExtraction = dataToCheck.en && dataToCheck.ko;
+                const isPromptOnly = typeof dataToCheck.prompt === 'string';
 
-                if (isScript || isTemplate || isAnalysis || isCharacterAnalysis || isExtraction) {
-                    console.log(`✅ JSON Parse Successful! ${isScript ? 'Script' : isTemplate ? 'Template' : isAnalysis ? 'Analysis' : isExtraction ? 'Extraction' : 'Character'} detected. Generation Complete.`);
+                if (isScript || isTemplate || isAnalysis || isDetailedAnalysis || isElementAnalysis || isCharacterAnalysis || isExtraction || isPromptOnly) {
+                    console.log(`✅ JSON Parse Successful! ${isScript ? 'Script' : isTemplate ? 'Template' : isAnalysis ? 'Analysis' : isDetailedAnalysis ? 'DetailedAnalysis' : isElementAnalysis ? 'ElementAnalysis' : isExtraction ? 'Extraction' : isPromptOnly ? 'Prompt' : 'Character'} detected. Generation Complete.`);
                     return currentText;
                 } else {
-                    console.log(`⏳ JSON parsed but incomplete (Script: ${!!isScript}, Template: ${!!isTemplate}, Analysis: ${!!isAnalysis}, Char: ${!!isCharacterAnalysis}, Ext: ${!!isExtraction}). Waiting...`);
+                    // 기다림 로그는 소음이 많아 주기적으로만 남김
+                    if (attempts % 5 === 0) {
+                        console.log(`⏳ JSON parsed but incomplete (Script: ${!!isScript}, Template: ${!!isTemplate}, Analysis: ${!!isAnalysis}, Detailed: ${!!isDetailedAnalysis}, Element: ${!!isElementAnalysis}, Char: ${!!isCharacterAnalysis}, Ext: ${!!isExtraction}, Prompt: ${!!isPromptOnly}). Waiting...`);
+                    }
                 }
             } catch (e) {
                 // Parse failed. Check stability (Slow Path)

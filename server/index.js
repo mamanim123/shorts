@@ -15,6 +15,7 @@ import multer from 'multer';
 
 dotenv.config();
 import { jsonrepair } from 'jsonrepair';
+
 import {
     initBrowser,
     launchBrowser,
@@ -77,16 +78,42 @@ const IMAGE_HISTORY_FILE = path.join(IMAGE_HISTORY_DIR, 'image_history.json');
 const APP_STORAGE_DIR = path.join(__dirname, 'user_data_app_storage');
 const APP_STORAGE_FILE = path.join(APP_STORAGE_DIR, 'app_storage.json');
 const CHARACTER_BACKUPS_DIR = path.join(__dirname, 'shorts-lab-character-backups');
-const DEFAULT_OUTFIT_CATEGORIES = [
-    { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상', gender: 'female' },
-    { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저', gender: 'female' },
-    { id: 'GOLF LUXURY', name: 'GOLF LUXURY', emoji: '🏌️', description: '골프/럭셔리 스포츠웨어', gender: 'female' },
-    { id: 'SEXY', name: 'SEXY', emoji: '💋', description: '섹시/매혹적인 의상', gender: 'female' },
-    { id: 'MALE', name: 'MALE', emoji: '🕺', description: '남성 의상', gender: 'male' }
-];
-const IMAGE_CAPTURE_MAX_ATTEMPTS = Number(process.env.IMAGE_CAPTURE_MAX_ATTEMPTS || 2);
-const lastImageFingerprintsByStory = new Map();
+const USAGE_STATS_FILE = process.env.USAGE_STATS_FILE || path.join(__dirname, '../usage_stats.json');
+const USAGE_STATS_DIR = path.dirname(USAGE_STATS_FILE);
+const DAILY_USAGE_STATS_FILE =
+    process.env.DAILY_USAGE_STATS_FILE || path.join(USAGE_STATS_DIR, 'usage_stats_daily.json');
+const DAILY_USAGE_STATS_DIR = path.dirname(DAILY_USAGE_STATS_FILE);
+const DAILY_REQUEST_TZ = process.env.DAILY_REQUEST_TZ || 'America/Los_Angeles';
+const DAILY_REQUEST_LIMITS = (() => {
+    if (!process.env.DAILY_REQUEST_LIMITS_JSON) return {};
+    try {
+        const parsed = JSON.parse(process.env.DAILY_REQUEST_LIMITS_JSON);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        console.warn('[UsageStats] Failed to parse DAILY_REQUEST_LIMITS_JSON:', error);
+        return {};
+    }
+})();
 
+const RESOLVED_OUTFIT_PREVIEW_MAP_DIR =
+    typeof OUTFIT_PREVIEW_MAP_DIR === 'undefined'
+        ? path.join(__dirname, 'user_data_outfit_previews')
+        : OUTFIT_PREVIEW_MAP_DIR;
+const RESOLVED_OUTFIT_PREVIEW_MAP_FILE =
+    typeof OUTFIT_PREVIEW_MAP_FILE === 'undefined'
+        ? path.join(RESOLVED_OUTFIT_PREVIEW_MAP_DIR, 'outfit_preview_map.json')
+        : OUTFIT_PREVIEW_MAP_FILE;
+
+const IMAGE_CAPTURE_MAX_ATTEMPTS = Number(process.env.IMAGE_CAPTURE_MAX_ATTEMPTS || 2);
+const DEFAULT_OUTFIT_CATEGORIES = [
+    { id: 'ROYAL', name: 'ROYAL', gender: 'female' },
+    { id: 'YOGA', name: 'YOGA', gender: 'female' },
+    { id: 'GOLF LUXURY', name: 'GOLF LUXURY', gender: 'female' },
+    { id: 'SEXY', name: 'SEXY', gender: 'female' },
+    { id: 'MALE', name: 'MALE', gender: 'male' }
+];
+
+const lastImageFingerprintsByStory = new Map();
 const AUTO_LAUNCH_DELAY_MS = Number(process.env.PUPPETEER_AUTO_LAUNCH_DELAY_MS || 5000);
 const AUTO_LAUNCH_MAX_ATTEMPTS = Number(process.env.PUPPETEER_AUTO_LAUNCH_MAX_ATTEMPTS || 3);
 let autoLaunchAttempts = 0;
@@ -96,13 +123,164 @@ let lastBrowserLaunchSuccessAt = 0;
 
 // Ensure directories exist
 if (!fs.existsSync(GENERATED_DIR)) fs.mkdirSync(GENERATED_DIR);
-if (!fs.existsSync(SCRIPTS_BASE_DIR)) fs.mkdirSync(SCRIPTS_BASE_DIR, { recursive: true }); // 대본폴더 생성
+if (!fs.existsSync(SCRIPTS_BASE_DIR)) fs.mkdirSync(SCRIPTS_BASE_DIR, { recursive: true });
 if (!fs.existsSync(LONGFORM_DIR)) fs.mkdirSync(LONGFORM_DIR);
 if (!fs.existsSync(TEMPLATE_DIR)) fs.mkdirSync(TEMPLATE_DIR);
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 if (!fs.existsSync(OUTFIT_PREVIEW_DIR)) fs.mkdirSync(OUTFIT_PREVIEW_DIR, { recursive: true });
 if (!fs.existsSync(ENGINE_CONFIG_FILE)) {
     fs.writeFileSync(ENGINE_CONFIG_FILE, JSON.stringify({ prompts: {}, options: [] }, null, 2));
+}
+if (!fs.existsSync(USAGE_STATS_DIR)) {
+    fs.mkdirSync(USAGE_STATS_DIR, { recursive: true });
+}
+if (!fs.existsSync(USAGE_STATS_FILE)) {
+    fs.writeFileSync(USAGE_STATS_FILE, JSON.stringify({ 'gemini-2.0-flash': 0, 'gemini-3-flash-preview': 0 }, null, 2));
+}
+if (!fs.existsSync(DAILY_USAGE_STATS_DIR)) {
+    fs.mkdirSync(DAILY_USAGE_STATS_DIR, { recursive: true });
+}
+if (!fs.existsSync(DAILY_USAGE_STATS_FILE)) {
+    fs.writeFileSync(DAILY_USAGE_STATS_FILE, JSON.stringify({}, null, 2));
+}
+
+// 모델 사용량 초기화
+let usageStats = {
+    'gemini-2.0-flash': 0,
+    'gemini-3-flash-preview': 0
+};
+
+const resolveUsageKey = (model) => {
+    const raw = typeof model === 'string' && model.trim() ? model.trim() : 'gemini-2.0-flash';
+    return raw;
+};
+
+const incrementUsageStat = (model) => {
+    const key = resolveUsageKey(model);
+    if (usageStats[key] === undefined) {
+        usageStats[key] = 0;
+    }
+    usageStats[key]++;
+    saveUsageStats();
+    incrementDailyCount(key);
+};
+
+// 사용량 로드
+if (fs.existsSync(USAGE_STATS_FILE)) {
+    try {
+        usageStats = { ...usageStats, ...JSON.parse(fs.readFileSync(USAGE_STATS_FILE, 'utf8')) };
+    } catch (e) {
+        console.error('Failed to load usage stats:', e);
+    }
+}
+
+let dailyUsageStats = {};
+if (fs.existsSync(DAILY_USAGE_STATS_FILE)) {
+    try {
+        dailyUsageStats = JSON.parse(fs.readFileSync(DAILY_USAGE_STATS_FILE, 'utf8')) || {};
+    } catch (e) {
+        console.error('Failed to load daily usage stats:', e);
+        dailyUsageStats = {};
+    }
+}
+
+// 사용량 저장 함수
+const saveUsageStats = () => {
+    try {
+        fs.writeFileSync(USAGE_STATS_FILE, JSON.stringify(usageStats, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Failed to save usage stats:', e);
+    }
+};
+
+const saveDailyUsageStats = () => {
+    try {
+        fs.writeFileSync(DAILY_USAGE_STATS_FILE, JSON.stringify(dailyUsageStats, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Failed to save daily usage stats:', e);
+    }
+};
+
+const getDailyDateKey = () => {
+    try {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: DAILY_REQUEST_TZ,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(new Date());
+    } catch (error) {
+        console.warn('[UsageStats] Failed to format date with timezone, falling back to local time:', error);
+        return new Date().toISOString().slice(0, 10);
+    }
+};
+
+const getDailyCount = (modelKey) => {
+    const dateKey = getDailyDateKey();
+    return dailyUsageStats?.[dateKey]?.[modelKey] || 0;
+};
+
+const incrementDailyCount = (modelKey) => {
+    const dateKey = getDailyDateKey();
+    if (!dailyUsageStats[dateKey]) {
+        dailyUsageStats[dateKey] = {};
+    }
+    if (dailyUsageStats[dateKey][modelKey] === undefined) {
+        dailyUsageStats[dateKey][modelKey] = 0;
+    }
+    dailyUsageStats[dateKey][modelKey] += 1;
+    saveDailyUsageStats();
+};
+
+class DailyLimitError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'DailyLimitError';
+        this.status = 429;
+    }
+}
+
+// Gemini API 호출 헬퍼 함수
+async function callGeminiAPI(prompt, model = 'gemini-2.0-flash') {
+    console.log(`[GeminiAPI] Calling ${model}...`);
+    
+    const usageKey = resolveUsageKey(model);
+    const dailyLimit = DAILY_REQUEST_LIMITS[usageKey];
+    if (typeof dailyLimit === 'number' && dailyLimit > 0) {
+        const todayCount = getDailyCount(usageKey);
+        if (todayCount >= dailyLimit) {
+            throw new DailyLimitError(
+                `Daily request limit reached for ${usageKey} (${todayCount}/${dailyLimit})`
+            );
+        }
+    }
+
+    // 카운트 증가 및 저장
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 8192
+                }
+            })
+        }
+    );
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Gemini API error (${model}): ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    incrementUsageStat(model);
+    return data.candidates[0].content.parts[0].text;
 }
 if (!fs.existsSync(PROMPT_PRESETS_FILE)) {
     fs.writeFileSync(PROMPT_PRESETS_FILE, JSON.stringify({ presets: [] }, null, 2));
@@ -125,11 +303,11 @@ if (!fs.existsSync(EXTRACTION_IMAGE_DIR)) {
 if (!fs.existsSync(EXTRACTION_CACHE_FILE)) {
     fs.writeFileSync(EXTRACTION_CACHE_FILE, JSON.stringify({ cache: {} }, null, 2));
 }
-if (!fs.existsSync(OUTFIT_PREVIEW_MAP_DIR)) {
-    fs.mkdirSync(OUTFIT_PREVIEW_MAP_DIR, { recursive: true });
+if (!fs.existsSync(RESOLVED_OUTFIT_PREVIEW_MAP_DIR)) {
+    fs.mkdirSync(RESOLVED_OUTFIT_PREVIEW_MAP_DIR, { recursive: true });
 }
-if (!fs.existsSync(OUTFIT_PREVIEW_MAP_FILE)) {
-    fs.writeFileSync(OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({ previews: {} }, null, 2));
+if (!fs.existsSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE)) {
+    fs.writeFileSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({ previews: {} }, null, 2));
 }
 if (!fs.existsSync(IMAGE_HISTORY_DIR)) {
     fs.mkdirSync(IMAGE_HISTORY_DIR, { recursive: true });
@@ -669,7 +847,7 @@ app.post('/api/launch', async (req, res) => {
 
 // --- Script Generation API ---
 app.post('/api/generate/raw', async (req, res) => {
-    const { service, prompt, folderName: requestedFolderName, skipFolderCreation } = req.body;
+    const { service, prompt, folderName: requestedFolderName, skipFolderCreation, freshChat } = req.body;
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });
     }
@@ -682,7 +860,9 @@ app.post('/api/generate/raw', async (req, res) => {
         console.log(`[Server] Generating content via ${requestedService}...`);
         await ensureBrowserReady(requestedService);
 
-        const rawResponse = await generateContent(requestedService, prompt);
+        const rawResponse = await generateContent(requestedService, prompt, [], {
+            freshChat: Boolean(freshChat)
+        });
         console.log(`[Server] ✅ Content generated (${rawResponse?.length || 0} chars)`);
 
         // [NEW] 폴더 생성 로직 추가 - 고출력/씨네보드 불러오기 호환 및 오류 복구력 강화
@@ -1563,10 +1743,10 @@ app.post('/api/save-outfit-preview', async (req, res) => {
 // ---------------------------------------------------------
 app.get('/api/outfit-preview-map', (req, res) => {
     try {
-        if (!fs.existsSync(OUTFIT_PREVIEW_MAP_FILE)) {
+        if (!fs.existsSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE)) {
             return res.json({ previews: {} });
         }
-        const raw = fs.readFileSync(OUTFIT_PREVIEW_MAP_FILE, 'utf8');
+        const raw = fs.readFileSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE, 'utf8');
         const parsed = JSON.parse(raw);
         res.json({ previews: parsed?.previews || {} });
     } catch (error) {
@@ -1581,7 +1761,7 @@ app.post('/api/outfit-preview-map', (req, res) => {
         if (!previews || typeof previews !== 'object') {
             return res.status(400).json({ success: false, error: 'Invalid previews payload' });
         }
-        fs.writeFileSync(OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({
+        fs.writeFileSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({
             previews,
             updatedAt: new Date().toISOString()
         }, null, 2));
@@ -4350,6 +4530,340 @@ app.get('/api/video/download-folder-info', (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// ==================== 프롬프트 분석 및 스타일 변환 API ====================
+
+// 프롬프트 상세 분석 API
+app.post('/api/prompt-analyze-detailed', async (req, res) => {
+    const { prompt, service, model } = req.body;
+
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    try {
+        console.log(`[PromptAnalyzer] Analyzing prompt via Gemini ${model || 'default'}...`);
+
+        const analysisPrompt = `당신은 이미지 프롬프트 전문가입니다.
+다음 프롬프트를 요소별로 상세 분석하고, 문제점을 구체적으로 찾아 수정 방법을 제시하세요:
+
+[프롬프트]
+${prompt}
+
+분석 항목:
+1. 스타일 (Style): 어떤 스타일인지 (예: photorealistic, anime, cartoon, 3D render 등)
+2. 조명 (Lighting): 조명 설정은? (예: natural light, studio lighting, dramatic shadows 등)
+3. 카메라 (Camera): 카메라 앵글과 설정은? (예: close-up, wide shot, low angle 등)
+4. 구도 (Composition): 구도는? (예: rule of thirds, centered, symmetrical 등)
+5. 인물 (Character): 인물 묘사는? (외모, 옷차림, 포즈, 표정 등)
+6. 배경 (Background): 배경 설정은? (장소, 환경, 분위기 등)
+7. 평가 (Score): 1-100점으로 프롬프트를 평가하세요
+
+8. 문제점 상세 분석 (Problems): 각 문제마다 다음 정보를 포함하세요
+   - type: "중복", "모순", "불명확", "정책위반" 중 하나
+   - original: 문제가 있는 원본 텍스트
+   - issue: 무엇이 문제인지 설명
+   - fix: 어떻게 수정하면 되는지
+   - corrected: 수정된 텍스트
+
+9. 수정된 프롬프트 (correctedPrompt): 모든 문제를 수정한 완전한 프롬프트
+
+10. 전체 개선 제안 (suggestions): 문제점 외에 추가로 개선할 수 있는 부분
+
+반드시 다음과 같은 JSON 형식으로만 출력하세요:
+{
+  "style": ["스타일1", "스타일2"],
+  "lighting": ["조명1", "조명2"],
+  "camera": ["카메라1", "카메라2"],
+  "composition": ["구도1", "구도2"],
+  "character": ["인물1", "인물2"],
+  "background": ["배경1", "배경2"],
+  "score": 85,
+  "problems": [
+    {
+      "type": "중복",
+      "original": "long soft-wave hairstyle, long wavy hair",
+      "issue": "동일한 의미의 표현이 중복되어 있습니다",
+      "fix": "하나만 남기고 제거하세요",
+      "corrected": "long soft-wave hairstyle"
+    }
+  ],
+  "correctedPrompt": "모든 문제를 수정한 완전한 프롬프트...",
+  "suggestions": ["개선 제안1", "개선 제안2", "개선 제안3"]
+}`;
+
+        // 🚀 Gemini REST API 직접 호출 (Puppeteer 대신 - 2초 이내 응답)
+        const rawResponse = await callGeminiAPI(analysisPrompt, model);
+
+        console.log(`[PromptAnalyzer] Raw response received (${rawResponse?.length || 0} chars)`);
+        console.log(`[PromptAnalyzer] Raw Response Content:`, rawResponse);
+
+        // JSON 파싱 시도
+        let analysisResult;
+        try {
+            // 코드 블록 제거
+            const cleaned = rawResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+            analysisResult = JSON.parse(cleaned);
+        } catch (parseErr) {
+            console.warn(`[PromptAnalyzer] JSON parse failed, attempting repair...`);
+            try {
+                const repaired = jsonrepair(rawResponse);
+                analysisResult = JSON.parse(repaired);
+            } catch (repairErr) {
+                console.error(`[PromptAnalyzer] Failed to parse response:`, repairErr);
+                return res.status(500).json({
+                    error: "Failed to parse AI response",
+                    rawResponse: rawResponse.substring(0, 500)
+                });
+            }
+        }
+
+        // Normalize analysis result to ensure all fields are arrays
+        const normalizeToArray = (value) => {
+            if (Array.isArray(value)) return value;
+            if (typeof value === 'string' && value.trim()) return [value];
+            return [];
+        };
+
+        const normalizedResult = {
+            style: normalizeToArray(analysisResult.style),
+            lighting: normalizeToArray(analysisResult.lighting),
+            camera: normalizeToArray(analysisResult.camera),
+            composition: normalizeToArray(analysisResult.composition),
+            character: normalizeToArray(analysisResult.character),
+            background: normalizeToArray(analysisResult.background),
+            score: typeof analysisResult.score === 'number' ? analysisResult.score : 0,
+            problems: Array.isArray(analysisResult.problems) ? analysisResult.problems : [],
+            correctedPrompt: typeof analysisResult.correctedPrompt === 'string' ? analysisResult.correctedPrompt : '',
+            suggestions: normalizeToArray(analysisResult.suggestions)
+        };
+
+        console.log(`[PromptAnalyzer] Analysis completed successfully`);
+        res.json({
+            success: true,
+            analysis: normalizedResult,
+            service: requestedService
+        });
+
+    } catch (error) {
+        console.error(`[PromptAnalyzer] Error:`, error);
+        const status = error?.status || 500;
+        res.status(status).json({
+            error: error.message || 'Prompt analysis failed',
+            details: error.stack
+        });
+    }
+});
+
+// 스타일 변환 API
+app.post('/api/prompt-style-convert', async (req, res) => {
+    const { prompt, targetStyle, service } = req.body;
+
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    if (!targetStyle || typeof targetStyle !== 'string' || !targetStyle.trim()) {
+        return res.status(400).json({ error: "Target style is required" });
+    }
+
+    try {
+        console.log(`[StyleConverter] Converting prompt to ${targetStyle} style via Gemini SDK...`);
+
+        const conversionPrompt = `당신은 이미지 프롬프트 스타일 변환 전문가입니다.
+다음 프롬프트를 "${targetStyle}" 스타일로 변환하세요.
+
+[원본 프롬프트]
+${prompt}
+
+[목표 스타일]
+${targetStyle}
+
+작업 요구사항:
+1. 원본 프롬프트의 핵심 내용(인물, 배경, 구도 등)은 최대한 유지하세요
+2. ${targetStyle} 스타일에 맞게 다음 요소들을 변환하세요:
+   - 스타일 관련 키워드 (rendering style, art style 등)
+   - 조명 설정 (lighting)
+   - 질감과 디테일 표현 (texture, details)
+   - 색감과 톤 (color palette, tone)
+   - 카메라 설정 (필요시)
+3. 변경된 부분을 명확히 기록하세요
+4. 스타일별 주요 특징을 highlights에 포함하세요
+
+반드시 다음과 같은 JSON 형식으로만 출력하세요:
+{
+  "prompt": "변환된 전체 프롬프트",
+  "changes": [
+    "변경사항1: 구체적인 변경 내용",
+    "변경사항2: 구체적인 변경 내용",
+    ...
+  ],
+  "highlights": {
+    "style": "적용된 스타일 키워드들",
+    "lighting": "적용된 조명 설정",
+    "texture": "적용된 질감 표현",
+    "colorPalette": "적용된 색감",
+    "camera": "카메라 설정 (변경된 경우)"
+  }
+}`;
+
+        // 🚀 Gemini REST API 직접 호출 (Puppeteer 대신 - 2초 이내 응답)
+        const rawResponse = await callGeminiAPI(conversionPrompt);
+
+        console.log(`[StyleConverter] Raw response received (${rawResponse?.length || 0} chars)`);
+
+        // JSON 파싱 시도
+        let conversionResult;
+        try {
+            // 코드 블록 제거
+            const cleaned = rawResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+            conversionResult = JSON.parse(cleaned);
+        } catch (parseErr) {
+            console.warn(`[StyleConverter] JSON parse failed, attempting repair...`);
+            try {
+                const repaired = jsonrepair(rawResponse);
+                conversionResult = JSON.parse(repaired);
+            } catch (repairErr) {
+                console.error(`[StyleConverter] Failed to parse response:`, repairErr);
+                return res.status(500).json({
+                    error: "Failed to parse AI response",
+                    rawResponse: rawResponse.substring(0, 500)
+                });
+            }
+        }
+
+        console.log(`[StyleConverter] Style conversion completed successfully`);
+        res.json({
+            success: true,
+            original: prompt,
+            targetStyle: targetStyle,
+            result: conversionResult,
+            service: requestedService
+        });
+
+    } catch (error) {
+        console.error(`[StyleConverter] Error:`, error);
+        const status = error?.status || 500;
+        res.status(status).json({
+            error: error.message || 'Style conversion failed',
+            details: error.stack
+        });
+    }
+});
+
+// Zinius Chat API - Interactive prompt editing via chat
+app.post('/api/zinius-chat', async (req, res) => {
+    const { currentPrompt, userMessage, chatHistory, model } = req.body;
+
+    if (!currentPrompt || typeof currentPrompt !== 'string') {
+        return res.status(400).json({ error: "Current prompt is required" });
+    }
+
+    if (!userMessage || typeof userMessage !== 'string' || !userMessage.trim()) {
+        return res.status(400).json({ error: "User message is required" });
+    }
+
+    try {
+        console.log(`[ZiniusChat] Processing chat request via ${model || 'default'}...`);
+        console.log(`[ZiniusChat] User message: ${userMessage.substring(0, 100)}...`);
+
+        // Build conversation context from chat history
+        let conversationContext = '';
+        if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
+            conversationContext = chatHistory.map((msg) => 
+                `${msg.role === 'user' ? '사용자' : '지니어스'}: ${msg.content}`
+            ).join('\n\n');
+        }
+
+        const chatPrompt = `당신은 이미지 프롬프트 전문가 "지니어스(Zinius)"입니다. 사용자의 프롬프트를 분석하고 수정 요청에 따라 개선된 프롬프트를 제공하세요.
+
+${conversationContext ? `=== 이전 대화 ===\n${conversationContext}\n\n` : ''}=== 현재 프롬프트 ===
+${currentPrompt}
+
+=== 사용자 요청 ===
+${userMessage}
+
+=== 작업 지시 ===
+1. 사용자의 요청을 분석하세요
+2. 현재 프롬프트를 사용자의 의도에 맞게 수정하세요
+3. 어떤 부분을 변경했는지 설명하세요
+4. 변경된 부분을 명확히 표시하세요
+
+반드시 다음 JSON 형식으로만 응답하세요:
+{
+  "modifiedPrompt": "수정된 완전한 프롬프트",
+  "explanation": "변경 사항 설명 (한국어)",
+  "changes": [
+    "변경사항1: 구체적 설명",
+    "변경사항2: 구체적 설명"
+  ],
+  "highlights": {
+    "added": ["추가된 키워드1", "추가된 키워드2"],
+    "removed": ["제거된 키워드1"],
+    "modified": ["수정된 부분1"]
+  }
+}`;
+
+        // Call Gemini API
+        const rawResponse = await callGeminiAPI(chatPrompt, model);
+
+        console.log(`[ZiniusChat] Raw response received (${rawResponse?.length || 0} chars)`);
+
+        // JSON 파싱 시도
+        let chatResult;
+        try {
+            // 코드 블록 제거
+            const cleaned = rawResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+            chatResult = JSON.parse(cleaned);
+        } catch (parseErr) {
+            console.warn(`[ZiniusChat] JSON parse failed, attempting repair...`);
+            try {
+                const repaired = jsonrepair(rawResponse);
+                chatResult = JSON.parse(repaired);
+            } catch (repairErr) {
+                console.error(`[ZiniusChat] Failed to parse response:`, repairErr);
+                return res.status(500).json({
+                    error: "Failed to parse AI response",
+                    rawResponse: rawResponse.substring(0, 500)
+                });
+            }
+        }
+
+        // Validate response structure
+        if (!chatResult.modifiedPrompt) {
+            return res.status(500).json({
+                error: "Invalid response structure: missing modifiedPrompt",
+                rawResponse: rawResponse.substring(0, 500)
+            });
+        }
+
+        console.log(`[ZiniusChat] Chat processing completed successfully`);
+        res.json({
+            success: true,
+            originalPrompt: currentPrompt,
+            userMessage: userMessage,
+            modifiedPrompt: chatResult.modifiedPrompt,
+            explanation: chatResult.explanation || '프롬프트가 수정되었습니다.',
+            changes: chatResult.changes || [],
+            highlights: chatResult.highlights || { added: [], removed: [], modified: [] }
+        });
+
+    } catch (error) {
+        console.error(`[ZiniusChat] Error:`, error);
+        const status = error?.status || 500;
+        res.status(status).json({
+            error: error.message || 'Chat processing failed',
+            details: error.stack
+        });
+    }
+});
+
+// 사용량 통계 조회 API
+app.get('/api/usage-stats', (req, res) => {
+    res.json(usageStats);
+});
+
+// ==================== End of 프롬프트 분석 및 스타일 변환 API ====================
 
 app.listen(PORT, () => {
     console.log(`[Server] 🚀 Script generator server running at http://localhost:${PORT}`);

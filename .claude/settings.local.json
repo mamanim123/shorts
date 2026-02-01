@@ -39,7 +39,10 @@
       "Bash(npm run lint)",
       "Bash(npm run dev:*)",
       "Bash(netstat:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "WebFetch(domain:abocado.ai)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

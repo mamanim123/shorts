@@ -94,11 +94,12 @@ export const fillStep2PromptTemplate = (
 };
 
 export const shortsLabStep2PromptRulesManager = {
-  getRules: (): ShortsLabStep2PromptRules => {
-    if (cachedRules) return cachedRules;
+  getRules: (forceRefresh: boolean = false): ShortsLabStep2PromptRules => {
+    if (cachedRules && !forceRefresh) return cachedRules;
     cachedRules = readStoredRules();
     return cachedRules;
   },
+
   getBackups: (): ShortsLabStep2PromptRulesBackup[] => {
     if (cachedBackups) return cachedBackups;
     cachedBackups = readStoredBackups();

@@ -18,8 +18,8 @@ import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Lightbox from './master-studio/Lightbox';
 import { UNIFIED_OUTFIT_LIST } from '../constants';
-import { fetchOutfitCatalog, fetchOutfitPreviewMap, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap } from '../services/outfitService';
-import type { OutfitCategory, OutfitItem } from '../services/outfitService';
+import { applyBaseOverrides, fetchOutfitCatalog, fetchOutfitPreviewMap, getOutfitBaseOverrides, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap, setOutfitBaseOverrides } from '../services/outfitService';
+import type { OutfitBaseOverrides, OutfitCategory, OutfitItem } from '../services/outfitService';
 import { fetchCharacters, saveCharacters } from '../services/characterService';
 import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
 import type { ExtractedOutfit, ExtractedFeature } from '../services/extractionCacheService';
@@ -39,6 +39,7 @@ interface BaseOutfitItem {
   translation: string;
   categories: string[];
   prompt?: string;
+  isHidden?: boolean;
 }
 
 interface CharacterPanelProps {
@@ -102,15 +103,24 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [outfits, setOutfits] = useState<Outfit[]>(DEFAULT_OUTFITS);
   const [outfitCategories, setOutfitCategories] = useState<OutfitCategory[]>(DEFAULT_OUTFIT_CATEGORIES);
   const [isLoading, setIsLoading] = useState(false);
+  const [baseOutfitOverrides, setBaseOutfitOverridesState] = useState<OutfitBaseOverrides>(() => getOutfitBaseOverrides());
+  const [showHiddenBaseOutfits, setShowHiddenBaseOutfits] = useState(false);
+  const [showHiddenUserOutfits, setShowHiddenUserOutfits] = useState(false);
 
   // 선택 상태
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [selectedOutfitId, setSelectedOutfitId] = useState<string | null>(null);
   const [selectedBaseOutfitId, setSelectedBaseOutfitId] = useState<string | null>(null);
+  const [showOutfitEditModal, setShowOutfitEditModal] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+  const [isModalDragging, setIsModalDragging] = useState(false);
+  const [modalDragOffset, setModalDragOffset] = useState({ x: 0, y: 0 });
   const [editingOutfitName, setEditingOutfitName] = useState('');
   const [editingOutfitPrompt, setEditingOutfitPrompt] = useState('');
+  const [editingOutfitCategory, setEditingOutfitCategory] = useState('');
   const [editingBaseOutfitName, setEditingBaseOutfitName] = useState('');
   const [editingBaseOutfitPrompt, setEditingBaseOutfitPrompt] = useState('');
+  const [editingBaseOutfitCategory, setEditingBaseOutfitCategory] = useState('');
   const [isGeneratingOutfitPreview, setIsGeneratingOutfitPreview] = useState(false);
   const [isGeneratingBaseOutfitPreview, setIsGeneratingBaseOutfitPreview] = useState(false);
   const [isGeneratingOutfitPreviewAI, setIsGeneratingOutfitPreviewAI] = useState(false);
@@ -821,6 +831,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   }, [createOutfitPreview, isGeneratingOutfitPreview, outfitCategories, outfits, saveOutfitsToBE]);
 
+  const handleRefreshOutfitPreviewMap = useCallback(async () => {
+    try {
+      const map = await fetchOutfitPreviewMap();
+      setBaseOutfitPreviewMap(map || {});
+      showToast('의상 썸네일이 새로고침되었습니다.', 'success');
+    } catch (error) {
+      console.error('의상 썸네일 새로고침 실패:', error);
+      showToast('의상 썸네일 새로고침에 실패했습니다.', 'error');
+    }
+  }, []);
+
   const handleGenerateBaseOutfitPreview = useCallback(async (item: BaseOutfitItem) => {
     if (isGeneratingBaseOutfitPreview) return;
     setIsGeneratingBaseOutfitPreview(true);
@@ -1142,6 +1163,36 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     if (type === 'body') handleExtractBody(file);
   }, [handleExtractFace, handleExtractOutfit, handleExtractHair, handleExtractBody]);
 
+  const updateBaseOutfitOverrides = useCallback((next: OutfitBaseOverrides) => {
+    setBaseOutfitOverridesState(next);
+    setOutfitBaseOverrides(next);
+  }, []);
+
+  const handleMoveBaseOutfitCategory = useCallback((id: string, categoryId: string) => {
+    const next: OutfitBaseOverrides = {
+      hiddenBaseIds: baseOutfitOverrides.hiddenBaseIds || [],
+      categoryOverrides: { ...(baseOutfitOverrides.categoryOverrides || {}), [id]: categoryId }
+    };
+    updateBaseOutfitOverrides(next);
+    showToast('기본 의상 카테고리가 변경되었습니다.', 'success');
+  }, [baseOutfitOverrides, updateBaseOutfitOverrides]);
+
+  const handleToggleBaseOutfitHidden = useCallback((id: string) => {
+    const hidden = new Set(baseOutfitOverrides.hiddenBaseIds || []);
+    if (hidden.has(id)) {
+      hidden.delete(id);
+      showToast('기본 의상 숨김이 해제되었습니다.', 'success');
+    } else {
+      hidden.add(id);
+      showToast('기본 의상이 숨김 처리되었습니다.', 'success');
+    }
+    const next: OutfitBaseOverrides = {
+      hiddenBaseIds: Array.from(hidden),
+      categoryOverrides: { ...(baseOutfitOverrides.categoryOverrides || {}) }
+    };
+    updateBaseOutfitOverrides(next);
+  }, [baseOutfitOverrides, updateBaseOutfitOverrides]);
+
   const handleAddCategory = useCallback(() => {
     const name = newCategoryName.trim();
     if (!name) return;
@@ -1248,21 +1299,42 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     setExpandedCategories(prev => (prev[categoryId] ? {} : { [categoryId]: true }));
   }, []);
 
+  const baseOutfitsWithOverrides = useMemo(() => {
+    const baseItems = UNIFIED_OUTFIT_LIST as BaseOutfitItem[];
+    const overrides = baseOutfitOverrides;
+    const hiddenSet = new Set(overrides.hiddenBaseIds || []);
+    const applied = applyBaseOverrides(baseItems as any, overrides, { includeHidden: true }) as BaseOutfitItem[];
+    return applied.map((item) => ({
+      ...item,
+      isHidden: hiddenSet.has(item.id)
+    }));
+  }, [baseOutfitOverrides]);
+
+  const visibleBaseOutfits = useMemo(() => (
+    showHiddenBaseOutfits
+      ? baseOutfitsWithOverrides
+      : baseOutfitsWithOverrides.filter((item) => !item.isHidden)
+  ), [baseOutfitsWithOverrides, showHiddenBaseOutfits]);
+
   // UNIFIED_OUTFIT_LIST에서 카테고리별 의상 가져오기
   const getBaseOutfitsByCategory = useMemo(() => {
     const categoryMap: Record<string, BaseOutfitItem[]> = {};
     outfitCategories.forEach(cat => {
-      categoryMap[cat.id] = (UNIFIED_OUTFIT_LIST as BaseOutfitItem[]).filter(
-        item => item.categories.includes(cat.id)
+      categoryMap[cat.id] = visibleBaseOutfits.filter(
+        item => (item.categories?.[0] || '') === cat.id
       );
     });
     return categoryMap;
-  }, [outfitCategories]);
+  }, [outfitCategories, visibleBaseOutfits]);
 
   const getOutfitsByCategory = useCallback((categoryId: string) => {
-    const userOutfits = outfits.filter(outfit => outfit.category === categoryId);
+    const userOutfits = outfits.filter(outfit => {
+      if (outfit.category !== categoryId) return false;
+      if (showHiddenUserOutfits) return true;
+      return !outfit.hidden;
+    });
     return userOutfits;
-  }, [outfits]);
+  }, [outfits, showHiddenUserOutfits]);
 
   const getCategoryCount = useCallback((categoryId: string) => {
     const baseCount = getBaseOutfitsByCategory[categoryId]?.length || 0;
@@ -1275,10 +1347,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   ), [outfits]);
 
   const baseOutfitsMissingPreview = useMemo(() => {
-    const allBase = (UNIFIED_OUTFIT_LIST as BaseOutfitItem[])
-      .filter(item => (item.prompt || item.name));
+    const allBase = visibleBaseOutfits.filter(item => (item.prompt || item.name));
     return allBase.filter(item => !baseOutfitPreviewMap[item.id]);
-  }, [baseOutfitPreviewMap]);
+  }, [baseOutfitPreviewMap, visibleBaseOutfits]);
 
   const handleDeleteOutfit = useCallback((id: string) => {
     const target = outfits.find(o => o.id === id);
@@ -1301,8 +1372,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   const selectedBaseOutfit = useMemo(() => {
     if (!selectedBaseOutfitId) return null;
-    return (UNIFIED_OUTFIT_LIST as BaseOutfitItem[]).find(item => item.id === selectedBaseOutfitId) || null;
-  }, [selectedBaseOutfitId]);
+    return baseOutfitsWithOverrides.find(item => item.id === selectedBaseOutfitId) || null;
+  }, [baseOutfitsWithOverrides, selectedBaseOutfitId]);
+
+  const isSelectedBaseOutfitHidden = useMemo(() => {
+    if (!selectedBaseOutfit) return false;
+    return (baseOutfitOverrides.hiddenBaseIds || []).includes(selectedBaseOutfit.id);
+  }, [baseOutfitOverrides.hiddenBaseIds, selectedBaseOutfit]);
 
   const handleUpdateOutfit = useCallback(() => {
     if (!selectedOutfit) return;
@@ -1312,13 +1388,25 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
     const updated = outfits.map(outfit => (
       outfit.id === selectedOutfit.id
-        ? { ...outfit, name: editingOutfitName.trim(), prompt: editingOutfitPrompt.trim() }
+        ? { ...outfit, name: editingOutfitName.trim(), prompt: editingOutfitPrompt.trim(), category: editingOutfitCategory || outfit.category }
         : outfit
     ));
     setOutfits(updated);
     saveOutfitsToBE(updated, outfitCategories);
     showToast('의상 정보가 수정되었습니다.', 'success');
-  }, [editingOutfitName, editingOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
+  }, [editingOutfitCategory, editingOutfitName, editingOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
+
+  const handleToggleUserOutfitHidden = useCallback(() => {
+    if (!selectedOutfit) return;
+    const updated = outfits.map((outfit) => (
+      outfit.id === selectedOutfit.id
+        ? { ...outfit, hidden: !outfit.hidden }
+        : outfit
+    ));
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    showToast(selectedOutfit.hidden ? '숨김이 해제되었습니다.' : '의상이 숨김 처리되었습니다.', 'success');
+  }, [outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
 
   const handleSaveBaseOutfitAsCustom = useCallback(() => {
     if (!selectedBaseOutfit) return;
@@ -1326,7 +1414,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       showToast('의상 이름과 프롬프트를 입력해주세요.', 'warning');
       return;
     }
-    const categoryId = selectedBaseOutfit.categories?.[0] || 'ROYAL';
+    const categoryId = editingBaseOutfitCategory || selectedBaseOutfit.categories?.[0] || 'ROYAL';
     const newOutfit: Outfit = {
       id: `outfit-${Date.now()}`,
       name: editingBaseOutfitName.trim(),
@@ -1348,13 +1436,50 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     onOutfitSelect?.(outfit);
   }, [onOutfitSelect]);
 
+  const openOutfitEditModal = useCallback(() => {
+    setShowOutfitEditModal(true);
+  }, []);
+
+  const closeOutfitEditModal = useCallback(() => {
+    setShowOutfitEditModal(false);
+  }, []);
+
+  const handleModalMouseDown = (e: React.MouseEvent) => {
+    setIsModalDragging(true);
+    setModalDragOffset({
+      x: e.clientX - modalPosition.x,
+      y: e.clientY - modalPosition.y
+    });
+  };
+
+  useEffect(() => {
+    if (!isModalDragging) return;
+    const handleMove = (e: MouseEvent) => {
+      setModalPosition({
+        x: e.clientX - modalDragOffset.x,
+        y: e.clientY - modalDragOffset.y
+      });
+    };
+    const handleUp = () => {
+      setIsModalDragging(false);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [isModalDragging, modalDragOffset.x, modalDragOffset.y]);
+
   useEffect(() => {
     if (selectedOutfit) {
       setEditingOutfitName(selectedOutfit.name);
       setEditingOutfitPrompt(selectedOutfit.prompt);
+      setEditingOutfitCategory(selectedOutfit.category);
     } else {
       setEditingOutfitName('');
       setEditingOutfitPrompt('');
+      setEditingOutfitCategory('');
     }
   }, [selectedOutfit]);
 
@@ -1362,11 +1487,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     if (selectedBaseOutfit) {
       setEditingBaseOutfitName(selectedBaseOutfit.translation || selectedBaseOutfit.name);
       setEditingBaseOutfitPrompt(selectedBaseOutfit.prompt || selectedBaseOutfit.name);
+      const overrideCategory = baseOutfitOverrides.categoryOverrides?.[selectedBaseOutfit.id];
+      setEditingBaseOutfitCategory(overrideCategory || selectedBaseOutfit.categories?.[0] || 'ROYAL');
     } else {
       setEditingBaseOutfitName('');
       setEditingBaseOutfitPrompt('');
+      setEditingBaseOutfitCategory('');
     }
-  }, [selectedBaseOutfit]);
+  }, [baseOutfitOverrides.categoryOverrides, selectedBaseOutfit]);
 
   // 기본 의상 선택 핸들러 (프롬프트 포함)
   const handleSelectBaseOutfit = useCallback((item: BaseOutfitItem) => {
@@ -2152,6 +2280,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   >
                     전체 생성
                   </button>
+                  <button
+                    onClick={handleRefreshOutfitPreviewMap}
+                    className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[10px] font-bold text-slate-200 rounded-lg transition-all"
+                    title="썸네일 새로고침"
+                  >
+                    새로고침
+                  </button>
                   {batchFailedOutfitIds.length > 0 && (
                     <button
                       onClick={() => {
@@ -2186,6 +2321,24 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       className="accent-emerald-500"
                     />
                     기본 의상 포함
+                  </label>
+                  <label className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={showHiddenBaseOutfits}
+                      onChange={e => setShowHiddenBaseOutfits(e.target.checked)}
+                      className="accent-emerald-500"
+                    />
+                    숨김 포함
+                  </label>
+                  <label className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={showHiddenUserOutfits}
+                      onChange={e => setShowHiddenUserOutfits(e.target.checked)}
+                      className="accent-emerald-500"
+                    />
+                    사용자 숨김 포함
                   </label>
                   <button
                     onClick={() => setShowAddCategory(true)}
@@ -2336,115 +2489,180 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 </div>
               )}
 
-              {(selectedOutfit || selectedBaseOutfit) && (
-                <div className="p-3 bg-slate-800/60 border border-emerald-500/30 rounded-xl space-y-3 shadow-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-emerald-400">
-                      {selectedOutfit ? '선택된 의상 편집' : '기본 의상 편집'}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSelectedOutfitId(null);
-                        setSelectedBaseOutfitId(null);
-                      }}
-                      className="text-slate-500 hover:text-white"
+              {showOutfitEditModal && (selectedOutfit || selectedBaseOutfit) && (
+                <div
+                  className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={closeOutfitEditModal}
+                >
+                  <div
+                    className="w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}
+                  >
+                    <div
+                      className="flex items-center justify-between cursor-move select-none mb-3"
+                      onMouseDown={handleModalMouseDown}
                     >
-                      <X size={14} />
-                    </button>
+                      <span className="text-sm font-bold text-emerald-400">
+                        {selectedOutfit ? '의상 편집' : '기본 의상 편집'}
+                      </span>
+                      <button
+                        onClick={closeOutfitEditModal}
+                        className="text-slate-500 hover:text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
+                      <div className="space-y-3">
+                        {selectedOutfit ? (
+                          <>
+                        <input
+                          type="text"
+                          value={editingOutfitName}
+                          onChange={e => setEditingOutfitName(e.target.value)}
+                          placeholder="의상 이름"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                        />
+                        <textarea
+                          value={editingOutfitPrompt}
+                          onChange={e => setEditingOutfitPrompt(e.target.value)}
+                          placeholder="의상 프롬프트 (영어)"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                        />
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500">카테고리 이동</label>
+                          <select
+                            value={editingOutfitCategory}
+                            onChange={(e) => setEditingOutfitCategory(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                          >
+                            {outfitCategories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleUpdateOutfit}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            저장
+                          </button>
+                          <button
+                            onClick={() => handleGenerateOutfitPreview(selectedOutfit)}
+                            disabled={isGeneratingOutfitPreview}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingOutfitPreview ? '생성 중...' : '재생성'}
+                          </button>
+                          <button
+                            onClick={() => handleGenerateOutfitPreviewWithAI(editingOutfitPrompt.trim() || selectedOutfit.prompt, selectedOutfit.id, 'user')}
+                            disabled={isGeneratingOutfitPreviewAI}
+                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleToggleUserOutfitHidden}
+                          className={`w-full py-2 text-[11px] font-bold rounded-lg transition-all ${
+                            selectedOutfit.hidden
+                              ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                              : 'bg-rose-700/80 hover:bg-rose-600 text-white'
+                          }`}
+                        >
+                          {selectedOutfit.hidden ? '숨김 해제' : '숨김 처리'}
+                        </button>
+                          </>
+                        ) : selectedBaseOutfit ? (
+                          <>
+                        <input
+                          type="text"
+                          value={editingBaseOutfitName}
+                          onChange={e => setEditingBaseOutfitName(e.target.value)}
+                          placeholder="의상 이름"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                        />
+                        <textarea
+                          value={editingBaseOutfitPrompt}
+                          onChange={e => setEditingBaseOutfitPrompt(e.target.value)}
+                          placeholder="의상 프롬프트 (영어)"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                        />
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500">카테고리 이동</label>
+                          <select
+                            value={editingBaseOutfitCategory}
+                            onChange={(e) => setEditingBaseOutfitCategory(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                          >
+                            {outfitCategories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveBaseOutfitAsCustom}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            사용자 의상으로 저장
+                          </button>
+                          <button
+                            onClick={() => handleMoveBaseOutfitCategory(selectedBaseOutfit.id, editingBaseOutfitCategory || selectedBaseOutfit.categories?.[0] || 'ROYAL')}
+                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            카테고리 변경
+                          </button>
+                          <button
+                            onClick={() => handleGenerateBaseOutfitPreview(selectedBaseOutfit)}
+                            disabled={isGeneratingBaseOutfitPreview}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingBaseOutfitPreview ? '생성 중...' : '재생성'}
+                          </button>
+                          <button
+                            onClick={() => handleGenerateOutfitPreviewWithAI(editingBaseOutfitPrompt.trim() || selectedBaseOutfit.prompt || selectedBaseOutfit.name, selectedBaseOutfit.id, 'base')}
+                            disabled={isGeneratingBaseOutfitPreviewAI}
+                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingBaseOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleToggleBaseOutfitHidden(selectedBaseOutfit.id)}
+                          className={`w-full py-2 text-[11px] font-bold rounded-lg transition-all ${
+                            isSelectedBaseOutfitHidden
+                              ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                              : 'bg-rose-700/80 hover:bg-rose-600 text-white'
+                          }`}
+                        >
+                          {isSelectedBaseOutfitHidden ? '숨김 해제' : '숨김 처리'}
+                        </button>
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                        <div className="text-[10px] font-bold text-slate-400 mb-2">미리보기</div>
+                        {selectedOutfit?.imageUrl ? (
+                          <img
+                            src={selectedOutfit.imageUrl}
+                            alt={selectedOutfit.name}
+                            className="w-full h-auto max-h-[360px] object-contain rounded-lg border border-slate-700"
+                          />
+                        ) : selectedBaseOutfit && baseOutfitPreviewMap[selectedBaseOutfit.id] ? (
+                          <img
+                            src={baseOutfitPreviewMap[selectedBaseOutfit.id]}
+                            alt={selectedBaseOutfit.translation || selectedBaseOutfit.name}
+                            className="w-full h-auto max-h-[360px] object-contain rounded-lg border border-slate-700"
+                          />
+                        ) : (
+                          <div className="text-[11px] text-slate-500">미리보기 이미지가 없습니다.</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  {selectedOutfit ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editingOutfitName}
-                        onChange={e => setEditingOutfitName(e.target.value)}
-                        placeholder="의상 이름"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
-                      />
-                      <textarea
-                        value={editingOutfitPrompt}
-                        onChange={e => setEditingOutfitPrompt(e.target.value)}
-                        placeholder="의상 프롬프트 (영어)"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleUpdateOutfit}
-                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
-                        >
-                          저장
-                        </button>
-                        <button
-                          onClick={() => handleGenerateOutfitPreview(selectedOutfit)}
-                          disabled={isGeneratingOutfitPreview}
-                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
-                        >
-                          {isGeneratingOutfitPreview ? '생성 중...' : '재생성'}
-                        </button>
-                        <button
-                          onClick={() => handleGenerateOutfitPreviewWithAI(editingOutfitPrompt.trim() || selectedOutfit.prompt, selectedOutfit.id, 'user')}
-                          disabled={isGeneratingOutfitPreviewAI}
-                          className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
-                        >
-                          {isGeneratingOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
-                        </button>
-                      </div>
-                      {selectedOutfit.imageUrl && (
-                        <button
-                          onClick={() => setLightboxImage(selectedOutfit.imageUrl || null)}
-                          className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all"
-                        >
-                          미리보기 확대 보기
-                        </button>
-                      )}
-                    </>
-                  ) : selectedBaseOutfit ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editingBaseOutfitName}
-                        onChange={e => setEditingBaseOutfitName(e.target.value)}
-                        placeholder="의상 이름"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
-                      />
-                      <textarea
-                        value={editingBaseOutfitPrompt}
-                        onChange={e => setEditingBaseOutfitPrompt(e.target.value)}
-                        placeholder="의상 프롬프트 (영어)"
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSaveBaseOutfitAsCustom}
-                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
-                        >
-                          사용자 의상으로 저장
-                        </button>
-                        <button
-                          onClick={() => handleGenerateBaseOutfitPreview(selectedBaseOutfit)}
-                          disabled={isGeneratingBaseOutfitPreview}
-                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
-                        >
-                          {isGeneratingBaseOutfitPreview ? '생성 중...' : '재생성'}
-                        </button>
-                        <button
-                          onClick={() => handleGenerateOutfitPreviewWithAI(editingBaseOutfitPrompt.trim() || selectedBaseOutfit.prompt || selectedBaseOutfit.name, selectedBaseOutfit.id, 'base')}
-                          disabled={isGeneratingBaseOutfitPreviewAI}
-                          className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
-                        >
-                          {isGeneratingBaseOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
-                        </button>
-                      </div>
-                      {baseOutfitPreviewMap[selectedBaseOutfit.id] && (
-                        <button
-                          onClick={() => setLightboxImage(baseOutfitPreviewMap[selectedBaseOutfit.id])}
-                          className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all"
-                        >
-                          미리보기 확대 보기
-                        </button>
-                      )}
-                    </>
-                  ) : null}
                 </div>
               )}
 
@@ -2543,13 +2761,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                     </div>
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <div className={`text-[10px] font-bold truncate ${
-                                      selectedOutfitId === outfit.id
-                                        ? 'text-emerald-400'
-                                        : 'text-slate-300'
-                                    }`}>
-                                      {outfit.name}
-                                    </div>
+                                  <div className={`text-[10px] font-bold truncate ${
+                                    selectedOutfitId === outfit.id
+                                      ? 'text-emerald-400'
+                                      : 'text-slate-300'
+                                  }`}>
+                                    {outfit.name}
+                                    {outfit.hidden && (
+                                      <span className="ml-1 text-[9px] text-rose-400">숨김</span>
+                                    )}
+                                  </div>
                                     {/* 프롬프트 미리보기 */}
                                     <div className="text-[9px] text-slate-500 truncate mt-0.5">
                                       {outfit.prompt.substring(0, 50)}...
@@ -2564,6 +2785,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                     title="프롬프트 복사"
                                   >
                                     {copiedPromptId === outfit.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectOutfit(outfit);
+                                      openOutfitEditModal();
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-amber-300 transition-all flex-shrink-0"
+                                    title="수정"
+                                  >
+                                    <Pencil size={12} />
                                   </button>
                                   <button
                                     onClick={(e) => {
@@ -2593,7 +2825,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                   selectedBaseOutfitId === item.id
                                     ? 'bg-emerald-500/10'
                                     : 'hover:bg-slate-800/30'
-                                }`}
+                                } ${item.isHidden ? 'opacity-40' : ''}`}
                               >
                                 {baseOutfitPreviewMap[item.id] ? (
                                   <img
@@ -2621,6 +2853,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                       : 'text-slate-400'
                                   }`}>
                                     {item.translation || item.name}
+                                    {item.isHidden && (
+                                      <span className="ml-1 text-[9px] text-rose-400">숨김</span>
+                                    )}
                                   </div>
                                   {/* 프롬프트 미리보기 (있는 경우) */}
                                   {item.prompt && (
@@ -2641,6 +2876,18 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                                     {copiedPromptId === item.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                                   </button>
                                 )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBaseOutfitId(item.id);
+                                    setSelectedOutfitId(null);
+                                    openOutfitEditModal();
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-amber-300 transition-all flex-shrink-0"
+                                  title="수정"
+                                >
+                                  <Pencil size={12} />
+                                </button>
                               </div>
                             ))}
                           </div>

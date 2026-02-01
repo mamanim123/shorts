@@ -16,6 +16,7 @@ if (!fs.existsSync(USER_DATA_BASE)) fs.mkdirSync(USER_DATA_BASE, { recursive: tr
 let scriptBrowser;
 let scriptPage;
 let scriptCdpClient = null;
+let scriptBrowserLaunchPromise = null;
 
 // 🔹 [DEPRECATED] 이미지 브라우저는 더 이상 사용하지 않음 - scriptBrowser로 통합됨
 // 하위 호환성을 위해 별칭만 유지
@@ -24,6 +25,7 @@ let imagePage = null;
 let imageCdpClient = null;
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 
 const SERVICES = {
     GEMINI: {
@@ -80,59 +82,87 @@ const SERVICES = {
 // 🔹 비디오 생성용 브라우저
 let videoBrowser;
 let videoPage;
+let videoBrowserLaunchPromise = null;
 let videoGenerationInProgress = false;
+
 
 // 🔹 대본 생성용 브라우저 실행
 export async function launchScriptBrowser() {
-    try {
-        if (scriptBrowser && scriptBrowser.isConnected()) {
-            if (scriptPage && !scriptPage.isClosed()) {
-                return;
-            }
-        }
-
-        if (scriptBrowser) {
-            try { await scriptBrowser.close(); } catch (e) { }
-        }
-
-        const headless = false;
-        console.log(`[Puppeteer Script] Headless mode: ${headless}`);
-
-        scriptBrowser = await puppeteer.launch({
-            headless,
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            defaultViewport: null,
-            ignoreDefaultArgs: ['--enable-automation'],
-            args: [
-                '--window-size=1024,768',
-                '--window-position=0,0',  // 왼쪽에 배치
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-blink-features=AutomationControlled',
-                '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            ],
-            userDataDir: path.join(USER_DATA_BASE, 'script_gen')
-        });
-
-        const pages = await scriptBrowser.pages();
-        scriptPage = pages.length > 0 ? pages[0] : await scriptBrowser.newPage();
-
-        await scriptPage.setBypassCSP(true);
-        const context = scriptPage.browserContext();
-        await context.overridePermissions('https://gemini.google.com', ['clipboard-read', 'clipboard-write']);
-
-        scriptBrowser.on('disconnected', () => {
-            console.log("[Puppeteer Script] 📝 Browser disconnected.");
-            scriptBrowser = null;
-            scriptPage = null;
-        });
-
-        console.log("[Puppeteer Script] 📝 Browser launched successfully.");
-    } catch (error) {
-        console.error("[Puppeteer Script] Failed to launch browser:", error);
-        throw error;
+    if (scriptBrowserLaunchPromise) {
+        return scriptBrowserLaunchPromise;
     }
+
+    scriptBrowserLaunchPromise = (async () => {
+        try {
+            if (scriptBrowser && scriptBrowser.isConnected()) {
+                if (scriptPage && !scriptPage.isClosed()) {
+                    return;
+                }
+            }
+
+            if (scriptBrowser) {
+                try { await scriptBrowser.close(); } catch (e) { }
+            }
+
+            const userDataDir = path.join(USER_DATA_BASE, 'script_gen');
+            
+            // 🔹 [NEW] 강제 점유 해제 (Windows lockfile 대응)
+            const lockFile = path.join(userDataDir, 'lockfile');
+            if (fs.existsSync(lockFile)) {
+                try {
+                    console.log("[Puppeteer Script] 🔒 Stale lockfile detected, removing...");
+                    fs.unlinkSync(lockFile);
+                } catch (e) {
+                    console.warn("[Puppeteer Script] ⚠️ Failed to remove lockfile, browser might be actually running:", e.message);
+                }
+            }
+
+            const headless = false;
+            console.log(`[Puppeteer Script] Headless mode: ${headless}`);
+
+            scriptBrowser = await puppeteer.launch({
+                headless,
+                executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                defaultViewport: null,
+                ignoreDefaultArgs: ['--enable-automation'],
+                args: [
+                    '--window-size=1024,768',
+                    '--window-position=0,0',  // 왼쪽에 배치
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                    '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                ],
+                userDataDir
+            });
+
+            const pages = await scriptBrowser.pages();
+            scriptPage = pages.length > 0 ? pages[0] : await scriptBrowser.newPage();
+
+            await scriptPage.setBypassCSP(true);
+            const context = scriptPage.browserContext();
+            await context.overridePermissions('https://gemini.google.com', ['clipboard-read', 'clipboard-write']);
+
+            scriptBrowser.on('disconnected', () => {
+                console.log("[Puppeteer Script] 📝 Browser disconnected.");
+                scriptBrowser = null;
+                scriptPage = null;
+                scriptBrowserLaunchPromise = null;
+            });
+
+            console.log("[Puppeteer Script] 📝 Browser launched successfully.");
+        } catch (error) {
+            console.error("[Puppeteer Script] Failed to launch browser:", error);
+            scriptBrowserLaunchPromise = null;
+            throw error;
+        } finally {
+            scriptBrowserLaunchPromise = null;
+        }
+    })();
+
+    return scriptBrowserLaunchPromise;
 }
+
 
 export function getScriptPage() {
     return scriptPage;
@@ -151,53 +181,79 @@ export async function launchImageBrowser() {
 
 // 🔹 비디오 생성용 브라우저 실행
 export async function launchVideoBrowser() {
-    try {
-        if (videoBrowser && videoBrowser.isConnected()) {
-            if (videoPage && !videoPage.isClosed()) {
-                return;
-            }
-        }
-
-        if (videoBrowser) {
-            try { await videoBrowser.close(); } catch (e) { }
-        }
-
-        const headless = false;
-        console.log(`[Puppeteer Video] Headless mode: ${headless}`);
-
-        videoBrowser = await puppeteer.launch({
-            headless,
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            defaultViewport: null,
-            ignoreDefaultArgs: ['--enable-automation'],
-            args: [
-                '--window-size=1280,800',
-                '--window-position=50,50',
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-blink-features=AutomationControlled',
-                '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            ],
-            userDataDir: path.join(USER_DATA_BASE, 'video_gen')
-        });
-
-        const pages = await videoBrowser.pages();
-        videoPage = pages.length > 0 ? pages[0] : await videoBrowser.newPage();
-
-        await videoPage.setBypassCSP(true);
-
-        videoBrowser.on('disconnected', () => {
-            console.log("[Puppeteer Video] 🎞️ Browser disconnected.");
-            videoBrowser = null;
-            videoPage = null;
-        });
-
-        console.log("[Puppeteer Video] 🎞️ Browser launched successfully.");
-    } catch (error) {
-        console.error("[Puppeteer Video] Failed to launch browser:", error);
-        throw error;
+    if (videoBrowserLaunchPromise) {
+        return videoBrowserLaunchPromise;
     }
+
+    videoBrowserLaunchPromise = (async () => {
+        try {
+            if (videoBrowser && videoBrowser.isConnected()) {
+                if (videoPage && !videoPage.isClosed()) {
+                    return;
+                }
+            }
+
+            if (videoBrowser) {
+                try { await videoBrowser.close(); } catch (e) { }
+            }
+
+            const userDataDir = path.join(USER_DATA_BASE, 'video_gen');
+            
+            // 🔹 [NEW] 강제 점유 해제
+            const lockFile = path.join(userDataDir, 'lockfile');
+            if (fs.existsSync(lockFile)) {
+                try {
+                    console.log("[Puppeteer Video] 🔒 Stale lockfile detected, removing...");
+                    fs.unlinkSync(lockFile);
+                } catch (e) {
+                    console.warn("[Puppeteer Video] ⚠️ Failed to remove lockfile:", e.message);
+                }
+            }
+
+            const headless = false;
+            console.log(`[Puppeteer Video] Headless mode: ${headless}`);
+
+            videoBrowser = await puppeteer.launch({
+                headless,
+                executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                defaultViewport: null,
+                ignoreDefaultArgs: ['--enable-automation'],
+                args: [
+                    '--window-size=1280,800',
+                    '--window-position=50,50',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                    '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                ],
+                userDataDir
+            });
+
+            const pages = await videoBrowser.pages();
+            videoPage = pages.length > 0 ? pages[0] : await videoBrowser.newPage();
+
+            await videoPage.setBypassCSP(true);
+
+            videoBrowser.on('disconnected', () => {
+                console.log("[Puppeteer Video] 🎞️ Browser disconnected.");
+                videoBrowser = null;
+                videoPage = null;
+                videoBrowserLaunchPromise = null;
+            });
+
+            console.log("[Puppeteer Video] 🎞️ Browser launched successfully.");
+        } catch (error) {
+            console.error("[Puppeteer Video] Failed to launch browser:", error);
+            videoBrowserLaunchPromise = null;
+            throw error;
+        } finally {
+            videoBrowserLaunchPromise = null;
+        }
+    })();
+
+    return videoBrowserLaunchPromise;
 }
+
 
 // 🔹 비디오 서비스 전환
 export async function switchVideoService() {
@@ -674,7 +730,10 @@ export async function closeAllBrowsers() {
             }
         }
     }
+    scriptBrowserLaunchPromise = null;
+    videoBrowserLaunchPromise = null;
     imageBrowser = null;
+
     console.log("[Puppeteer] 🏠 All browsers cleanup attempt finished.");
     return true;
 }

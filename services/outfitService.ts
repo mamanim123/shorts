@@ -17,6 +17,7 @@ export interface OutfitItem {
   category: string;
   createdAt: string;
   imageUrl?: string;
+  hidden?: boolean;
 }
 
 export interface OutfitCatalog {
@@ -34,6 +35,7 @@ export interface OutfitPoolItem {
 
 const OUTFIT_CACHE_KEY = 'outfit-catalog-cache-v1';
 const CATEGORY_CACHE_KEY = 'outfit-category-cache-v1';
+const BASE_OVERRIDE_CACHE_KEY = 'outfit-base-overrides-v1';
 
 primeAppStorageCache();
 
@@ -92,6 +94,45 @@ const mergeCategories = (
 const getStorageValue = <T,>(key: string, fallback: T): T =>
   getAppStorageCachedValue<T>(key, fallback);
 
+export interface OutfitBaseOverrides {
+  hiddenBaseIds: string[];
+  categoryOverrides: Record<string, string>;
+}
+
+const defaultBaseOverrides: OutfitBaseOverrides = {
+  hiddenBaseIds: [],
+  categoryOverrides: {}
+};
+
+export const getOutfitBaseOverrides = (): OutfitBaseOverrides =>
+  getStorageValue<OutfitBaseOverrides>(BASE_OVERRIDE_CACHE_KEY, defaultBaseOverrides);
+
+export const setOutfitBaseOverrides = (overrides: OutfitBaseOverrides) => {
+  setAppStorageValue(BASE_OVERRIDE_CACHE_KEY, overrides);
+};
+
+const buildOverriddenCategories = (categories: string[], overrideCategory?: string): string[] => {
+  if (!overrideCategory) return categories;
+  const genderTags = categories.filter((category) => category === 'MALE' || category === 'UNISEX');
+  const rest = categories.filter((category) => category !== 'MALE' && category !== 'UNISEX' && category !== overrideCategory);
+  return [overrideCategory, ...genderTags, ...rest];
+};
+
+export const applyBaseOverrides = (
+  baseOutfits: OutfitPoolItem[],
+  overrides: OutfitBaseOverrides,
+  options: { includeHidden?: boolean } = {}
+): OutfitPoolItem[] => {
+  const hidden = new Set(overrides.hiddenBaseIds || []);
+  return baseOutfits
+    .filter((item) => (options.includeHidden ? true : !hidden.has(item.id)))
+    .map((item) => {
+      const overrideCategory = overrides.categoryOverrides?.[item.id];
+      const nextCategories = buildOverriddenCategories(item.categories || [], overrideCategory);
+      return { ...item, categories: nextCategories };
+    });
+};
+
 export const getCachedOutfitCatalog = (): OutfitCatalog => {
   const outfits = getStorageValue<OutfitItem[]>(OUTFIT_CACHE_KEY, []);
   const categories = getStorageValue<OutfitCategory[]>(CATEGORY_CACHE_KEY, FALLBACK_CATEGORIES);
@@ -141,10 +182,14 @@ export const saveOutfitCatalog = async (
 };
 
 export const buildOutfitPool = (baseOutfits: OutfitPoolItem[]): OutfitPoolItem[] => {
+  const overrides = getOutfitBaseOverrides();
+  const normalizedBaseOutfits = applyBaseOverrides(baseOutfits, overrides);
   const { outfits, categories } = getCachedOutfitCatalog();
   const categoryMap = new Map(categories.map((category) => [category.id, category]));
 
-  const savedPool: OutfitPoolItem[] = outfits.map((outfit) => {
+  const savedPool: OutfitPoolItem[] = outfits
+    .filter((outfit) => !outfit.hidden)
+    .map((outfit) => {
     const category = categoryMap.get(outfit.category);
     const gender = category?.gender || 'female';
     const tags = [outfit.category].filter(Boolean);
@@ -162,7 +207,7 @@ export const buildOutfitPool = (baseOutfits: OutfitPoolItem[]): OutfitPoolItem[]
   });
 
   const deduped = new Map<string, OutfitPoolItem>();
-  [...baseOutfits, ...savedPool].forEach((item) => {
+  [...normalizedBaseOutfits, ...savedPool].forEach((item) => {
     if (!item || !item.name) return;
     if (!deduped.has(item.name)) {
       deduped.set(item.name, item);
@@ -191,15 +236,25 @@ export const saveOutfitPreviewImage = async (
   }
 };
 
-export const fetchOutfitPreviewMap = async (): Promise<Record<string, string>> => {
-  try {
-    const response = await fetch('http://localhost:3002/api/outfit-preview-map');
-    if (!response.ok) throw new Error('failed');
-    const payload = (await response.json()) as { previews?: Record<string, string> };
-    return payload.previews || {};
-  } catch {
-    return {};
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const fetchOutfitPreviewMap = async (
+  retries: number = 3,
+  delayMs: number = 800
+): Promise<Record<string, string>> => {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch('http://localhost:3002/api/outfit-preview-map');
+      if (!response.ok) throw new Error('failed');
+      const payload = (await response.json()) as { previews?: Record<string, string> };
+      return payload.previews || {};
+    } catch {
+      if (attempt < retries) {
+        await sleep(delayMs * (attempt + 1));
+      }
+    }
   }
+  return {};
 };
 
 export const saveOutfitPreviewMap = async (previews: Record<string, string>): Promise<boolean> => {

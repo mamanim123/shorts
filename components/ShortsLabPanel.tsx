@@ -20,6 +20,8 @@ import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { useShortsLabStep2PromptRulesManager } from '../hooks/useShortsLabStep2PromptRulesManager';
 import { useShortsLabCharacterRulesManager } from '../hooks/useShortsLabCharacterRulesManager';
+import { shortsLabStep2PromptRulesManager } from '../services/shortsLabStep2PromptRulesManager';
+
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
@@ -531,13 +533,19 @@ const buildRandomAccessoriesByCharacter = (characterIds: string[], enableWinter?
         const baseAccessories = basePick ? [basePick] : [];
         let winterAccessories: string[] = [];
         if (enableWinter) {
+            // 🔹 [V3.9] 캐릭터당 고정 2개 방한용품 할당 (중복 금지)
             const picked = selectWinterItems(gender).accessories;
-            winterAccessories = picked.filter(item => !used.has(item));
-            if (winterAccessories.length === 0) {
-                winterAccessories = picked;
-            }
+            // 셔플하여 랜덤성 확보
+            const shuffled = [...picked].sort(() => Math.random() - 0.5);
+            const uniquePicked = shuffled.filter(item => !used.has(item));
+            
+            // 가용 아이템이 부족하면 중복을 허용하되 최대한 2개 확보
+            winterAccessories = (uniquePicked.length >= 2) 
+                ? uniquePicked.slice(0, 2) 
+                : [...uniquePicked, ...shuffled.filter(p => !uniquePicked.includes(p))].slice(0, 2);
         }
         const merged = Array.from(new Set([...baseAccessories, ...winterAccessories]));
+
         merged.forEach(item => used.add(item));
         map.set(id, merged);
     });
@@ -562,10 +570,14 @@ const buildAutoCharacterMap = (
             hair: '',
             body: ''
         };
-        const ageLabel = targetAgeLabel ? convertAgeToEnglish(targetAgeLabel) : '';
+        let ageLabel = targetAgeLabel ? convertAgeToEnglish(targetAgeLabel) : '';
+        // 🔹 [V3.9] 캐디(WomanD)는 타겟 연령과 상관없이 항상 20대로 고정
+        if (id === 'WomanD') ageLabel = 'early 20s';
+
         const identityText = slotMeta.gender === 'female'
             ? `A stunning Korean woman${ageLabel ? ` in her ${ageLabel}` : ''}`
             : `A handsome Korean man${ageLabel ? ` in his ${ageLabel}` : ''}`;
+
         let outfit = outfitMap.get(id) || '';
         if (enableWinter && slotMeta.gender === 'female' && outfit) {
             outfit = convertToTightLongSleeveWithShoulderLine(outfit);
@@ -641,24 +653,32 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
         return slots[cursor] || slots[slots.length - 1];
     };
 
+    // 🔹 [V3.9.2] 지능형 이름 정규화 (이름 뒤의 숫자나 수식어 제거하여 매핑 확률 높임)
+    const normalizeName = (n: string) => n.trim().replace(/\d+$/, '').replace(/(님|씨|가|는|이|가)$/, '').trim();
+
     characters.forEach((char) => {
         const name = char.name.trim();
         if (!name) return;
+        const normalized = normalizeName(name);
+
         const preferred = getPreferredSlot(name, char.role);
         if (preferred && !usedSlots.has(preferred)) {
             mapping.set(name, preferred);
+            mapping.set(normalized, preferred);
             usedSlots.add(preferred);
             return;
         }
         if (char.gender === 'male') {
             const slot = pickNextSlot(maleSlots, maleIndex);
             mapping.set(name, slot);
+            mapping.set(normalized, slot);
             usedSlots.add(slot);
             maleIndex += 1;
             return;
         }
         const slot = pickNextSlot(femaleSlots, femaleIndex);
         mapping.set(name, slot);
+        mapping.set(normalized, slot);
         usedSlots.add(slot);
         femaleIndex += 1;
     });
@@ -666,14 +686,22 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
     return mapping;
 };
 
+
 const mapLineCharactersToSlots = (
     lineCharacterNames: Array<{ line: number; characters: string[] }>,
     slotMap: Map<string, string>
 ) => {
     const lineMap = new Map<number, string[]>();
+    const normalizeName = (n: string) => n.trim().replace(/\d+$/, '').replace(/(님|씨|가|는|이|가)$/, '').trim();
+
     lineCharacterNames.forEach((item) => {
         const slots = item.characters
-            .map((name) => slotMap.get(name) || '')
+            .map((name) => {
+                const exact = slotMap.get(name);
+                if (exact) return exact;
+                const normalized = slotMap.get(normalizeName(name));
+                return normalized || '';
+            })
             .filter(Boolean);
         if (slots.length > 0) {
             lineMap.set(item.line, Array.from(new Set(slots)));
@@ -681,6 +709,7 @@ const mapLineCharactersToSlots = (
     });
     return lineMap;
 };
+
 
 const buildFallbackIdentity = (gender: 'female' | 'male', targetAgeLabel?: string) => {
     const age = convertAgeToEnglish(targetAgeLabel || '');
@@ -765,6 +794,7 @@ const EMPTY_GENRE_TEMPLATE: Omit<LabGenreGuidelineEntry, 'id'> = {
     emotionCurve: '',
     structure: '',
     killerPhrases: [],
+    allowedOutfitCategories: [],
     supportingCharacterPhrasePatterns: [],
     bodyReactions: [],
     forbiddenPatterns: [],
@@ -1043,6 +1073,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         genres: labGenres,
         backups: labGenreBackups,
         loading: genresLoading,
+        refresh: refreshGenres,
         addGenre,
         updateGenre,
         deleteGenre,
@@ -1053,9 +1084,11 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         renameBackup,
         updateBackupContent
     } = useShortsLabGenreManager();
+
     const {
         rules: labPromptRules,
         backups: labPromptRuleBackups,
+        refresh: refreshStep1Rules,
         updateRules: updatePromptRules,
         resetRules: resetPromptRules,
         createBackup: createPromptRulesBackup,
@@ -1067,6 +1100,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const {
         rules: labStep2Rules,
         backups: labStep2Backups,
+        refresh: refreshStep2Rules,
         updateRules: updateStep2Rules,
         resetRules: resetStep2Rules,
         createBackup: createStep2Backup,
@@ -1077,19 +1111,22 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     } = useShortsLabStep2PromptRulesManager();
     const {
         rules: characterRules,
-        backups: characterRulesBackups,
+        backups: characterRulesBackups, // 원본 변수명 유지
+        refresh: refreshCharacterRules,
         updateRules: updateCharacterRules,
         resetRules: resetCharacterRules,
-        createBackup: createCharacterRulesBackup,
-        restoreBackup: restoreCharacterRulesBackup,
-        deleteBackup: deleteCharacterRulesBackup,
-        renameBackup: renameCharacterRulesBackup,
-        updateBackupContent: updateCharacterRulesBackupContent,
+        createBackup: createCharacterRulesBackup, // 원본 변수명 유지
+        restoreBackup: restoreCharacterRulesBackup, // 원본 변수명 유지
+        deleteBackup: deleteCharacterRulesBackup, // 원본 변수명 유지
+        renameBackup: renameCharacterRulesBackup, // 원본 변수명 유지
+        updateBackupContent: updateCharacterRulesBackupContent, // 원본 변수명 유지
         addFemaleCharacter,
         addMaleCharacter,
         deleteFemaleCharacter,
-        deleteMaleCharacter
+        deleteMaleCharacter,
+        updateCharacter
     } = useShortsLabCharacterRulesManager();
+
 
     // 지침 전체 보기 모달 상태는 GenreManagementModal에서 관리합니다
 
@@ -2038,14 +2075,16 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             .join(', ');
 
         if (cameraPrompt) parts.push(cameraPrompt);
+
+        // 🔹 [V3.9.2] 마마님 요청: 동작(Action)과 표정을 최우선 배치하여 역동성 강화
+        if (guidance?.expression) parts.push(`[${guidance.expression}]`);
+        if (actionPrompt) parts.push(actionPrompt);
+
         if (environmentPrompt) parts.push(environmentPrompt);
         if (identityBlock) parts.push(identityBlock);
-        if (characterIds.length === 1) {
-            if (guidance?.expression) parts.push(`[${guidance.expression}]`);
-            if (actionPrompt) parts.push(actionPrompt);
-        }
 
         // Suppress AI's attempt to REDESCRIBE characters if we already have the block
+
         // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
         let cleanedRemainder = remainder;
         if (hadPersonMarkers) {
@@ -2833,6 +2872,12 @@ ${scriptInput}
     // AI 대본 생성 (신규!)
     // ============================================
 
+    const getAllowedOutfitCategoriesForGenre = useCallback((genreId: string): string[] | undefined => {
+        const genreData = labGenres.find(g => g.id === genreId);
+        const allowed = genreData?.allowedOutfitCategories;
+        return Array.isArray(allowed) && allowed.length > 0 ? allowed : undefined;
+    }, [labGenres]);
+
     const handleAiGenerate = async () => {
         if (!aiTopic.trim()) {
             setGenerationError('주제를 입력해주세요.');
@@ -2845,6 +2890,7 @@ ${scriptInput}
         try {
             // Find selected genre guideline from dynamic genres
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
             const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
                 ? {
                     name: selectedGenreData.name,
@@ -2857,7 +2903,8 @@ ${scriptInput}
                     forbiddenPatterns: selectedGenreData.forbiddenPatterns,
                     goodTwistExamples: selectedGenreData.goodTwistExamples,
                     supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
-                    badTwistExamples: selectedGenreData.badTwistExamples
+                    badTwistExamples: selectedGenreData.badTwistExamples,
+                    allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
                 }
                 : undefined;
 
@@ -2869,7 +2916,8 @@ ${scriptInput}
                 gender: settings.koreanGender,
                 genreGuideOverride,
                 enableWinterAccessories: enableWinterAccessories,
-                useRandomOutfits
+                useRandomOutfits,
+                allowedOutfitCategories
             });
 
             // 선택된 AI 서비스 (기본값: GEMINI)
@@ -3082,8 +3130,18 @@ ${scriptInput}
         setGenerationError(null);
 
         try {
+            // 🔹 [V3.9.2] 최신 규칙 강제 로드 (매니저 설정 실시간 동기화)
+            await Promise.all([
+                refreshStep1Rules(),
+                refreshStep2Rules(),
+                refreshCharacterRules(),
+                refreshGenres()
+            ]);
+
             const inferredTopicGender = inferGenderFromText(aiTopic, settings.koreanGender);
+
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
             const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
                 ? {
                     name: selectedGenreData.name,
@@ -3096,7 +3154,8 @@ ${scriptInput}
                     forbiddenPatterns: selectedGenreData.forbiddenPatterns,
                     goodTwistExamples: selectedGenreData.goodTwistExamples,
                     supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
-                    badTwistExamples: selectedGenreData.badTwistExamples
+                    badTwistExamples: selectedGenreData.badTwistExamples,
+                    allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
                 }
                 : undefined;
 
@@ -3106,7 +3165,8 @@ ${scriptInput}
                 targetAge: aiTargetAge,
                 gender: inferredTopicGender,
                 genreGuideOverride,
-                enableWinterAccessories
+                enableWinterAccessories,
+                allowedOutfitCategories
             });
 
             const selectedService = targetService || 'GEMINI';
@@ -3200,9 +3260,9 @@ ${scriptInput}
                 if (useRandomOutfits) {
                     // 랜덤 선택 ON인 경우 로컬 카탈로그에서 미리 할당
                     if (gender === 'female') {
-                        outfit = pickFemaleOutfit(aiGenre, aiTopic, []);
+                        outfit = pickFemaleOutfit(aiGenre, aiTopic, [], allowedOutfitCategories);
                     } else {
-                        outfit = pickMaleOutfit(aiTopic, []);
+                        outfit = pickMaleOutfit(aiTopic, [], allowedOutfitCategories);
                     }
                 }
 
@@ -3214,11 +3274,16 @@ ${scriptInput}
                 };
             });
 
+            // 🔹 [V3.9.3] autoCharacterMap 초기화를 위로 이동하여 참조 오류 방지 및 일관성 확보
+            const characterIds = characterList.map(item => item.id);
+            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
+
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
                 characters: characterList,
                 enableWinterAccessories: enableWinterAccessories
             });
+
 
             showToast(`${selectedService} AI로 씬 분해/프롬프트 생성을 진행합니다...`, 'info');
             const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {
@@ -3245,21 +3310,10 @@ ${scriptInput}
             let scenesSource = parsedResult.scenes || [];
             const llmOutfits = parsedResult.lockedOutfits || {};
 
-            // [v3.5.4] 생성된 프롬프트에 겨울 룩(방한용품 및 정밀 필터링) 최종 적용
-            if (enableWinterAccessories && scenesSource.length > 0) {
-                scenesSource = scenesSource.map(s => {
-                    const gender = (s.characterIds?.[0]?.startsWith('Man')) ? 'male' : 'female';
-                    const winterApplied = applyWinterLookToExistingPrompt(s.longPrompt, '', gender);
-                    return {
-                        ...s,
-                        longPrompt: winterApplied.longPrompt
-                    };
-                });
-            }
-
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');
             }
+
 
             const consolidatedPayload = {
                 title: scriptTitle,
@@ -3305,10 +3359,8 @@ ${scriptInput}
                 console.warn('Empty folder cleanup skipped:', cleanupError);
             }
 
-            const characterIds = characterList.map(item => item.id);
-            let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
-
             // [v3.5.3] LLM 선택 모드일 경우 AI가 고른 의상을 맵에 덮어쓰기 + 마마님 겨울 변환 로직 적용
+
             if (!useRandomOutfits && Object.keys(llmOutfits).length > 0) {
                 autoCharacterMap.forEach((meta, id) => {
                     const slotKey = id.charAt(0).toLowerCase() + id.slice(1);
@@ -4773,6 +4825,7 @@ ${scriptInput}
                 <GenreManagementModal
                     genres={labGenres}
                     backups={labGenreBackups}
+                    outfitCategories={outfitCatalog.categories || []}
                     promptRules={labPromptRules}
                     promptRuleBackups={labPromptRuleBackups}
                     onClose={() => {
@@ -4974,6 +5027,7 @@ interface GenreManagementModalProps {
         createdAt: string;
         genres: LabGenreGuidelineEntry[];
     }[];
+    outfitCategories: OutfitCategory[];
     promptRules: unknown;
     promptRuleBackups: {
         id: string;
@@ -5030,6 +5084,7 @@ interface GenreManagementModalProps {
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     genres,
     backups,
+    outfitCategories,
     promptRules,
     promptRuleBackups,
     step2Rules,
@@ -5115,6 +5170,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         emotionCurve: '',
         structure: '',
         killerPhrases: [],
+        allowedOutfitCategories: [],
         supportingCharacterPhrasePatterns: [],
         bodyReactions: [],
         forbiddenPatterns: [],
@@ -5185,6 +5241,11 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [characterRulesEditError, setCharacterRulesEditError] = useState<string | null>(null);
     const [selectedCharacterRulesBackupId, setSelectedCharacterRulesBackupId] = useState<string | null>(null);
     const [characterRulesBackupName, setCharacterRulesBackupName] = useState('');
+    const [editingCharacterRulesBackupId, setEditingCharacterRulesBackupId] = useState<string | null>(null);
+    const [characterRulesBackupEditText, setCharacterRulesBackupEditText] = useState('');
+    const [characterRulesBackupEditError, setCharacterRulesBackupEditError] = useState<string | null>(null);
+    const [characterRulesBackupEdits, setCharacterRulesBackupEdits] = useState<Record<string, string>>({});
+
     // 아코디언 상태 (펼쳐진 캐릭터 ID들)
     const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
     // 섹션 아코디언 상태 (여성/남성 캐릭터 섹션 펼침/접힘)
@@ -5246,6 +5307,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         const cleanedData: LabGenreGuidelineEntry = {
             ...formData,
             killerPhrases: (formData.killerPhrases || []).map(s => s.trim()).filter(Boolean),
+            allowedOutfitCategories: (formData.allowedOutfitCategories || []).map(s => s.trim()).filter(Boolean),
             supportingCharacterPhrasePatterns: (formData.supportingCharacterPhrasePatterns || []).map(s => s.trim()).filter(Boolean),
             bodyReactions: (formData.bodyReactions || []).map(s => s.trim()).filter(Boolean),
             forbiddenPatterns: (formData.forbiddenPatterns || []).map(s => s.trim()).filter(Boolean),
@@ -5583,6 +5645,33 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
+    const handleOpenCharacterRulesBackupEditor = (backupId: string) => {
+        const backup = characterRulesBackups?.find(item => item.id === backupId);
+        if (!backup) return;
+        setEditingCharacterRulesBackupId(backupId);
+        setCharacterRulesBackupEditText(JSON.stringify(backup.rules, null, 2));
+        setCharacterRulesBackupEditError(null);
+    };
+
+    const handleCloseCharacterRulesBackupEditor = () => {
+        setEditingCharacterRulesBackupId(null);
+        setCharacterRulesBackupEditText('');
+        setCharacterRulesBackupEditError(null);
+    };
+
+    const handleSaveCharacterRulesBackupContent = async () => {
+        if (!editingCharacterRulesBackupId || !onCharacterRulesBackupEdit) return;
+        try {
+            const parsed = JSON.parse(characterRulesBackupEditText);
+            await onCharacterRulesBackupEdit(editingCharacterRulesBackupId, parsed);
+            handleCloseCharacterRulesBackupEditor();
+        } catch (err) {
+            console.error('Failed to save character rules backup content:', err);
+            setCharacterRulesBackupEditError('JSON 형식이 올바르지 않습니다.');
+        }
+    };
+
+
     // Character Import Modal State
     const [showImportModal, setShowImportModal] = useState(false);
     const [importTargetGender, setImportTargetGender] = useState<'female' | 'male'>('female');
@@ -5722,6 +5811,18 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         setFormData(prev => ({ ...prev, [key]: lines }));
     };
 
+    const toggleAllowedOutfitCategory = (categoryId: string) => {
+        setFormData((prev) => {
+            const current = new Set(prev.allowedOutfitCategories || []);
+            if (current.has(categoryId)) {
+                current.delete(categoryId);
+            } else {
+                current.add(categoryId);
+            }
+            return { ...prev, allowedOutfitCategories: Array.from(current) };
+        });
+    };
+
     const arrayToText = (arr: string[] | undefined): string => {
         return arr?.join('\n') || '';
     };
@@ -5740,6 +5841,11 @@ ${genre.emotionCurve || ''}
 
 📖 구조 (Structure)
 ${genre.structure || ''}
+
+👗 허용 의상 카테고리
+${genre.allowedOutfitCategories && genre.allowedOutfitCategories.length > 0
+        ? genre.allowedOutfitCategories.map(cat => `  - ${cat}`).join('\n')
+        : '  - 전체 허용'}
 
 🎯 킬러 프레이즈 (Killer Phrases)
 ${genre.killerPhrases?.map(p => `  - "${p}"`).join('\n') || '  - 없음'}
@@ -6133,6 +6239,38 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             placeholder="[HOOK] ..."
                                         />
                                     </div>
+
+                                    <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-slate-300">허용 의상 카테고리</label>
+                                            <span className="text-[10px] text-slate-500">
+                                                {formData.allowedOutfitCategories?.length ? `${formData.allowedOutfitCategories.length}개 선택` : '전체 허용'}
+                                            </span>
+                                        </div>
+                                        {outfitCategories.length === 0 ? (
+                                            <div className="text-[11px] text-slate-500">의상 카테고리를 불러오는 중...</div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {outfitCategories.map((category) => {
+                                                    const isChecked = (formData.allowedOutfitCategories || []).includes(category.id);
+                                                    return (
+                                                        <label key={category.id} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => toggleAllowedOutfitCategory(category.id)}
+                                                                className="accent-purple-500"
+                                                            />
+                                                            <span>{category.emoji} {category.name}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        <div className="text-[10px] text-slate-500 mt-2">
+                                            선택한 카테고리만 랜덤 의상 선택에 사용됩니다.
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Array fields */}
@@ -6455,31 +6593,52 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         : 'border-slate-800 bg-slate-900'
                                                         }`}
                                                 >
-                                                    <button
-                                                        onClick={() => setSelectedStep2BackupId(backup.id)}
-                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedStep2BackupId === backup.id
-                                                            ? 'text-white'
-                                                            : 'text-slate-200 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        <div>{backup.name || `백업 ${index + 1}`}</div>
-                                                        <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
-                                                    </button>
-                                                    <div className="px-3 pb-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                if (selectedStep2BackupId === backup.id) {
-                                                                    setSelectedStep2BackupId(null);
+                                                    <div className="p-3 space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={step2BackupEdits[backup.id] ?? backup.name}
+                                                                onChange={(e) =>
+                                                                    setStep2BackupEdits((prev) => ({ ...prev, [backup.id]: e.target.value }))
                                                                 }
-                                                                handleStep2BackupDelete(backup.id);
-                                                            }}
-                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[11px] font-semibold"
+                                                                className="flex-1 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                            <button
+                                                                onClick={() => handleStep2BackupRename(backup.id)}
+                                                                className="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[9px]"
+                                                            >
+                                                                저장
+                                                            </button>
+                                                        </div>
+                                                        <div
+                                                            className="cursor-pointer"
+                                                            onClick={() => setSelectedStep2BackupId(backup.id)}
                                                         >
-                                                            삭제
-                                                        </button>
+                                                            <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => handleOpenStep2BackupEditor(backup.id)}
+                                                                className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-semibold"
+                                                            >
+                                                                보기/편집
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (selectedStep2BackupId === backup.id) {
+                                                                        setSelectedStep2BackupId(null);
+                                                                    }
+                                                                    handleStep2BackupDelete(backup.id);
+                                                                }}
+                                                                className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[10px] font-semibold"
+                                                            >
+                                                                삭제
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
+
                                         </div>
                                     )}
                                 </div>
@@ -6900,31 +7059,55 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         : 'border-slate-800 bg-slate-900'
                                                         }`}
                                                 >
-                                                    <button
-                                                        onClick={() => setSelectedCharacterRulesBackupId(backup.id)}
-                                                        className={`w-full px-3 py-2 text-xs font-semibold text-left ${selectedCharacterRulesBackupId === backup.id
-                                                            ? 'text-white'
-                                                            : 'text-slate-200 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        <div>{backup.name || `백업 ${index + 1}`}</div>
-                                                        <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
-                                                    </button>
-                                                    <div className="px-3 pb-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                if (selectedCharacterRulesBackupId === backup.id) {
-                                                                    setSelectedCharacterRulesBackupId(null);
+                                                    <div className="p-3 space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={characterRulesBackupEdits[backup.id] ?? backup.name}
+                                                                onChange={(e) =>
+                                                                    setCharacterRulesBackupEdits((prev) => ({ ...prev, [backup.id]: e.target.value }))
                                                                 }
-                                                                handleCharacterRulesBackupDelete(backup.id);
-                                                            }}
-                                                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded-md text-[11px] font-semibold"
+                                                                className="flex-1 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                            <button
+                                                                onClick={() => {
+                                                                    const name = (characterRulesBackupEdits[backup.id] || '').trim();
+                                                                    if (name) onCharacterRulesBackupRename(backup.id, name);
+                                                                }}
+                                                                className="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[9px]"
+                                                            >
+                                                                저장
+                                                            </button>
+                                                        </div>
+                                                        <div
+                                                            className="cursor-pointer"
+                                                            onClick={() => setSelectedCharacterRulesBackupId(backup.id)}
                                                         >
-                                                            삭제
-                                                        </button>
+                                                            <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => handleOpenCharacterRulesBackupEditor(backup.id)}
+                                                                className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-semibold"
+                                                            >
+                                                                보기/편집
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (selectedCharacterRulesBackupId === backup.id) {
+                                                                        setSelectedCharacterRulesBackupId(null);
+                                                                    }
+                                                                    handleCharacterRulesBackupDelete(backup.id);
+                                                                }}
+                                                                className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[10px] font-semibold"
+                                                            >
+                                                                삭제
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
+
                                         </div>
                                     )}
                                 </div>
@@ -7300,125 +7483,35 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 
             </div>
 
-            {editingBackupId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                    onClick={handleCloseBackupEditor}
+            {/* 🔹 통합 백업 편집기 모달 (v3.9.5 - 부모 모달 닫힘 방지 조치) */}
+            {(editingBackupId || editingRulesBackupId || editingStep2BackupId || editingCharacterRulesBackupId) && (
+                <div 
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+                    onClick={(e) => {
+                        e.stopPropagation(); // 🔹 장르매니저가 같이 닫히지 않도록 이벤트 전파 차단
+                        if (editingBackupId) handleCloseBackupEditor();
+                        else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
+                        else if (editingStep2BackupId) handleCloseStep2BackupEditor();
+                        else handleCloseCharacterRulesBackupEditor();
+                    }}
                 >
-                    <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
                             <div>
-                                <h3 className="text-lg font-semibold text-white">백업 프롬프트 보기/편집</h3>
-                                <p className="text-xs text-slate-400">장르 가이드라인 JSON을 수정한 뒤 저장하세요.</p>
+                                <h3 className="text-lg font-bold text-white">
+                                    {editingBackupId && '장르 가이드라인 백업 편집'}
+                                    {editingRulesBackupId && '프롬프트 규칙 백업 편집'}
+                                    {editingStep2BackupId && '2단계 규칙 백업 편집'}
+                                    {editingCharacterRulesBackupId && '의상 규칙 백업 편집'}
+                                </h3>
+                                <p className="text-[11px] text-slate-400 mt-0.5">JSON 데이터를 수정한 뒤 저장하세요.</p>
                             </div>
-                            <button
-                                onClick={handleCloseBackupEditor}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            <textarea
-                                value={backupEditText}
-                                onChange={(e) => {
-                                    setBackupEditText(e.target.value);
-                                    setBackupEditError(null);
-                                }}
-                                rows={16}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                            />
-                            {backupEditError && (
-                                <div className="text-xs text-rose-400">{backupEditError}</div>
-                            )}
-                        </div>
-                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
-                            <button
-                                onClick={handleCloseBackupEditor}
-                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={handleBackupSaveContent}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {editingRulesBackupId && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
-                    onClick={handleClosePromptRulesBackupEditor}
-                >
-                    <div
-                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">프롬프트 규칙 백업 보기/편집</h3>
-                                <p className="text-xs text-slate-400">JSON을 수정한 뒤 저장하세요.</p>
-                            </div>
-                            <button
-                                onClick={handleClosePromptRulesBackupEditor}
-                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            <textarea
-                                value={rulesBackupEditText}
-                                onChange={(e) => {
-                                    setRulesBackupEditText(e.target.value);
-                                    setRulesBackupEditError(null);
-                                }}
-                                rows={16}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                            />
-                            {rulesBackupEditError && (
-                                <div className="text-xs text-rose-400">{rulesBackupEditError}</div>
-                            )}
-                        </div>
-                        <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
-                            <button
-                                onClick={handleClosePromptRulesBackupEditor}
-                                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-medium"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={handleSavePromptRulesBackupContent}
-                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium"
-                            >
-                                저장
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Backup Editor Modal */}
-            {(editingBackupId || editingRulesBackupId || editingStep2BackupId) && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                            <h3 className="text-lg font-bold text-white">
-                                {editingBackupId ? '백업 내용 편집' : (editingRulesBackupId ? '프롬프트 규칙 백업 편집' : '2단계 규칙 백업 편집')}
-                            </h3>
                             <button
                                 onClick={() => {
                                     if (editingBackupId) handleCloseBackupEditor();
                                     else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
-                                    else handleCloseStep2BackupEditor();
+                                    else if (editingStep2BackupId) handleCloseStep2BackupEditor();
+                                    else handleCloseCharacterRulesBackupEditor();
                                 }}
                                 className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
                             >
@@ -7427,7 +7520,11 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         </div>
                         <div className="flex-1 p-4 overflow-hidden flex flex-col">
                             <textarea
-                                value={editingBackupId ? backupEditText : (editingRulesBackupId ? rulesBackupEditText : step2BackupEditText)}
+                                value={
+                                    editingBackupId ? backupEditText : 
+                                    (editingRulesBackupId ? rulesBackupEditText : 
+                                    (editingStep2BackupId ? step2BackupEditText : characterRulesBackupEditText))
+                                }
                                 onChange={(e) => {
                                     if (editingBackupId) {
                                         setBackupEditText(e.target.value);
@@ -7435,16 +7532,20 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     } else if (editingRulesBackupId) {
                                         setRulesBackupEditText(e.target.value);
                                         setRulesBackupEditError(null);
-                                    } else {
+                                    } else if (editingStep2BackupId) {
                                         setStep2BackupEditText(e.target.value);
                                         setStep2BackupEditError(null);
+                                    } else {
+                                        setCharacterRulesBackupEditText(e.target.value);
+                                        setCharacterRulesBackupEditError(null);
                                     }
                                 }}
                                 className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                placeholder="JSON 데이터를 입력하세요..."
                             />
-                            {(backupEditError || rulesBackupEditError || step2BackupEditError) && (
+                            {(backupEditError || rulesBackupEditError || step2BackupEditError || characterRulesBackupEditError) && (
                                 <div className="mt-2 text-xs text-rose-400">
-                                    {backupEditError || rulesBackupEditError || step2BackupEditError}
+                                    {backupEditError || rulesBackupEditError || step2BackupEditError || characterRulesBackupEditError}
                                 </div>
                             )}
                         </div>
@@ -7453,9 +7554,10 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 onClick={() => {
                                     if (editingBackupId) handleCloseBackupEditor();
                                     else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
-                                    else handleCloseStep2BackupEditor();
+                                    else if (editingStep2BackupId) handleCloseStep2BackupEditor();
+                                    else handleCloseCharacterRulesBackupEditor();
                                 }}
-                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium"
+                                className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-sm font-medium transition-colors"
                             >
                                 취소
                             </button>
@@ -7463,9 +7565,10 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 onClick={() => {
                                     if (editingBackupId) handleBackupSaveContent();
                                     else if (editingRulesBackupId) handleSavePromptRulesBackupContent();
-                                    else handleSaveStep2BackupContent();
+                                    else if (editingStep2BackupId) handleSaveStep2BackupContent();
+                                    else handleSaveCharacterRulesBackupContent();
                                 }}
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium"
+                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20"
                             >
                                 저장
                             </button>
@@ -7473,6 +7576,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                     </div>
                 </div>
             )}
+
 
             {/* 캐릭터 가져오기 모달 */}
             {showImportModal && (

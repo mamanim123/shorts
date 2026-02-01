@@ -223,17 +223,17 @@ export const buildManualSceneDecompositionPrompt = (options: {
 
   return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
-당신은 장면 분해 전문가입니다. 아래 "대본 라인"을 그대로 유지하면서 씬 정보를 구조화하세요.
-대본을 새로 쓰거나 요약해서 scriptLine을 바꾸지 마세요.
+당신은 장면 분해 전문가입니다. 아래 "대본 라인"의 흐름을 바탕으로 최적의 시각적 씬(Scenes)을 구성하세요.
 
 ## 필수 규칙
 1) JSON만 출력 (설명/마크다운 금지)
-2) scenes 개수 = 대본 라인 수 (1:1 매칭)
-3) scriptLine은 대본 라인을 **그대로 복사**
+2) 씬 재구성: 씬 개수는 대본 라인 수와 상관없이 **8~12개 사이로 가장 임팩트 있게 재구성**하세요. (관련 있는 문장은 하나의 씬으로 묶거나, 중요한 순간은 2개 이상의 씬으로 나누어 시각적 흐름을 극대화할 것)
+3) scriptLine은 해당 장면에 해당하는 대본 문장을 **그대로 복사** (여러 문장이 합쳐진 경우 줄바꿈으로 합칠 것)
 4) characterIds는 아래 목록의 ID만 사용 (없으면 빈 배열 [])
 5) summary/action/background는 짧고 명확한 영어 묘사로 작성
 6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성 (자연스러운 묘사, 고정문구 누락 금지)
-7) shotType과 cameraAngle을 다양하게 섞어 사용 (원샷/투샷/쓰리샷 및 close-up, wide, medium, canted(dutch), OTS, POV, low-angle, high-angle)
+7) **역동적 앵글 사용**: 미디움샷(medium shot) 연속 사용을 피하고, wide(전신), aerial(항공), POV, extreme close-up 등을 적극 활용하여 TV 광고 같은 연출을 할 것.
+
 
 ${shotQualityRule}
 

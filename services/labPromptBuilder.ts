@@ -285,6 +285,7 @@ export interface LabGenreGuideline {
   goodTwistExamples: string[];
   supportingCharacterTwistPatterns?: string[];
   badTwistExamples: string[];
+  allowedOutfitCategories?: string[];
 }
 
 export interface LabGenreGuidelineEntry extends LabGenreGuideline {
@@ -501,6 +502,7 @@ export interface LabScriptOptions {
   genreGuideOverride?: LabGenreGuideline;
   enableWinterAccessories?: boolean;
   useRandomOutfits?: boolean;
+  allowedOutfitCategories?: string[];
 }
 
 export interface LabImagePromptOptions {
@@ -586,8 +588,9 @@ export const getPromptConstants = () => {
     FEMALE_BODY_A: rules.females[0]?.body || 'slim hourglass figure',
     FEMALE_BODY_B: rules.females[1]?.body || 'petite and slim frame',
     FEMALE_BODY_C: rules.females[2]?.body || 'gracefully toned athletic body',
-    FEMALE_BODY_D: rules.females[3]?.body || 'bright cheerful professional presence',
+    FEMALE_BODY_D: 'Stunning young Korean woman in her early 20s (WomanD), high-bun hairstyle (updo), high-seated chest line, extraordinarily voluminous high-projection bust, youthful radiant beauty, youthful radiant beauty, smooth flawless skin',
     MALE_BODY: rules.males[0]?.body || 'fit athletic build',
+
     MALE_BODY_A: rules.males[0]?.body || 'fit athletic build',
     MALE_BODY_B: rules.males[1]?.body || 'fit athletic build',
     MALE_BODY_C: rules.males[2]?.body || 'well-built physique'
@@ -1524,12 +1527,17 @@ export const generateRandomSeed = (): {
   };
 };
 
-export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []): string => {
+export const pickMaleOutfit = (
+  topic: string = '',
+  excludeOutfits: string[] = [],
+  allowedOutfitCategories?: string[]
+): string => {
   const selectionRules = getOutfitSelectionRules();
   const isGolf = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
 
   const normalizeList = (items?: string[]) =>
     Array.isArray(items) ? items.map(item => item.trim()).filter(Boolean) : [];
+  const allowedCategories = normalizeList(allowedOutfitCategories);
   const allowList = normalizeList(selectionRules.maleAllowList);
   const excludeList = normalizeList(selectionRules.maleExcludeList);
   const excludeSet = new Set([...excludeList, ...excludeOutfits]);
@@ -1539,6 +1547,7 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
     if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
     if (allowList.length > 0 && !allowList.includes(item.name)) return false;
     if (excludeSet.has(item.name)) return false;
+    if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
 
     // 골프 주제인 경우 GOLF 카테고리 필수
     if (isGolf && !item.categories.includes('GOLF')) return false;
@@ -1552,6 +1561,7 @@ export const pickMaleOutfit = (topic: string = '', excludeOutfits: string[] = []
       if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
       if (allowList.length > 0 && !allowList.includes(item.name)) return false;
       if (excludeSet.has(item.name)) return false;
+      if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
       return true;
     });
   }
@@ -1591,7 +1601,8 @@ export const validateOutfit = (outfit: string): boolean => {
 export const pickFemaleOutfit = (
   genre: string,
   topic: string = '',
-  excludeOutfits: string[] = []
+  excludeOutfits: string[] = [],
+  allowedOutfitCategories?: string[]
 ): string => {
   // SEXY 의상은 '불륜/외도' 장르만 사용
   // '대박 반전'은 일반 의상 입고 상황이 야하게 보이는 것이므로 SEXY 의상 사용 안 함
@@ -1600,6 +1611,7 @@ export const pickFemaleOutfit = (
   const allowDuplicates = selectionRules.allowDuplicateFemale;
   const normalizeList = (items?: string[]) =>
     Array.isArray(items) ? items.map(item => item.trim()).filter(Boolean) : [];
+  const allowedCategories = normalizeList(allowedOutfitCategories);
   const allowList = normalizeList(selectionRules.femaleAllowList);
   const excludeList = normalizeList(selectionRules.femaleExcludeList);
   const excludeSet = new Set([
@@ -1612,6 +1624,7 @@ export const pickFemaleOutfit = (
     if (allowList.length > 0 && !allowList.includes(item.name)) return false;
     if (excludeSet.has(item.name)) return false;
     if (isSexyGenre) return item.categories.includes('SEXY');
+    if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
     return !item.categories.includes('SEXY');
   });
 
@@ -1621,6 +1634,7 @@ export const pickFemaleOutfit = (
     if (excludeSet.has(item.name)) return false;
     // SEXY 의상 필터링 - 폴백에서도 적용 (버그 수정)
     if (isSexyGenre) return item.categories.includes('SEXY');
+    if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
     return !item.categories.includes('SEXY');
   });
 
@@ -1643,14 +1657,15 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const seed = generateRandomSeed();
   const useRandomOutfits = options.useRandomOutfits ?? true;
+  const allowedOutfitCategories = options.allowedOutfitCategories;
 
   // 기본 의상 선택
   const outfitPlaceholder = 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
-  let womanAOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, []) : outfitPlaceholder;
-  let womanBOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit]) : outfitPlaceholder;
-  let womanDOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit]) : outfitPlaceholder;
-  const manAOutfit = useRandomOutfits ? pickMaleOutfit(topic, []) : outfitPlaceholder;
-  const manBOutfit = useRandomOutfits ? pickMaleOutfit(topic, [manAOutfit]) : outfitPlaceholder;
+  let womanAOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [], allowedOutfitCategories) : outfitPlaceholder;
+  let womanBOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit], allowedOutfitCategories) : outfitPlaceholder;
+  let womanDOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit], allowedOutfitCategories) : outfitPlaceholder;
+  const manAOutfit = useRandomOutfits ? pickMaleOutfit(topic, [], allowedOutfitCategories) : outfitPlaceholder;
+  const manBOutfit = useRandomOutfits ? pickMaleOutfit(topic, [manAOutfit], allowedOutfitCategories) : outfitPlaceholder;
 
   // 의상 검증 (너무 긴 설명문 방지)
   if (useRandomOutfits) {

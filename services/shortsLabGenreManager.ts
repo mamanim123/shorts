@@ -43,6 +43,9 @@ const normalizeGenre = (genre: Partial<LabGenreGuidelineEntry> & { id: string })
   emotionCurve: genre.emotionCurve?.trim() || '',
   structure: genre.structure?.trim() || '',
   killerPhrases: Array.isArray(genre.killerPhrases) ? genre.killerPhrases.filter(Boolean) : [],
+  allowedOutfitCategories: Array.isArray(genre.allowedOutfitCategories)
+    ? genre.allowedOutfitCategories.map((item) => String(item).trim()).filter(Boolean)
+    : [],
   supportingCharacterPhrasePatterns: Array.isArray(genre.supportingCharacterPhrasePatterns)
     ? genre.supportingCharacterPhrasePatterns.filter(Boolean)
     : undefined,

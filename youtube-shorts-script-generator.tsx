@@ -30,6 +30,7 @@ import {
   FEMALE_OUTFIT_PRESETS,
   MALE_OUTFIT_PRESETS
 } from './constants';
+import { pickFemaleOutfit, pickMaleOutfit } from './services/labPromptBuilder';
 import ShortsImageHistorySidebar from './components/ShortsImageHistorySidebar';
 import ModeTemplateSettingsModal from './components/ModeTemplateSettingsModal';
 
@@ -661,6 +662,73 @@ const ensureOutfitTags = (
   return text;
 };
 
+/**
+ * [Outfit Uniqueness Validation] Ensures each character has a unique outfit
+ * @param characters - Array of character objects with outfit field
+ * @returns Modified characters array with unique outfits
+ */
+const validateAndFixOutfitUniqueness = (
+  characters: any[],
+  genre: string,
+  topic: string,
+  allowedOutfitCategories?: string[]
+): any[] => {
+  if (!Array.isArray(characters) || characters.length === 0) return characters;
+
+  const outfitMap = new Map<string, string[]>(); // outfit -> [characterIds]
+  const modifiedCharacters = [...characters];
+
+  // Step 1: Detect duplicates
+  characters.forEach((ch) => {
+    if (!ch?.outfit || !ch?.id) return;
+    const outfit = ch.outfit.trim();
+    if (!outfitMap.has(outfit)) {
+      outfitMap.set(outfit, []);
+    }
+    outfitMap.get(outfit)!.push(ch.id);
+  });
+
+  // Step 2: Fix duplicates by picking NEW outfit from outfit pool
+  outfitMap.forEach((charIds, outfit) => {
+    if (charIds.length <= 1) return; // No duplicate
+
+    console.warn(`⚠️ [Outfit Duplicate Detected] ${charIds.length} characters wearing: "${outfit}"`);
+    console.warn(`   Characters: ${charIds.join(', ')}`);
+
+    // Collect all currently used outfits to exclude
+    const usedOutfits = modifiedCharacters
+      .map((c) => c.outfit)
+      .filter((o) => o && o !== outfit);
+
+    // Keep first character's outfit unchanged, re-pick for others
+    for (let i = 1; i < charIds.length; i++) {
+      const charId = charIds[i];
+      const charIndex = modifiedCharacters.findIndex((c) => c.id === charId);
+      if (charIndex === -1) continue;
+
+      let newOutfit: string;
+
+      // Determine if character is male or female based on ID
+      const isMale = charId.toLowerCase().startsWith('man');
+
+      if (isMale) {
+        // Pick new male outfit from pool, excluding used outfits
+        newOutfit = pickMaleOutfit(topic, [...usedOutfits, outfit], allowedOutfitCategories);
+        console.warn(`   ✅ Re-picked (Male): ${charId} → "${newOutfit}"`);
+      } else {
+        // Pick new female outfit from pool, excluding used outfits
+        newOutfit = pickFemaleOutfit(genre, topic, [...usedOutfits, outfit], allowedOutfitCategories);
+        console.warn(`   ✅ Re-picked (Female): ${charId} → "${newOutfit}"`);
+      }
+
+      modifiedCharacters[charIndex].outfit = newOutfit;
+      usedOutfits.push(newOutfit); // Add to used list for next iteration
+    }
+  });
+
+  return modifiedCharacters;
+};
+
 const postProcessScripts = (
   scripts: any[],
   outfits: {
@@ -671,12 +739,22 @@ const postProcessScripts = (
     enhancementSettings?: NormalizedPromptEnhancementSettings;
     targetAgeLabel?: string;
     identities?: CharacterIdentity[];
+    genre?: string;
+    topic?: string;
+    allowedOutfitCategories?: string[];
   }
 ) => {
   if (!Array.isArray(scripts)) return [];
   return scripts.map((script, idx) => {
+    // [Outfit Uniqueness Validation] Fix duplicate outfits before processing
+    const validatedCharacters = validateAndFixOutfitUniqueness(
+      script?.characters || [],
+      outfits.genre || '',
+      outfits.topic || '',
+      outfits.allowedOutfitCategories
+    );
     const scenes = Array.isArray(script?.scenes) ? script.scenes : [];
-    const characterMap = buildCharacterMap(script?.characters || []);
+    const characterMap = buildCharacterMap(validatedCharacters);
     const processedScenes = scenes.map((scene: any, sceneIdx: number) => {
       const sNum = scene?.sceneNumber ?? sceneIdx + 1;
       const sceneSlots = getSceneCharacterSlots(scene, characterMap);
@@ -719,6 +797,7 @@ const postProcessScripts = (
       script: script?.script || script?.scriptBody || '',
       hook: script?.hook || script?.openingHook || '',
       twist: script?.twist || script?.punchline || '',
+      characters: validatedCharacters, // Use validated characters with unique outfits
       scenes: processedScenes,
       // 🆕 사용된 의상 정보 저장 (나중에 재사용하기 위해)
       usedOutfits: {
@@ -1903,7 +1982,9 @@ ${sceneLines}
             autoEnhance: activeEnhancementSettings.autoEnhanceOnGeneration ?? false,
             enhancementSettings: activeEnhancementSettings,
             targetAgeLabel: target,
-            identities
+            identities,
+            genre,
+            topic
           });
 
           // [v3.1.2 복원] 서버에 저장하고 folderName 받아오기
@@ -2585,7 +2666,9 @@ JSON 형식으로만 답변:
           autoEnhance: activeEnhancementSettings.autoEnhanceOnGeneration ?? false,
           enhancementSettings: activeEnhancementSettings,
           targetAgeLabel: target,
-          identities
+          identities,
+          genre,
+          topic
         });
         // 수동 JSON도 저장 로직을 태워 쇼츠랩 불러오기와 동일하게 동작하도록 처리
         const savedScripts = await Promise.all(processed.map(async (script: any, idx: number) => {

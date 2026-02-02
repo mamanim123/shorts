@@ -3371,6 +3371,12 @@ ${scriptInput}
         }
     };
 
+    /**
+     * [REMOVED] validateAndFixOutfitUniquenessMap - No longer needed
+     * 2단계 생성에서는 buildAutoCharacterMap이 이미 pickFemaleOutfit/pickMaleOutfit을 사용해서
+     * excludeOutfits로 중복 방지를 처리하므로 후처리 검증이 불필요합니다.
+     */
+
     const handleTwoStepGenerate = async () => {
         if (!aiTopic.trim()) {
             setGenerationError('주제를 입력해주세요.');
@@ -3637,6 +3643,7 @@ ${scriptInput}
                 });
                 autoCharacterMap = updated;
             }
+
             const totalScenes = scenesSource.length || scriptLines.length || 8;
             let lastExpressionKeyword = '';
             let lastCameraKeyword = '';

@@ -119,6 +119,7 @@ unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short
 3. 의상 명칭 축약 (예: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress" ❌)
 4. characterSlot 순서와 Person 번호 불일치
 5. **모든 캐릭터에 동일한 동작 적용** (예: "both smiling" ❌, 각자 다른 표정/동작 ✅)
+6. **여러 캐릭터에게 동일한 의상 할당** (예: WomanA와 WomanB가 같은 "White Off-shoulder dress" ❌, 각자 고유한 의상 ✅)
 
 ## 📷 카메라 앵글 필수 규칙 (역동적 화면 구성 필수!)
 단조로운 미디움샷 위주 구성을 탈출하여 TV 광고 같은 연출을 하세요.
@@ -166,10 +167,12 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 ## 🔍 JSON 출력 전 최종 검증 체크리스트 (필수!)
 **아래 항목을 모두 통과해야만 유효한 출력입니다:**
 
-### 의상 일관성 검증
+### 의상 일관성 및 고유성 검증
 - [ ] 모든 씬의 outfit이 lockedOutfits/characters의 원본과 **글자 하나 틀림없이 동일**한가?
 - [ ] "denim hot pants"를 "denim shorts"로 바꾸는 등 **동의어 치환을 하지 않았는가?**
 - [ ] 의상 명칭을 축약하지 않았는가? (예: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress" ❌)
+- [ ] **각 캐릭터가 서로 다른 고유한 의상을 입고 있는가?** (WomanA ≠ WomanB ≠ WomanD, ManA ≠ ManB ≠ ManC)
+- [ ] lockedOutfits 객체에 **중복된 의상 값이 없는가?** (womanA와 womanB가 동일한 outfit 값 ❌)
 
 ### 캐릭터 순서 검증
 - [ ] **characterSlot 순서와 Person 번호 순서가 정확히 일치**하는가?

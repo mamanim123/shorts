@@ -5040,13 +5040,17 @@ ${scriptInput}
                 )}
             </div>
 
+
             {/* 라이트박스 */}
             {selectedImageForView && (
-                <Lightbox
-                    imageUrl={selectedImageForView}
-                    onClose={() => setSelectedImageForView(null)}
-                />
+                <React.Fragment>
+                    <Lightbox
+                        imageUrl={selectedImageForView}
+                        onClose={() => setSelectedImageForView(null)}
+                    />
+                </React.Fragment>
             )}
+
 
             {/* 편집 모달 */}
             {editingScene && (
@@ -5302,7 +5306,6 @@ ${scriptInput}
             )}
 
             {/* 프롬프트 수정 모달 */}
-            {console.log('🎯 [ShortsLab RENDER] showPromptEditModal:', showPromptEditModal, 'sceneNumber:', promptEditSceneNumber, 'promptEditText:', promptEditText?.substring(0, 50))}
             <PromptEditModal
                 isOpen={showPromptEditModal}
                 sceneNumber={promptEditSceneNumber}

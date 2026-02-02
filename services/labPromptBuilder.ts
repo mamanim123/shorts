@@ -2277,9 +2277,13 @@ export const validateAndFixPrompt = (
 
   // Final cleanup
 
-  fixedPrompt = fixedPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
+  fixedPrompt = fixedPrompt.replace(/,\s*,/g, ',').replace(/,(?!\s)/g, ', ').replace(/\s+/g, ' ').trim();
   const womanPattern = /A stunning Korean woman,\s*A stunning Korean woman/gi;
   fixedPrompt = fixedPrompt.replace(womanPattern, 'A stunning Korean woman');
+  
+  // [v3.5.3] Final Character Block Spacing Fix
+  fixedPrompt = fixedPrompt.replace(/\]\s*\[Person/gi, '], [Person');
+  fixedPrompt = fixedPrompt.replace(/\[Person\s+(\d+)\s*\(([^)]+)\):/gi, '[Person $1 ($2):');
 
   return { isValid: issues.length === 0, issues, fixedPrompt };
 };

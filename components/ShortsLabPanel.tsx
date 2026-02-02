@@ -945,6 +945,7 @@ interface PromptSettings {
     useStylePreset: boolean;
     selectedStyle: string;
     useGenderGuard?: boolean;
+    imageService?: 'GEMINI' | 'GENSPARK';
 }
 
 
@@ -1187,7 +1188,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         selectedEthnicity: ETHNICITY_KEYWORDS[0],
         useStylePreset: true,
         selectedStyle: 'cinematic',
-        useGenderGuard: true
+        useGenderGuard: true,
+        imageService: 'GEMINI'
     });
 
 
@@ -1822,7 +1824,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
         for (const scene of scenesWithoutImages) {
             try {
-                await handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number);
+                await handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, settings.imageService);
                 // 각 요청 사이에 잠시 대기 (API 제한 방지)
                 await new Promise(resolve => setTimeout(resolve, 2000));
             } catch (error) {
@@ -1857,23 +1859,42 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         setGensparkForwardingId(null);
     };
 
-    const handleForwardPromptToGenspark = async (prompt: string, id: string, sceneNumber?: number) => {
-        if (gensparkForwardingId && gensparkForwardingId === id) {
-            cancelGensparkForwarding();
-            showToast('Genspark 생성 요청을 취소했습니다.', 'info');
-            return;
+    const handleForwardPromptToImageAI = async (prompt: string, id: string, sceneNumber?: number, service?: 'GEMINI' | 'GENSPARK') => {
+        const targetService = service || settings.imageService || 'GEMINI';
+        const isGenspark = targetService === 'GENSPARK';
+
+        if (isGenspark) {
+            if (gensparkForwardingId && gensparkForwardingId === id) {
+                cancelGensparkForwarding();
+                showToast('Genspark 생성 요청을 취소했습니다.', 'info');
+                return;
+            }
+            setGensparkForwardingId(id);
+        } else {
+            if (aiForwardingId && aiForwardingId === id) {
+                cancelAiForwarding();
+                showToast('AI 생성 요청을 취소했습니다.', 'info');
+                return;
+            }
+            setAiForwardingId(id);
         }
+
         if (!prompt || !prompt.trim()) {
             showToast('전송할 프롬프트가 없습니다.', 'warning');
+            if (isGenspark) setGensparkForwardingId(null);
+            else setAiForwardingId(null);
             return;
         }
-        setGensparkForwardingId(id);
+
         try {
-            if (gensparkForwardAbortRef.current) {
-                gensparkForwardAbortRef.current.abort();
-            }
             const controller = new AbortController();
-            gensparkForwardAbortRef.current = controller;
+            if (isGenspark) {
+                if (gensparkForwardAbortRef.current) gensparkForwardAbortRef.current.abort();
+                gensparkForwardAbortRef.current = controller;
+            } else {
+                if (aiForwardAbortRef.current) aiForwardAbortRef.current.abort();
+                aiForwardAbortRef.current = controller;
+            }
 
             const response = await fetch('http://localhost:3002/api/image/ai-generate', {
                 method: 'POST',
@@ -1882,7 +1903,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     prompt,
                     storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
                     sceneNumber,
-                    service: 'GENSPARK',
+                    service: targetService,
                     autoCapture: true,
                     title: 'ShortsLab'
                 }),
@@ -1890,12 +1911,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             });
 
             if (!response.ok) {
-                let message = 'Genspark 서비스 전송에 실패했습니다.';
+                let message = `${targetService} 서비스 전송에 실패했습니다.`;
                 try {
                     const errorData = await response.json();
                     if (errorData?.error) message = errorData.error;
                 } catch (err) {
-                    console.warn("Failed to parse Genspark forward error", err);
+                    console.warn(`Failed to parse ${targetService} forward error`, err);
                 }
                 throw new Error(message);
             }
@@ -1910,93 +1931,11 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const infoMessage = infoDetails.length > 0
                 ? ` - ${infoDetails.join(' / ')}`
                 : (payload?.message ? ` - ${payload.message}` : '');
-            showToast(`Genspark 서비스로 프롬프트를 전송했습니다.${infoMessage}`, 'success');
-
-            if (payload?.success && sceneNumber !== undefined) {
-                const resolvedStoryId = payload.storyId || currentFolderName || 'shorts-lab';
-                const imageUrl = payload.url
-                    ? `http://localhost:3002${payload.url}`
-                    : `http://localhost:3002/generated_scripts/대본폴더/${resolvedStoryId}/images/${payload.filename}`;
-                setScenes(prev => prev.map(s =>
-                    s.number === sceneNumber
-                        ? { ...s, imageUrl }
-                        : s
-                ));
-            }
-        } catch (error) {
-            console.error("Failed to forward prompt to Genspark image service", error);
-            const message = error instanceof Error ? error.message : String(error || '');
-            showToast(message || 'Genspark 서비스 전송 오류가 발생했습니다.', 'error');
-        } finally {
-            setGensparkForwardingId(null);
-            if (gensparkForwardAbortRef.current) {
-                gensparkForwardAbortRef.current.abort(); // Ensure it's aborted if not already
-                gensparkForwardAbortRef.current = null;
-            }
-        }
-    };
-
-    const handleForwardPromptToImageAI = async (prompt: string, id: string, sceneNumber?: number) => {
-        if (aiForwardingId && aiForwardingId === id) {
-            cancelAiForwarding();
-            showToast('AI 생성 요청을 취소했습니다.', 'info');
-            return;
-        }
-        if (!prompt || !prompt.trim()) {
-            showToast('전송할 프롬프트가 없습니다.', 'warning');
-            return;
-        }
-        setAiForwardingId(id);
-        try {
-            if (aiForwardAbortRef.current) {
-                aiForwardAbortRef.current.abort();
-            }
-            const controller = new AbortController();
-            aiForwardAbortRef.current = controller;
-
-            const response = await fetch('http://localhost:3002/api/image/ai-generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt,
-                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
-
-
-                    sceneNumber,
-                    service: 'GEMINI',
-                    autoCapture: true,
-                    title: 'ShortsLab'
-                }),
-                signal: controller.signal
-            });
-
-            if (!response.ok) {
-                let message = 'AI 서비스 전송에 실패했습니다.';
-                try {
-                    const errorData = await response.json();
-                    if (errorData?.error) message = errorData.error;
-                } catch (err) {
-                    console.warn("Failed to parse AI forward error", err);
-                }
-                throw new Error(message);
-            }
-
-            const payload = await response.json();
-            const infoDetails: string[] = [];
-            if (payload?.imagePath) infoDetails.push(`경로 ${payload.imagePath}`);
-            if (typeof payload?.bytes === 'number') {
-                const kb = (payload.bytes / 1024).toFixed(1);
-                infoDetails.push(`용량 ${kb}KB`);
-            }
-            const infoMessage = infoDetails.length > 0
-                ? ` - ${infoDetails.join(' / ')}`
-                : (payload?.message ? ` - ${payload.message}` : '');
-            showToast(`AI 서비스(${payload?.service || 'GEMINI'})로 프롬프트를 전송했습니다.${infoMessage}`, 'success');
+            showToast(`${targetService} 서비스로 프롬프트를 전송했습니다.${infoMessage}`, 'success');
 
             // ✅ [FIX] Scene에 이미지 URL 업데이트 - 미리보기에 이미지 표시
             if (payload?.success && sceneNumber !== undefined) {
                 const resolvedStoryId = payload.storyId || currentFolderName || 'shorts-lab';
-                // 서버에서 전달해준 URL을 우선 사용 (하이브리드 경로 지원)
                 const imageUrl = payload.url
                     ? `http://localhost:3002${payload.url}`
                     : `http://localhost:3002/generated_scripts/대본폴더/${resolvedStoryId}/images/${payload.filename}`;
@@ -2005,10 +1944,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                         ? { ...s, imageUrl }
                         : s
                 ));
-                console.log(`[ShortsLab] Scene ${sceneNumber} image updated: ${imageUrl}`);
             }
         } catch (error) {
-            console.error("Failed to forward prompt to AI image service", error);
+            console.error(`Failed to forward prompt to ${targetService} image service`, error);
             const message = error instanceof Error ? error.message : String(error || '');
             if (message.includes('Waiting failed')) {
                 showToast('이미지를 찾지 못했습니다. 프롬프트 전송 후 새 이미지가 생성되는지 확인해주세요.', 'warning');
@@ -2019,11 +1957,14 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             } else if (/network|failed to fetch|timeout/i.test(message)) {
                 showToast('네트워크 오류로 이미지 생성에 실패했습니다.', 'error');
             } else {
-                showToast(message || 'AI 서비스 전송 오류가 발생했습니다.', 'error');
+                showToast(message || `${targetService} 서비스 전송 오류가 발생했습니다.`, 'error');
             }
         } finally {
-            setAiForwardingId(null);
-            if (aiForwardAbortRef.current) {
+            if (isGenspark) {
+                setGensparkForwardingId(null);
+                gensparkForwardAbortRef.current = null;
+            } else {
+                setAiForwardingId(null);
                 aiForwardAbortRef.current = null;
             }
         }
@@ -2322,6 +2263,14 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         const actionChunks = (guidance?.action || '').split(/\s*,\s*/).filter(Boolean);
         const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
 
+        // [v3.5.3] Action Distribution: If AI provides a single "together" action, distribute it to individuals
+        const distributeAction = (action: string, count: number) => {
+            if (count > 1 && action.toLowerCase().includes('together')) {
+                return action.replace(/\btogether\b/gi, '').trim().replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '');
+            }
+            return action;
+        };
+
         const identityBlock = characterIds
             .map((id, index) => {
                 const meta = characterMap.get(id);
@@ -2339,7 +2288,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     ? `accessorized with ${meta.accessories.join(', ')}`
                     : '';
 
-                const personAction = actionChunks[index] || actionChunks[0] || '';
+                let personAction = actionChunks[index] || actionChunks[0] || '';
+                personAction = distributeAction(personAction, characterIds.length);
+                
                 const personExpression = expressionChunks[index] || expressionChunks[0] || '';
 
                 const descriptor = [
@@ -2392,7 +2343,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const meta = characterMap.get(id);
             if (!meta) return;
             // Remove things like "A stunning Korean woman", "Woman A", "Slot Woman A"
-            const namePattern = new RegExp(`(A\\s+stunning\\s+Korean\\s+woman|A\\s+handsome\\s+Korean\\s+man|Slot\\s+${meta.slotLabel}|${meta.slotLabel})`, 'gi');
+            const namePattern = new RegExp(`(A\\s+stunning\\s+Korean\\s+woman|A\\s+handsome\\s+Korean\\s+man|Slot\\s+${meta.slotLabel}|${meta.slotLabel}|Korean\\s+woman|Korean\\s+man|beautiful\\s+woman|handsome\\s+man)`, 'gi');
             cleanedRemainder = cleanedRemainder.replace(namePattern, '').trim();
         });
         if (actionPrompt && guidance?.action) {
@@ -2401,7 +2352,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         cleanedRemainder = cleanedRemainder
             .replace(/\bwearing\s+[^,]+/gi, '')
             .replace(/\boutfit:\s*[^,]+/gi, '')
-            .replace(/\bin\s+a\s+[^,]+\s+(knit|coat|jacket|puffer|vest|turtleneck|sweater|hoodie)\b/gi, '')
+            .replace(/\bin\s+a\s+[^,]+\s+(knit|coat|jacket|puffer|vest|turtleneck|sweater|hoodie|suit|dress|skirt)\b/gi, '')
+            .replace(/\bwearing\s+(a\s+)?(mini\s+)?(dress|skirt|micro|bodycon|outfit)\b/gi, '')
             .trim();
         if (isWideShot) {
             cleanedRemainder = cleanedRemainder
@@ -4646,6 +4598,28 @@ ${scriptInput}
                 {/* 설정 탭 */}
                 {activeTab === 'settings' && (
                     <div className="space-y-6">
+                        <SettingSection title="이미지 생성 서비스">
+                            <div className="flex gap-2">
+                                {(['GEMINI', 'GENSPARK'] as const).map((service) => (
+                                    <button
+                                        key={service}
+                                        onClick={() => setSettings(prev => ({ ...prev, imageService: service }))}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${settings.imageService === service
+                                            ? 'bg-purple-600 border-purple-500 text-white'
+                                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                            }`}
+                                    >
+                                        {service}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-2">
+                                {settings.imageService === 'GENSPARK' 
+                                    ? '* GenSpark은 브라우저 자동화를 통해 이미지를 생성하며 캡처 성공률이 다를 수 있습니다.' 
+                                    : '* Gemini는 구글의 이미지 생성 모델을 사용하여 가장 안정적입니다.'}
+                            </p>
+                        </SettingSection>
+
                         <SettingSection title="퀄리티 태그">
                             <ToggleItem checked={settings.useQualityTags} onChange={(v) => updateSetting('useQualityTags', v)} label="8K, 시네마틱 라이팅, 마스터피스" description={QUALITY_TAGS} />
                             <ToggleItem checked={settings.useAspectRatio} onChange={(v) => updateSetting('useAspectRatio', v)} label="세로 화면비 (9:16)" description={ASPECT_RATIO} />
@@ -4780,8 +4754,11 @@ ${scriptInput}
                                                 <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={aiForwardingId === `scene-${scene.number}`} className="p-2 bg-purple-600/90 hover:bg-purple-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="AI 생성">
                                                     {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
                                                 </button>
-                                                <button onClick={() => handleForwardPromptToGenspark(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={gensparkForwardingId === `scene-${scene.number}`} className="p-2 bg-blue-600/90 hover:bg-blue-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="Genspark 생성">
-                                                    {gensparkForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                                <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, 'GENSPARK')} disabled={gensparkForwardingId === `scene-${scene.number}`} className="p-2 bg-blue-600/90 hover:bg-blue-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="Genspark 생성">
+                                                    {gensparkForwardingId === `scene-${scene.number}` ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                                                </button>
+                                                <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, 'GEMINI')} disabled={aiForwardingId === `scene-${scene.number}`} className="p-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="Gemini 생성">
+                                                    {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
                                                 </button>
                                                 <button
                                                     onClick={() => {

@@ -1,0 +1,167 @@
+/**
+ * API 엔드포인트 상수
+ */
+export const API_ENDPOINTS = {
+    // 시스템
+    SHUTDOWN: '/api/shutdown',
+    AUTH_GEMINI_KEY: '/api/auth/gemini-key',
+    LAUNCH: '/api/launch',
+    BROWSER_STATUS: '/api/browser-status',
+
+    // 히스토리
+    HISTORY: '/api/history',
+
+    // 프롬프트 프리셋
+    PROMPT_PRESETS: '/api/prompt-presets',
+    PROMPT_PRESET_BY_ID: (id: string) => `/api/prompt-presets/${id}`,
+
+    // 파일 저장
+    SAVE_STORY: '/api/save-story',
+    SAVE_IMAGE: '/api/save-image',
+    SAVE_VIDEO: '/api/save-video',
+    DELETE_FILE: '/api/delete-file',
+
+    // 이미지
+    IMAGES_LIST: '/api/images/list',
+
+    // 롱폼 세션
+    LONGFORM_SAVE_SESSION: '/api/longform/save-session',
+    LONGFORM_SESSIONS: '/api/longform/sessions',
+    LONGFORM_SESSION_BY_ID: (sessionId: string) => `/api/longform/sessions/${sessionId}`,
+
+    // 스타일 템플릿
+    STYLE_TEMPLATES: '/api/style-templates',
+    STYLE_TEMPLATES_DELETE: '/api/style-templates/delete',
+    STYLE_TEMPLATE_BY_ID: (id: string) => `/api/style-templates/${id}`,
+
+    // 생성
+    GENERATE: '/api/generate',
+
+    // 프롬프트 강화
+    PROMPT_ENHANCEMENT_SETTINGS: '/api/prompt-enhancement/settings',
+    PROMPT_ENHANCEMENT_PREVIEW: '/api/prompt-enhancement/preview',
+    PROMPT_ENHANCEMENT_ENHANCE: '/api/prompt-enhancement/enhance',
+    PROMPT_ENHANCEMENT_PROFILES: '/api/prompt-enhancement/profiles',
+
+    // 엔진 설정
+    ENGINE_CONFIG: '/api/engine-config',
+    ENGINE_PROMPT: '/api/engine-prompt',
+    ENGINE_OPTIONS: '/api/engine-options',
+
+    // 템플릿 분석
+    ANALYZE_TEMPLATE: '/api/analyze-template',
+
+    // YouTube 검색
+    YOUTUBE_SEARCH: '/api/youtube/search'
+} as const;
+
+/**
+ * 에러 메시지 상수
+ */
+export const ERROR_MESSAGES = {
+    // 일반
+    UNKNOWN_ERROR: 'An unknown error occurred',
+    NETWORK_ERROR: 'Network error occurred',
+    TIMEOUT_ERROR: 'Request timed out',
+
+    // 브라우저
+    BROWSER_LAUNCH_FAILED: 'Failed to launch browser',
+    BROWSER_NOT_READY: 'Browser is not ready',
+
+    // JSON 파싱
+    JSON_PARSE_FAILED: 'Failed to parse JSON response',
+    INVALID_JSON_FORMAT: 'Invalid JSON format',
+
+    // 파일
+    FILE_NOT_FOUND: 'File not found',
+    FILE_SAVE_FAILED: 'Failed to save file',
+    FILE_DELETE_FAILED: 'Failed to delete file',
+
+    // API
+    API_REQUEST_FAILED: 'API request failed',
+    INVALID_REQUEST: 'Invalid request',
+    MISSING_PARAMETERS: 'Missing required parameters',
+
+    // 생성
+    GENERATION_FAILED: 'Failed to generate content',
+    GENERATION_CANCELLED: 'Generation cancelled',
+
+    // 히스토리
+    HISTORY_LOAD_FAILED: 'Failed to load history',
+    HISTORY_SAVE_FAILED: 'Failed to save history',
+
+    // 템플릿
+    TEMPLATE_NOT_FOUND: 'Template not found',
+    TEMPLATE_SAVE_FAILED: 'Failed to save template',
+    TEMPLATE_DELETE_FAILED: 'Failed to delete template',
+
+    // 프리셋
+    PRESET_NOT_FOUND: 'Preset not found',
+    PRESET_SAVE_FAILED: 'Failed to save preset',
+    PRESET_DELETE_FAILED: 'Failed to delete preset'
+} as const;
+
+/**
+ * 성공 메시지 상수
+ */
+export const SUCCESS_MESSAGES = {
+    FILE_SAVED: 'File saved successfully',
+    FILE_DELETED: 'File deleted successfully',
+    TEMPLATE_SAVED: 'Template saved successfully',
+    TEMPLATE_DELETED: 'Template deleted successfully',
+    PRESET_SAVED: 'Preset saved successfully',
+    PRESET_DELETED: 'Preset deleted successfully',
+    GENERATION_COMPLETE: 'Generation completed successfully',
+    BROWSER_LAUNCHED: 'Browser launched successfully'
+} as const;
+
+/**
+ * HTTP 상태 코드
+ */
+export const HTTP_STATUS = {
+    OK: 200,
+    CREATED: 201,
+    NO_CONTENT: 204,
+    BAD_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    CONFLICT: 409,
+    INTERNAL_SERVER_ERROR: 500,
+    SERVICE_UNAVAILABLE: 503
+} as const;
+
+/**
+ * 로컬 스토리지 키
+ */
+export const STORAGE_KEYS = {
+    HISTORY: 'shorts_generator_history',
+    TEMPLATES: 'shorts_generator_templates',
+    PRESETS: 'shorts_generator_presets',
+    USER_PREFERENCES: 'shorts_generator_preferences',
+    IMAGE_HISTORY: 'shorts_generator_image_history',
+    LAST_INPUT: 'shorts_generator_last_input'
+} as const;
+
+/**
+ * 기본 설정값
+ */
+export const DEFAULT_CONFIG = {
+    API_BASE_URL: 'http://localhost:3002',
+    API_TIMEOUT: 60000, // 60초
+    MAX_RETRIES: 3,
+    RETRY_DELAY: 1000, // 1초
+    MAX_HISTORY_ITEMS: 100,
+    MAX_IMAGE_HISTORY_ITEMS: 50,
+    DEBOUNCE_DELAY: 300, // 300ms
+    AUTO_SAVE_DELAY: 2000 // 2초
+} as const;
+
+export default {
+    API_ENDPOINTS,
+    ERROR_MESSAGES,
+    SUCCESS_MESSAGES,
+    HTTP_STATUS,
+    STORAGE_KEYS,
+    DEFAULT_CONFIG
+};

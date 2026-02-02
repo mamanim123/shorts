@@ -1,0 +1,1424 @@
+// Imports removed for browser compatibility
+import { SYSTEM_PROMPT_V3_COSTAR, SYSTEM_PROMPT_V3, SYSTEM_PROMPT_CHATGPT, SYSTEM_PROMPT_CLAUDE, SYSTEM_PROMPT_VIRAL } from "../constants";
+import { resolveEnginePrompt } from "./enginePromptStore";
+import { UserInput, StoryResponse, ScenarioMode, StyleTemplate } from '../types';
+import {
+  applyPromptEnhancementSlots,
+  DEFAULT_PROMPT_ENHANCEMENT_SETTINGS,
+  normalizePromptEnhancementSettings,
+  NormalizedPromptEnhancementSettings,
+} from './promptEnhancementUtils';
+
+// Schema definition removed as we are using web automation and raw JSON parsing.
+
+// ============================================================================
+// V2 ENGINE ASSETS (STANDARD)
+// ============================================================================
+
+type StyleCategory = 'GLAMOUR' | 'ELEGANT' | 'CASUAL' | 'GOLF' | 'PROFESSIONAL';
+
+const STYLE_WEIGHTS: Record<StyleCategory, number> = {
+  GLAMOUR: 0.35,      // Tight, Sexy, Mini (Original Default)
+  ELEGANT: 0.25,      // Luxury, Long dresses, Silk
+  CASUAL: 0.20,       // Jeans, Knits, Daily
+  GOLF: 0.10,         // Sporty
+  PROFESSIONAL: 0.10  // Suits, Shirts
+};
+
+const WARDROBE_V2 = {
+  GLAMOUR: {
+    tops: ["Satin Camisole", "Tight Crop Top", "Off-shoulder Knit", "Lace Corset Top", "Deep V-neck Blouse"],
+    bottoms: ["Leather Mini Skirt", "Tight Mini Skirt", "Hot Pants", "Micro Shorts"],
+    onePieces: ["Bodycon Mini Dress", "Satin Slip Dress", "Tight Wrap Dress", "Sequin Party Dress"]
+  },
+  ELEGANT: {
+    tops: ["Silk Blouse", "Chiffon Shirt", "Cashmere Turtleneck", "Pearl-button Cardigan"],
+    bottoms: ["Long Satin Skirt", "Wide-leg Trousers", "Mermaid Skirt", "Pleated Midi Skirt"],
+    onePieces: ["Silk Wrap Mini Dress", "Elegant Tweed Mini Dress", "Chiffon Mini Dress", "Velvet Mini Dress"]
+  },
+  CASUAL: {
+    tops: ["Oversized Knit Sweater", "Cotton T-shirt", "Denim Shirt", "Hoodie", "Striped Long-sleeve"],
+    bottoms: ["Skinny Jeans", "Wide Denim Pants", "Cargo Pants", "Cotton Shorts", "Leggings"],
+    onePieces: ["Denim Overall Dress", "Knitted Midi Dress", "Cotton Shirt Dress"]
+  },
+  GOLF: {
+    tops: ["Polo Shirt", "Sun-protection Inner + Vest", "Half-zip Mock Neck", "Sleeveless Golf Top"],
+    bottoms: ["Pleated Golf Skirt", "Short Golf Pants", "White Culottes"],
+    onePieces: ["Golf One-piece Dress", "Sporty Zip-up Dress"]
+  },
+  PROFESSIONAL: {
+    tops: ["Crisp White Shirt", "Tailored Blazer", "Structured Vest"],
+    bottoms: ["Pencil Skirt", "Tailored Slacks", "Suit Pants"],
+    onePieces: ["Belted Trench Dress", "Formal Sheath Dress"]
+  }
+};
+
+const COLORS_V2 = [
+  "Red", "Black", "White", "Royal Blue", "Emerald Green",
+  "Pastel Pink", "Beige", "Burgundy", "Navy", "Gold", "Silver", "Lavender"
+];
+
+const MATERIALS_V2 = [
+  "Satin", "Leather", "Silk", "Knitted", "Cotton", "Velvet", "Tweed", "Spandex", "Denim", "Lace"
+];
+
+const HAIRSTYLES = [
+  "Long straight black hair", "Wavy brown hair", "Short bob cut",
+  "Ponytail", "Messy bun", "Shoulder-length layered hair", "Elegant updo"
+];
+
+const FEMALE_CHARACTER_PRESETS = {
+  A: {
+    id: "A",
+    name: "혜진",
+    role: "Main Lead",
+    hair: "Long, polished soft-wave hairstyle down to mid-back (length·texture 고정)"
+  },
+  B: {
+    id: "B",
+    name: "수아",
+    role: "Secondary Lead",
+    hair: "Short chic bob cut with tidy bangs (항상 동일)"
+  },
+  C: {
+    id: "C",
+    name: "민지",
+    role: "Supporting",
+    hair: "Low ponytail with sleek styling (고정)"
+  }
+} as const;
+
+const MALE_DEFAULT_HAIR = "Neatly styled short black hair (dandy, clean cut)";
+
+const SAFE_BODY_TYPES = [
+  "Voluptuous S-line figure with glamorous curves",
+  "Curvy and toned body with wide hips",
+  "Glamorous hourglass figure with full bust",
+  "Fit and voluptuous body with healthy curves",
+  "Tall and curvy model physique"
+];
+
+const FACE_FEATURES = [
+  "Sharp feline eyes", "Soft puppy eyes", "High cheekbones",
+  "Small mole under left eye", "Defined jawline", "Full red lips", "Natural innocent look"
+];
+
+const BODY_TYPES = [
+  "Voluptuous S-line figure", "Glamorous hourglass figure", "Curvy and toned body", "Full bust and wide hips"
+];
+
+// === Senior-targeted Scenario Ingredient Pools ===
+const SENIOR_BACKGROUND_OPTIONS = [
+  "도심 재래시장 한복판",
+  "고급 실내 골프연습장",
+  "지방 공항 대기 라운지",
+  "경로당 겸 카페로 바뀐 복합 문화 공간",
+  "시골 장터 옆 임시 행사장",
+  "럭셔리 세차장 VIP 라운지",
+  "고급 병원 건강검진 대기실",
+  "대기업 사내 카페나 휴게실",
+  "고급 리조트 수영장 주변",
+  "중소기업 공장 사장실"
+];
+
+const SENIOR_PROP_OPTIONS = [
+  "프리미엄 회원권 케이스",
+  "생맥주 전용 동결잔",
+  "커피믹스 3종 세트",
+  "한정판 골프공 세트",
+  "회장님 도장 찍힌 서류철",
+  "럭셔리 스카프 박스",
+  "효도폰 최신 기종",
+  "VIP 택배 상자",
+  "과일 바구니",
+  "건강검진 결과 봉투",
+  "골드바 모형 종이무게",
+  "부부 금슬 팔찌"
+];
+
+const SENIOR_CONFLICT_TOPICS = [
+  "갑질 고객 응대",
+  "부부 사이 이중 의미 장난",
+  "세대차에서 오는 언어 오해",
+  "재산·상속 자랑 후 굴욕",
+  "건강검진 결과를 둘러싼 긴장",
+  "사내 정치와 은근한 폭탄 발언",
+  "골프 실력·장비 과시",
+  "항공/여행 중 방송 사고",
+  "맞선에서 벌어지는 언어유희",
+  "시골 어르신과 도시인 갈등",
+  "부모님 몰래 한 투자 이야기",
+  "친척 모임에서의 체면싸움"
+];
+
+const SCENARIO_TONE_MAP: Record<string, string> = {
+  [ScenarioMode.DOUBLE_ENTENDRE]: "Ambiguous adult humor that ends with an innocent reveal.",
+  [ScenarioMode.TWIST_REVERSE]: "Sharp power-reversal comedy with a cathartic punch.",
+  [ScenarioMode.BLACK_COMEDY]: "Dry, cynical narration that exposes awkward realities.",
+  [ScenarioMode.ADULT_HUMOR]: "Cheeky couple banter that stays YouTube-safe.",
+  [ScenarioMode.GAG_SSUL]: "Fast-paced gag storytelling with a witty last line.",
+  default: "Playful senior-targeted storytelling with a clever twist."
+};
+
+interface TemplateEntry {
+  id: string;
+  label: string;
+  description?: string;
+  prompt: string;
+}
+
+// Template config loading moved to async fetch within generateStory
+// const TEMPLATE_CONFIG_PATH = ... (Removed)
+// function loadTemplateConfig ... (Removed)
+
+function findTemplatePrompt(list: TemplateEntry[], key?: string): string {
+  if (!key || !key.trim()) return "";
+  const normalized = key.trim();
+  const exact = list.find(entry => entry.label === normalized || entry.id === normalized);
+  if (exact) return exact.prompt || "";
+  const fuzzy = list.find(entry =>
+    normalized.includes(entry.label) ||
+    entry.label.includes(normalized) ||
+    normalized.includes(entry.id) ||
+    entry.id.includes(normalized)
+  );
+  return fuzzy?.prompt || "";
+}
+
+const enforcePunchlineFormat = (text?: string | null): string => {
+  if (!text) return '';
+  let normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  const sentenceMatch = normalized.match(/^[^?!~\\.]+[?!~\\.]?/);
+  let sentence = sentenceMatch ? sentenceMatch[0].trim() : normalized;
+  if (sentence.length > 15) {
+    sentence = sentence.slice(0, 15).trim();
+  }
+  if (!/[?!~\\.]/.test(sentence.slice(-1))) {
+    sentence += '!';
+  }
+  return sentence;
+};
+
+// ============================================================================
+// V3 ENGINE ASSETS (LUXURY EDITION) - RESTORED FULL LIST
+// ============================================================================
+
+const CLASSY_PALETTE = [
+  "Pure White", "Navy Blue", "Royal Green", "Burgundy", "Beige", "Soft Gray", "Black", "Champagne Gold"
+];
+
+const V3_MATERIALS = [
+  "High-gloss Satin", "Matte Leather", "Textured Tweed", "Sheer Chiffon",
+  "Fine Cashmere", "Stretch Spandex", "Metallic Knit", "Velvet"
+];
+
+const V3_DETAILS = [
+  "Gold zipper detail", "Pearl buttons", "Asymmetric cut", "Ruffled hem",
+  "Lace trimming", "Side slit", "Backless design", "Crystal embellishments"
+];
+
+// 🔥 TOPS (15종 - 상체 볼륨 강조, 세련된 디자인)
+// Code: T01, T02, T05, T06, T12, T16, T17, T20, T21, T22, T25
+// 🔥 TOPS (Existing Best + New Basics)
+// Code: T01-T11
+// ============================================================================
+// V3 WARDROBE COLLECTIONS (BY STYLE)
+// ============================================================================
+
+// ============================================================================
+// V3 WARDROBE COLLECTIONS (REFACTORED: TOPS / BOTTOMS / DRESSES)
+// ============================================================================
+
+export const LUXURY_WARDROBE = {
+  tops: [
+    // [상의] 로얄 시그니처 스타일
+    "White Sleeveless Turtleneck", // 화이트 민소매 터틀넥
+    "White Halter-neck Tight Crop Top", // 화이트 홀터넥 타이트 크롭탑
+    "White See-through Blouse", // 화이트 시스루 블라우스
+    "White Off-shoulder Tube Top", // 화이트 오프숄더 튜브탑
+    "White Silk Deep V-neck Blouse", // 화이트 실크 깊은 V넥 블라우스
+    "Navy Off-shoulder Tight Knit", // 네이비 오프숄더 타이트 니트
+    "White Lace Crop Top", // 화이트 레이스 크롭탑
+    "Royal Blue Sleeveless Turtleneck", // 로얄 블루 민소매 터틀넥
+    "White Chiffon Shirt (Unbuttoned)", // 화이트 쉬폰 셔츠 (단추 품)
+    // [상의] 골프 필드 럭셔리
+    "White Halter-neck Knit", // 화이트 홀터넥 니트
+    "V-neck Tight Polo Shirt", // V넥 타이트 폴로 셔츠
+    "Pink Sleeveless Polo", // 핑크 민소매 폴로
+    "White Tube Top", // 화이트 튜브탑
+    "Navy Sleeveless Polo", // 네이비 민소매 폴로
+    "White Zip-up Vest + Navy Turtleneck (Layered)", // 화이트 집업 조끼 + 네이비 터틀넥
+    "Red Cap-sleeve Tight Tee", // 레드 캡소매 타이트 티셔츠
+    "Black Sleeveless High-neck Top", // 블랙 민소매 하이넥 탑
+    "Pink & White Striped Knit", // 핑크 & 화이트 스트라이프 니트
+    "Black Sleeveless Turtleneck", // 블랙 민소매 터틀넥
+    "Beige Halter-neck Knit", // 베이지 홀터넥 니트
+    "Dark Green Sleeveless Polo", // 다크 그린 민소매 폴로
+    "Navy Zip-up Sleeveless Vest", // 네이비 집업 민소매 조끼
+    "White Mock-neck Sleeveless", // 화이트 반목 민소매
+    "Pink Tight Polo Shirt", // 핑크 타이트 폴로 셔츠
+    "Black Cross-strap Halter Top", // 블랙 크로스 스트랩 홀터탑
+    "White See-through Shirt", // 화이트 시스루 셔츠
+    "Charcoal Sleeveless Mock-neck", // 차콜 민소매 반목
+    "Peach Silk Camisole", // 피치 실크 캐미솔
+    "Beige & White Argyle Check V-neck Knit", // 베이지 & 화이트 아가일 체크 V넥 니트
+    // [상의] 섹시 컬렉션
+    "Black Lace Corset Top", // 블랙 레이스 코르셋 탑
+    "Pink Satin Bustier Top", // 핑크 사틴 뷔스티에 탑
+    "Black Sheer Blouse (Black Bra Visible)", // 블랙 시스루 블라우스 (속옷 비침)
+    "Nude Tone Mesh Bodysuit" // 누드톤 메쉬 바디수트
+  ],
+  bottoms: [
+    // [하의] 로얄 시그니처
+    "Navy Leather Micro Mini Skirt", // 네이비 가죽 초미니 스커트
+    "Tight Blue Denim Hot Pants", // 타이트 청 핫팬츠 (청바지 변경됨)
+    "Royal Blue Tight Micro Skirt", // 로얄 블루 타이트 초미니
+    "Navy Mini Skirt", // 네이비 미니 스커트
+    "Royal Blue Skinny High-waist Micro Shorts", // 로얄 블루 하이웨스트 숏팬츠 (긴바지 변경됨)
+    "White Skinny Hot Pants", // 화이트 스키니 핫팬츠 (긴바지 변경됨)
+    "Deep Blue Satin Micro Mini Skirt", // 딥 블루 사틴 초미니
+    "White Micro Mini Skirt", // 화이트 초미니 스커트
+    "Navy Lace Micro Mini Skirt", // 네이비 레이스 초미니
+    // [하의] 골프 필드 럭셔리
+    "Red Micro Mini Skirt", // 레드 초미니 스커트
+    "Micro Mini Skirt", // 초미니 스커트
+    "White Tight Wrap Mini Skirt", // 화이트 타이트 랩 스커트
+    "White Tennis Skirt", // 화이트 테니스 스커트
+    "White Micro Skirt with Navy Trim", // 네이비 장식 화이트 초미니
+    "White Micro Skirt", // 화이트 초미니
+    "Beige Micro Pleated Skirt", // 베이지 주름 초미니
+    "White Micro Short Pants", // 화이트 숏팬츠
+    "White Pleated Skirt", // 화이트 주름 치마
+    "Navy Wrap Skirt", // 네이비 랩 스커트
+    "White Micro Shorts", // 화이트 숏팬츠
+    "White Tight Skirt", // 화이트 타이트 스커트
+    "Burgundy Micro Mini Skirt", // 버건디 초미니
+    "White High-waist Hot Pants", // 화이트 하이웨스트 핫팬츠
+    "Black Micro Pleated Skirt", // 블랙 주름 초미니
+    "White High-waist Micro Skirt", // 화이트 하이웨스트 초미니
+    // [하의] 섹시 컬렉션
+    "Black Satin Micro Mini Skirt", // 블랙 사틴 초미니
+    "White Hot Pants", // 화이트 핫팬츠
+    "Tight Micro Skirt", // 타이트 초미니
+    "Tight Leather Skirt" // 타이트 가죽 스커트
+  ],
+  dresses: [
+    // [원피스] 로얄 시그니처
+    "Navy Blue Textured Tweed Deep V-neck Tight Mini Dress", // 네이비 트위드 깊은 V넥 타이트 미니 원피스
+    // [원피스] 골프 필드 럭셔리
+    "Tight Golf One-piece (Belted)", // 타이트 골프 원피스 (벨트 포함)
+    "Grey Ribbed Knit Tight Mini Dress", // 그레이 골지 니트 타이트 미니 원피스
+    "Grey Halter-neck Tight Mini Dress", // 그레이 홀터넥 타이트 미니 원피스
+    "White Long-sleeve V-neck Tight Mini Dress", // 화이트 긴팔 V넥 타이트 미니 원피스
+    "Grey Checkered Jacket Mini Dress", // 그레이 체크 자켓형 미니 원피스
+    // [원피스] 섹시 컬렉션
+    "Red See-through Lingerie Style Mini Dress", // 레드 시스루 란제리 스타일 미니 원피스
+    "White Silk Slip Mini Dress (Short)", // 화이트 실크 슬립 미니 원피스 (짧게 수정됨)
+    "Black Leather Harness Detail Bodycon Dress", // 블랙 가죽 하네스 디테일 바디콘 원피스
+    "Burgundy Velvet Corset Mini Dress", // 버건디 벨벳 코르셋 미니 원피스
+    "Silver Metallic Mini Dress with Crystal details", // 실버 메탈릭 미니 원피스 (크리스탈 장식)
+    "Leopard Print V-neck Tight Mini Dress" // 호피 무늬 V넥 타이트 미니 원피스
+  ]
+};
+
+export const LUXURY_WARDROBE_KR = {
+  tops: [
+    "화이트 민소매 터틀넥",
+    "화이트 홀터넥 타이트 크롭탑",
+    "화이트 시스루 블라우스",
+    "화이트 오프숄더 튜브탑",
+    "화이트 실크 깊은 V넥 블라우스",
+    "네이비 오프숄더 타이트 니트",
+    "화이트 레이스 크롭탑",
+    "로얄 블루 민소매 터틀넥",
+    "화이트 쉬폰 셔츠 (단추 품)",
+    "화이트 홀터넥 니트",
+    "V넥 타이트 폴로 셔츠",
+    "핑크 민소매 폴로",
+    "화이트 튜브탑",
+    "네이비 민소매 폴로",
+    "화이트 집업 조끼 + 네이비 터틀넥",
+    "레드 캡소매 타이트 티셔츠",
+    "블랙 민소매 하이넥 탑",
+    "핑크 & 화이트 스트라이프 니트",
+    "블랙 민소매 터틀넥",
+    "베이지 홀터넥 니트",
+    "다크 그린 민소매 폴로",
+    "네이비 집업 민소매 조끼",
+    "화이트 반목 민소매",
+    "핑크 타이트 폴로 셔츠",
+    "블랙 크로스 스트랩 홀터탑",
+    "화이트 시스루 셔츠",
+    "차콜 민소매 반목",
+    "피치 실크 캐미솔",
+    "베이지 & 화이트 아가일 체크 V넥 니트",
+    "블랙 레이스 코르셋 탑",
+    "핑크 사틴 뷔스티에 탑",
+    "블랙 시스루 블라우스 (속옷 비침)",
+    "누드톤 메쉬 바디수트"
+  ],
+  bottoms: [
+    "네이비 가죽 초미니 스커트",
+    "타이트 청 핫팬츠 (청바지 변경됨)",
+    "로얄 블루 타이트 초미니",
+    "네이비 미니 스커트",
+    "로얄 블루 하이웨스트 숏팬츠 (긴바지 변경됨)",
+    "화이트 스키니 핫팬츠 (긴바지 변경됨)",
+    "딥 블루 사틴 초미니",
+    "화이트 초미니 스커트",
+    "네이비 레이스 초미니",
+    "레드 초미니 스커트",
+    "초미니 스커트",
+    "화이트 타이트 랩 스커트",
+    "화이트 테니스 스커트",
+    "네이비 장식 화이트 초미니",
+    "화이트 초미니",
+    "베이지 주름 초미니",
+    "화이트 숏팬츠",
+    "화이트 주름 치마",
+    "네이비 랩 스커트",
+    "화이트 숏팬츠",
+    "화이트 타이트 스커트",
+    "버건디 초미니",
+    "화이트 하이웨스트 핫팬츠",
+    "블랙 주름 초미니",
+    "화이트 하이웨스트 초미니",
+    "블랙 사틴 초미니",
+    "화이트 핫팬츠",
+    "타이트 초미니",
+    "타이트 가죽 스커트"
+  ],
+  dresses: [
+    "네이비 트위드 깊은 V넥 타이트 미니 원피스",
+    "타이트 골프 원피스 (벨트 포함)",
+    "그레이 골지 니트 타이트 미니 원피스",
+    "그레이 홀터넥 타이트 미니 원피스",
+    "화이트 긴팔 V넥 타이트 미니 원피스",
+    "그레이 체크 자켓형 미니 원피스",
+    "레드 시스루 란제리 스타일 미니 원피스",
+    "화이트 실크 슬립 미니 원피스 (짧게 수정됨)",
+    "블랙 가죽 하네스 디테일 바디콘 원피스",
+    "버건디 벨벳 코르셋 미니 원피스",
+    "실버 메탈릭 미니 원피스 (크리스탈 장식)",
+    "호피 무늬 V넥 타이트 미니 원피스"
+  ]
+};
+
+// ============================================================================
+// SAFE V3 ASSETS (FOR CHATGPT - HIGH FASHION & ELEGANCE)
+// ============================================================================
+
+const SAFE_WARDROBE_V3_TOPS = [
+  "Off-shoulder Knit Top (Clavicle exposed)",
+  "Sheer-layered Silk Blouse",
+  "Backless Halter Top",
+  "Form-fitting Ribbed Crop Top",
+  "V-neck Satin Cami",
+  "Structured Corset Top",
+  "High-neck Sleeveless Silk Top",
+  "Modern Cut-out Top",
+  "V-neck Tight Top", // [NEW]
+  "Micro Crop Top", // [NEW]
+  "Off-shoulder Knit" // [NEW]
+];
+
+const SAFE_WARDROBE_V3_BOTTOMS = [
+  "High-slit Mini Skirt",
+  "Ultra-mini Leather Skirt",
+  "Body-con Pencil Skirt",
+  "Shorts with Long Boots",
+  "Skinny Leather Pants",
+  "Asymmetric Wrap Mini Skirt",
+  "Micro Mini Skirt", // [NEW]
+  "Ultra-short Hot Pants" // [NEW]
+];
+
+const SAFE_WARDROBE_V3_ONEPIECES = [
+  "Body-con Mini Dress",
+  "Backless Evening Mini Dress", // [RESTORED LUXURY KEYWORD]
+  "High-slit Satin Mini Dress",
+  "Off-shoulder Tight Mini Dress",
+  "Sheer Panel Cocktail Mini Dress", // [RESTORED LUXURY KEYWORD]
+  "Modern Silhouette Mini Dress",
+  "Bodycon Mini Dress",
+  "Backless Mini Dress"
+];
+
+const SAFE_WARDROBE_V3_GOLF = [
+  "Sleeveless Mock-neck + Ultra-mini Skirt",
+  "Tight Knit One-piece (Body-con fit)",
+  "Off-shoulder Golf Top + Pleated Skirt",
+  "Zip-up Crop Top + High-waisted Shorts",
+  "Modern Sporty Body-suit Set"
+];
+
+// 🔥 MEN'S LUXURY WEAR (Dandy & Fit)
+const WARDROBE_V3_MEN_GOLF = [
+  "Navy Slim-fit Polo Shirt + White Tailored Golf Pants",
+  "White Performance Polo + Beige Chino Golf Pants",
+  "Black Mock-neck Long Sleeve + Grey Checkered Slacks",
+  "Sky Blue Pique Polo + Navy Slim Trousers",
+  "Charcoal Grey Knit Vest + White Shirt + Black Pants",
+  "Burgundy Half-zip Pullover + Beige Pants",
+  "All Black Chic Golf Look (Black Polo + Black Slacks)",
+  "White Windbreaker + Navy Shorts + White Leggings"
+];
+
+const WARDROBE_V3_MEN_BUSINESS = [
+  "White Shirt + Navy Blazer + Grey Slacks",
+  "Midnight Navy Slim Suit + Silk Tie",
+  "Charcoal Double-breasted Suit + Black Tie",
+  "Beige Cashmere Turtleneck + Camel Coat + Black Slacks",
+  "Pinstripe Suit + White Shirt + Pocket Square",
+  "Black Turtleneck + Grey Wool Suit",
+  "White Oxford Shirt + Camel Coat + Navy Slacks"
+];
+
+const WARDROBE_V3_MEN_CASUAL = [
+  "Black Knit Polo + Dark Indigo Denim",
+  "Light Grey Linen Shirt + White Pants",
+  "Dark Green Bomber Jacket + Black Slacks",
+  "Navy Cardigan + White Tee + Khaki Pants",
+  "Cream Cable Knit Sweater + Light Denim",
+  "Monochrome Casual (Black Tee + Black Slim Slacks)",
+  "Ivory Hoodie + Beige Jogger Pants"
+];
+
+const WARDROBE_V3_MEN_LOUNGE = [
+  "White Silk Shirt + Black Dress Pants",
+  "Velvet Blazer + Black Turtleneck + Slim Slacks",
+  "Black Satin Shirt + White Pleated Trousers",
+  "Dark Burgundy Suit + Black Shirt",
+  "Smoked Grey Shirt + Black Skinny Pants"
+];
+
+const ALL_MALE_WARDROBE = [
+  ...WARDROBE_V3_MEN_GOLF,
+  ...WARDROBE_V3_MEN_BUSINESS,
+  ...WARDROBE_V3_MEN_CASUAL,
+  ...WARDROBE_V3_MEN_LOUNGE
+];
+
+function pickMaleOutfitForContext(topic: string = ""): string {
+  const normalized = topic.toLowerCase();
+  if (normalized.includes("골프") || normalized.includes("golf") || normalized.includes("라운딩") || normalized.includes("티박스")) {
+    // Pick a casual golf look but keep it deterministic-ish to avoid all-identical outfits
+    const pool = WARDROBE_V3_MEN_GOLF.length ? WARDROBE_V3_MEN_GOLF : ["White Performance Polo + Beige Chino Golf Pants"];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  if (
+    normalized.includes("사무") ||
+    normalized.includes("office") ||
+    normalized.includes("회사") ||
+    normalized.includes("대표") ||
+    normalized.includes("사장") ||
+    normalized.includes("미팅") ||
+    normalized.includes("거래")
+  ) {
+    return WARDROBE_V3_MEN_BUSINESS[0] || "White Shirt + Navy Blazer + Grey Slacks";
+  }
+  if (
+    normalized.includes("라운지") ||
+    normalized.includes("파티") ||
+    normalized.includes("호텔") ||
+    normalized.includes("행사") ||
+    normalized.includes("바") ||
+    normalized.includes("살롱")
+  ) {
+    return WARDROBE_V3_MEN_LOUNGE[0] || "White Silk Shirt + Black Dress Pants";
+  }
+  return WARDROBE_V3_MEN_CASUAL[0] || "Black Knit Polo + Dark Indigo Denim";
+}
+
+// --- HELPER FUNCTIONS ---
+
+function pickRandom<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function pickUniqueItems<T>(array: T[], count: number): T[] {
+  const pool = [...array];
+  const result: T[] = [];
+  while (result.length < Math.min(count, pool.length) && pool.length > 0) {
+    const index = Math.floor(Math.random() * pool.length);
+    result.push(pool.splice(index, 1)[0]);
+  }
+  return result;
+}
+
+function pickWeightedStyle(): StyleCategory {
+  const rand = Math.random();
+  let sum = 0;
+  for (const [style, weight] of Object.entries(STYLE_WEIGHTS)) {
+    sum += weight;
+    if (rand < sum) return style as StyleCategory;
+  }
+  return 'GLAMOUR';
+}
+
+// --- V2 LOGIC ---
+
+function generateCostumeV2(forceStyle?: StyleCategory): { description: string, style: StyleCategory } {
+  const style = forceStyle || pickWeightedStyle();
+  const items = WARDROBE_V2[style];
+  const useOnePiece = Math.random() < 0.3;
+  let outfit = "";
+  const color = pickRandom(COLORS_V2);
+  const material = pickRandom(MATERIALS_V2);
+
+  if (useOnePiece && items.onePieces.length > 0) {
+    outfit = `${color} ${material} ${pickRandom(items.onePieces)}`;
+  } else {
+    const top = pickRandom(items.tops);
+    const bottom = pickRandom(items.bottoms);
+    if (Math.random() > 0.5) {
+      outfit = `${color} ${material} ${top} and matching ${bottom}`;
+    } else {
+      const bottomColor = pickRandom(COLORS_V2.filter(c => c !== color));
+      outfit = `${color} ${top} paired with ${bottomColor} ${bottom}`;
+    }
+  }
+  return { description: outfit, style };
+}
+
+function generateCharacterTraits(): string {
+  const hair = pickRandom(HAIRSTYLES);
+  const face = pickRandom(FACE_FEATURES);
+  const body = pickRandom(BODY_TYPES);
+  return `${hair}, ${face}, ${body}`;
+}
+
+function buildScenarioIngredientBlock(mode: ScenarioMode | string, topic: string): string {
+  // [REFACTORED] Removed random prop injection.
+  // Now instructs AI to find props RELEVANT to the user's topic.
+  const tone = SCENARIO_TONE_MAP[mode as string] || SCENARIO_TONE_MAP.default;
+
+  return `
+  [SCENARIO INGREDIENTS]
+  - Topic: ${topic || '자유 주제'}
+  - Tone Style: ${tone}
+  - **CRITICAL INSTRUCTION**: Do NOT use random objects like "Frozen Beer Glass" or "Airplane Buttons" unless they fit the Topic.
+  - **Prop Selection**: Select 2-3 objects that NATURALLY exist in the context of the Topic (${topic}).
+  - **Conflict**: Create a conflict that fits the Topic and the selected Scenario Mode.
+  `;
+}
+
+// [REMOVED] VIRAL_TWIST_TOPICS and getViralTopic to prevent random content injection.
+// We now rely on the "Structural Benchmarking" approach in the main prompt logic.
+
+function getDynamicHookLogic(topic: string, viralTheme: string): string {
+  return `
+  [DYNAMIC HOOK FORMULA]
+  1. **Scene 1 (0-3s)**: Start with a **TITLE / HOOK LINE**.
+     - Formula: "Title: [Provocative Statement or Question about ${topic}]"
+     - Example: "Title: I almost got kicked out of the golf course for this..."
+     - **CRITICAL**: The very first line of the scriptBody MUST be this Title/Hook.
+  2. **Scene 1 (3-6s)**: Immediately describe the LOCATION and TENSION.
+     - Formula: "Narration: Here in the [Location], everyone was looking at..."
+
+  [OBJECT SELECTION RULE (CRITICAL)]
+  - **STEP 1: SCAN THE LOCATION**. Visualize the [Location] in detail.
+  - **STEP 2: DISCOVER PROPS**. Find an object that NATURALLY exists there but can be misunderstood.
+  - **STEP 3: BE CREATIVE**. Do NOT use generic items like "Coffee Mix" or "Banana" unless essential.
+  - **CONSTRAINT**: The object MUST require physical effort (pulling, pushing, shaking, squeezing) to operate.
+  `;
+}
+
+
+// --- V3 LOGIC ---
+
+function pickV3Item(category: string): string {
+  // [REFACTORED] Use LUXURY_WARDROBE with 50/50 Dress vs Top/Bottom logic
+
+  const useDress = Math.random() < 0.5;
+  let itemBase = "";
+
+  if (useDress) {
+    itemBase = pickRandom(LUXURY_WARDROBE.dresses);
+  } else {
+    const top = pickRandom(LUXURY_WARDROBE.tops);
+    const bottom = pickRandom(LUXURY_WARDROBE.bottoms);
+    itemBase = `${top} + ${bottom}`;
+  }
+
+  // 2. Select Components (Color, Material, Detail)
+  // Note: Some outfits already have color/material defined, but adding more detail doesn't hurt.
+  // For specific styles (A-F), we might want to skip random colors if the outfit name implies it.
+  // But V3 logic adds "High-gloss Satin", etc. Let's keep it for texture enhancement unless it conflicts.
+
+  const material = pickRandom(V3_MATERIALS);
+  const detail = pickRandom(V3_DETAILS);
+
+  // 3. Combine into a full sentence
+  return `${material} ${itemBase} with ${detail}`;
+}
+
+function pickSafeV3Item(category: string): string {
+  const isGolf = category.includes("골프");
+  const allItems = [
+    ...SAFE_WARDROBE_V3_TOPS.map(t => `${t} + ${pickRandom(SAFE_WARDROBE_V3_BOTTOMS)}`),
+    ...SAFE_WARDROBE_V3_ONEPIECES
+  ];
+  const golfItems = SAFE_WARDROBE_V3_GOLF;
+
+  let itemBase = "";
+  if (isGolf && Math.random() < 0.5) {
+    itemBase = pickRandom(golfItems);
+  } else {
+    itemBase = pickRandom(allItems);
+  }
+
+  const color = pickRandom(CLASSY_PALETTE);
+  const material = pickRandom(V3_MATERIALS);
+
+  return `${color} ${material} ${itemBase} (High-Fashion Editorial Style)`;
+}
+
+function generateV3Variables(category: string) {
+  // Select 3 distinct items
+  // Simple check to try and avoid duplicates, though probability is low
+  const itemA = pickV3Item(category);
+  let itemB = pickV3Item(category);
+  while (itemB === itemA) itemB = pickV3Item(category);
+  let itemC = pickV3Item(category);
+  while (itemC === itemA || itemC === itemB) itemC = pickV3Item(category);
+
+  // Select Hair
+  const hairs = {
+    A: FEMALE_CHARACTER_PRESETS.A.hair,
+    B: FEMALE_CHARACTER_PRESETS.B.hair,
+    C: FEMALE_CHARACTER_PRESETS.C.hair
+  };
+
+  return { items: { A: itemA, B: itemB, C: itemC }, hairs };
+}
+
+function generateSafeV3Variables(category: string) {
+  const itemA = pickSafeV3Item(category);
+  let itemB = pickSafeV3Item(category);
+  while (itemB === itemA) itemB = pickSafeV3Item(category);
+  let itemC = pickSafeV3Item(category);
+  while (itemC === itemA || itemC === itemB) itemC = pickSafeV3Item(category);
+
+  const hairs = {
+    A: FEMALE_CHARACTER_PRESETS.A.hair,
+    B: FEMALE_CHARACTER_PRESETS.B.hair,
+    C: FEMALE_CHARACTER_PRESETS.C.hair
+  };
+
+  return { items: { A: itemA, B: itemB, C: itemC }, hairs };
+}
+
+export const enhancePromptWithSafeGlamour = (
+  prompt: string,
+  context: string = "",
+  settings?: NormalizedPromptEnhancementSettings
+): string => {
+  if (!prompt) return '';
+  const normalized = settings ?? DEFAULT_PROMPT_ENHANCEMENT_SETTINGS;
+  const hasFemale = /\b(Woman|Girl|Lady|Female|여성|여자)\b/i.test(prompt);
+  return applyPromptEnhancementSlots(prompt, normalized, { hasFemaleCharacter: hasFemale });
+};
+
+const SHORT_PROMPT_CONFIDENCE_PREFIX = (agePhrase: string) =>
+  `Confident Korean women ${agePhrase}, impeccably maintained elegance, short and tight luxury outfits, graceful healthy beauty`;
+
+const deriveShortPromptFromScene = (
+  longPrompt?: string,
+  existingShort?: string,
+  targetAge?: string
+): string => {
+  const source =
+    (typeof longPrompt === 'string' && longPrompt.trim().length > 0
+      ? longPrompt
+      : existingShort || ''
+    ).trim();
+
+  if (!source) return '';
+
+  const mentionsNoMale = /no male characters appear/i.test(source);
+  let normalized = source
+    .replace(/This scene visually represents the moment:[^\.]+\./gi, '')
+    .replace(/No male characters appear[^\.]*\./gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    normalized = "dynamic candid choreography across the snow-dusted golf course";
+  }
+
+  // Inject age mention if missing
+  if (!/in (her|his) \d{2}s/i.test(normalized) && !/50대|40대|30대|20대|60대/i.test(normalized)) {
+    normalized = `in her 50s, ${normalized}`;
+  }
+
+  if (!/short (and|&)|short yet tight|mini dress|micro skirt/i.test(normalized)) {
+    normalized += ", short yet tight couture silhouettes";
+  }
+
+  if (!/well[-\\s]?maintained|timeless glamour/i.test(normalized)) {
+    normalized += ", well-maintained timeless glamour";
+  }
+
+  const agePhrase = getAgePhrase(targetAge);
+  let rebuilt = `${SHORT_PROMPT_CONFIDENCE_PREFIX(agePhrase)}, ${normalized}`;
+  rebuilt = rebuilt.replace(/,\s*,/g, ', ').replace(/\s{2,}/g, ' ').trim();
+
+  if (mentionsNoMale) {
+    rebuilt = `${rebuilt}, No male characters appear in this scene.`;
+  }
+
+  return rebuilt;
+};
+
+const getAgePhrase = (targetAge?: string): string => {
+  const ageText = (targetAge || '').trim();
+  const digitMatch = ageText.match(/(\d{2})/);
+  if (digitMatch) {
+    return `in her ${digitMatch[1]}s`;
+  }
+  if (/60대/.test(ageText)) return "in her 60s";
+  if (/50대/.test(ageText)) return "in her 50s";
+  if (/40대/.test(ageText)) return "in her 40s";
+  if (/30대/.test(ageText)) return "in her 30s";
+  return "in her 50s";
+};
+
+const ensureAgeMention = (text: string, targetAge?: string): string => {
+  if (!text) return text;
+  const agePhrase = getAgePhrase(targetAge);
+  if (/in (her|his) \d{2}s/i.test(text) || /50대|40대|30대|20대|60대/i.test(text)) {
+    return text;
+  }
+  return `${agePhrase}, ${text}`.replace(/,\s*,/g, ', ').trim();
+};
+
+type AgeTokens = {
+  digits: string;
+  korean: string;
+  englishShort: string;
+  englishLongHer: string;
+  englishLongHis: string;
+  englishLongTheir: string;
+};
+
+const extractAgeDigits = (age?: string): string => {
+  if (!age) return "40";
+  const match = age.match(/(\d{2})/);
+  return match ? match[1] : "40";
+};
+
+const buildAgeTokens = (age?: string): AgeTokens => {
+  const digits = extractAgeDigits(age);
+  return {
+    digits,
+    korean: `${digits}대`,
+    englishShort: `${digits}s`,
+    englishLongHer: `in her ${digits}s`,
+    englishLongHis: `in his ${digits}s`,
+    englishLongTheir: `in their ${digits}s`,
+  };
+};
+
+const personalizeEnginePrompt = (prompt: string, targetAge?: string): string => {
+  if (!prompt) return prompt;
+  const tokens = buildAgeTokens(targetAge);
+  let updated = prompt;
+  updated = updated.replace(/in\s+(her|his|their)\s+40s/gi, (_match, pronoun: string) => {
+    const lower = pronoun.toLowerCase();
+    if (lower === "his") return tokens.englishLongHis;
+    if (lower === "their") return tokens.englishLongTheir;
+    return tokens.englishLongHer;
+  });
+  updated = updated.replace(/\b40s\b/gi, tokens.englishShort);
+  updated = updated.replace(/40대/g, tokens.korean);
+  updated = updated.replace(/타[깃겟]\s*연령대/g, tokens.korean);
+  updated = updated.replace(/in\s+their\s+target\s+age/gi, `in their ${tokens.englishShort}`);
+  updated = updated.replace(/their\s+target\s+age/gi, `their ${tokens.englishShort}`);
+  updated = updated.replace(/target\s+age\s*range/gi, `${tokens.englishShort} range`);
+  updated = updated.replace(/\btarget\s+age\b/gi, tokens.englishShort);
+  return updated;
+};
+
+// --- MAIN FUNCTION ---
+
+// --- MAIN FUNCTION (WEB AUTOMATION VERSION) ---
+export const generateStory = async (input: UserInput, signal?: AbortSignal, template?: StyleTemplate): Promise<StoryResponse> => {
+  console.log("DEBUG: generateStory called");
+  console.log("DEBUG: input.engineVersion:", input.engineVersion);
+  console.log("DEBUG: input.customScript:", input.customScript ? "YES" : "NO");
+
+  const forceScriptToImage = Boolean(input.customScript && input.customScript.trim().length > 0);
+  const isEngineOff = !forceScriptToImage && input.engineVersion === 'NONE';
+  const isV3Family = input.engineVersion === 'V3' || input.engineVersion === 'V3_COSTAR';
+  const isCustomEngine = !isEngineOff && !isV3Family;
+  const topicContext = (input.customContext || "").trim();
+  const resolvedTopic = topicContext || "자유 주제";
+  const ageTokens = buildAgeTokens(input.targetAge);
+  const normalizedTargetAge = (input.targetAge && input.targetAge.trim()) ? input.targetAge.trim() : ageTokens.korean;
+  let selectedEnginePrompt = "";
+
+  // [NEW] Fetch prompt enhancement settings from server
+  let enhancementSettings: NormalizedPromptEnhancementSettings = DEFAULT_PROMPT_ENHANCEMENT_SETTINGS;
+  try {
+    const settingsRes = await fetch('http://localhost:3002/api/prompt-enhancement-settings');
+    if (settingsRes.ok) {
+      const loaded = await settingsRes.json();
+      enhancementSettings = normalizePromptEnhancementSettings(loaded);
+      console.log("DEBUG: Loaded enhancement settings", enhancementSettings);
+    }
+  } catch (e) {
+    console.warn("Failed to load enhancement settings, using defaults", e);
+  }
+  // Fetch template config from API instead of fs
+  let templateConfig = { genres: [], tones: [] };
+  try {
+    const res = await fetch('http://localhost:3002/api/templates/config');
+    if (res.ok) {
+      templateConfig = await res.json();
+    }
+  } catch (e) {
+    console.error("Failed to fetch template config:", e);
+  }
+
+  const genreInstruction = findTemplatePrompt(templateConfig.genres as any[], input.scenarioMode);
+
+  // [MODIFIED] Select system prompt based on engineVersion (OFF → empty)
+  let systemPrompt = "";
+  if (!isEngineOff) {
+    selectedEnginePrompt = resolveEnginePrompt(input.engineVersion);
+    selectedEnginePrompt = personalizeEnginePrompt(selectedEnginePrompt, input.targetAge);
+    systemPrompt = selectedEnginePrompt;
+    const preview = selectedEnginePrompt.slice(0, 200).replace(/\s+/g, ' ');
+    console.log(`[Engine] Loaded system prompt for "${input.engineVersion}" (length=${selectedEnginePrompt.length}, preview="${preview}")`);
+  }
+  let userPrompt = "";
+  const shouldApplyTemplate = Boolean(template);
+
+  const templateGuidanceBlock = shouldApplyTemplate ? `
+  [STYLE TEMPLATE GUIDANCE]
+  Template Name: ${template.name}
+  Structure: ${template.structure.join(' -> ')}
+  Tone: ${template.tone}
+  Hook Strategy: ${template.hookStrategy}
+  Twist Style: ${template.twistStyle}
+  ${template.hookTiming ? `Hook Timing: ${template.hookTiming}` : ''}
+  ${template.lengthGuidance ? `Length: ${template.lengthGuidance}` : ''}
+  ${template.dialogueRatio ? `Dialogue Ratio: ${template.dialogueRatio}` : ''}
+  ${template.gagPattern ? `Gag / Twist Pattern: ${template.gagPattern}` : ''}
+  ${template.ctaStyle ? `CTA / Ending: ${template.ctaStyle}` : ''}
+  ${template.visualBeats && template.visualBeats.length ? `Visual Beats (use as rhythm, not literal props): ${template.visualBeats.join(' | ')}` : ''}
+  ${template.mustHaveObjects && template.mustHaveObjects.length ? `Must-Have Objects (examples only—swap to fit the new topic): ${template.mustHaveObjects.join(', ')}` : ''}
+  ${template.characterNotes ? `Character Notes: ${template.characterNotes}` : ''}
+  ${template.imageNotes ? `Image Notes: ${template.imageNotes}` : ''}
+
+  [VIRAL FORMULA APPLICATION (CRITICAL)]
+  1. **Analyze the Formula**: Look at the 'Hook Strategy' and 'Gag Pattern' above. This is the "Viral DNA".
+  2. **Apply to New Topic**: You must apply this *exact abstract logic* to the current Topic: ${resolvedTopic}.
+  3. **NO COPYING**: Do NOT use the specific nouns from the template (e.g., if template says "Pepper", do NOT use Pepper unless it fits the new topic).
+  4. **REPLICATE THE FEELING**: If the template creates "Sexual Tension -> Relief", your new script MUST create "Sexual Tension -> Relief" using the new topic's elements.
+
+  ${input.useRegenerationGuidance ? `
+  [재생성 규칙 - 대박 쇼츠 완전 분석 반영]
+  1. 구조만 학습: [나레이션] 상황 설정 → [대화] 이중의미 대화 → [대화] 오해 증폭 → [반전] 진실 공개
+  2. 오브젝트 100% 새로 창작: 원본 소재 절대 복사 금지. 골프 소재 반복 금지(골프채/퍼터/아이언/홀 등)
+  3. 다양한 일상 소재 사용: 음식(커피믹스/맥주/과일), 의류(넥타이/벨트), 동물(소/말), 의료(편도선/딸꾹질), 일상(우산/열쇠/리모컨)
+  4. 장소 다양화: 골프장만 고집 금지. 맞선집/회사 휴게실/비행기/과수원/학교/병원/카페/마트 등
+  5. 이중의미 키워드 변형: 크기(크다/굵다/길다), 동작(넣다/빼다/따먹다/쓰다듬다), 상태(힘없다/익다/벌어지다)
+  6. 나레이션: 과거형 스토리텔링("~했다", "~였지"). 대사: 10~16자, 8~12문장
+  7. 반전: 마지막 1~2문장으로 진실 공개 (예: "그건 넥타이야", "맥주부터 마시고 한다잖아")
+  8. 표현: ${normalizedTargetAge} 타겟, 언어유희·이중의미·성적 암시 OK / 직접적·노골적 표현 NO
+  ` : ''}
+  Follow this guidance carefully while keeping all mandatory rules above.
+  ` : '';
+
+  // [NEW] CLAUDE MINIMAL MODE (Token Saving)
+  // [MODIFIED] CLAUDE now uses V3 Logic (Unified)
+
+  // === SCRIPT-TO-IMAGE MODE ===
+  if (isEngineOff) {
+    const offPromptLines = [
+      `Topic: ${resolvedTopic}`,
+      `Outfit Style: ${input.category || "0. 선택안함"}`,
+      `Target Age: ${input.targetAge || "40s"}`,
+      `Context: ${topicContext || "None"}`
+    ];
+    if (input.customScript && input.customScript.trim().length > 0) {
+      offPromptLines.push("[CUSTOM SCRIPT]\\n" + input.customScript.trim());
+    }
+    if (genreInstruction) {
+      offPromptLines.push("Genre Instructions:");
+      offPromptLines.push(genreInstruction);
+    }
+    if (topicContext) {
+      offPromptLines.push("Additional Context:");
+      offPromptLines.push(topicContext);
+    }
+    userPrompt = offPromptLines.join("\\n");
+  } else if (input.customScript && input.customScript.trim().length > 0) {
+    console.log("DEBUG: Entered Custom Script Block");
+
+    // [FIX] GENERATE CONSISTENT OUTFITS FOR THE SCRIPT
+    // Even though we have a script, we need to assign specific visuals to the characters to maintain consistency.
+    const isChatGPT = input.targetService === 'CHATGPT';
+    const v3Vars = isChatGPT ? generateSafeV3Variables(input.category) : generateV3Variables(input.category);
+
+    // Female outfit: if not provided, keep generated default. If provided, lock it.
+    if (input.lockedFemaleOutfit?.trim()) {
+      v3Vars.items.A = input.lockedFemaleOutfit.trim();
+    }
+
+    const contextForScriptToImage = topicContext || input.category || '';
+
+    const outfitA = v3Vars.items.A; // Main Female Character
+
+    userPrompt = `[SCRIPT-TO-IMAGE MODE]
+You are given a pre-written script. Your task is to analyze it and generate 6 image prompts that visualize the key moments.
+
+**CRITICAL RULE: CHARACTER CONSISTENCY**
+You must maintain the EXACT SAME visual details for the characters in ALL 6 SCENES.
+1. **Character A (Woman)**: Korean, ${ageTokens.englishShort}. MUST WEAR: "${outfitA}"
+2. **Consistency**: Do NOT change their clothes or hair color between scenes.
+3. **Gender Rule**: Do NOT introduce male characters unless the script explicitly shows a man physically appearing. When no male appears, each scene must clearly note "No male characters appear in this scene."
+4. **Metadata**: You must output a characters array and reference it in every scene with characterIds (e.g., ["A"]).
+
+**TASK**:
+1. Identify 6 key visual moments from the script.
+2. Generate detailed image prompts for each moment.
+3. **INJECT CHARACTER VISUALS**: In every single 'longPrompt', you MUST insert the locked outfit descriptions above.
+
+**Script**:
+${input.customScript}
+
+**Image Prompt Guidelines**:
+- START with: "Korean [Character Name], [Locked Outfit Description]..."
+- DESCRIBE WOMEN: Use "Slender Silhouette, Skinny Fit, Small Waist, Full natural bust, shapely hips strongly emphasized, Healthy beauty"
+- MOTION: "Hair blowing in wind, Walking briskly, Laughing naturally"
+- END with: "Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, --ar 9:16 --q 2 --style raw"
+
+**Output Format**:
+{
+  "title": "Extract or create a catchy title from the script",
+  "titleOptions": ["Impact title option 1", "Impact title option 2", "Impact title option 3"],
+  "scriptBody": "${input.customScript.replace(/"/g, '\\\"').replace(/\\n/g, '\\\\n')}",
+  "punchline": "Extract the punchline or key twist from the script",
+"characters": [
+    {"id": "${FEMALE_CHARACTER_PRESETS.A.id}", "name": "${FEMALE_CHARACTER_PRESETS.A.name}", "role": "${FEMALE_CHARACTER_PRESETS.A.role}", "outfit": "${outfitA}", "hair": "${FEMALE_CHARACTER_PRESETS.A.hair}", "gender": "FEMALE"}
+  ],
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "characterIds": ["A","B"],
+      "shortPrompt": "...",
+      "longPrompt": "...",
+      "soraPrompt": "...",
+      "soraPromptKo": "...",
+      "shortPromptKo": "...",
+      "longPromptKo": "..."
+    }
+  ]
+}
+`;
+
+    const fullPrompt = systemPrompt + "\n\n" + userPrompt;
+
+    try {
+      const response = await fetch('http://localhost:3002/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: input.targetService || 'GEMINI',
+          prompt: fullPrompt
+        }),
+        signal
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate image prompts.");
+      }
+
+      const parsed = await response.json();
+      if (parsed && typeof parsed.punchline === 'string') {
+        parsed.punchline = enforcePunchlineFormat(parsed.punchline);
+      }
+
+      // [NEW] POST-PROCESSING: Enforce Glamour, Ethnicity, and Aspect Ratio
+      if (parsed.scenes && Array.isArray(parsed.scenes)) {
+        // [ENHANCED] Richer Quality Tags for "Bold Glamour"
+        // Added: Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography
+        const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
+        const userContext = topicContext || "";
+
+        parsed.scenes.forEach((scene: any) => {
+          const originalLongPrompt = typeof scene.longPrompt === 'string' ? scene.longPrompt : '';
+          const derivedShort = deriveShortPromptFromScene(originalLongPrompt, scene.shortPrompt, input.targetAge);
+          if (derivedShort) {
+            scene.shortPrompt = derivedShort;
+          }
+          // 1. Apply Unified Safe Glamour Logic with Settings
+          if (scene.shortPrompt) scene.shortPrompt = enhancePromptWithSafeGlamour(scene.shortPrompt, userContext, enhancementSettings);
+          if (scene.longPrompt) scene.longPrompt = enhancePromptWithSafeGlamour(scene.longPrompt, userContext, enhancementSettings);
+
+          // 2. Enforce Aspect Ratio and Quality Tags (DEDUPLICATED)
+          // Remove common tags that might be duplicated by the LLM or previous logic
+          const tagsToRemove = [
+            "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
+            "professional photography", "depth of field", "--ar 9:16", "--style raw",
+            "detailed texture", "magazine cover quality", "hyper-realistic"
+          ];
+
+          const cleanPrompt = (text: string) => {
+            let cleaned = text;
+            tagsToRemove.forEach(tag => {
+              const regex = new RegExp(tag.replace(/[-\/^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+              cleaned = cleaned.replace(regex, "");
+            });
+            // Remove trailing commas and spaces
+            return cleaned.replace(/,\s*,/g, ",").trim().replace(/,$/, "");
+          };
+
+          if (scene.longPrompt) {
+            scene.longPrompt = ensureAgeMention(cleanPrompt(scene.longPrompt), input.targetAge) + qualitySuffix;
+          }
+          if (scene.shortPrompt) {
+            scene.shortPrompt = ensureAgeMention(cleanPrompt(scene.shortPrompt), input.targetAge) + qualitySuffix;
+          }
+        });
+      }
+
+      return {
+        ...parsed,
+        id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString().slice(2),
+        createdAt: Date.now(),
+        service: input.targetService || 'GEMINI',
+      };
+    } catch (error) {
+      console.error("Script-to-Image Generation Error:", error);
+      throw error;
+    }
+  } else if (isV3Family || isCustomEngine) {
+    // Check for ChatGPT (Safety Bypass) - declare early for scope
+    const isChatGPT = input.targetService === 'CHATGPT';
+
+    if (isEngineOff) {
+      systemPrompt = "";
+    } else if (isCustomEngine) {
+      systemPrompt = selectedEnginePrompt;
+      console.log(`[Engine] Custom engine "${input.engineVersion}" selected. Skipping built-in overrides.`);
+    } else if (input.useViralMode && input.scenarioMode === ScenarioMode.DOUBLE_ENTENDRE) {
+      systemPrompt = SYSTEM_PROMPT_VIRAL;
+      console.log("🔥 VIRAL MODE ACTIVATED - Using SYSTEM_PROMPT_VIRAL");
+    } else if (isChatGPT) {
+      systemPrompt = SYSTEM_PROMPT_CHATGPT;
+    } else if (input.targetService === 'CLAUDE') {
+      systemPrompt = SYSTEM_PROMPT_CLAUDE; // Uses the new 6-scene token-saving prompt
+    } else {
+      systemPrompt = selectedEnginePrompt;
+    }
+
+    const v3Vars = isChatGPT ? generateSafeV3Variables(input.category) : generateV3Variables(input.category);
+
+    if (input.lockedFemaleOutfit?.trim()) {
+      v3Vars.items.A = input.lockedFemaleOutfit.trim();
+    }
+
+    // Customize Prompt for ChatGPT
+    let safeTopic: string = resolvedTopic;
+    if (isChatGPT && (safeTopic.includes("헌팅") || safeTopic.includes("꼬시기"))) {
+      // Force "Option A" strategy to bypass negotiation
+      safeTopic = "Topic: Social Popularity Satire (Option A). Situation: Funny rivalry where the next team keeps showing interest. Mood: High-fashion. Ending: Twist.";
+    }
+
+    // --- Dynamic Character Logic ---
+    let lockedOutfitReminder = "";
+    let promptInstructions = "";
+
+    const imageTemplate = `
+  [IMAGE PROMPT RULES]
+  - Create High - End Luxury Visuals.
+    - Use "8k resolution, photorealistic, cinematic lighting".
+    - Focus on the emotions and the twist.
+    - Absolutely NO visible text, captions, signage, subtitles, or written overlays inside the scene.
+    `;
+
+const context = topicContext;
+    // Force male outfit to context-based default; do not randomize
+    let maleOutfit = pickMaleOutfitForContext(context);
+    if (input.targetService === 'CLAUDE' && input.lockedMaleOutfit?.trim()) {
+      // Claude 경로에서만 명시 입력값을 허용하고, 없으면 기본값 사용
+      maleOutfit = input.lockedMaleOutfit.trim();
+    }
+
+    console.log("DEBUG: Engine Version:", input.engineVersion);
+    console.log("DEBUG: Male Outfit Selected:", maleOutfit);
+
+    const backgroundInstruction = `
+    [BACKGROUND & CAMERA CONSISTENCY]
+    - Location Anchor: ${context ? context : 'High-end private golf course on a weekday afternoon'}.
+    - Keep scenes 1~5 in the SAME location and lighting. Change only the camera distance and character actions.
+    - Scene Camera Plan:
+      Scene 1: Push-in close-up (breath + hook)
+      Scene 2: Shoulder-level tracking shot (distance closing)
+      Scene 3: Dutch-angle half body (tension spike)
+      Scene 4: Extreme close-up on hands/faces (misdirection)
+      Scene 5: Wide shot hinting the reveal
+      Scene 6: Zoom-out master shot revealing the innocent truth.
+    - Do NOT teleport the background each scene. Only Scene 6 may expand/zoom out for the punchline reveal.
+    `;
+
+    const storyFocusBlock = `
+    [GENRE TEMPLATE MODE]
+    - Topic: ${resolvedTopic}
+    - Ignore Scenario presets. Follow ONLY the Style Template guidance above plus the outfit/visual rules here.
+    - Build a viral short-form script with original props, dialogue, and a strong comedic twist.
+    - Keep narration heavy (80%) and insert dialogue only at emotional spikes.
+    `;
+
+    // [DYNAMIC LOCKED OUTFIT REMINDER - FIXED]
+    // We must explicitly define which outfit belongs to which character role for consistency across the story.
+    // This ensures ChatGPT gets the "LOCKED VARIABLES" it demands.
+
+    let outfitA = v3Vars.items.A; // Female default
+    let outfitB = maleOutfit;     // Male default (context-based, not randomized)
+
+    lockedOutfitReminder = `
+  [LOCKED STYLE REMINDER]
+  Copy and paste these outfit & hair descriptions EXACTLY (word-for-word) in EVERY scene output.
+  
+  [${FEMALE_CHARACTER_PRESETS.A.name} (Character A)]
+  Outfit: ${outfitA}
+  Hair: ${FEMALE_CHARACTER_PRESETS.A.hair}
+
+  [Character B Outfit LOCKED VARIABLE]
+  ${outfitB}
+  Hair: ${MALE_DEFAULT_HAIR}
+
+  [${FEMALE_CHARACTER_PRESETS.C.name} (Character C)]
+  Outfit: ${v3Vars.items.C}
+  Hair: ${FEMALE_CHARACTER_PRESETS.C.hair} (사용 시 고정)
+  `;
+
+
+    promptInstructions = `
+    ${storyFocusBlock}
+    ${imageTemplate}
+    [MULTI-CHARACTER VISUAL DIVERSITY]
+    - When two or more Korean women appear, assign each one a unique Korean name, distinct hairstyle, and distinct outfit silhouette.
+    - Never describe two different women with identical clothes, hair, or accessories. 혜진(A)는 긴 웨이브 헤어, 수아(B)는 짧은 보브컷, 민지(C)는 로우 포니테일을 유지하며 서로 다른 색/실루엣의 의상을 입혀라.
+    - Reference the locked outfits (Character A / Character B / Character C) and map them consistently to the same person in all scenes.
+    - Make sure the narration/image prompts clearly identify which woman is performing which action so viewers can track them.
+    ${backgroundInstruction}
+    [DYNAMIC POSE & EXPRESSION INJECTION]
+    - **AVOID STATIC POSES**. No "Standing still" or "Looking at camera".
+    - **Scene 1-5 (Tension)**:
+      - **Expressions**: Biting lips, Furrowed brows, Wide eyes, Sweating, Flustered, Intense focus.
+      - **Actions**: Pulling hard, Pushing with body weight, Wiping sweat, Hands shaking, Grasping tightly.
+      - **Angles**: Dutch Angle, Extreme Close-up on hands/face, Over-the-shoulder.
+    - **Scene 6 (Relief)**:
+      - **Expressions**: Sighing in relief, Laughing, Wiping forehead.
+      - **Actions**: Slumping in chair, Holding the object loosely.
+
+    [VISUAL MISDIRECTION RULE (CRITICAL)]
+    - **Scene 1-5 (The Lie)**: VISUALIZE THE MISUNDERSTANDING. Do NOT show the actual object. Show the characters' expressions (flustered, sweating, shocked) and obscured actions. Make it look like a "Drama" or "Tension" scene.
+    - **Scene 6 (The Truth)**: ZOOM OUT and REVEAL the actual object clearly. This is the visual punchline.
+  `;
+
+    userPrompt = `
+  Topic: ${resolvedTopic}
+      Outfit Style: ${input.category || "0. 선택안함"}
+      Target Age: ${input.targetAge || "40s"}
+
+  ${promptInstructions}
+
+  ${templateGuidanceBlock}
+
+  ${lockedOutfitReminder}
+
+  [FEMALE OUTFIT RULES - CRITICAL]
+  - All FEMALE visuals must use ULTRA-TIGHT + MINI / MICRO length silhouettes (crop tops, micro/mini skirts, micro shorts, bodycon mini dresses).
+  - Absolutely NO slacks, trousers, loose pants, or baggy bottoms for women.
+  - Keep outfits glamorous, high-fashion, and form-fitting to emphasize curves.
+
+  [CHARACTER ID MAP - MUST OUTPUT]
+  - Characters array with stable IDs and outfits:
+    - {"id":"${FEMALE_CHARACTER_PRESETS.A.id}","name":"${FEMALE_CHARACTER_PRESETS.A.name}","role":"${FEMALE_CHARACTER_PRESETS.A.role}","outfit":"${outfitA}","hair":"${FEMALE_CHARACTER_PRESETS.A.hair}","gender":"FEMALE"}
+    - {"id":"B","name":"Male Lead","role":"Male Lead","outfit":"${outfitB}","hair":"${MALE_DEFAULT_HAIR}","gender":"MALE"}
+    - {"id":"${FEMALE_CHARACTER_PRESETS.C.id}","name":"${FEMALE_CHARACTER_PRESETS.C.name}","role":"${FEMALE_CHARACTER_PRESETS.C.role}","outfit":"${v3Vars.items.C}","hair":"${FEMALE_CHARACTER_PRESETS.C.hair}","gender":"FEMALE"}
+  - Every scene MUST include "characterIds": ["A"] or ["A","B"] referencing this map. Do NOT swap outfits between characters.
+
+  [SCRIPT TASK (CRITICAL)]
+  - Produce "scriptBody" as pure Korean narration/dialogue lines separated by "\\n".
+  - Provide exactly 3 impactful alternative titles in "titleOptions" and select the strongest one for "title".
+  - Language: 100% Korean, natural spoken tone for ${normalizedTargetAge}.
+  - Structure: Follow the Style Template beats (Hook → Build → Twist) but DO NOT label them.
+  - Length: 12~15 sentences total, narration-heavy (약 80%) with only 2~3 dialogue punches.
+  - Content Inputs: Use ONLY the Topic (${resolvedTopic}), Outfit Style (${input.category || '0. 선택안함'}), and any user-provided context. Ignore Scenario Modes entirely.
+  - Never mention outfit names/colors in the scriptBody. Focus on emotions, conflict, and twist resolution.
+  - 작은따옴표(')와 큰따옴표(") 등 모든 따옴표 사용을 금지한다. 대사/내레이션 모두 순수 텍스트로 구어체 톤을 작성하라.
+
+  [OUTPUT JSON RULES]
+  - Must return valid JSON (no markdown).
+  - Required keys:
+    - "title": Single best Hook line in Korean.
+    - "titleOptions": 3 alternative Korean hook lines.
+    - "scriptBody": Korean script text separated by "\\n" containing the narration/dialogue above.
+    - "punchline": Final killer line in Korean.
+    - "characters": [ ...as listed in the Character ID Map ... ].
+    - "scenes": exactly 6 objects, each with: sceneNumber, characterIds, shortPrompt, shortPromptKo, longPrompt, longPromptKo, soraPrompt, soraPromptKo.
+  - If you cannot provide characters + characterIds for all scenes, DO NOT answer with a story; instead return { "error": "missing characterIds" }.
+  - Keep scene prompts concise but include the locked outfits verbatim and the character IDs.
+  - Enforce the FEMALE OUTFIT RULES above in every scene (no slacks for women; use ultra-tight mini/micro silhouettes).
+
+  [IMPORTANT]
+      For EVERY image prompt(short and long), you MUST append these quality tags at the end:
+  ", photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field"
+
+      For the script, do not include[Hook], [Flow] tags, just the text lines.
+      ** Script Direction(CRITICAL - MUST FOLLOW) **:
+      - ** Narration 80 %, Dialogue 20 % (Critical Moments Only)**
+      - ** NARRATION STYLE: "Storytelling Mode"(NOT Summary) **
+    - Describe actions, expressions, and atmosphere like a novel.
+        - Example: "김여사는 선글라스를 끼고 거만하게 앉아 있었다."(O)
+    - AVOID: "김여사가 골프를 쳤다."(X - Too dry)
+      - ** DIALOGUE STYLE: "Punchline Only" **
+        - Use dialogue ONLY for conflict peaks and punchlines.
+        - Max 2 - 3 dialogue lines per script.
+        - Example: "내가 누군지 알아?" / "지게차로 옮겨야겠네."
+    - Follow the Style Template guidance above as the ONLY structural reference.
+      - Keep it short, punchy, and entertaining(Shorts style).
+    `;
+
+  } else {
+    // === V2 LOGIC ===
+    const isGolfCategory = input.category.includes("골프");
+    const mainStyle = isGolfCategory ? (Math.random() < 0.7 ? 'GOLF' : pickWeightedStyle()) : pickWeightedStyle();
+    const mainCostume = generateCostumeV2(mainStyle);
+    const mainTraits = generateCharacterTraits();
+
+    let subStyle: StyleCategory;
+    do {
+      subStyle = pickWeightedStyle();
+    } while (subStyle === mainStyle && Math.random() > 0.2);
+
+    const subCostume = generateCostumeV2(subStyle);
+    const subTraits = generateCharacterTraits();
+
+    userPrompt = `
+  Topic: ${input.category}
+      Spice Level: ${input.scenarioMode}
+  Dialect: ${input.dialect}
+      Additional Context: ${input.customContext || "None"}
+      
+      ==========================================================
+  [LOCKED CHARACTER TRAITS](DO NOT CHANGE)
+    ==========================================================
+      ** MAIN CHARACTER(Protagonist) **:
+  - Identity: Korean Woman
+    - Physical: ${mainTraits}
+  - COSTUME: ${mainCostume.description} (${mainCostume.style} Style)
+
+      ** SUB CHARACTER(Friend / Rival / Caddy) **:
+  - Identity: Korean Woman
+    - Physical: ${subTraits}
+  - COSTUME: ${subCostume.description} (${subCostume.style} Style)
+
+  IMPORTANT: You MUST use these EXACT costume and physical descriptions in every single image prompt(Scene 1 to 6).
+    `;
+  }
+
+  // Combine System + User Prompt for the Chat Interface
+  const fullPrompt = `
+    ${systemPrompt}
+
+  ---
+
+    ${userPrompt}
+
+  IMPORTANT: Respond ONLY with the valid JSON. No markdown, no explanations.
+  
+  [CRITICAL JSON FORMATTING RULES]
+  1. You MUST use double quotes (") for ALL JSON keys and string values.
+  2. DO NOT use single quotes (') for JSON keys or values.
+  3. For emphasis or quotes INSIDE string values, use escaped double quotes (\") or Korean quotes (「」).
+  
+  Examples:
+  ✅ CORRECT: {"title": "내 \"홀인원\"은..."}
+  ✅ CORRECT: {"title": "내 '홀인원'은..."} (single quotes inside string are OK)
+  ❌ WRONG: {'title': '크리스마스'} (single quotes for keys/values)
+  ❌ WRONG: {"title": "내 "홀인원"은..."} (unescaped double quotes inside)
+  `;
+
+  console.log("DEBUG: Full Prompt Generated:\n", fullPrompt);
+
+  try {
+    // Call Local Backend (Puppeteer)
+    const response = await fetch('http://localhost:3002/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service: input.targetService || 'GEMINI',
+        prompt: fullPrompt
+      }),
+      signal
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to generate story via automation.");
+    }
+
+    const parsed = await response.json();
+    if (parsed && typeof parsed.punchline === 'string') {
+      parsed.punchline = enforcePunchlineFormat(parsed.punchline);
+    }
+
+    // [FIX] Universal Quality Tag Enforcement for Main Story Generation
+    // Matches the logic used in Script-to-Image mode
+    if (parsed.scenes && Array.isArray(parsed.scenes)) {
+      // [ENHANCED] Richer Quality Tags for "Bold Glamour"
+      const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
+      const userContext = topicContext || "";
+
+      parsed.scenes.forEach((scene: any) => {
+        // 1. Apply Unified Safe Glamour Logic with Settings
+        if (scene.shortPrompt) scene.shortPrompt = enhancePromptWithSafeGlamour(scene.shortPrompt, userContext, enhancementSettings);
+        if (scene.longPrompt) scene.longPrompt = enhancePromptWithSafeGlamour(scene.longPrompt, userContext, enhancementSettings);
+
+        // 2. Enforce Aspect Ratio and Quality Tags (DEDUPLICATED)
+        const tagsToRemove = [
+          "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
+          "professional photography", "depth of field", "--ar 9:16", "--style raw",
+          "detailed texture", "magazine cover quality", "hyper-realistic"
+        ];
+
+        const cleanPrompt = (text: string) => {
+          let cleaned = text;
+          tagsToRemove.forEach(tag => {
+            const regex = new RegExp(tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+            cleaned = cleaned.replace(regex, "");
+          });
+          return cleaned.split(',').map(s => s.trim()).filter(s => s.length > 0).join(', ');
+        };
+
+        if (scene.longPrompt) {
+          scene.longPrompt = ensureAgeMention(cleanPrompt(scene.longPrompt), input.targetAge) + qualitySuffix;
+        }
+        if (scene.shortPrompt) {
+          scene.shortPrompt = ensureAgeMention(cleanPrompt(scene.shortPrompt), input.targetAge) + qualitySuffix;
+        }
+      });
+    }
+
+    return {
+      ...parsed,
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString().slice(2),
+      createdAt: Date.now(),
+      service: input.targetService || 'GEMINI',
+    };
+  } catch (error) {
+    console.error("Automation Generation Error:", error);
+    throw error;
+  }
+};

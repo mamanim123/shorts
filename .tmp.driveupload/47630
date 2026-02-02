@@ -1,0 +1,64 @@
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import path from 'path';
+
+puppeteer.use(StealthPlugin());
+
+(async () => {
+    // Must match the userDataDir structure in puppeteerHandler.js
+    const userDataPath = path.join(process.cwd(), 'user_data_stealth');
+
+    console.log('---------------------------------------------------------');
+    console.log(`[Setup] Launching browser with persistent profile:`);
+    console.log(`        ${userDataPath}`);
+    console.log('---------------------------------------------------------');
+
+    const browser = await puppeteer.launch({
+        headless: false,
+        defaultViewport: null,
+        args: [
+            '--window-size=1280,1000',
+            '--no-sandbox',
+            '--disable-setuid-sandbox'
+        ],
+        userDataDir: userDataPath
+    });
+
+    console.log('[Setup] Browser initialized.');
+
+    // Open main page
+    const page = (await browser.pages())[0];
+    await page.goto('https://google.com');
+
+    // List of services to open
+    const services = [
+        { name: 'Gemini', url: 'https://gemini.google.com/app' },
+        { name: 'ChatGPT', url: 'https://chatgpt.com' },
+        { name: 'Claude', url: 'https://claude.ai/login' },
+        { name: 'Genspark', url: 'https://genspark.ai' }
+    ];
+
+    console.log('[Setup] Opening service tabs...');
+
+    for (const service of services) {
+        try {
+            const newPage = await browser.newPage();
+            await newPage.goto(service.url);
+            console.log(`[Setup] Opened ${service.name}`);
+            await new Promise(r => setTimeout(r, 1000)); // Prevent rate limits or hiccups
+        } catch (e) {
+            console.error(`[Setup] Failed to open ${service.name}:`, e.message);
+        }
+    }
+
+    console.log('---------------------------------------------------------');
+    console.log('✅ ALL TABS OPENED.');
+    console.log('1. Please MANUALLY LOG IN to each service in the opened browser.');
+    console.log('2. Once logged in, your session is saved automatically.');
+    console.log('3. You can verify you are logged in by refreshing the page.');
+    console.log('4. When satisfied, simply CLOSE the browser window or press Ctrl+C here.');
+    console.log('---------------------------------------------------------');
+
+    // Keep the script running so the browser doesn't close immediately (unless user closes it)
+    await new Promise(() => { });
+})();

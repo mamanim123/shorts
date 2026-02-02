@@ -75,7 +75,7 @@
               "Editorial fit, photo-ready posture",
               "타이트한 핏으로 여성스러운 곡선과 풍만한 클리비지"
             ],
-            "autoSentence": true,
+            "autoSentence": false,
             "customSentence": "",
             "enabled": true
           },

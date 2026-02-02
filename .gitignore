@@ -41,3 +41,4 @@ puppeteer_user_data/
 # Windows reserved names
 nul
 **/nul
+.tmp.driveupload/ 

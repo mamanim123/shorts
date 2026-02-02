@@ -39,6 +39,8 @@ import { shortsLabCharacterRulesManager } from '../services/shortsLabCharacterRu
 import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, ElementAnalysis, getProblemExplanation } from '../utils/promptHighlightSystem';
 import { usePromptEditModal } from '../hooks/usePromptEditModal';
 import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
+import { fetchPromptEnhancementSettings } from '../services/promptEnhancementUtils';
+
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -942,7 +944,9 @@ interface PromptSettings {
     selectedEthnicity: string;
     useStylePreset: boolean;
     selectedStyle: string;
+    useGenderGuard?: boolean;
 }
+
 
 type IdentitySlotId = typeof IDENTITY_SLOTS[number]['id'];
 
@@ -1031,7 +1035,8 @@ const postProcessAiScenes = (
         const fallbackCharacters = characterInfos.length > 0
             ? characterInfos
             : Array.from(characterInfoMap.values()).slice(0, 3);
-        const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters);
+        const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
+
         processedPrompt = applyAccessoriesToPrompt(validation.fixedPrompt, characterIds, accessoryMap);
 
         // 3. 네거티브 프롬프트 분리 처리
@@ -1178,8 +1183,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         useEthnicityKeywords: true,
         selectedEthnicity: ETHNICITY_KEYWORDS[0],
         useStylePreset: true,
-        selectedStyle: 'cinematic'
+        selectedStyle: 'cinematic',
+        useGenderGuard: true
     });
+
 
     // Identity Lock (씬 분해 전 캐릭터/의상/악세서리 고정)
     const [identityLockEnabled, setIdentityLockEnabled] = useState(false);
@@ -1276,7 +1283,18 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, [promptEditSceneNumber]);
 
     useEffect(() => {
+        const syncEnhancementSettings = async () => {
+            const enh = await fetchPromptEnhancementSettings();
+            if (enh && enh.useGenderGuard !== undefined) {
+                setSettings(prev => ({ ...prev, useGenderGuard: enh.useGenderGuard }));
+            }
+        };
+        syncEnhancementSettings();
+    }, []);
+
+    useEffect(() => {
         if (promptEditSceneNumber === null) return;
+
         promptAnalysisCacheRef.current[promptEditSceneNumber] = {
             original: promptEditOriginal,
             editing: promptEditText,

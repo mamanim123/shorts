@@ -2093,34 +2093,75 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
 };
 
 export interface PromptValidationResult { isValid: boolean; issues: string[]; fixedPrompt: string; }
-export interface CharacterInfo { identity: string; hair: string; body: string; outfit: string; }
+export interface CharacterInfo { 
+  id?: string;
+  name?: string;
+  gender?: string;
+  identity: string; 
+  hair: string; 
+  body: string; 
+  outfit: string; 
+}
+
 
 const MULTI_PERSON_POSITIONS = ['on the left', 'on the right', 'in the center'];
 const MULTI_PERSON_COLORS = ['pastel purple', 'beige', 'navy'];
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const enhanceMultiPersonBlocks = (prompt: string, characters: CharacterInfo[]) => {
+const enhanceMultiPersonBlocks = (
+  prompt: string, 
+  characters: CharacterInfo[],
+  options?: { useGenderGuard?: boolean }
+) => {
   const hasPersonBlocks = /\[Person\s+\d+:/i.test(prompt);
   if (!hasPersonBlocks) return prompt;
+  const useGenderGuard = options?.useGenderGuard !== false;
 
   return prompt.replace(/\[Person\s+(\d+):([^\]]+)\]/gi, (match, indexRaw, contentRaw) => {
     const index = Math.max(0, Number(indexRaw) - 1);
-    const character = characters[index];
+    let character = characters[index];
     let content = contentRaw.trim();
 
-    if (character?.outfit) {
-      const outfitClean = character.outfit.replace(/^wearing\s+/i, '').trim();
-      if (/wearing\s+[^,]+/i.test(content)) {
-        content = content.replace(/wearing\s+[^,]+/i, `wearing ${outfitClean}`);
-      } else {
-        content = `${content}, wearing ${outfitClean}`;
+    // [V3.5.3] Smart Matching: Handle AI swapping person indices
+    for (const ch of characters) {
+      if (!ch) continue;
+      const idPattern = new RegExp(`\\b${ch.id}\\b`, 'i');
+      const namePattern = ch.name ? new RegExp(`\\b${ch.name}\\b`, 'i') : null;
+
+      if (idPattern.test(content) || (namePattern && namePattern.test(content))) {
+        character = ch;
+        break;
       }
-      const outfitRegex = new RegExp(escapeRegex(outfitClean), 'i');
-      if (!outfitRegex.test(content)) {
-        content = `${content}, outfit ${outfitClean}`;
-      } else {
-        content = `${content}, outfit ${outfitClean}`;
+    }
+
+    if (character) {
+      const isMale = String(character.id || '').toLowerCase().startsWith('man') || 
+                     (character.gender && String(character.gender).toUpperCase() === 'MALE');
+
+      if (isMale && useGenderGuard) {
+        // [V3.5.3] Gender Guard: Remove feminine clothing keywords for male characters
+        const feminineKeywords = /\b(mini\s+)?(dress|skirt|micro|bodycon|feminine|lady|wife|cleavage|bra|her)\b/gi;
+        if (feminineKeywords.test(content)) {
+          content = content
+            .replace(feminineKeywords, '')
+            .replace(/\bher\b/gi, 'his')
+            .replace(/\bshe\b/gi, 'he')
+            .replace(/,\s*,/g, ',')
+            .trim();
+        }
+      }
+
+      if (character.outfit) {
+        const outfitClean = character.outfit.replace(/^wearing\s+/i, '').trim();
+        // If outfit is missing or was stripped by gender guard, force it back
+        if (!content.toLowerCase().includes(outfitClean.toLowerCase())) {
+          if (/wearing\s+[^,]+/i.test(content)) {
+            content = content.replace(/wearing\s+[^,]+/i, `wearing ${outfitClean}`);
+          } else {
+            content = `${content}, wearing ${outfitClean}`;
+          }
+        }
       }
     }
 
@@ -2138,11 +2179,18 @@ const enhanceMultiPersonBlocks = (prompt: string, characters: CharacterInfo[]) =
   });
 };
 
-export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '투샷' | '쓰리샷', characters: CharacterInfo[]): PromptValidationResult => {
+
+export const validateAndFixPrompt = (
+  longPrompt: string, 
+  shotType: '원샷' | '투샷' | '쓰리샷', 
+  characters: CharacterInfo[],
+  options?: { useGenderGuard?: boolean }
+): PromptValidationResult => {
   const issues: string[] = [];
   let fixedPrompt = longPrompt;
   const promptConstants = getPromptConstants();
   const hasPersonMarkers = /\[Person\s+\d+:/i.test(longPrompt);
+  const useGenderGuard = options?.useGenderGuard !== false; // Default to true
 
   // 1. 필수 시작 문구 확인
   if (!longPrompt.includes('unfiltered raw photograph')) {
@@ -2169,6 +2217,19 @@ export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '�
 
       // Outfit sync
       if (character.outfit) {
+        if (useGenderGuard) {
+          const isMale = String(character.id || '').toLowerCase().startsWith('man') || 
+                         (character.gender && String(character.gender).toUpperCase() === 'MALE');
+
+          if (isMale) {
+            const feminineKeywords = /\b(mini\s+)?(dress|skirt|micro|bodycon|feminine|lady|wife|cleavage|bra|her)\b/gi;
+            fixedPrompt = fixedPrompt
+              .replace(feminineKeywords, '')
+              .replace(/\bher\b/gi, 'his')
+              .replace(/\bshe\b/gi, 'he');
+          }
+        }
+
         const outfitClean = character.outfit.replace(/^wearing\s+/i, '');
         const wearingRegex = /wearing\s+[^,]+/i;
         if (wearingRegex.test(fixedPrompt)) {
@@ -2186,10 +2247,11 @@ export const validateAndFixPrompt = (longPrompt: string, shotType: '원샷' | '�
   }
 
   if (shotType !== '원샷' && hasPersonMarkers) {
-    fixedPrompt = enhanceMultiPersonBlocks(fixedPrompt, characters);
+    fixedPrompt = enhanceMultiPersonBlocks(fixedPrompt, characters, { useGenderGuard });
   }
 
   // Final cleanup
+
   fixedPrompt = fixedPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
   const womanPattern = /A stunning Korean woman,\s*A stunning Korean woman/gi;
   fixedPrompt = fixedPrompt.replace(womanPattern, 'A stunning Korean woman');

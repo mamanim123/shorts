@@ -12,9 +12,11 @@ export interface PromptEnhancementSettings {
   slots?: PromptEnhancementSlot[];
   useQualityTags?: boolean;
   qualityTags?: string;
+  useGenderGuard?: boolean;
   /**
    * Legacy fields kept for backwards compatibility.
    */
+
   koreanKeywords?: string[];
   slimGlamourKeywords?: string[];
   useKoreanForce?: boolean;
@@ -27,7 +29,26 @@ export interface NormalizedPromptEnhancementSettings extends PromptEnhancementSe
   qualityTags: string;
 }
 
+export const fetchPromptEnhancementSettings = async (): Promise<PromptEnhancementSettings | null> => {
+  try {
+    const res = await fetch('http://localhost:3002/api/prompt-enhancement-settings');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.profiles && data.activeProfileId) {
+        const activeProfile = data.profiles.find((p: any) => p.id === data.activeProfileId);
+        return activeProfile ? activeProfile.settings : data.profiles[0].settings;
+      }
+      return data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to fetch prompt enhancement settings:', error);
+    return null;
+  }
+};
+
 const QUALITY_TAG_FALLBACK =
+
   ', photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16';
 
 const DEFAULT_SLOT_PRESETS: Array<Partial<PromptEnhancementSlot>> = [
@@ -70,7 +91,9 @@ export const DEFAULT_PROMPT_ENHANCEMENT_SETTINGS: NormalizedPromptEnhancementSet
   slots: DEFAULT_SLOT_PRESETS.map(createSlotFromPreset),
   useQualityTags: true,
   qualityTags: QUALITY_TAG_FALLBACK,
+  useGenderGuard: true,
 };
+
 
 function createSlotFromPreset(preset: Partial<PromptEnhancementSlot>): PromptEnhancementSlot {
   return {
@@ -167,8 +190,13 @@ export function normalizePromptEnhancementSettings(
       typeof raw?.qualityTags === 'string' && raw.qualityTags.trim().length
         ? raw.qualityTags
         : DEFAULT_PROMPT_ENHANCEMENT_SETTINGS.qualityTags,
+    useGenderGuard:
+      raw?.useGenderGuard !== undefined
+        ? raw.useGenderGuard
+        : DEFAULT_PROMPT_ENHANCEMENT_SETTINGS.useGenderGuard,
   };
 }
+
 
 export function clonePromptEnhancementSettings(
   raw?: Partial<PromptEnhancementSettings>

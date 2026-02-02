@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, Play, Sparkles, Trash2, Plus, Wand2, Copy } from 'lucide-react';
 import { enhancePrompt } from './master-studio/services/geminiService';
 import {
@@ -406,8 +407,8 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
 
   const isActiveProfile = currentProfile && currentProfile.id === activeProfileId;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
         <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -479,27 +480,52 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
                 )}
               </div>
 
-              <div className="bg-purple-900/20 border border-purple-500/30 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5" />
-                    대본 생성 시 자동 후처리 적용
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    꺼두시면 대본 생성 시에는 원본 프롬프트가 유지되며, 필요할 때 '전체 후처리' 버튼으로 적용할 수 있습니다.
-                  </p>
+              <div className="bg-purple-900/20 border border-purple-500/30 p-4 rounded-xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5" />
+                      대본 생성 시 자동 후처리 적용
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      꺼두시면 대본 생성 시에는 원본 프롬프트가 유지되며, 필요할 때 '전체 후처리' 버튼으로 적용할 수 있습니다.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={currentSettings.autoEnhanceOnGeneration}
+                      onChange={(e) =>
+                        updateCurrentSettings((prev) => ({ ...prev, autoEnhanceOnGeneration: e.target.checked }))
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={currentSettings.autoEnhanceOnGeneration}
-                    onChange={(e) =>
-                      updateCurrentSettings((prev) => ({ ...prev, autoEnhanceOnGeneration: e.target.checked }))
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                </label>
+
+                <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                      <Wand2 className="w-4 h-4" />
+                      성별 의상 보호 (Gender Guard)
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      남성 캐릭터가 여성용 의상(치마, 드레스 등)을 입는 것을 방지하고 고정 의상으로 교정합니다.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={currentSettings.useGenderGuard}
+                      onChange={(e) =>
+                        updateCurrentSettings((prev) => ({ ...prev, useGenderGuard: e.target.checked }))
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -607,6 +633,7 @@ export const PromptEnhancementSettings: React.FC<PromptEnhancementSettingsProps>
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

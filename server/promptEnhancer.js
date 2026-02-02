@@ -39,7 +39,8 @@ const DEFAULT_SETTINGS = {
     autoEnhanceOnGeneration: true,
     slots: DEFAULT_SLOT_PRESETS,
     useQualityTags: true,
-    qualityTags: QUALITY_TAG_FALLBACK
+    qualityTags: QUALITY_TAG_FALLBACK,
+    useGenderGuard: true
 };
 
 const DEFAULT_PROFILE = {
@@ -89,7 +90,8 @@ const normalizeSettings = (raw = {}) => {
         autoEnhanceOnGeneration: raw.autoEnhanceOnGeneration !== undefined ? Boolean(raw.autoEnhanceOnGeneration) : DEFAULT_SETTINGS.autoEnhanceOnGeneration,
         slots: slots.length ? slots : DEFAULT_SLOT_PRESETS.map((slot) => cloneSlot({ ...slot, id: `slot-${Math.random().toString(36).slice(2, 10)}` })),
         useQualityTags: raw.useQualityTags !== undefined ? Boolean(raw.useQualityTags) : DEFAULT_SETTINGS.useQualityTags,
-        qualityTags: typeof raw.qualityTags === 'string' && raw.qualityTags.trim().length ? raw.qualityTags : QUALITY_TAG_FALLBACK
+        qualityTags: typeof raw.qualityTags === 'string' && raw.qualityTags.trim().length ? raw.qualityTags : QUALITY_TAG_FALLBACK,
+        useGenderGuard: raw.useGenderGuard !== undefined ? Boolean(raw.useGenderGuard) : DEFAULT_SETTINGS.useGenderGuard
     };
 };
 
@@ -417,11 +419,75 @@ const enforceUltraTightOutfits = (text = "") => {
     return updated;
 };
 
+/**
+ * Gender Guard: Prevents male characters from wearing female clothing.
+ * Matches [Person X] blocks and sanitizes based on character gender.
+ */
+const applyGenderGuard = (prompt, characterIds, characterMap) => {
+    if (!prompt || !characterIds || !characterMap) return prompt;
+
+    return prompt.replace(/\[Person\s+(\d+):([^\]]+)\]/gi, (match, indexRaw, contentRaw) => {
+        const index = Math.max(0, Number(indexRaw) - 1);
+        let characterId = characterIds[index];
+        let character = characterMap[characterId];
+
+        // Smart Matching: handle AI swapping person indices
+        for (const cid of Object.keys(characterMap)) {
+            const ch = characterMap[cid];
+            if (!ch) continue;
+            const idPattern = new RegExp(`\\b${cid}\\b`, 'i');
+            const namePattern = ch.name ? new RegExp(`\\b${ch.name}\\b`, 'i') : null;
+
+            if (idPattern.test(contentRaw) || (namePattern && namePattern.test(contentRaw))) {
+                character = ch;
+                break;
+            }
+        }
+
+        if (!character) return match;
+
+        let sanitizedContent = contentRaw;
+        const isMale = character.gender === 'MALE' || /Man|Boy|Guy|남성|남자/i.test(character.id || '');
+
+        if (isMale) {
+            // Remove female clothing keywords and fix pronouns
+            const femaleKeywords = /\b(mini\s+)?(dress|skirt|micro|bodycon|feminine|lady|wife|cleavage|bra)\b/gi;
+            sanitizedContent = sanitizedContent
+                .replace(femaleKeywords, '')
+                .replace(/\bher\b/gi, 'his')
+                .replace(/\bshe\b/gi, 'he');
+
+            // Clean up formatting
+            sanitizedContent = sanitizedContent.replace(/,\s*,/g, ',').replace(/\s\s+/g, ' ').trim();
+            if (sanitizedContent.endsWith(',')) sanitizedContent = sanitizedContent.slice(0, -1);
+
+            // Force original outfit if it's missing or stripped
+            if (character.outfit && !sanitizedContent.toLowerCase().includes(character.outfit.toLowerCase())) {
+                if (/wearing\s+[^,]+/i.test(sanitizedContent)) {
+                    sanitizedContent = sanitizedContent.replace(/wearing\s+[^,]+/i, `wearing ${character.outfit}`);
+                } else {
+                    sanitizedContent += `, wearing ${character.outfit}`;
+                }
+            }
+        }
+
+        return `[Person ${indexRaw}: ${sanitizedContent.trim()}]`;
+    });
+};
+
 // [MAIN] Full Prompt Enhancement
 export const applyFullEnhancement = (prompt, characterIds, characterMap) => {
     if (!prompt) return "";
     const settings = getSettings();
-    let newPrompt = injectCharacterDetails(prompt, characterIds, characterMap);
+
+    let newPrompt = prompt;
+
+    // Apply Gender Guard first if enabled
+    if (settings.useGenderGuard !== false) {
+        newPrompt = applyGenderGuard(newPrompt, characterIds, characterMap);
+    }
+
+    newPrompt = injectCharacterDetails(newPrompt, characterIds, characterMap);
     const hasFemale = hasFemaleCharacter(newPrompt, characterIds, characterMap);
 
     settings.slots.forEach((slot) => {

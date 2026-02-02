@@ -748,5 +748,298 @@
     "createdAt": 1769496908612,
     "service": "GEMINI",
     "_folderName": "260127_1555_근데_그날따라_눈이_펑펑_오는_거야...."
+  },
+  {
+    "title": "눈 쌓인 골프장에서 지영 씨가 사투를 벌인 진짜 이유",
+    "titleOptions": [
+      "영하 10도 골프장에 나타난 역대급 미모의 캐디",
+      "준호 씨가 눈밭에서 지영 씨를 껴안고 오열한 사연",
+      "지영 씨의 사라진 6번 아이언과 눈밭의 미스터리"
+    ],
+    "scriptBody": "지영 씨는 오늘따라 눈이 펑펑 내리는 필드 위에서 정신을 못 차리고 있었어.\n옆에서 지켜보던 준호 씨는 안절부절못하며 지영 씨 주변만 맴돌더라고.\n지영 씨는 입술을 꽉 깨물고는 눈 속에 파묻힌 무언가를 필사적으로 파내기 시작했지.\n가까이 다가온 준호 씨가 지영 씨의 떨리는 어깨를 감싸며 낮게 속삭였어.\n'지영 씨, 그건 이제 포기하는 게 어때요?'\n지영 씨는 눈물 맺힌 눈으로 준호 씨를 빤히 쳐다보더니 더 세게 눈을 헤집었어.\n옆에서 이 상황을 지켜보던 미숙 씨는 차가운 눈빛으로 한숨을 내쉬더라고.\n준호 씨는 결국 지영 씨의 손을 겹쳐 잡으며 같이 무릎을 꿇었지 뭐야.\n둘은 마치 세상이 끝난 것처럼 눈밭에서 처절한 사투를 벌이고 있었어.\n숨이 턱 끝까지 차오른 지영 씨가 드디어 눈 속에서 뭔가를 번쩍 들어 올렸어.\n알고 보니 지영 씨, 남편이 생일 선물로 사준 명품 다이아 반지를 잃어버렸던 거였대.\n결국 찾아내긴 했는데, 준호 씨는 반지보다 지영 씨 손가락 얼어터질까 봐 울기 직전이었더라고.",
+    "punchline": "반지 찾고 보니까 준호 씨가!",
+    "characters": [
+      {
+        "id": "WomanA",
+        "name": "지영",
+        "role": "Female Lead",
+        "outfit": "White Tight-fit Fur-trimmed Crop Down Jacket + Red Micro Mini Skirt + White Tight Leggings",
+        "hair": "Long soft-wave hairstyle",
+        "gender": "FEMALE"
+      },
+      {
+        "id": "ManA",
+        "name": "준호",
+        "role": "Male Lead",
+        "outfit": "Navy Slim-fit Polo Shirt + White Tailored Golf Pants + Premium Black Padding Vest",
+        "hair": "Short neat hairstyle",
+        "gender": "MALE"
+      },
+      {
+        "id": "WomanC",
+        "name": "미숙",
+        "role": "Female Observer",
+        "outfit": "Silver Metallic Slim-fit Mini Puffer Jacket + Black Micro Shorts + High-neck Inner",
+        "hair": "Low ponytail",
+        "gender": "FEMALE"
+      }
+    ],
+    "scenes": [
+      {
+        "sceneNumber": 1,
+        "characterIds": [
+          "WomanA"
+        ],
+        "shortPrompt": "in her 40s, Wide establishing shot with full body, leaning forward with curiosity, 40s Korean woman, long soft-wave hair, white tight fur jacket, red micro mini skirt, heavy snow golf course, breathless expression, close-up, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "함박눈이 내리는 골프장에서 숨을 헐떡이며 당황한 표정을 짓고 있는 40대 지영 씨의 클로즈업 샷.",
+        "longPrompt": "Wide establishing shot with full body, A stunning Korean woman in her 40s, Slot Woman A, High-End Luxury Golf Aesthetic, extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, confident presence, long soft-wave hairstyle. She is leaning forward with curiosity down at the snow with breathless anticipation, biting her lip slightly. The background is a luxury golf course with heavy snow falling, winter atmosphere. Outfit: White Tight-fit Fur-trimmed Crop Down Jacket + Red Micro Mini Skirt + White Tight Leggings. Accessories: delicate gold hoop earrings., professional fashion photography, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "40대 초반의 아름다운 한국 여성 지영, 슬롯 A 고정 체형(볼륨감 넘치는 모래시계 몸매), 긴 소프트 웨이브 헤어. 함박눈이 내리는 럭셔리 골프장에서 입술을 살짝 깨물며 눈밭을 내려다보는 긴박한 표정. 의상: 화이트 타이트 퍼 크롭 패딩과 레드 마이크로 미니스커트, 화이트 레깅스. 악세서리: 섬세한 골드 링 귀걸이. 8K 초고화질, 시네마틱 조명.",
+        "soraPrompt": "Cinematic tracking shot of a stunning Korean woman in her 40s with long wavy hair, wearing a white luxury fur jacket and red mini skirt, standing on a snowy golf course, looking distressed and searching for something in the snow, heavy snowflakes falling, 8k resolution, raw footage.",
+        "soraPromptKo": "긴 웨이브 머리에 화이트 퍼 자켓과 레드 미니스커트를 입은 40대 한국 여성이 눈 덮인 골프장에서 무언가를 절박하게 찾는 모습을 담은 시네마틱 트래킹 샷."
+      },
+      {
+        "sceneNumber": 2,
+        "characterIds": [
+          "WomanA",
+          "ManA",
+          "WomanC"
+        ],
+        "shortPrompt": "in her 40s, Over-the-shoulder three-shot with layered depth, Three Korean people, 40s, golf course in snow, WomanA searching snow, ManA crossing arms defensively worried, WomanC watching coldly, candid group shot, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "눈 오는 골프장에서 지영 씨는 눈을 파헤치고, 준호 씨는 걱정스럽게 보고 있으며, 미숙 씨는 차갑게 관찰하는 단체 샷.",
+        "longPrompt": "in her 40s, Over-the-shoulder three-shot with layered depth, Candid group shot of three stunning Korean people in their 40s. Slot Woman A (long soft-wave hair, white fur jacket, red micro skirt) is kneeling and digging in the snow. Slot Man A (short neat hair, dandy presence, navy polo and padding vest) is standing close, looking worried and reaching out. Slot Woman C (low ponytail, silver mini puffer, black shorts) stands a bit further away, observing with a calm but cold demeanor. Luxury golf course background with heavy snow. Each character wearing their unique locked outfits and accessories., professional fashion photography, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "눈 덮인 골프장에서 세 명의 한국인이 있는 캔디드 단체 샷. 지영(슬롯 A)은 무릎을 꿇고 눈을 파헤치고 있고, 준호(슬롯 Man A)는 옆에서 걱정하며 손을 뻗고 있음. 미숙(슬롯 C)은 조금 떨어져서 차갑게 관찰 중. 각자 지정된 럭셔리 의상과 악세서리 착용. 8K 해상도, 시네마틱 조명.",
+        "soraPrompt": "A wide cinematic shot showing three people on a snowy golf course: a woman digging in the snow, a man trying to stop her with a worried face, and another woman watching from a distance, heavy snowfall, 4k high detail.",
+        "soraPromptKo": "눈 덮인 골프장에서 눈을 파헤치는 여성과 이를 말리려는 남성, 멀리서 지켜보는 여성을 담은 광각 시네마틱 샷."
+      },
+      {
+        "sceneNumber": 3,
+        "characterIds": [
+          "WomanA"
+        ],
+        "shortPrompt": "in her 40s, Over-the-shoulder perspective, gesturing expressively with hands, wide eyes in shock, 40s Korean woman, digging snow with bare hands, intense focus, trembling eyelashes, snow on face, Dutch angle, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "맨손으로 눈을 파헤치며 강렬하게 집중하고 있는 지영 씨의 모습, 떨리는 속눈썹과 얼굴에 묻은 눈송이, 더치 앵글.",
+        "longPrompt": "Over-the-shoulder perspective, A stunning Korean woman in her 40s, gesturing expressively with hands, Slot Woman A, extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, long soft-wave hairstyle. She is digging hard into the deep snow with her hands, trembling eyelashes, intense focus, elegant and tense facial expression. Dutch-angle half body shot. Outfit: White Tight-fit Fur-trimmed Crop Down Jacket + Red Micro Mini Skirt. Accessories: delicate gold hoop earrings. Heavy snow falling background., professional fashion photography, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "40대 한국 여성 지영(슬롯 A 체형), 긴 웨이브 헤어. 더치 앵글의 반신 샷으로 맨손으로 눈을 파헤치며 극도로 집중한 표정. 속눈썹이 떨리며 긴장감이 느껴짐. 의상: 화이트 퍼 크롭 패딩과 레드 마이크로 스커트. 8K 화질, 정교한 질감.",
+        "soraPrompt": "Close-up of a woman's hands frantically digging through white snow, then tilting up to her intense, focused face with snowflakes on her hair and lashes, cinematic lighting.",
+        "soraPromptKo": "눈을 필사적으로 파헤치는 여성의 손을 클로즈업한 후, 눈송이가 맺힌 그녀의 강렬한 얼굴로 카메라가 올라가는 연출."
+      },
+      {
+        "sceneNumber": 4,
+        "characterIds": [
+          "WomanA",
+          "ManA"
+        ],
+        "shortPrompt": "in her 40s, Tracking two-shot following movement, sweating with tension, Korean man in padding vest, holding woman's hands in snow, extreme close-up on hands, emotional tension, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "눈밭에서 남자가 여자의 손을 겹쳐 잡는 극한의 클로즈업 샷, 감정적인 긴장감.",
+        "longPrompt": "in her 40s, Tracking two-shot following movement, sweating with tension, Extreme close-up on hands. A handsome Dandy Korean man, Slot Man A, is overlapping his hand over a stunning Korean woman's hand, Slot Woman A. Their hands are red from the cold and covered in snow. The woman's hands are shaking. Slot Woman A: extraordinarily high-projection perky bust visible in frame. Outfit Woman A: White Fur Jacket. Outfit Man A: Navy Slim-fit Polo + Black Padding Vest. Background: snowy ground., professional fashion photography, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "손 부위의 익스트림 클로즈업. 준호(슬롯 Man A)가 지영(슬롯 A)의 떨리는 손을 감싸 쥠. 추위로 붉어진 손과 눈송이들이 섞여 있음. 지영의 볼륨감 있는 실루엣이 프레임에 걸침. 8K 초고화질, 감성적 조명.",
+        "soraPrompt": "Extreme close-up of a man's larger hand gently grabbing a woman's trembling, snow-covered hand on a white snowy surface, soft emotional camera movement.",
+        "soraPromptKo": "하얀 눈 위에서 떨리는 여성의 눈 덮인 손을 남성의 큰 손이 부드럽게 감싸는 익스트림 클로즈업 샷."
+      },
+      {
+        "sceneNumber": 5,
+        "characterIds": [
+          "WomanA",
+          "ManA"
+        ],
+        "shortPrompt": "in her 40s, Low-angle two-shot for dramatic tension, 40s Korean woman stepping back in surprise man with teary eyes, man stepping back in surprise back with deep sadness, snowy background, half body shot, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "눈물 맺힌 눈으로 남자를 바라보는 지영 씨와 슬픈 표정의 준호 씨, 눈 내리는 배경의 반신 샷.",
+        "longPrompt": "Low-angle two-shot for dramatic tension, A stunning Korean woman in her 40s, Slot Woman A, and a handsome Korean man, Slot Man A. She is stepping back in surprise him with breathless anticipation and teary eyes, while he looks back with an elegant and tense facial expression. They are kneeling together in the snow. Slot Woman A: extraordinarily high-projection perky bust, voluptuous hourglass figure, long soft-wave hair. Slot Man A: fit and athletic build, short neat hair. Outfit Woman A: White Fur Jacket + Red Micro Skirt. Outfit Man A: Navy Polo + Black Padding Vest., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "40대 한국 여성 지영(슬롯 A)과 남성 준호(슬롯 Man A). 지영은 눈물 어린 눈으로 준호를 바라보고, 준호는 안타까운 표정으로 마주 봄. 두 사람 모두 눈밭에 무릎을 꿇고 있음. 각자 지정된 고정 의상 착용. 8K 해상도, 시네마틱 라이팅.",
+        "soraPrompt": "Medium shot of a man and woman looking at each other emotionally while kneeling in the snow, heavy snow falling around them, deep cinematic atmosphere, focus on their facial expressions.",
+        "soraPromptKo": "눈밭에 무릎을 꿇은 채 서로를 감정적으로 바라보는 남녀의 중간 샷, 주변에 흩날리는 함박눈과 표정에 집중한 연출."
+      },
+      {
+        "sceneNumber": 6,
+        "characterIds": [
+          "WomanA",
+          "ManA",
+          "WomanC"
+        ],
+        "shortPrompt": "in her 40s, Wide shot revealing the truth, woman holding a diamond ring in her hand, man looking relieved but crying, womanC sighing, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "진실이 드러나는 광각 샷, 여자가 손에 다이아 반지를 들고 있고 남자는 안도하며 울고 있는 모습.",
+        "longPrompt": "in her 40s, Wide master shot revealing the scene. Slot Woman A is triumphantly holding a sparkling diamond ring high in her hand. Slot Man A is slumping in the snow, wiping his eyes, looking relieved but crying like a baby. Slot Woman C is standing nearby, sighing in relief with a slight smile. Luxury golf course, heavy snow. Slot Woman A: extraordinarily high-projection perky bust, red micro mini skirt. Outfit Man A: Navy Polo + Padding Vest. Outfit Woman C: Silver Mini Puffer + Black Micro Shorts., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "진실을 보여주는 광각 마스터 샷. 지영(슬롯 A)이 손에 빛나는 다이아 반지를 높이 치켜들고 있고, 준호(슬롯 Man A)는 눈밭에 주저앉아 안도하며 울고 있음. 미숙(슬롯 C)은 옆에서 한숨을 내쉬며 미소 지음. 8K 초고화질, 감동적이고 유머러스한 조명.",
+        "soraPrompt": "The camera zooms out to reveal a woman holding up a small diamond ring, while a man behind her collapses in the snow in relief, crying, wide cinematic golf course view with snow.",
+        "soraPromptKo": "카메라가 줌아웃되며 다이아 반지를 든 여성과 그 뒤에서 안도하며 울음을 터뜨리는 남성을 보여주는 광각 골프장 샷."
+      },
+      {
+        "sceneNumber": 7,
+        "characterIds": [
+          "WomanA",
+          "ManA"
+        ],
+        "shortPrompt": "in her 40s, Wide two-shot showing full bodies, turning away in frustration, smirking confidently, 40s Korean woman putting the ring on her finger, man wiping his face with his sleeve, intimate moment in snow, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "손가락에 반지를 끼우는 지영 씨와 소매로 얼굴을 닦는 준호 씨, 눈 속의 친밀한 순간.",
+        "longPrompt": "Wide two-shot showing full bodies, A stunning Korean woman in her 40s, turning away in frustration, Slot Woman A, and a handsome Korean man, Slot Man A. She is smiling and putting the diamond ring on her finger, while he is wiping his tearful face with his jacket sleeve. Slot Woman A: extraordinarily high-projection perky bust, high-seated chest line, long soft-wave hair. Slot Man A: short neat hair, dandy presence. Outfit Woman A: White Fur Jacket + Red Micro Skirt. Outfit Man A: Navy Polo + Padding Vest. Snow covered luxury golf club background., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "40대 한국 여성 지영(슬롯 A)과 남성 준호(슬롯 Man A). 지영은 미소 지으며 반지를 손가락에 끼우고, 준호는 소매로 눈물을 닦고 있음. 럭셔리 골프 클럽 배경. 각자 고정 의상 착용. 8K 시네마틱 사진.",
+        "soraPrompt": "A woman happily putting a ring on her frozen finger while a man next to her dries his tears with his sleeve, snowy landscape, emotional and heartwarming motion.",
+        "soraPromptKo": "여자가 얼어붙은 손가락에 반지를 끼우며 행복해하고, 남자가 옆에서 소매로 눈물을 닦는 따뜻한 감정적 연출."
+      },
+      {
+        "sceneNumber": 8,
+        "characterIds": [
+          "WomanA",
+          "ManA",
+          "WomanC"
+        ],
+        "shortPrompt": "in her 40s, Over-the-shoulder three-shot with layered depth, Three Korean people walking away in the snow, woman looking happy, man still sobbing slightly, WomanC laughing, back view, Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "shortPromptKo": "눈밭을 걸어 나가는 세 명의 한국인, 행복해 보이는 여자와 여전히 훌쩍이는 남자, 웃고 있는 미숙 씨의 뒷모습.",
+        "longPrompt": "in her 40s, Over-the-shoulder three-shot with layered depth, Final scene. Three stunning Korean people in their 40s walking away into the snowy golf course landscape. Slot Woman A (white jacket, red micro skirt) is looking happy, checking her ring. Slot Man A (navy polo, padding vest) is still sobbing slightly, walking next to her. Slot Woman C (silver puffer, black shorts) is laughing at him. Back view showing their fit and glamorous silhouettes. Heavy snow falling., Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250",
+        "longPromptKo": "마지막 장면. 눈 덮인 골프장을 걸어가는 세 명의 40대 한국인 뒷모습. 반지를 확인하며 행복해하는 지영(슬롯 A)과 옆에서 여전히 훌쩍이는 준호(슬롯 Man A), 그를 보고 웃는 미숙(슬롯 C). 각자의 매력적인 실루엣이 돋보이는 뒷모습. 8K 초고화질.",
+        "soraPrompt": "A wide back view of three people walking away into a vast snowy golf course, one woman looking at her hand, a man shaking his shoulders as if sobbing, and another woman laughing, 8k cinematic ending shot.",
+        "soraPromptKo": "광활한 눈 덮인 골프장을 걸어가는 세 사람의 뒷모습, 반지를 보는 여자와 훌쩍이는 남자, 웃는 여자를 담은 8K 시네마틱 엔딩 샷."
+      }
+    ],
+    "scripts": [
+      {
+        "title": "눈 쌓인 골프장에서 지영 씨가 사투를 벌인 진짜 이유",
+        "titleOptions": [
+          "영하 10도 골프장에 나타난 역대급 미모의 캐디",
+          "준호 씨가 눈밭에서 지영 씨를 껴안고 오열한 사연",
+          "지영 씨의 사라진 6번 아이언과 눈밭의 미스터리"
+        ],
+        "scriptBody": "지영 씨는 오늘따라 눈이 펑펑 내리는 필드 위에서 정신을 못 차리고 있었어.\n옆에서 지켜보던 준호 씨는 안절부절못하며 지영 씨 주변만 맴돌더라고.\n지영 씨는 입술을 꽉 깨물고는 눈 속에 파묻힌 무언가를 필사적으로 파내기 시작했지.\n가까이 다가온 준호 씨가 지영 씨의 떨리는 어깨를 감싸며 낮게 속삭였어.\n'지영 씨, 그건 이제 포기하는 게 어때요?'\n지영 씨는 눈물 맺힌 눈으로 준호 씨를 빤히 쳐다보더니 더 세게 눈을 헤집었어.\n옆에서 이 상황을 지켜보던 미숙 씨는 차가운 눈빛으로 한숨을 내쉬더라고.\n준호 씨는 결국 지영 씨의 손을 겹쳐 잡으며 같이 무릎을 꿇었지 뭐야.\n둘은 마치 세상이 끝난 것처럼 눈밭에서 처절한 사투를 벌이고 있었어.\n숨이 턱 끝까지 차오른 지영 씨가 드디어 눈 속에서 뭔가를 번쩍 들어 올렸어.\n알고 보니 지영 씨, 남편이 생일 선물로 사준 명품 다이아 반지를 잃어버렸던 거였대.\n결국 찾아내긴 했는데, 준호 씨는 반지보다 지영 씨 손가락 얼어터질까 봐 울기 직전이었더라고.",
+        "punchline": "반지 찾고 보니까 준호 씨가 더 펑펑 울고 있더라니까?",
+        "characters": [
+          {
+            "id": "WomanA",
+            "name": "지영",
+            "role": "Female Lead",
+            "outfit": "White Tight-fit Fur-trimmed Crop Down Jacket + Red Micro Mini Skirt + White Tight Leggings",
+            "hair": "Long soft-wave hairstyle",
+            "gender": "FEMALE"
+          },
+          {
+            "id": "ManA",
+            "name": "준호",
+            "role": "Male Lead",
+            "outfit": "Navy Slim-fit Polo Shirt + White Tailored Golf Pants + Premium Black Padding Vest",
+            "hair": "Short neat hairstyle",
+            "gender": "MALE"
+          },
+          {
+            "id": "WomanC",
+            "name": "미숙",
+            "role": "Female Observer",
+            "outfit": "Silver Metallic Slim-fit Mini Puffer Jacket + Black Micro Shorts + High-neck Inner",
+            "hair": "Low ponytail",
+            "gender": "FEMALE"
+          }
+        ],
+        "scenes": [
+          {
+            "sceneNumber": 1,
+            "characterIds": [
+              "WomanA"
+            ],
+            "shortPrompt": "40s Korean woman, long soft-wave hair, white tight fur jacket, red micro mini skirt, heavy snow golf course, breathless expression, close-up",
+            "shortPromptKo": "함박눈이 내리는 골프장에서 숨을 헐떡이며 당황한 표정을 짓고 있는 40대 지영 씨의 클로즈업 샷.",
+            "longPrompt": "A stunning Korean woman in her 40s, Slot Woman A, High-End Luxury Golf Aesthetic, extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, confident presence, long soft-wave hairstyle. She is looking down at the snow with breathless anticipation, biting her lip slightly. The background is a luxury golf course with heavy snow falling, winter atmosphere. Outfit: White Tight-fit Fur-trimmed Crop Down Jacket + Red Micro Mini Skirt + White Tight Leggings. Accessories: delicate gold hoop earrings. Photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field --ar 9:16 --style raw, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene.",
+            "longPromptKo": "40대 초반의 아름다운 한국 여성 지영, 슬롯 A 고정 체형(볼륨감 넘치는 모래시계 몸매), 긴 소프트 웨이브 헤어. 함박눈이 내리는 럭셔리 골프장에서 입술을 살짝 깨물며 눈밭을 내려다보는 긴박한 표정. 의상: 화이트 타이트 퍼 크롭 패딩과 레드 마이크로 미니스커트, 화이트 레깅스. 악세서리: 섬세한 골드 링 귀걸이. 8K 초고화질, 시네마틱 조명.",
+            "soraPrompt": "Cinematic tracking shot of a stunning Korean woman in her 40s with long wavy hair, wearing a white luxury fur jacket and red mini skirt, standing on a snowy golf course, looking distressed and searching for something in the snow, heavy snowflakes falling, 8k resolution, raw footage.",
+            "soraPromptKo": "긴 웨이브 머리에 화이트 퍼 자켓과 레드 미니스커트를 입은 40대 한국 여성이 눈 덮인 골프장에서 무언가를 절박하게 찾는 모습을 담은 시네마틱 트래킹 샷."
+          },
+          {
+            "sceneNumber": 2,
+            "characterIds": [
+              "WomanA",
+              "ManA",
+              "WomanC"
+            ],
+            "shortPrompt": "Three Korean people, 40s, golf course in snow, WomanA searching snow, ManA looking worried, WomanC watching coldly, candid group shot",
+            "shortPromptKo": "눈 오는 골프장에서 지영 씨는 눈을 파헤치고, 준호 씨는 걱정스럽게 보고 있으며, 미숙 씨는 차갑게 관찰하는 단체 샷.",
+            "longPrompt": "Candid group shot of three stunning Korean people in their 40s. Slot Woman A (long soft-wave hair, white fur jacket, red micro skirt) is kneeling and digging in the snow. Slot Man A (short neat hair, dandy presence, navy polo and padding vest) is standing close, looking worried and reaching out. Slot Woman C (low ponytail, silver mini puffer, black shorts) stands a bit further away, observing with a calm but cold demeanor. Luxury golf course background with heavy snow. Each character wearing their unique locked outfits and accessories. Photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field --ar 9:16 --style raw",
+            "longPromptKo": "눈 덮인 골프장에서 세 명의 한국인이 있는 캔디드 단체 샷. 지영(슬롯 A)은 무릎을 꿇고 눈을 파헤치고 있고, 준호(슬롯 Man A)는 옆에서 걱정하며 손을 뻗고 있음. 미숙(슬롯 C)은 조금 떨어져서 차갑게 관찰 중. 각자 지정된 럭셔리 의상과 악세서리 착용. 8K 해상도, 시네마틱 조명.",
+            "soraPrompt": "A wide cinematic shot showing three people on a snowy golf course: a woman digging in the snow, a man trying to stop her with a worried face, and another woman watching from a distance, heavy snowfall, 4k high detail.",
+            "soraPromptKo": "눈 덮인 골프장에서 눈을 파헤치는 여성과 이를 말리려는 남성, 멀리서 지켜보는 여성을 담은 광각 시네마틱 샷."
+          },
+          {
+            "sceneNumber": 3,
+            "characterIds": [
+              "WomanA"
+            ],
+            "shortPrompt": "40s Korean woman, digging snow with bare hands, intense focus, trembling eyelashes, snow on face, Dutch angle",
+            "shortPromptKo": "맨손으로 눈을 파헤치며 강렬하게 집중하고 있는 지영 씨의 모습, 떨리는 속눈썹과 얼굴에 묻은 눈송이, 더치 앵글.",
+            "longPrompt": "A stunning Korean woman in her 40s, Slot Woman A, extraordinarily high-projection perky bust, high-seated chest line, voluptuous hourglass figure, long soft-wave hairstyle. She is digging hard into the deep snow with her hands, trembling eyelashes, intense focus, elegant and tense facial expression. Dutch-angle half body shot. Outfit: White Tight-fit Fur-trimmed Crop Down Jacket + Red Micro Mini Skirt. Accessories: delicate gold hoop earrings. Heavy snow falling background. Photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field --ar 9:16 --style raw, Korean man wearing White Performance Polo + Beige Chino Golf Pants is present in this scene.",
+            "longPromptKo": "40대 한국 여성 지영(슬롯 A 체형), 긴 웨이브 헤어. 더치 앵글의 반신 샷으로 맨손으로 눈을 파헤치며 극도로 집중한 표정. 속눈썹이 떨리며 긴장감이 느껴짐. 의상: 화이트 퍼 크롭 패딩과 레드 마이크로 스커트. 8K 화질, 정교한 질감.",
+            "soraPrompt": "Close-up of a woman's hands frantically digging through white snow, then tilting up to her intense, focused face with snowflakes on her hair and lashes, cinematic lighting.",
+            "soraPromptKo": "눈을 필사적으로 파헤치는 여성의 손을 클로즈업한 후, 눈송이가 맺힌 그녀의 강렬한 얼굴로 카메라가 올라가는 연출."
+          },
+          {
+            "sceneNumber": 4,
+            "characterIds": [
+              "WomanA",
+              "ManA"
+            ],
+            "shortPrompt": "Korean man in padding vest, holding woman's hands in snow, extreme close-up on hands, emotional tension",
+            "shortPromptKo": "눈밭에서 남자가 여자의 손을 겹쳐 잡는 극한의 클로즈업 샷, 감정적인 긴장감.",
+            "longPrompt": "Extreme close-up on hands. A handsome Dandy Korean man, Slot Man A, is overlapping his hand over a stunning Korean woman's hand, Slot Woman A. Their hands are red from the cold and covered in snow. The woman's hands are shaking. Slot Woman A: extraordinarily high-projection perky bust visible in frame. Outfit Woman A: White Fur Jacket. Outfit Man A: Navy Slim-fit Polo + Black Padding Vest. Background: snowy ground. Photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field --ar 9:16 --style raw",
+            "longPromptKo": "손 부위의 익스트림 클로즈업. 준호(슬롯 Man A)가 지영(슬롯 A)의 떨리는 손을 감싸 쥠. 추위로 붉어진 손과 눈송이들이 섞여 있음. 지영의 볼륨감 있는 실루엣이 프레임에 걸침. 8K 초고화질, 감성적 조명.",
+            "soraPrompt": "Extreme close-up of a man's larger hand gently grabbing a woman's trembling, snow-covered hand on a white snowy surface, soft emotional camera movement.",
+            "soraPromptKo": "하얀 눈 위에서 떨리는 여성의 눈 덮인 손을 남성의 큰 손이 부드럽게 감싸는 익스트림 클로즈업 샷."
+          },
+          {
+            "sceneNumber": 5,
+            "characterIds": [
+              "WomanA",
+              "ManA"
+            ],
+            "shortPrompt": "40s Korean woman looking at man with teary eyes, man looking back with deep sadness, snowy background, half body shot",
+            "shortPromptKo": "눈물 맺힌 눈으로 남자를 바라보는 지영 씨와 슬픈 표정의 준호 씨, 눈 내리는 배경의 반신 샷.",
+            "longPrompt": "A stunning Korean woman in her 40s, Slot Woman A, and a handsome Korean man, Slot Man A. She is looking at him with breathless anticipation and teary eyes, while he looks back with an elegant and tense facial expression. They are kneeling together in the snow. Slot Woman A: extraordinarily high-projection perky bust, voluptuous hourglass figure, long soft-wave hair. Slot Man A: fit and athletic build, short neat hair. Outfit Woman A: White Fur Jacket + Red Micro Skirt. Outfit Man A: Navy Polo + Black Padding Vest. Photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16 --style raw",
+            "longPromptKo": "40대 한국 여성 지영(슬롯 A)과 남성 준호(슬롯 Man A). 지영은 눈물 어린 눈으로 준호를 바라보고, 준호는 안타까운 표정으로 마주 봄. 두 사람 모두 눈밭에 무릎을 꿇고 있음. 각자 지정된 고정 의상 착용. 8K 해상도, 시네마틱 라이팅.",
+            "soraPrompt": "Medium shot of a man and woman looking at each other emotionally while kneeling in the snow, heavy snow falling around them, deep cinematic atmosphere, focus on their facial expressions.",
+            "soraPromptKo": "눈밭에 무릎을 꿇은 채 서로를 감정적으로 바라보는 남녀의 중간 샷, 주변에 흩날리는 함박눈과 표정에 집중한 연출."
+          },
+          {
+            "sceneNumber": 6,
+            "characterIds": [
+              "WomanA",
+              "ManA",
+              "WomanC"
+            ],
+            "shortPrompt": "Wide shot revealing the truth, woman holding a diamond ring in her hand, man looking relieved but crying, womanC sighing",
+            "shortPromptKo": "진실이 드러나는 광각 샷, 여자가 손에 다이아 반지를 들고 있고 남자는 안도하며 울고 있는 모습.",
+            "longPrompt": "Wide master shot revealing the scene. Slot Woman A is triumphantly holding a sparkling diamond ring high in her hand. Slot Man A is slumping in the snow, wiping his eyes, looking relieved but crying like a baby. Slot Woman C is standing nearby, sighing in relief with a slight smile. Luxury golf course, heavy snow. Slot Woman A: extraordinarily high-projection perky bust, red micro mini skirt. Outfit Man A: Navy Polo + Padding Vest. Outfit Woman C: Silver Mini Puffer + Black Micro Shorts. Photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16 --style raw",
+            "longPromptKo": "진실을 보여주는 광각 마스터 샷. 지영(슬롯 A)이 손에 빛나는 다이아 반지를 높이 치켜들고 있고, 준호(슬롯 Man A)는 눈밭에 주저앉아 안도하며 울고 있음. 미숙(슬롯 C)은 옆에서 한숨을 내쉬며 미소 지음. 8K 초고화질, 감동적이고 유머러스한 조명.",
+            "soraPrompt": "The camera zooms out to reveal a woman holding up a small diamond ring, while a man behind her collapses in the snow in relief, crying, wide cinematic golf course view with snow.",
+            "soraPromptKo": "카메라가 줌아웃되며 다이아 반지를 든 여성과 그 뒤에서 안도하며 울음을 터뜨리는 남성을 보여주는 광각 골프장 샷."
+          },
+          {
+            "sceneNumber": 7,
+            "characterIds": [
+              "WomanA",
+              "ManA"
+            ],
+            "shortPrompt": "40s Korean woman putting the ring on her finger, man wiping his face with his sleeve, intimate moment in snow",
+            "shortPromptKo": "손가락에 반지를 끼우는 지영 씨와 소매로 얼굴을 닦는 준호 씨, 눈 속의 친밀한 순간.",
+            "longPrompt": "A stunning Korean woman in her 40s, Slot Woman A, and a handsome Korean man, Slot Man A. She is smiling and putting the diamond ring on her finger, while he is wiping his tearful face with his jacket sleeve. Slot Woman A: extraordinarily high-projection perky bust, high-seated chest line, long soft-wave hair. Slot Man A: short neat hair, dandy presence. Outfit Woman A: White Fur Jacket + Red Micro Skirt. Outfit Man A: Navy Polo + Padding Vest. Snow covered luxury golf club background. Photorealistic, 8k resolution, cinematic lighting --ar 9:16 --style raw",
+            "longPromptKo": "40대 한국 여성 지영(슬롯 A)과 남성 준호(슬롯 Man A). 지영은 미소 지으며 반지를 손가락에 끼우고, 준호는 소매로 눈물을 닦고 있음. 럭셔리 골프 클럽 배경. 각자 고정 의상 착용. 8K 시네마틱 사진.",
+            "soraPrompt": "A woman happily putting a ring on her frozen finger while a man next to her dries his tears with his sleeve, snowy landscape, emotional and heartwarming motion.",
+            "soraPromptKo": "여자가 얼어붙은 손가락에 반지를 끼우며 행복해하고, 남자가 옆에서 소매로 눈물을 닦는 따뜻한 감정적 연출."
+          },
+          {
+            "sceneNumber": 8,
+            "characterIds": [
+              "WomanA",
+              "ManA",
+              "WomanC"
+            ],
+            "shortPrompt": "Three Korean people walking away in the snow, woman looking happy, man still sobbing slightly, WomanC laughing, back view",
+            "shortPromptKo": "눈밭을 걸어 나가는 세 명의 한국인, 행복해 보이는 여자와 여전히 훌쩍이는 남자, 웃고 있는 미숙 씨의 뒷모습.",
+            "longPrompt": "Final scene. Three stunning Korean people in their 40s walking away into the snowy golf course landscape. Slot Woman A (white jacket, red micro skirt) is looking happy, checking her ring. Slot Man A (navy polo, padding vest) is still sobbing slightly, walking next to her. Slot Woman C (silver puffer, black shorts) is laughing at him. Back view showing their fit and glamorous silhouettes. Heavy snow falling. Photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography --ar 9:16 --style raw",
+            "longPromptKo": "마지막 장면. 눈 덮인 골프장을 걸어가는 세 명의 40대 한국인 뒷모습. 반지를 확인하며 행복해하는 지영(슬롯 A)과 옆에서 여전히 훌쩍이는 준호(슬롯 Man A), 그를 보고 웃는 미숙(슬롯 C). 각자의 매력적인 실루엣이 돋보이는 뒷모습. 8K 초고화질.",
+            "soraPrompt": "A wide back view of three people walking away into a vast snowy golf course, one woman looking at her hand, a man shaking his shoulders as if sobbing, and another woman laughing, 8k cinematic ending shot.",
+            "soraPromptKo": "광활한 눈 덮인 골프장을 걸어가는 세 사람의 뒷모습, 반지를 보는 여자와 훌쩍이는 남자, 웃는 여자를 담은 8K 시네마틱 엔딩 샷."
+          }
+        ],
+        "_folderName": "260131_1334_눈_쌓인_골프장에서_지영_씨가_사투를_벌인_진짜_이유"
+      }
+    ],
+    "id": "15341ecf-7da2-49fc-81ff-fca454cac307",
+    "createdAt": 1769834097263,
+    "service": "GEMINI",
+    "_folderName": "260131_133457_눈_쌓인_골프장에서_지영_씨가_사투를_벌인_진짜_이유"
   }
 ]

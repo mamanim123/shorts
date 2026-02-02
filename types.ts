@@ -54,6 +54,8 @@ export interface UserInput {
   lockedMaleOutfit?: string;
   shortsGenerationMode?: 'none' | 'script-only' | 'script-image'; // [NEW] 쇼츠 생성기 전용 모드
   shortsGenre?: string; // [NEW] 쇼츠 생성기 전용 장르
+  topic?: string; // [NEW] 주제 (2단계 생성 시 사용)
+  enableWinterAccessories?: boolean; // [NEW] 겨울 악세서리 활성화
 }
 
 export type ChapterStatus = 'pending' | 'approved' | 'rejected';

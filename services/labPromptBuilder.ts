@@ -612,7 +612,7 @@ export const getPromptConstants = () => {
     FEMALE_BODY_A: rules.females[0]?.body || 'slim hourglass figure',
     FEMALE_BODY_B: rules.females[1]?.body || 'petite and slim frame',
     FEMALE_BODY_C: rules.females[2]?.body || 'gracefully toned athletic body',
-    FEMALE_BODY_D: 'Stunning young Korean woman in her early 20s (WomanD), high-bun hairstyle (updo), high-seated chest line, extraordinarily voluminous high-projection bust, youthful radiant beauty, youthful radiant beauty, smooth flawless skin',
+    FEMALE_BODY_D: rules.females[3]?.body || 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     MALE_BODY: rules.males[0]?.body || 'fit athletic build',
 
     MALE_BODY_A: rules.males[0]?.body || 'fit athletic build',
@@ -1566,9 +1566,9 @@ export const pickMaleOutfit = (
   const excludeList = normalizeList(selectionRules.maleExcludeList);
   const excludeSet = new Set([...excludeList, ...excludeOutfits]);
 
-  // 1차: 주제에 맞는 의상 필터링 (골프면 골프 의상만)
+  // 1차: 주제에 맞는 의상 필터링 (골프면 골프 의상만, MALE 카테고리만 - UNISEX 제외)
   let candidates = getOutfitPool().filter(item => {
-    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+    if (!isMaleOutfit(item)) return false; // MALE 카테고리만 (UNISEX 제외)
     if (allowList.length > 0 && !allowList.includes(item.name)) return false;
     if (excludeSet.has(item.name)) return false;
     if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
@@ -1579,10 +1579,10 @@ export const pickMaleOutfit = (
     return true;
   });
 
-  // 2차: 1차에서 없으면 전체 남성 의상에서 선택
+  // 2차: 1차에서 없으면 전체 남성 의상에서 선택 (MALE 카테고리만)
   if (candidates.length === 0) {
     candidates = getOutfitPool().filter(item => {
-      if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+      if (!isMaleOutfit(item)) return false; // MALE 카테고리만 (UNISEX 제외)
       if (allowList.length > 0 && !allowList.includes(item.name)) return false;
       if (excludeSet.has(item.name)) return false;
       if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
@@ -1594,7 +1594,8 @@ export const pickMaleOutfit = (
     ? candidates[Math.floor(Math.random() * candidates.length)].name
     : 'Navy Slim-fit Polo + White Tailored Golf Pants';
 
-  return adjustOutfitForSeason(selectedName, topic);
+  // 남성은 겨울 변환(convertToTightLongSleeveWithShoulderLine) 적용 안 함
+  return selectedName;
 };
 
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
@@ -2104,10 +2105,31 @@ const enhanceMultiPersonBlocks = (prompt: string, characters: CharacterInfo[]) =
   const hasPersonBlocks = /\[Person\s+\d+:/i.test(prompt);
   if (!hasPersonBlocks) return prompt;
 
+  // 성별별 캐릭터 분리 및 사용 카운터
+  const maleCharacters = characters.filter(c => /\bman\b/i.test(c.identity));
+  const femaleCharacters = characters.filter(c => /\bwoman\b/i.test(c.identity));
+  let maleIndex = 0;
+  let femaleIndex = 0;
+
   return prompt.replace(/\[Person\s+(\d+):([^\]]+)\]/gi, (match, indexRaw, contentRaw) => {
-    const index = Math.max(0, Number(indexRaw) - 1);
-    const character = characters[index];
     let content = contentRaw.trim();
+    
+    // 블록 내용에서 성별 감지하여 올바른 캐릭터 매칭
+    const isMale = /\bman\b/i.test(content);
+    const isFemale = /\bwoman\b/i.test(content);
+    
+    let character: CharacterInfo | undefined;
+    if (isMale && maleCharacters.length > 0) {
+      character = maleCharacters[maleIndex % maleCharacters.length];
+      maleIndex++;
+    } else if (isFemale && femaleCharacters.length > 0) {
+      character = femaleCharacters[femaleIndex % femaleCharacters.length];
+      femaleIndex++;
+    } else {
+      // 성별 불명확시 인덱스 기반 폴백
+      const index = Math.max(0, Number(indexRaw) - 1);
+      character = characters[index];
+    }
 
     if (character?.outfit) {
       const outfitClean = character.outfit.replace(/^wearing\s+/i, '').trim();
@@ -2124,6 +2146,7 @@ const enhanceMultiPersonBlocks = (prompt: string, characters: CharacterInfo[]) =
       }
     }
 
+    const index = Math.max(0, Number(indexRaw) - 1);
     if (!/on the left|on the right|in the center|left side|right side|center/i.test(content)) {
       const position = MULTI_PERSON_POSITIONS[index] || MULTI_PERSON_POSITIONS[MULTI_PERSON_POSITIONS.length - 1];
       content = `${content}, ${position}`;

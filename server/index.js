@@ -3046,154 +3046,141 @@ app.post('/api/image/ai-generate', async (req, res) => {
         await switchService(requestedService);
 
         if (autoCapture) {
-            // 이미지 캡처는 GEMINI만 지원하므로 항상 GEMINI 사용
-            await switchImageService('GEMINI');
+            // [V3.5.4] GEMINI와 GENSPARK는 자동 캡처 프로세스 실행
+            if (requestedService === 'GEMINI' || requestedService === 'GENSPARK') {
+                const { imagesDir, safeId, isLegacy } = ensureStoryImageDirectory(storyId, title);
+                const sceneLabel = typeof sceneNumber === 'number'
+                    ? `scene-${String(sceneNumber).padStart(2, '0')}`
+                    : 'scene';
 
-            const { imagesDir, safeId, isLegacy } = ensureStoryImageDirectory(storyId, title);
-            const sceneLabel = typeof sceneNumber === 'number'
-                ? `scene-${String(sceneNumber).padStart(2, '0')}`
-                : 'scene';
+                let captureSummary = null;
+                let captureError = null;
 
-            let captureSummary = null;
-            let captureError = null;
+                for (let attempt = 1; attempt <= IMAGE_CAPTURE_MAX_ATTEMPTS; attempt++) {
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = `${sceneLabel}_${timestamp}.png`;
+                    const targetPath = path.join(imagesDir, filename);
+                    const requestToken = `#${sceneLabel}-${crypto.randomUUID()}`;
 
-            for (let attempt = 1; attempt <= IMAGE_CAPTURE_MAX_ATTEMPTS; attempt++) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const filename = `${sceneLabel}_${timestamp}.png`;
-                const targetPath = path.join(imagesDir, filename);
-                const requestToken = `#${sceneLabel}-${crypto.randomUUID()}`;
-
-                try {
-                    // 이미지 캡처는 GEMINI만 지원
-                    const captureResult = await submitPromptAndCaptureImage(
-                        'GEMINI',
-                        prompt,
-                        targetPath,
-                        {
-                            requestToken,
-                            storyId: safeId,
-                            sceneNumber,
-                            attempt
-                        }
-                    );
-
-                    const fingerprintKey = `${safeId}`;
-                    const previousFingerprint = lastImageFingerprintsByStory.get(fingerprintKey);
-                    if (previousFingerprint && previousFingerprint.hash === captureResult.hash) {
-                        console.warn(`[ImageAI] Duplicate fingerprint detected for story ${safeId}.`);
-                        if (fs.existsSync(targetPath)) {
-                            try { fs.unlinkSync(targetPath); } catch (cleanupErr) {
-                                console.warn(`[ImageAI] Failed to cleanup duplicate file ${targetPath}:`, cleanupErr);
-                            }
-                        }
-
-                        if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) {
-                            throw new Error("다운로드된 이미지가 이전 씬과 동일합니다. 다시 시도해주세요.");
-                        }
-                        continue;
-                    }
-
-                    lastImageFingerprintsByStory.set(fingerprintKey, {
-                        hash: captureResult.hash,
-                        bytes: captureResult.bytes
-                    });
-
-                    captureSummary = { filename, targetPath, safeId, captureResult, isLegacy };
-                    break;
-                } catch (err) {
-                    captureError = err;
-                    if (fs.existsSync(targetPath)) {
-                        try { fs.unlinkSync(targetPath); } catch (cleanupErr) {
-                            console.warn(`[ImageAI] Cleanup after failure failed for ${targetPath}:`, cleanupErr);
-                        }
-                    }
-
-                    if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) {
-                        throw err;
-                    }
-                    console.warn(`[ImageAI] Attempt ${attempt} failed. Retrying...`, err?.message || err);
-                }
-            }
-
-            if (!captureSummary) {
-                throw captureError || new Error("이미지 자동 캡처에 실패했습니다.");
-            }
-
-            const { filename, targetPath, safeId: normalizedId, captureResult, isLegacy: legacyFlag } = captureSummary;
-
-            // ✅ Save metadata to PNG file using sharp
-            try {
-                const tempPath = `${targetPath}.temp.png`;
-                await sharp(targetPath)
-                    .png({
-                        compressionLevel: 6,
-                        text: {
-                            'Prompt': prompt || '',
-                            'SceneNumber': String(sceneNumber || ''),
-                            'Service': requestedService || 'gemini',
-                            'CreatedAt': new Date().toISOString(),
-                            'StoryId': normalizedId || '',
-                            'Filename': filename || ''
-                        }
-                    })
-                    .toFile(tempPath);
-
-                // Replace original with metadata-embedded version
-                fs.unlinkSync(targetPath);
-                fs.renameSync(tempPath, targetPath);
-                console.log(`[ImageAI] ✅ PNG metadata embedded: ${filename}`);
-            } catch (metaError) {
-                console.warn(`[ImageAI] ⚠️ Failed to embed PNG metadata for ${filename}:`, metaError);
-                // Continue even if metadata embedding fails
-            }
-
-            // ✅ [NEW] prompts.json에 프롬프트 저장 (PNG 메타데이터 백업)
-            try {
-                const promptsJsonPath = path.join(imagesDir, 'prompts.json');
-                let promptsData = {};
-                if (fs.existsSync(promptsJsonPath)) {
                     try {
-                        promptsData = JSON.parse(fs.readFileSync(promptsJsonPath, 'utf-8'));
-                    } catch { promptsData = {}; }
+                        const captureResult = await submitPromptAndCaptureImage(
+                            requestedService,
+                            prompt,
+                            targetPath,
+                            {
+                                requestToken,
+                                storyId: safeId,
+                                sceneNumber,
+                                attempt
+                            }
+                        );
+
+                        const fingerprintKey = `${safeId}`;
+                        const previousFingerprint = lastImageFingerprintsByStory.get(fingerprintKey);
+                        if (previousFingerprint && previousFingerprint.hash === captureResult.hash) {
+                            console.warn(`[ImageAI] Duplicate fingerprint detected for story ${safeId}.`);
+                            if (fs.existsSync(targetPath)) {
+                                try { fs.unlinkSync(targetPath); } catch (cleanupErr) { }
+                            }
+                            if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) {
+                                throw new Error("다운로드된 이미지가 이전 씬과 동일합니다. 다시 시도해주세요.");
+                            }
+                            continue;
+                        }
+
+                        lastImageFingerprintsByStory.set(fingerprintKey, {
+                            hash: captureResult.hash,
+                            bytes: captureResult.bytes
+                        });
+
+                        captureSummary = { filename, targetPath, safeId, captureResult, isLegacy };
+                        break;
+                    } catch (err) {
+                        captureError = err;
+                        if (fs.existsSync(targetPath)) {
+                            try { fs.unlinkSync(targetPath); } catch (cleanupErr) { }
+                        }
+                        if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) throw err;
+                        console.warn(`[ImageAI] Attempt ${attempt} failed. Retrying...`, err?.message || err);
+                    }
                 }
-                promptsData[filename] = {
-                    prompt: prompt || '',
-                    sceneNumber: sceneNumber || null,
-                    service: requestedService || 'gemini',
-                    createdAt: new Date().toISOString(),
-                    storyId: normalizedId || ''
-                };
-                fs.writeFileSync(promptsJsonPath, JSON.stringify(promptsData, null, 2));
-                console.log(`[ImageAI] ✅ Prompt saved to prompts.json: ${filename}`);
-            } catch (jsonError) {
-                console.warn(`[ImageAI] ⚠️ Failed to save prompt to JSON for ${filename}:`, jsonError);
+
+                if (!captureSummary) {
+                    throw captureError || new Error("이미지 자동 캡처에 실패했습니다.");
+                }
+
+                const { filename, targetPath, safeId: normalizedId, captureResult, isLegacy: legacyFlag } = captureSummary;
+
+                // ✅ Save metadata to PNG file using sharp
+                try {
+                    const tempPath = `${targetPath}.temp.png`;
+                    await sharp(targetPath)
+                        .png({
+                            compressionLevel: 6,
+                            text: {
+                                'Prompt': prompt || '',
+                                'SceneNumber': String(sceneNumber || ''),
+                                'Service': requestedService || 'gemini',
+                                'CreatedAt': new Date().toISOString(),
+                                'StoryId': normalizedId || '',
+                                'Filename': filename || ''
+                            }
+                        })
+                        .toFile(tempPath);
+
+                    fs.unlinkSync(targetPath);
+                    fs.renameSync(tempPath, targetPath);
+                    console.log(`[ImageAI] ✅ PNG metadata embedded: ${filename}`);
+                } catch (metaError) {
+                    console.warn(`[ImageAI] ⚠️ Failed to embed PNG metadata for ${filename}:`, metaError);
+                }
+
+                // ✅ prompts.json에 프롬프트 저장
+                try {
+                    const promptsJsonPath = path.join(imagesDir, 'prompts.json');
+                    let promptsData = {};
+                    if (fs.existsSync(promptsJsonPath)) {
+                        try {
+                            promptsData = JSON.parse(fs.readFileSync(promptsJsonPath, 'utf-8'));
+                        } catch { promptsData = {}; }
+                    }
+                    promptsData[filename] = {
+                        prompt: prompt || '',
+                        sceneNumber: sceneNumber || null,
+                        service: requestedService,
+                        createdAt: new Date().toISOString(),
+                        storyId: normalizedId || ''
+                    };
+                    fs.writeFileSync(promptsJsonPath, JSON.stringify(promptsData, null, 2));
+                } catch (jsonError) { }
+
+                const url = legacyFlag
+                    ? `/generated_scripts/images/${normalizedId}/${filename}`
+                    : `/generated_scripts/대본폴더/${normalizedId}/images/${filename}`;
+
+                return res.json({
+                    success: true,
+                    service: requestedService,
+                    storyId: normalizedId,
+                    imagePath: path.relative(process.cwd(), targetPath),
+                    url,
+                    filename,
+                    isLegacy: legacyFlag,
+                    bytes: captureResult.bytes,
+                    hash: captureResult.hash,
+                    responseId: captureResult.responseId,
+                    tokenMatched: captureResult.tokenMatched
+                });
             }
 
-            const url = legacyFlag
-                ? `/generated_scripts/images/${normalizedId}/${filename}`
-                : `/generated_scripts/대본폴더/${normalizedId}/images/${filename}`;
-
-            res.json({
-                success: true,
-                service: requestedService,
-                storyId: normalizedId,
-                imagePath: path.relative(process.cwd(), targetPath),
-                url,
-                filename,
-                isLegacy: legacyFlag,
-                bytes: captureResult.bytes,
-                hash: captureResult.hash,
-                responseId: captureResult.responseId,
-                tokenMatched: captureResult.tokenMatched
-            });
-        } else {
+            // Other services: autoCapture not yet implemented
             await submitPromptOnly(requestedService, prompt);
-            res.json({
-                success: true,
-                service: requestedService,
-                message: 'Prompt submitted to AI service'
-            });
+            return res.json({ success: true, service: requestedService, message: 'Prompt submitted to AI service' });
         }
+
+        // Standard text forward (no autoCapture)
+        const rawResponse = await generateContent(requestedService, prompt);
+        res.json({ success: true, rawResponse, service: requestedService });
     } catch (error) {
         console.error("[ImageAI] Failed to run AI image generation workflow:", error);
         res.status(500).json({ error: error instanceof Error ? error.message : "Failed to run AI generation" });

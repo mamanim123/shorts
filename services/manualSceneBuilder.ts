@@ -199,11 +199,30 @@ export const buildManualSceneDecompositionPrompt = (options: {
     : '';
 
   // 의상 일관성 규칙
-  const outfitConsistencyRule = `## 👗 의상 일관성 규칙 (절대 엄수!)
-1. **모든 씬에서 각 캐릭터의 identity/hair/body/outfit 문구를 100% 동일하게 사용**
-2. AI가 직접 선택한 의상이 있다면, Scene 1부터 마지막 Scene까지 한 글자도 바꾸지 말고 그대로 복사
-3. **투샷/쓰리샷에서도 각 캐릭터별로 전체 정보 개별 명시**
-4. 특정 캐릭터는 동일한 의상을 입어야 함 (장면마다 옷이 바뀌면 안 됨)`;
+  const outfitConsistencyRule = `## 👗 의상 일관성 규칙 (절대 엄수! 위반 시 즉시 실패!)
+
+### 🚨 핵심 규칙 (반드시 준수)
+1. **의상 명칭 100% 동일 복사**: lockedOutfits/characters의 outfit 문자열을 **단어 하나도 변경/생략/요약하지 말고** 그대로 복사
+   - ❌ 금지: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress"
+   - ❌ 금지: "denim hot pants" → "denim shorts" (동의어 사용 금지!)
+   - ✅ 올바름: 전체 명칭 그대로 복사붙여넣기
+
+2. **characterSlot 순서 = Person 번호 순서**: characterSlot이 "WomanA, WomanB"면 반드시 Person 1=WomanA, Person 2=WomanB
+   - ❌ 금지: characterSlot은 WomanA,WomanB인데 longPrompt에서 Person 1이 WomanB인 경우
+   - ✅ 올바름: characterSlot 순서와 Person 번호가 정확히 일치
+
+3. **투샷/쓰리샷에서 identity+hair+body+outfit 전부 필수**: 여러 캐릭터 등장 시 **절대 생략 금지**
+   - ❌ 금지: "[Person 1: stunning Korean woman in 40s, coral dress]" (identity 축약, hair/body 누락)
+   - ✅ 올바름: "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look..., wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress]"
+
+4. **모든 씬에서 동일한 캐릭터는 동일한 문구 사용**: Scene 1부터 마지막 Scene까지 identity/hair/body/outfit 문구가 100% 동일해야 함
+
+### ✅ 최종 검증 체크리스트 (출력 전 반드시 확인!)
+- [ ] 모든 outfit이 lockedOutfits의 원본과 글자 하나 틀림없이 동일한가?
+- [ ] characterSlot의 순서와 Person 번호 순서가 일치하는가?
+- [ ] 투샷/쓰리샷의 모든 Person에 identity, hair, body, wearing, outfit이 포함되어 있는가?
+- [ ] 같은 캐릭터의 문구가 모든 씬에서 100% 동일한가?
+- [ ] "shorts"를 "hot pants" 대신 쓰거나, 의상 단어를 동의어로 바꾸지 않았는가?`;
 
   // 겨울 악세서리 예시
   const winterAccessoriesExample = enableWinterAccessories

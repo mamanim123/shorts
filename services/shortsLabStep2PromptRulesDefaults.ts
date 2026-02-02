@@ -32,6 +32,12 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 복수 지칭(예: "얘들아", "언니들", "친구들")이 있으면 최소 2명 이상의 인물로 분리하세요.
 이름이 없는 조연은 "지인1", "지인2"처럼 구분해 작성하세요.
 
+## 역할(role) 분류
+- narrator: 이야기 화자 (주인공)
+- caddy: 골프장 캐디 (직업이 캐디인 인물은 무조건 caddy로 분류)
+- visual_focus: 외모/매력 강조 캐릭터 (대본에서 "아름다운", "예쁜", "멋진" 등으로 묘사된 캐릭터)
+- supporting: 일반 조연
+
 ## 🎯 맥락 기반 인물 추출 (매우 중요!)
 단순히 이름이 언급된 인물만 추출하지 마세요. **맥락상 그 장면에 함께 있어야 할 인물**을 모두 추출하세요.
 
@@ -74,17 +80,26 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 ### 투샷/쓰리샷 longPrompt 작성 필수 규칙
 **여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분!**
 
-✅ **원샷 예시** (1명):
+🚨 **characterSlot 순서 = Person 번호 순서 (매우 중요!)**
+- characterSlot: "WomanA, WomanB" → Person 1 = WomanA, Person 2 = WomanB
+- characterSlot: "WomanB, WomanA" → Person 1 = WomanB, Person 2 = WomanA
+- **순서가 뒤바뀌면 캐릭터 혼동 발생!**
+
+✅ **원샷 예시** (1명) - identity+hair+body+wearing+outfit 전부 포함:
 \`\`\`
-unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}, smiling at camera, snowy golf course, ...
+unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}, smiling at camera, snowy golf course, ...
 \`\`\`
 
-✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] + 각각 identity+hair+body+wearing+outfit 전부 포함:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit{{WINTER_ACCESSORIES_EXAMPLE}}] walking together, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress{{WINTER_ACCESSORIES_EXAMPLE}}] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing Grey Ribbed Knit Tight Mini Dress (Modern Chic) (Tight-fitting long-sleeve version){{WINTER_ACCESSORIES_EXAMPLE}}] walking together, snowy golf course, ...
 \`\`\`
 
-❌ **금지**: 캐릭터 구분 없이 쉼표로만 연결 (AI가 캐릭터를 혼동함!)
+❌ **금지 사항**:
+1. 캐릭터 구분 없이 쉼표로만 연결 (AI가 캐릭터를 혼동함!)
+2. body 정보 생략 (예: "[Person 1: stunning Korean woman in 40s, coral dress]" ← body 없음!)
+3. 의상 명칭 축약 (예: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress" ❌)
+4. characterSlot 순서와 Person 번호 불일치
 
 ## 📷 카메라 앵글 필수 규칙 (역동적 화면 구성 필수!)
 단조로운 미디움샷 위주 구성을 탈출하여 TV 광고 같은 연출을 하세요.
@@ -128,6 +143,27 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 {{WINTER_ACCESSORIES_RULE}}
 
 {{CHARACTER_OUTFIT_CONSISTENCY_RULE}}
+
+## 🔍 JSON 출력 전 최종 검증 체크리스트 (필수!)
+**아래 항목을 모두 통과해야만 유효한 출력입니다:**
+
+### 의상 일관성 검증
+- [ ] 모든 씬의 outfit이 lockedOutfits/characters의 원본과 **글자 하나 틀림없이 동일**한가?
+- [ ] "denim hot pants"를 "denim shorts"로 바꾸는 등 **동의어 치환을 하지 않았는가?**
+- [ ] 의상 명칭을 축약하지 않았는가? (예: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress" ❌)
+
+### 캐릭터 순서 검증
+- [ ] **characterSlot 순서와 Person 번호 순서가 정확히 일치**하는가?
+  - characterSlot: "WomanA, WomanB" → Person 1 = WomanA, Person 2 = WomanB ✅
+  - characterSlot: "WomanA, WomanB" → Person 1 = WomanB, Person 2 = WomanA ❌
+
+### 투샷/쓰리샷 완전성 검증
+- [ ] 모든 Person에 **identity + hair + body + wearing + outfit**이 전부 포함되어 있는가?
+- [ ] body 정보를 생략하지 않았는가?
+- [ ] 쓰리샷에서 3명 모두 개별적으로 상세 정보를 명시했는가?
+
+### 씬 간 일관성 검증
+- [ ] 같은 캐릭터가 모든 씬에서 **100% 동일한 identity/hair/body/outfit 문구**를 사용하는가?
 
 ## 대본 라인
 {{SCRIPT_LINES}}

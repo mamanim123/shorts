@@ -4136,18 +4136,6 @@ ${scriptInput}
                             불러오기
                         </button>
 
-                        {/* 테스트: 모달 강제 열기 버튼 (임시) */}
-                        <button
-                            onClick={() => {
-                                console.log('🧪 [TEST] 강제 모달 열기 테스트');
-                                openPromptEditModal(1, 'A stunning Korean woman in her mid-20s');
-                            }}
-                            className="px-3 py-1.5 bg-yellow-600/80 hover:bg-yellow-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-                        >
-                            <Edit3 className="w-4 h-4" />
-                            모달 테스트
-                        </button>
-
                         {/* 전체 이미지 생성 버튼 */}
                         <button
                             onClick={handleGenerateAllImages}
@@ -5314,15 +5302,6 @@ ${scriptInput}
                 onApplyStyle={handleApplyStyle}
             />
 
-            {/* 디버그: 강제 오픈 테스트 모달 (임시) */}
-            {showPromptEditModal && (
-                <div className="fixed top-4 right-4 z-[10000] bg-yellow-500 text-black p-4 rounded-lg shadow-xl text-xs">
-                    <div className="font-bold mb-2">디버그: 모달 상태</div>
-                    <div>isOpen: {String(showPromptEditModal)}</div>
-                    <div>sceneNumber: {promptEditSceneNumber}</div>
-                    <div>textLength: {promptEditText?.length || 0}</div>
-                </div>
-            )}
         </div>
     );
 };

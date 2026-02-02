@@ -90,16 +90,35 @@ export const DEFAULT_STEP2_PROMPT_RULES: ShortsLabStep2PromptRules = {
 unfiltered raw photograph..., A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Navy Dress{{WINTER_ACCESSORIES_EXAMPLE}}, smiling at camera, snowy golf course, ...
 \`\`\`
 
-✅ **투샷 예시** (2명) - [Person 1], [Person 2] + 각각 identity+hair+body+wearing+outfit 전부 포함:
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] + 각각 identity+hair+body+wearing+outfit+액세서리+개별동작 전부 포함:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress{{WINTER_ACCESSORIES_EXAMPLE}}] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing Grey Ribbed Knit Tight Mini Dress (Modern Chic) (Tight-fitting long-sleeve version){{WINTER_ACCESSORIES_EXAMPLE}}] walking together, snowy golf course, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress{{WINTER_ACCESSORIES_EXAMPLE}}, gesturing enthusiastically while speaking] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing Grey Ribbed Knit Tight Mini Dress (Modern Chic) (Tight-fitting long-sleeve version){{WINTER_ACCESSORIES_EXAMPLE}}, listening with amused smile and crossed arms], snowy golf course, ...
 \`\`\`
+
+✅ **쓰리샷 예시** (3명) - [Person 1], [Person 2], [Person 3] + 각각 전체 정보 + 개별동작:
+\`\`\`
+unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build, wearing Navy Polo Shirt and Beige Chinos{{WINTER_ACCESSORIES_EXAMPLE}}, standing with hands in pockets] [Person 2: A handsome Korean man in his 40s, clean short cut, well-built physique, wearing White Oxford Shirt and Grey Slacks{{WINTER_ACCESSORIES_EXAMPLE}}, pointing at something in distance] [Person 3: A stunning Korean woman in her 40s, long soft-wave hairstyle, high-seated chest line, extraordinarily voluminous high-projection bust, wearing Coral Mini Dress{{WINTER_ACCESSORIES_EXAMPLE}}, looking surprised with hand on chest], snowy golf course, ...
+\`\`\`
+
+## 🚶 개별 동작 필수 규칙 (쌍둥이 방지!)
+**투샷/쓰리샷에서 모든 캐릭터가 같은 동작을 하면 쌍둥이처럼 어색합니다!**
+
+### 필수 규칙:
+1. ✅ **각 Person 블록 안에 개별 동작을 명시**
+2. ❌ **"walking together", "standing together" 같은 공통 동작만 쓰기 금지**
+3. ✅ **action 필드의 내용을 각 캐릭터에게 분배**
+
+### 개별 동작 예시:
+- Person 1: "gesturing while speaking" + Person 2: "listening with crossed arms"
+- Person 1: "pointing at distance" + Person 2: "looking surprised" + Person 3: "nodding in agreement"
+- Person 1: "laughing with hand on mouth" + Person 2: "rolling eyes playfully"
 
 ❌ **금지 사항**:
 1. 캐릭터 구분 없이 쉼표로만 연결 (AI가 캐릭터를 혼동함!)
 2. body 정보 생략 (예: "[Person 1: stunning Korean woman in 40s, coral dress]" ← body 없음!)
 3. 의상 명칭 축약 (예: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress" ❌)
 4. characterSlot 순서와 Person 번호 불일치
+5. **모든 캐릭터에 동일한 동작 적용** (예: "both smiling" ❌, 각자 다른 표정/동작 ✅)
 
 ## 📷 카메라 앵글 필수 규칙 (역동적 화면 구성 필수!)
 단조로운 미디움샷 위주 구성을 탈출하여 TV 광고 같은 연출을 하세요.
@@ -164,6 +183,15 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 ### 씬 간 일관성 검증
 - [ ] 같은 캐릭터가 모든 씬에서 **100% 동일한 identity/hair/body/outfit 문구**를 사용하는가?
+
+### 개별 동작 검증 (투샷/쓰리샷)
+- [ ] 각 Person 블록 안에 **개별 동작**이 명시되어 있는가?
+- [ ] "walking together", "standing together" 같은 **공통 동작만 있지 않은가?**
+- [ ] action 필드의 내용이 각 캐릭터에게 **다르게 분배**되어 있는가?
+
+### 악세서리 위치 검증
+- [ ] 모든 악세서리(scarf, gloves, earmuffs 등)가 **Person 블록 안**에 있는가?
+- [ ] Person 블록 **밖**에 악세서리가 있으면 새 캐릭터로 오인됨!
 
 ## 대본 라인
 {{SCRIPT_LINES}}

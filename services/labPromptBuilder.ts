@@ -900,6 +900,9 @@ export const PROMPT_CONSTANTS_PROXY = {
   get FEMALE_BODY_C() { return getPromptConstants().FEMALE_BODY_C; },
   get FEMALE_BODY_D() { return getPromptConstants().FEMALE_BODY_D; },
   get MALE_BODY() { return getPromptConstants().MALE_BODY; },
+  get MALE_BODY_A() { return getPromptConstants().MALE_BODY_A; },
+  get MALE_BODY_B() { return getPromptConstants().MALE_BODY_B; },
+  get MALE_BODY_C() { return getPromptConstants().MALE_BODY_C; },
   get END() { return getPromptConstants().END; },
   get NEGATIVE() { return getPromptConstants().NEGATIVE; }
 };
@@ -2003,8 +2006,8 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
   "characters": [
     { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY_A}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },
     { "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "short chic bob cut", "body": "${promptConstants.FEMALE_BODY_B}", "outfit": "${womanBOutfit}", "outfitPrefix": "wearing" },
-    { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his ${targetAge}", "hair": "short neat hairstyle", "body": "${promptConstants.MALE_BODY}", "outfit": "${manAOutfit}", "outfitPrefix": "wearing" },
-    { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${promptConstants.MALE_BODY}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
+    { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his ${targetAge}", "hair": "short neat hairstyle", "body": "${promptConstants.MALE_BODY_A}", "outfit": "${manAOutfit}", "outfitPrefix": "wearing" },
+    { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${promptConstants.MALE_BODY_B}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
     { "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "${promptConstants.FEMALE_BODY_D}", "outfit": "${womanDOutfit}", "outfitPrefix": "wearing" }
   ],
   "scenes": [  // 8~12개 (scriptBody 문장 수와 정확히 동일)

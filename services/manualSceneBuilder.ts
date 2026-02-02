@@ -217,12 +217,23 @@ export const buildManualSceneDecompositionPrompt = (options: {
 
 4. **모든 씬에서 동일한 캐릭터는 동일한 문구 사용**: Scene 1부터 마지막 Scene까지 identity/hair/body/outfit 문구가 100% 동일해야 함
 
+5. **투샷/쓰리샷에서 각 캐릭터 개별 동작 필수 (쌍둥이 방지!)**
+   - ❌ 금지: "walking together", "standing together", "both smiling" (공통 동작만 사용)
+   - ✅ 올바름: Person 1 = "gesturing while speaking", Person 2 = "listening with crossed arms"
+   - 각 Person 블록 안에 개별 동작/표정을 명시할 것!
+
+6. **악세서리는 반드시 Person 블록 안에 포함**
+   - ❌ 금지: "[Person 1: ...] [Person 2: ...], wearing scarf" (scarf가 밖에 있으면 새 캐릭터로 오인!)
+   - ✅ 올바름: "[Person 1: ..., accessorized with scarf] [Person 2: ..., accessorized with beanie]"
+
 ### ✅ 최종 검증 체크리스트 (출력 전 반드시 확인!)
 - [ ] 모든 outfit이 lockedOutfits의 원본과 글자 하나 틀림없이 동일한가?
 - [ ] characterSlot의 순서와 Person 번호 순서가 일치하는가?
 - [ ] 투샷/쓰리샷의 모든 Person에 identity, hair, body, wearing, outfit이 포함되어 있는가?
 - [ ] 같은 캐릭터의 문구가 모든 씬에서 100% 동일한가?
-- [ ] "shorts"를 "hot pants" 대신 쓰거나, 의상 단어를 동의어로 바꾸지 않았는가?`;
+- [ ] "shorts"를 "hot pants" 대신 쓰거나, 의상 단어를 동의어로 바꾸지 않았는가?
+- [ ] 투샷/쓰리샷에서 각 캐릭터가 **서로 다른 개별 동작**을 하고 있는가?
+- [ ] 모든 악세서리(scarf, gloves, beanie 등)가 **Person 블록 안**에 있는가?`;
 
   // 겨울 악세서리 예시
   const winterAccessoriesExample = enableWinterAccessories

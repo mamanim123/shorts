@@ -612,7 +612,7 @@ export const getPromptConstants = () => {
     FEMALE_BODY_A: rules.females[0]?.body || 'slim hourglass figure',
     FEMALE_BODY_B: rules.females[1]?.body || 'petite and slim frame',
     FEMALE_BODY_C: rules.females[2]?.body || 'gracefully toned athletic body',
-    FEMALE_BODY_D: 'Stunning young Korean woman in her early 20s (WomanD), high-bun hairstyle (updo), high-seated chest line, extraordinarily voluminous high-projection bust, youthful radiant beauty, youthful radiant beauty, smooth flawless skin',
+    FEMALE_BODY_D: rules.females[3]?.body || 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     MALE_BODY: rules.males[0]?.body || 'fit athletic build',
 
     MALE_BODY_A: rules.males[0]?.body || 'fit athletic build',
@@ -900,6 +900,9 @@ export const PROMPT_CONSTANTS_PROXY = {
   get FEMALE_BODY_C() { return getPromptConstants().FEMALE_BODY_C; },
   get FEMALE_BODY_D() { return getPromptConstants().FEMALE_BODY_D; },
   get MALE_BODY() { return getPromptConstants().MALE_BODY; },
+  get MALE_BODY_A() { return getPromptConstants().MALE_BODY_A; },
+  get MALE_BODY_B() { return getPromptConstants().MALE_BODY_B; },
+  get MALE_BODY_C() { return getPromptConstants().MALE_BODY_C; },
   get END() { return getPromptConstants().END; },
   get NEGATIVE() { return getPromptConstants().NEGATIVE; }
 };
@@ -1566,9 +1569,9 @@ export const pickMaleOutfit = (
   const excludeList = normalizeList(selectionRules.maleExcludeList);
   const excludeSet = new Set([...excludeList, ...excludeOutfits]);
 
-  // 1차: 주제에 맞는 의상 필터링 (골프면 골프 의상만)
+  // 1차: 주제에 맞는 의상 필터링 (골프면 골프 의상만, MALE 카테고리만 - UNISEX 제외)
   let candidates = getOutfitPool().filter(item => {
-    if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+    if (!isMaleOutfit(item)) return false; // MALE 카테고리만 (UNISEX 제외)
     if (allowList.length > 0 && !allowList.includes(item.name)) return false;
     if (excludeSet.has(item.name)) return false;
     if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
@@ -1579,10 +1582,10 @@ export const pickMaleOutfit = (
     return true;
   });
 
-  // 2차: 1차에서 없으면 전체 남성 의상에서 선택
+  // 2차: 1차에서 없으면 전체 남성 의상에서 선택 (MALE 카테고리만)
   if (candidates.length === 0) {
     candidates = getOutfitPool().filter(item => {
-      if (!isMaleOutfit(item) && !isUnisexOutfit(item)) return false;
+      if (!isMaleOutfit(item)) return false; // MALE 카테고리만 (UNISEX 제외)
       if (allowList.length > 0 && !allowList.includes(item.name)) return false;
       if (excludeSet.has(item.name)) return false;
       if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
@@ -1594,7 +1597,8 @@ export const pickMaleOutfit = (
     ? candidates[Math.floor(Math.random() * candidates.length)].name
     : 'Navy Slim-fit Polo + White Tailored Golf Pants';
 
-  return adjustOutfitForSeason(selectedName, topic);
+  // 남성은 겨울 변환(convertToTightLongSleeveWithShoulderLine) 적용 안 함
+  return selectedName;
 };
 
 export const adjustOutfitForSeason = (outfit: string, topic: string): string => {
@@ -2002,8 +2006,8 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
   "characters": [
     { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY_A}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },
     { "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "short chic bob cut", "body": "${promptConstants.FEMALE_BODY_B}", "outfit": "${womanBOutfit}", "outfitPrefix": "wearing" },
-    { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his ${targetAge}", "hair": "short neat hairstyle", "body": "${promptConstants.MALE_BODY}", "outfit": "${manAOutfit}", "outfitPrefix": "wearing" },
-    { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${promptConstants.MALE_BODY}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
+    { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his ${targetAge}", "hair": "short neat hairstyle", "body": "${promptConstants.MALE_BODY_A}", "outfit": "${manAOutfit}", "outfitPrefix": "wearing" },
+    { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${promptConstants.MALE_BODY_B}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
     { "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "${promptConstants.FEMALE_BODY_D}", "outfit": "${womanDOutfit}", "outfitPrefix": "wearing" }
   ],
   "scenes": [  // 8~12개 (scriptBody 문장 수와 정확히 동일)
@@ -2118,10 +2122,31 @@ const enhanceMultiPersonBlocks = (
   if (!hasPersonBlocks) return prompt;
   const useGenderGuard = options?.useGenderGuard !== false;
 
+  // 성별별 캐릭터 분리 및 사용 카운터
+  const maleCharacters = characters.filter(c => /\bman\b/i.test(c.identity));
+  const femaleCharacters = characters.filter(c => /\bwoman\b/i.test(c.identity));
+  let maleIndex = 0;
+  let femaleIndex = 0;
+
   return prompt.replace(/\[Person\s+(\d+):([^\]]+)\]/gi, (match, indexRaw, contentRaw) => {
     const index = Math.max(0, Number(indexRaw) - 1);
-    let character = characters[index];
     let content = contentRaw.trim();
+    
+    // 블록 내용에서 성별 감지하여 올바른 캐릭터 매칭
+    const isMale = /\bman\b/i.test(content);
+    const isFemale = /\bwoman\b/i.test(content);
+    
+    let character: CharacterInfo | undefined;
+    if (isMale && maleCharacters.length > 0) {
+      character = maleCharacters[maleIndex % maleCharacters.length];
+      maleIndex++;
+    } else if (isFemale && femaleCharacters.length > 0) {
+      character = femaleCharacters[femaleIndex % femaleCharacters.length];
+      femaleIndex++;
+    } else {
+      // 성별 불명확시 인덱스 기반 폴백
+      character = characters[index];
+    }
 
     // [V3.5.3] Smart Matching: Handle AI swapping person indices
     for (const ch of characters) {
@@ -2136,10 +2161,10 @@ const enhanceMultiPersonBlocks = (
     }
 
     if (character) {
-      const isMale = String(character.id || '').toLowerCase().startsWith('man') || 
+      const isMaleChar = String(character.id || '').toLowerCase().startsWith('man') || 
                      (character.gender && String(character.gender).toUpperCase() === 'MALE');
 
-      if (isMale && useGenderGuard) {
+      if (isMaleChar && useGenderGuard) {
         // [V3.5.3] Gender Guard: Remove feminine clothing keywords for male characters
         const feminineKeywords = /\b(mini\s+)?(dress|skirt|micro|bodycon|feminine|lady|wife|cleavage|bra|her)\b/gi;
         if (feminineKeywords.test(content)) {

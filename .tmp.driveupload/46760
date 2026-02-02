@@ -1,0 +1,333 @@
+# 이미지 프롬프트 생성 시 기본 적용 규칙 (CRITICAL)
+
+## 🚨 문제 상황
+현재 이미지 프롬프트 생성 시 `engine_config.json`에 정의된 기본 규칙들이 제대로 적용되지 않고 있습니다.
+
+## ✅ 반드시 적용되어야 하는 기본 규칙
+
+### 1️⃣ **국적 및 외형 고정 (Nationality & Appearance) - 최우선**
+
+#### 모든 longPrompt 시작 부분에 필수 포함:
+```
+stunning Korean woman in her [나이대], slot-consistent body type, 
+slim waist, fit and toned physique, glamorous volume, 
+sophisticated elegance, confident attitude
+```
+
+#### 샤베트 코미디 v1.3 (개정판) 엔진의 경우:
+- **나이대**: `40~50대` (고정)
+- **국적**: `Korean` (필수)
+- **체형**: `slot-consistent body type` (슬롯에 따라 다름)
+
+#### 절대 금지 사항:
+- ❌ `Western`, `Japanese`, `Chinese` 등 타 국적 묘사
+- ❌ `chubby`, `overweight`, `heavy` 등 부정적 체형 묘사
+
+---
+
+### 2️⃣ **캐릭터 슬롯 시스템 (Character Slot System)**
+
+#### Slot A — 메인 주인공
+**외형 고정**:
+- 체형: 볼륨감 있는 아워글래스
+- 가슴: 분명히 풍만한 타입
+- 전체 인상: 성숙함, 우아함, 주도적인 존재감, 묘한 색기
+
+**헤어 고정**:
+- 긴 기장의 부드러운 웨이브 헤어
+- 길이·질감·스타일은 모든 씬에서 동일하게 유지
+
+**longPrompt 예시**:
+```
+stunning Korean woman in her 40s, Slot A, glamorous hourglass body type, 
+voluptuous chest, long soft wave hair cascading to mid-back, 
+mature and elegant demeanor, confident posture, subtle allure
+```
+
+#### Slot B — 아내 (조연)
+**외형 고정**:
+- 체형: 아담하고 작으며 귀여운 프레임
+- 가슴: 체형 대비 의외로 볼륨감 있는 타입
+- 전체 인상: 솔직하고 귀여운 동안
+
+**헤어 고정**:
+- 짧은 단발 헤어
+- 모든 씬에서 동일한 길이와 스타일 유지
+
+**longPrompt 예시**:
+```
+stunning Korean woman in her 40s, Slot B, petite and cute frame, 
+surprisingly voluptuous chest for her body type, short chic bob cut hair, 
+youthful and innocent appearance, honest expression
+```
+
+#### Slot C — 남편 (남성 캐릭터)
+**외형 고정**:
+- 체형: 탄탄하고 관리 잘된 중년
+- 스타일: 깔끔한 골프웨어, 셔츠 핏이 좋음
+
+**longPrompt 예시**:
+```
+handsome Korean man in his 40s, well-maintained athletic build, 
+clean golf attire, well-fitted shirt, mature and sophisticated charm
+```
+
+---
+
+### 3️⃣ **의상 로직 (Outfit Logic - ABSOLUTE CONSISTENCY)**
+
+#### 핵심 원칙:
+> **1번 씬에서 선택한 의상을 8번 씬까지 단어 하나 바꾸지 말고 동일하게(Verbatim) 유지**
+
+#### 의상 선택 우선순위:
+1. **사용자 입력 의상** (최우선) → 그대로 사용
+2. **엔진 기본 의상 리스트** → 배경에 맞는 의상 자동 선택
+
+#### 골프장 배경 의상 예시 (Style 5: Golf Field Luxury):
+1. White Halter-neck Knit + Red Micro Mini Skirt
+2. V-neck Tight Polo Shirt + Micro Mini Skirt
+3. Pink Sleeveless Polo + White Tight Wrap Mini Skirt
+4. White Tube Top + White Tennis Skirt
+5. Tight Golf One-piece (Belted)
+... (총 25종)
+
+#### 의상 핏 키워드 (필수 추가):
+```
+tight-fitting, bodycon, accentuating body lines
+```
+
+#### 의상 적용 예시:
+**Scene 1**:
+```
+Outfit: White Halter-neck Knit + Red Micro Mini Skirt, tight-fitting, bodycon, accentuating body lines
+```
+
+**Scene 2~8**:
+```
+Outfit: White Halter-neck Knit + Red Micro Mini Skirt, tight-fitting, bodycon, accentuating body lines
+```
+(완전히 동일하게 유지)
+
+---
+
+### 4️⃣ **프롬프트 구조 (Prompt Structure) - 순서 엄수**
+
+#### longPrompt 작성 순서 (반드시 이 순서대로):
+
+```
+[국적/외형 키워드] + , + [Slot ID 명시] + , + [행동/표정] + , + 
+Outfit: [고정 의상 이름] + , + [의상 핏] + , + [배경/조명] + , + [품질 태그]
+```
+
+#### 구체적인 예시:
+
+```
+stunning Korean woman in her 40s, Slot A, glamorous hourglass body type, 
+voluptuous chest, long soft wave hair, mature and elegant demeanor, 
+nervous expression, looking at a man behind her, 
+Outfit: White Halter-neck Knit + Red Micro Mini Skirt, tight-fitting, bodycon, accentuating body lines, 
+luxury golf course background, natural daylight, soft afternoon glow, 
+photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+
+---
+
+### 5️⃣ **품질 태그 (Quality Tags) - 맨 마지막 위치 고정**
+
+#### 필수 품질 태그:
+```
+photorealistic, 8k resolution, cinematic lighting, masterpiece, 
+professional photography, depth of field --ar 9:16
+```
+
+#### 중요 규칙:
+- ✅ **반드시 문장의 맨 마지막에 위치**
+- ✅ `--ar 9:16` 뒤에는 **어떤 텍스트도 추가 금지**
+
+#### 잘못된 예시:
+```
+... --ar 9:16, Korean woman standing
+```
+(❌ `--ar 9:16` 뒤에 텍스트 추가됨)
+
+#### 올바른 예시:
+```
+... Korean woman standing, photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+(✅ `--ar 9:16`이 맨 마지막)
+
+---
+
+### 6️⃣ **남성 캐릭터 처리 규칙**
+
+#### 의상 규칙:
+- **골프장 배경**: 골프 기본룩
+- **캐주얼 배경**: 캐주얼 룩
+- **오피스 배경**: 오피스 룩
+
+#### 등장 조건:
+- ✅ 대본 내용상 남성이 등장하는 경우 → 해당 씬에 남성 캐릭터 포함
+- ✅ 대본에 남성이 전혀 등장하지 않는 경우 → `No male characters` 포함
+
+#### 남성 longPrompt 예시:
+```
+handsome Korean man in his 40s, well-maintained athletic build, 
+clean golf polo shirt and tailored golf pants, mature and sophisticated charm, 
+standing close behind the woman, teaching golf swing posture, 
+luxury golf course background, natural daylight, 
+photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+
+---
+
+### 7️⃣ **Slot ID 명시 규칙 (CRITICAL)**
+
+#### 모든 longPrompt에 Slot ID 텍스트로 명시:
+- Slot A 캐릭터 → `Slot A` 포함
+- Slot B 캐릭터 → `Slot B` 포함
+- Slot C 캐릭터 → `Slot C` 포함
+
+#### 예시:
+```
+stunning Korean woman in her 40s, Slot A, glamorous hourglass body type, ...
+```
+
+```
+stunning Korean woman in her 40s, Slot B, petite and cute frame, ...
+```
+
+---
+
+### 8️⃣ **배경 및 조명 규칙**
+
+#### 배경 선택:
+- **골프장**: `luxury golf course background`, `golf driving range`, `golf cart area`
+- **실내**: `high-end cafe interior`, `luxury locker room`, `golf clubhouse`
+- **야외**: `golf course forest area`, `golf course parking lot`
+
+#### 조명 선택:
+- **낮**: `natural daylight`, `soft afternoon glow`, `bright sunny day`
+- **저녁**: `golden hour lighting`, `warm sunset glow`
+- **실내**: `soft indoor lighting`, `ambient cafe lighting`
+
+---
+
+## 📋 완전한 longPrompt 예시 (모든 규칙 적용)
+
+### Scene 1: 골프장에서 처음 만남
+```
+stunning Korean woman in her 40s, Slot A, glamorous hourglass body type, voluptuous chest, long soft wave hair cascading to mid-back, mature and elegant demeanor, confident posture, subtle allure, surprised expression, looking at a man approaching, Outfit: White Halter-neck Knit + Red Micro Mini Skirt, tight-fitting, bodycon, accentuating body lines, luxury golf course background, natural daylight, soft afternoon glow, photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+
+### Scene 2: 스윙 교정 장면
+```
+stunning Korean woman in her 40s, Slot A, glamorous hourglass body type, voluptuous chest, long soft wave hair cascading to mid-back, mature and elegant demeanor, nervous expression, man standing very close behind her teaching golf swing, intimate distance, Outfit: White Halter-neck Knit + Red Micro Mini Skirt, tight-fitting, bodycon, accentuating body lines, golf driving range background, soft afternoon light, photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+
+### Scene 3: 아내 등장 (Slot B)
+```
+stunning Korean woman in her 40s, Slot B, petite and cute frame, surprisingly voluptuous chest for her body type, short chic bob cut hair, youthful and innocent appearance, smiling brightly, walking towards the couple, Outfit: Pink Sleeveless Polo + White Tight Wrap Mini Skirt, tight-fitting, bodycon, accentuating body lines, luxury golf course background, natural daylight, photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+
+---
+
+## 🔍 체크리스트
+
+생성된 이미지 프롬프트가 다음 조건을 만족하는지 확인:
+
+1. ✅ **국적 키워드**: `Korean woman in her [나이대]` 포함?
+2. ✅ **Slot ID**: `Slot A`, `Slot B`, `Slot C` 명시?
+3. ✅ **외형 키워드**: `glamorous volume`, `slim waist`, `fit and toned physique` 포함?
+4. ✅ **헤어 고정**: 슬롯별 헤어 스타일 일관성 유지?
+5. ✅ **의상 고정**: 1번 씬부터 마지막 씬까지 동일한 의상?
+6. ✅ **의상 핏**: `tight-fitting`, `bodycon`, `accentuating body lines` 포함?
+7. ✅ **품질 태그**: 맨 마지막에 위치하고 `--ar 9:16`으로 끝남?
+8. ✅ **타 국적 금지**: `Western`, `Japanese`, `Chinese` 등 없음?
+9. ✅ **부정적 체형 금지**: `chubby`, `overweight`, `heavy` 등 없음?
+10. ✅ **남성 캐릭터**: 대본 내용에 맞게 포함 또는 제외?
+
+---
+
+## ⚠️ 흔히 발생하는 오류
+
+### 오류 1: 의상이 씬마다 변경됨
+**잘못된 예시**:
+- Scene 1: `Outfit: White Halter-neck Knit + Red Micro Mini Skirt`
+- Scene 2: `Outfit: Pink Sleeveless Polo + White Skirt` ❌
+
+**올바른 예시**:
+- Scene 1: `Outfit: White Halter-neck Knit + Red Micro Mini Skirt`
+- Scene 2: `Outfit: White Halter-neck Knit + Red Micro Mini Skirt` ✅
+
+### 오류 2: 품질 태그 위치 잘못됨
+**잘못된 예시**:
+```
+... photorealistic, 8k resolution, --ar 9:16, Korean woman standing
+```
+(❌ `--ar 9:16` 뒤에 텍스트 있음)
+
+**올바른 예시**:
+```
+... Korean woman standing, photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16
+```
+(✅ `--ar 9:16`이 맨 마지막)
+
+### 오류 3: Slot ID 누락
+**잘못된 예시**:
+```
+stunning Korean woman in her 40s, glamorous body type, ...
+```
+(❌ Slot ID 없음)
+
+**올바른 예시**:
+```
+stunning Korean woman in her 40s, Slot A, glamorous hourglass body type, ...
+```
+(✅ `Slot A` 명시)
+
+### 오류 4: 국적 키워드 누락
+**잘못된 예시**:
+```
+stunning woman in her 40s, glamorous body type, ...
+```
+(❌ `Korean` 누락)
+
+**올바른 예시**:
+```
+stunning Korean woman in her 40s, glamorous body type, ...
+```
+(✅ `Korean` 포함)
+
+### 오류 5: 헤어 스타일 변경됨
+**잘못된 예시**:
+- Scene 1 (Slot A): `long soft wave hair`
+- Scene 2 (Slot A): `short bob cut hair` ❌
+
+**올바른 예시**:
+- Scene 1 (Slot A): `long soft wave hair`
+- Scene 2 (Slot A): `long soft wave hair` ✅
+
+---
+
+## 🎯 핵심 요약
+
+### 필수 3대 원칙:
+1. **국적 고정**: 모든 프롬프트에 `Korean woman in her [나이대]` 필수
+2. **의상 고정**: 1번 씬부터 마지막 씬까지 완전히 동일한 의상
+3. **품질 태그 위치**: 반드시 맨 마지막에 위치, `--ar 9:16`으로 끝
+
+### 절대 금지 사항:
+- ❌ 타 국적 묘사 (`Western`, `Japanese`, `Chinese`)
+- ❌ 부정적 체형 묘사 (`chubby`, `overweight`, `heavy`)
+- ❌ 씬마다 의상 변경
+- ❌ 씬마다 헤어 스타일 변경
+- ❌ `--ar 9:16` 뒤에 텍스트 추가
+
+### 반드시 포함 사항:
+- ✅ `stunning Korean woman in her [나이대]`
+- ✅ `Slot A` / `Slot B` / `Slot C` (해당 슬롯)
+- ✅ `glamorous volume`, `slim waist`, `fit and toned physique`
+- ✅ 슬롯별 고정 헤어 스타일
+- ✅ `Outfit: [의상 이름]`
+- ✅ `tight-fitting, bodycon, accentuating body lines`
+- ✅ `photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field --ar 9:16`

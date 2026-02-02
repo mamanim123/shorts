@@ -1,0 +1,302 @@
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import path from 'path';
+
+puppeteer.use(StealthPlugin());
+
+let browser;
+let page;
+
+const SERVICES = {
+    GEMINI: {
+        url: 'https://gemini.google.com/app',
+        selectors: {
+            input: 'div[contenteditable="true"], div[role="textbox"]',
+            sendBtn: 'button[aria-label="보내기"], button[aria-label="Send"], button[aria-label*="Send"], button[aria-label*="보내기"], .send-button, button[data-testid="send-button"]',
+            response: 'model-response, .model-response-text',
+        }
+    },
+    CHATGPT: {
+        url: 'https://chatgpt.com',
+        selectors: {
+            input: '#prompt-textarea',
+            sendBtn: 'button[data-testid="send-button"]',
+            response: '.markdown',
+        }
+    },
+    CLAUDE: {
+        url: 'https://claude.ai/new',
+        selectors: {
+            input: 'div[contenteditable="true"]',
+            sendBtn: 'button[aria-label="Send Message"]',
+            response: '[data-testid="assistant-message"], [data-testid="assistant-response"], [data-testid="bot-message"], pre code, pre[class*="code"], .code-block__code, .font-claude-message, [data-message-author="assistant"], .prose, .markdown, div[class*="MessageContent"]',
+        }
+    },
+    GENSPARK: {
+        url: 'https://genspark.ai',
+        selectors: {
+            input: 'textarea.search-input, .j-search-input, textarea[placeholder*="무엇이든"]',
+            // Found via agent: element 27 (textarea) -> element 28 (div button)
+            sendBtn: '.j-search-input + div, textarea.search-input + div, div[class*="send-button"], button[aria-label="Send"]',
+            response: '.markdown-body, .message-content, div[class*="answer"], div[class*="model-response"]',
+        }
+    }
+};
+
+export async function launchBrowser() {
+    try {
+        if (browser && browser.isConnected()) {
+            if (page && !page.isClosed()) {
+                return;
+            }
+        }
+
+        if (browser) {
+            try { await browser.close(); } catch (e) { }
+        }
+
+        // Default to headless in environments without an X server; allow opt-out via env.
+        const headlessEnv = process.env.PUPPETEER_HEADLESS;
+        const headless = false; // Force headless=false to show browser window
+
+        const userDataPath = path.join(process.cwd(), 'user_data_stealth');
+        console.log(`[Puppeteer] Using user data dir: ${userDataPath}`);
+        console.log(`[Puppeteer] Headless mode: ${headless}`);
+
+        browser = await puppeteer.launch({
+            headless,
+            defaultViewport: null,
+            args: [
+                '--window-size=1024,768', // Smaller window size
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ],
+            userDataDir: userDataPath // Absolute path for reliability
+        });
+
+        const pages = await browser.pages();
+        page = pages.length > 0 ? pages[0] : await browser.newPage();
+
+        browser.on('disconnected', () => {
+            console.log("Browser disconnected.");
+            browser = null;
+            page = null;
+        });
+
+        console.log("Browser launched successfully.");
+    } catch (error) {
+        console.error("Failed to launch browser:", error);
+        throw error;
+    }
+}
+
+export const initBrowser = launchBrowser;
+
+export async function switchService(serviceName) {
+    await launchBrowser();
+
+    const config = SERVICES[serviceName];
+    if (!config) throw new Error(`Unknown service: ${serviceName}`);
+
+    if (page.url().includes(config.url)) {
+        return;
+    }
+
+    await page.goto(config.url, { waitUntil: 'networkidle2' });
+}
+
+export async function generateContent(serviceName, prompt) {
+    const config = SERVICES[serviceName];
+
+    await page.waitForSelector(config.selectors.input);
+    await page.click(config.selectors.input);
+
+    // [FIX] 입력창 완전 초기화 - 기존 텍스트 제거
+    console.log("[Puppeteer] Clearing input field...");
+    await page.evaluate((selector) => {
+        const el = document.querySelector(selector);
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+            el.value = '';
+        } else {
+            el.innerText = '';
+        }
+    }, config.selectors.input);
+
+    // [FIX] Ctrl+A → Backspace로 확실하게 삭제
+    await page.keyboard.down('Control');
+    await page.keyboard.press('A');
+    await page.keyboard.up('Control');
+    await page.keyboard.press('Backspace');
+
+    await new Promise(r => setTimeout(r, 500));  // 삭제 대기
+
+    // [FIX] 새 프롬프트 입력
+    console.log("[Puppeteer] Inserting new prompt...");
+    await page.evaluate((selector, text) => {
+        const el = document.querySelector(selector);
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+            el.value = text;
+        } else {
+            el.innerText = text;
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }, config.selectors.input, prompt);
+
+    await new Promise(r => setTimeout(r, 1000));
+
+    if (serviceName === 'CLAUDE') {
+        console.log("Sending to Claude via Enter key...");
+        await page.keyboard.press('Enter');
+    } else {
+        try {
+            await page.click(config.selectors.sendBtn, { timeout: 3000 });
+        } catch (e) {
+            console.log("Button click failed, trying Enter...");
+            await page.keyboard.press('Enter');
+        }
+    }
+
+    console.log("Waiting for response...");
+    await new Promise(r => setTimeout(r, 5000));
+
+    // Poll for response stability, completion signal, and "Continue" button
+    // Poll for response stability, completion signal, and "Continue" button
+    const MAX_ATTEMPTS = 300; // 300 * 2s = 600s (10 minutes) timeout
+    let attempts = 0;
+    let lastText = "";
+    let stableCount = 0;
+
+    while (attempts < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, 2000)); // Wait 2s
+
+        // [NEW] Check for Login Redirect or Modal (Critical for Genspark)
+        const isLoginModalVisible = await page.evaluate(() => {
+            const modal = document.querySelector('.n-modal, .auth-modal, div[role="dialog"]');
+            if (modal && (modal.innerText.includes('Sign in') || modal.innerText.includes('Log in') || modal.innerText.includes('로그인'))) {
+                return true;
+            }
+            return false;
+        });
+
+        if (page.url().includes('accounts.google.com') || page.url().includes('/login') || page.url().includes('signin') || isLoginModalVisible) {
+            console.warn("[Puppeteer] Login detected.");
+            throw new Error("Login page/modal detected. Please log in manually.");
+        }
+
+        // [NEW] Check for "Continue generating" button (ChatGPT/Claude)
+        const continueClicked = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const continueBtn = buttons.find(b =>
+                b.innerText.includes('Continue generating') ||
+                b.innerText.includes('Continue code') ||
+                (b.getAttribute('aria-label') && b.getAttribute('aria-label').includes('Continue'))
+            );
+            if (continueBtn && !continueBtn.disabled) {
+                continueBtn.click();
+                return true;
+            }
+            return false;
+        });
+
+        if (continueClicked) {
+            console.log("Clicked 'Continue generating' button. Resetting stability check.");
+            stableCount = 0; // Reset stability as text will change
+            attempts = Math.max(0, attempts - 30); // Give more time (extend timeout)
+            continue; // Skip the rest of the loop to wait for new text
+        }
+
+        // Check if generation is complete by looking for the Send button
+        const isGenerationComplete = await page.evaluate((selector) => {
+            const sendBtn = document.querySelector(selector);
+            // If send button exists and is NOT disabled, generation is likely done
+            if (sendBtn && !sendBtn.disabled && !sendBtn.hasAttribute('disabled')) {
+                return true;
+            }
+            return false;
+        }, config.selectors.sendBtn);
+
+        const currentText = await page.evaluate((selector, serviceName) => {
+            // 1. Try standard selector first
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                return elements[elements.length - 1].innerText;
+            }
+
+            // 2. Fallback: Content-based search (Critical for Claude if selectors change)
+            if (serviceName === 'CLAUDE') {
+                const aiMsgSelectors = [
+                    '[data-testid="assistant-message"]',
+                    '[data-testid="assistant-response"]',
+                    '[data-testid="bot-message"]',
+                    'pre code',
+                    'pre[class*="code"]',
+                    '.code-block__code',
+                    '.font-claude-message',
+                    '[data-message-author="assistant"]',
+                    '.prose',
+                    '.markdown',
+                    'div[class*="MessageContent"]'
+                ];
+
+                let foundText = "";
+                for (const sel of aiMsgSelectors) {
+                    const els = document.querySelectorAll(sel);
+                    if (els.length > 0) {
+                        const lastEl = els[els.length - 1];
+                        if (lastEl.innerText.includes('scriptBody')) {
+                            foundText = lastEl.innerText;
+                            break;
+                        }
+                    }
+                }
+                if (foundText) return foundText;
+            }
+            return "";
+        }, config.selectors.response, serviceName);
+
+        // [SMART JSON CHECK + STABILITY FALLBACK]
+        if (currentText && currentText.length > 50) {
+            // 1. Try to PARSE (Fast Path)
+            try {
+                let cleanText = currentText.trim();
+                if (cleanText.startsWith('```')) {
+                    cleanText = cleanText.replace(/^```(json)?/, '').replace(/```$/, '');
+                }
+                JSON.parse(cleanText);
+                console.log("JSON Parse Successful! Generation Complete.");
+                return currentText;
+            } catch (e) {
+                // Parse failed. Check stability (Slow Path)
+                if (currentText === lastText) {
+                    stableCount++;
+                } else {
+                    stableCount = 0;
+                }
+
+                // If text hasn't changed for 20 seconds (10 checks * 2s), assume done.
+                if (stableCount >= 10) {
+                    console.warn("JSON invalid but text stable for 20s. Returning anyway.");
+                    return currentText;
+                }
+
+                if (attempts % 5 === 0) console.log(`JSON incomplete, waiting... (Stable: ${stableCount}/10)`);
+            }
+        } else {
+            stableCount = 0;
+        }
+
+        if (attempts === 10) {
+            const html = await page.content();
+            const fs = await import('fs');
+            fs.writeFileSync('debug_claude.html', html);
+            console.log("Dumped HTML to debug_claude.html");
+        }
+
+        lastText = currentText;
+        attempts++;
+        if (attempts % 5 === 0) console.log(`[${attempts}/${MAX_ATTEMPTS}] Waiting for response... (${currentText.length} chars)`);
+    }
+
+    throw new Error("Timeout waiting for AI response.");
+}

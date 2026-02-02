@@ -1233,77 +1233,120 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       const topic = input.topic || input.category || '';
       const enableWinterAccessories = input.enableWinterAccessories || false;
 
-      for (const char of characterResult.characters) {
-        let slotId = '';
-        let gender: 'female' | 'male' = 'female';
+      // [v3.5.3] 캐릭터 슬롯 매핑 로직 고도화
+      // 1. 고정 역할(주인공, 캐디) 먼저 배정
+      // 2. 나머지 인물 순차 배정
+      
+      const unmappedChars = [...characterResult.characters];
+      const slots_assigned = new Set<string>();
 
-        if (char.name === '캐디') {
-          slotId = 'WomanD';
-          gender = 'female';
-        } else if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
-          if (femaleIdx < femaleSlots.length) {
-            slotId = femaleSlots[femaleIdx++];
-            gender = 'female';
+      // 우선순위 1: 주인공(narrator) 매핑
+      const narrator = unmappedChars.find(c => c.role === 'narrator' || c.name === '주인공');
+      if (narrator) {
+        const isMale = (narrator.gender as string) === 'male' || (narrator.gender === 'unknown' && (defaultGender as string) === 'male');
+        const slotId = isMale ? 'ManA' : 'WomanA';
+        characterSlotMap[narrator.name] = slotId;
+        slots_assigned.add(slotId);
+        // 리스트에서 제거
+        const idx = unmappedChars.indexOf(narrator);
+        if (idx > -1) unmappedChars.splice(idx, 1);
+      }
+
+      // 우선순위 2: 캐디(caddy) 매핑
+      const caddy = unmappedChars.find(c => c.role === 'caddy' || c.name.includes('캐디'));
+      if (caddy) {
+        const slotId = 'WomanD';
+        characterSlotMap[caddy.name] = slotId;
+        slots_assigned.add(slotId);
+        const idx = unmappedChars.indexOf(caddy);
+        if (idx > -1) unmappedChars.splice(idx, 1);
+      }
+
+      // 나머지 인물 배정을 위한 인덱스
+      let fIdx = 0;
+      let mIdx = 0;
+
+      // 최종 캐릭터 리스트 구축 (고정 역할 포함)
+      const allMappedChars = [];
+      if (narrator) allMappedChars.push({ ...narrator, slotId: characterSlotMap[narrator.name] });
+      if (caddy) allMappedChars.push({ ...caddy, slotId: characterSlotMap[caddy.name] });
+      
+      for (const char of unmappedChars) {
+        let slotId = '';
+        if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
+          while (fIdx < femaleSlots.length && slots_assigned.has(femaleSlots[fIdx])) fIdx++;
+          if (fIdx < femaleSlots.length) {
+            slotId = femaleSlots[fIdx++];
           }
-        } else if (char.gender === 'male' || (char.gender === 'unknown' && defaultGender === 'male')) {
-          if (maleIdx < maleSlots.length) {
-            slotId = maleSlots[maleIdx++];
-            gender = 'male';
+        } else {
+          while (mIdx < maleSlots.length && slots_assigned.has(maleSlots[mIdx])) mIdx++;
+          if (mIdx < maleSlots.length) {
+            slotId = maleSlots[mIdx++];
           }
         }
-
+        
         if (slotId) {
           characterSlotMap[char.name] = slotId;
-
-          // 의상 생성
-          let outfit = '';
-          if (gender === 'female') {
-            outfit = pickFemaleOutfit(topic);
-          } else {
-            outfit = pickMaleOutfit(topic);
-          }
-
-          // 겨울 악세서리 생성
-          let winterAccessories: string[] = [];
-          if (enableWinterAccessories) {
-            const winterItems = selectWinterItems(gender);
-            winterAccessories = winterItems.accessories || [];
-          }
-
-          // identity, hair, body 정보 생성 (의상 규칙 사용)
-          let identity = '';
-          let hair = '';
-          let body = '';
-
-          if (gender === 'female') {
-            // WomanA → females[0], WomanB → females[1], WomanC → females[2] (순환)
-            const femaleIndex = (femaleIdx - 1) % characterRules.females.length;
-            const slotRules = characterRules.females[femaleIndex];
-            identity = slotRules.identity || 'A stunning Korean woman';
-            hair = slotRules.hair || 'long soft-wave hairstyle';
-            body = slotRules.body || promptConstants.FEMALE_BODY_A;
-          } else {
-            // ManA → males[0], ManB → males[1], ManC → males[2] (순환)
-            const maleIndex = (maleIdx - 1) % characterRules.males.length;
-            const slotRules = characterRules.males[maleIndex];
-            identity = slotRules.identity || 'A handsome Korean man';
-            hair = slotRules.hair || 'short neat hairstyle';
-            body = slotRules.body || promptConstants.MALE_BODY_A;
-          }
-
-          mappedCharacters.push({
-            id: slotId,
-            name: char.name,
-            slotLabel: slotId,
-            identity,
-            hair,
-            body,
-            outfit,
-            winterAccessories
-          });
-
-          console.log(`✅ ${slotId} (${char.name}): ${outfit}${winterAccessories.length > 0 ? ` + ${winterAccessories.join(', ')}` : ''}`);
+          slots_assigned.add(slotId);
+          allMappedChars.push({ ...char, slotId });
         }
+      }
+
+      for (const charItem of allMappedChars) {
+        const { slotId } = charItem;
+        const gender = slotId.startsWith('Woman') ? 'female' : 'male';
+        const outputGender = slotId.startsWith('Woman') ? 'FEMALE' : 'MALE';
+
+        // 의상 생성
+        let outfit = '';
+        if (gender === 'female') {
+          outfit = pickFemaleOutfit(topic);
+        } else {
+          outfit = pickMaleOutfit(topic);
+        }
+
+        // 겨울 악세서리 생성
+        let winterAccessories: string[] = [];
+        if (enableWinterAccessories) {
+          const winterItems = selectWinterItems(gender);
+          winterAccessories = winterItems.accessories || [];
+        }
+
+        // identity, hair, body 정보 생성 (의상 규칙 사용)
+        let identity = '';
+        let hair = '';
+        let body = '';
+
+        if (gender === 'female') {
+          // 슬롯 ID에서 인덱스 추출 (WomanA=0, WomanB=1, WomanC=2, WomanD=3)
+          const charCode = slotId.charCodeAt(slotId.length - 1);
+          const femaleIndex = (charCode - 65) % characterRules.females.length;
+          const slotRules = characterRules.females[femaleIndex];
+          identity = slotRules.identity || 'A stunning Korean woman';
+          hair = slotRules.hair || 'long soft-wave hairstyle';
+          body = slotRules.body || promptConstants.FEMALE_BODY_A;
+        } else {
+          const charCode = slotId.charCodeAt(slotId.length - 1);
+          const maleIndex = (charCode - 65) % characterRules.males.length;
+          const slotRules = characterRules.males[maleIndex];
+          identity = slotRules.identity || 'A handsome Korean man';
+          hair = slotRules.hair || 'short neat hairstyle';
+          body = slotRules.body || promptConstants.MALE_BODY_A;
+        }
+
+        const mappedChar: ManualSceneCharacter = {
+          id: slotId,
+          name: charItem.name,
+          slotLabel: slotId,
+          identity,
+          hair,
+          body,
+          outfit,
+          winterAccessories
+        };
+        mappedCharacters.push(mappedChar);
+
+        console.log(`✅ ${slotId} (${charItem.name}): ${outfit}${winterAccessories.length > 0 ? ` + ${winterAccessories.join(', ')}` : ''}`);
       }
 
       console.log("📌 캐릭터 슬롯 매핑:", characterSlotMap);
@@ -1348,28 +1391,16 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
       const userContext = topicContext || "";
 
-      // 의상 생성
-      const isChatGPT = input.targetService === 'CHATGPT';
-      const v3Vars = isChatGPT ? generateSafeV3Variables(input.category) : generateV3Variables(input.category);
-      if (input.lockedFemaleOutfit?.trim()) {
-        v3Vars.items.A = input.lockedFemaleOutfit.trim();
-      }
-
       // characters 배열 생성
       const outputCharacters = mappedCharacters.map(char => {
-        const slotKey = char.id.replace('Woman', '').replace('Man', '') as 'A' | 'B' | 'C';
         const isWoman = char.id.startsWith('Woman');
-        const preset = isWoman
-          ? CHARACTER_PRESETS[`WOMAN_${slotKey}` as keyof typeof CHARACTER_PRESETS]
-          : CHARACTER_PRESETS[`MAN_${slotKey}` as keyof typeof CHARACTER_PRESETS];
-
         return {
           id: char.id,
-          name: char.name || preset?.name || char.id,
-          role: preset?.role || 'supporting',
-          outfit: isWoman ? v3Vars.items[slotKey] || v3Vars.items.A : pickMaleOutfitForContext(userContext),
-          hair: preset?.hair || 'natural hair',
-          gender: isWoman ? 'FEMALE' : 'MALE'
+          name: char.name || char.id,
+          role: 'character',
+          outfit: char.outfit || '',
+          hair: char.hair || 'natural hair',
+          gender: (isWoman ? 'FEMALE' : 'MALE') as any
         };
       });
 

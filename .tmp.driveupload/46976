@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(git clone:*)",
+      "Bash(tree:*)",
+      "Bash(dir:*)",
+      "Bash(npm run build)",
+      "WebFetch(domain:code.claude.com)",
+      "Bash(npm install:*)",
+      "Bash(claude --version:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

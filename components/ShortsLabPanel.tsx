@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText, Zap } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
@@ -976,6 +976,7 @@ const postProcessAiScenes = (
         genre?: string;     // [v3.6] 장르 정보 추가
         totalScenes?: number; // [v3.6] 전체 장면 수 추가
         enableWinterAccessories?: boolean;
+        useGenderGuard?: boolean; // [NEW] 성별 가드 옵션 추가
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
@@ -1035,7 +1036,7 @@ const postProcessAiScenes = (
         const fallbackCharacters = characterInfos.length > 0
             ? characterInfos
             : Array.from(characterInfoMap.values()).slice(0, 3);
-        const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
+        const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: options.useGenderGuard });
 
         processedPrompt = applyAccessoriesToPrompt(validation.fixedPrompt, characterIds, accessoryMap);
 
@@ -1165,7 +1166,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [imageModel] = useState<string>('imagen-4.0-generate-001');
     const [generatingId, setGeneratingId] = useState<string | null>(null);
     const [aiForwardingId, setAiForwardingId] = useState<string | null>(null);
+    const [gensparkForwardingId, setGensparkForwardingId] = useState<string | null>(null);
     const aiForwardAbortRef = useRef<AbortController | null>(null);
+    const gensparkForwardAbortRef = useRef<AbortController | null>(null);
     const [noGuard] = useState<boolean>(false);
 
     // 프롬프트 설정 상태
@@ -1840,6 +1843,97 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             aiForwardAbortRef.current = null;
         }
         setAiForwardingId(null);
+    };
+
+    const cancelGensparkForwarding = () => {
+        if (gensparkForwardAbortRef.current) {
+            try {
+                gensparkForwardAbortRef.current.abort();
+            } catch (e) {
+                console.warn("Failed to abort Genspark forward request", e);
+            }
+            gensparkForwardAbortRef.current = null;
+        }
+        setGensparkForwardingId(null);
+    };
+
+    const handleForwardPromptToGenspark = async (prompt: string, id: string, sceneNumber?: number) => {
+        if (gensparkForwardingId && gensparkForwardingId === id) {
+            cancelGensparkForwarding();
+            showToast('Genspark 생성 요청을 취소했습니다.', 'info');
+            return;
+        }
+        if (!prompt || !prompt.trim()) {
+            showToast('전송할 프롬프트가 없습니다.', 'warning');
+            return;
+        }
+        setGensparkForwardingId(id);
+        try {
+            if (gensparkForwardAbortRef.current) {
+                gensparkForwardAbortRef.current.abort();
+            }
+            const controller = new AbortController();
+            gensparkForwardAbortRef.current = controller;
+
+            const response = await fetch('http://localhost:3002/api/image/ai-generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt,
+                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+                    sceneNumber,
+                    service: 'GENSPARK',
+                    autoCapture: true,
+                    title: 'ShortsLab'
+                }),
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                let message = 'Genspark 서비스 전송에 실패했습니다.';
+                try {
+                    const errorData = await response.json();
+                    if (errorData?.error) message = errorData.error;
+                } catch (err) {
+                    console.warn("Failed to parse Genspark forward error", err);
+                }
+                throw new Error(message);
+            }
+
+            const payload = await response.json();
+            const infoDetails: string[] = [];
+            if (payload?.imagePath) infoDetails.push(`경로 ${payload.imagePath}`);
+            if (typeof payload?.bytes === 'number') {
+                const kb = (payload.bytes / 1024).toFixed(1);
+                infoDetails.push(`용량 ${kb}KB`);
+            }
+            const infoMessage = infoDetails.length > 0
+                ? ` - ${infoDetails.join(' / ')}`
+                : (payload?.message ? ` - ${payload.message}` : '');
+            showToast(`Genspark 서비스로 프롬프트를 전송했습니다.${infoMessage}`, 'success');
+
+            if (payload?.success && sceneNumber !== undefined) {
+                const resolvedStoryId = payload.storyId || currentFolderName || 'shorts-lab';
+                const imageUrl = payload.url
+                    ? `http://localhost:3002${payload.url}`
+                    : `http://localhost:3002/generated_scripts/대본폴더/${resolvedStoryId}/images/${payload.filename}`;
+                setScenes(prev => prev.map(s =>
+                    s.number === sceneNumber
+                        ? { ...s, imageUrl }
+                        : s
+                ));
+            }
+        } catch (error) {
+            console.error("Failed to forward prompt to Genspark image service", error);
+            const message = error instanceof Error ? error.message : String(error || '');
+            showToast(message || 'Genspark 서비스 전송 오류가 발생했습니다.', 'error');
+        } finally {
+            setGensparkForwardingId(null);
+            if (gensparkForwardAbortRef.current) {
+                gensparkForwardAbortRef.current.abort(); // Ensure it's aborted if not already
+                gensparkForwardAbortRef.current = null;
+            }
+        }
     };
 
     const handleForwardPromptToImageAI = async (prompt: string, id: string, sceneNumber?: number) => {
@@ -3209,7 +3303,8 @@ ${scriptInput}
                         characters: scriptData.characters || parsed.characters, // 캐릭터 정보 전달
                         genre: aiGenre,                    // v3.6: 장르 정보 전달
                         totalScenes: scenesSource.length,   // v3.6: 전체 장면 수 전달
-                        enableWinterAccessories
+                        enableWinterAccessories,
+                        useGenderGuard: settings.useGenderGuard // 성별 가드 전달
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
@@ -4061,18 +4156,6 @@ ${scriptInput}
                             불러오기
                         </button>
 
-                        {/* 테스트: 모달 강제 열기 버튼 (임시) */}
-                        <button
-                            onClick={() => {
-                                console.log('🧪 [TEST] 강제 모달 열기 테스트');
-                                openPromptEditModal(1, 'A stunning Korean woman in her mid-20s');
-                            }}
-                            className="px-3 py-1.5 bg-yellow-600/80 hover:bg-yellow-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-                        >
-                            <Edit3 className="w-4 h-4" />
-                            모달 테스트
-                        </button>
-
                         {/* 전체 이미지 생성 버튼 */}
                         <button
                             onClick={handleGenerateAllImages}
@@ -4697,6 +4780,9 @@ ${scriptInput}
                                                 <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={aiForwardingId === `scene-${scene.number}`} className="p-2 bg-purple-600/90 hover:bg-purple-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="AI 생성">
                                                     {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
                                                 </button>
+                                                <button onClick={() => handleForwardPromptToGenspark(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={gensparkForwardingId === `scene-${scene.number}`} className="p-2 bg-blue-600/90 hover:bg-blue-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="Genspark 생성">
+                                                    {gensparkForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                                </button>
                                                 <button
                                                     onClick={() => {
                                                         setSceneTabs(prev => ({ ...prev, [scene.number]: 'VIDEO' }));
@@ -5236,15 +5322,6 @@ ${scriptInput}
                 onApplyStyle={handleApplyStyle}
             />
 
-            {/* 디버그: 강제 오픈 테스트 모달 (임시) */}
-            {showPromptEditModal && (
-                <div className="fixed top-4 right-4 z-[10000] bg-yellow-500 text-black p-4 rounded-lg shadow-xl text-xs">
-                    <div className="font-bold mb-2">디버그: 모달 상태</div>
-                    <div>isOpen: {String(showPromptEditModal)}</div>
-                    <div>sceneNumber: {promptEditSceneNumber}</div>
-                    <div>textLength: {promptEditText?.length || 0}</div>
-                </div>
-            )}
         </div>
     );
 };

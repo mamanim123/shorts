@@ -225,4 +225,4 @@ echo.
 
 :end
 pause
-exit /b
+exit /b 0

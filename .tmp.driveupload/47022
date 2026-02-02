@@ -1,0 +1,144 @@
+import { ModeTemplates } from '../youtube-shorts-script-generator';
+import { getGenreGuideline } from './genreGuidelines';
+import { FEMALE_OUTFIT_PRESETS, OUTFIT_COLLECTIONS } from '../constants';
+
+// constants.ts의 전체 의상 리스트를 사용 (100+ 개)
+const SHORTFORM_OUTFIT_LIST = FEMALE_OUTFIT_PRESETS.map(name => ({ name }));
+
+// Helper to pick random item
+const pickRandom = <T>(array: T[]): T => array[Math.floor(Math.random() * array.length)];
+
+// Helper to fill template variables
+const fillTemplate = (template: string, variables: Record<string, string>) => {
+    return template.replace(/{{(\w+)}}/g, (_, key) => variables[key] || `{{${key}}}`);
+};
+
+export interface PromptBuilderOptions {
+    generationMode: 'script-only' | 'script-image';
+    modeTemplates: ModeTemplates;
+    genre: string;
+    topic: string;
+    target: string;
+    scriptCount: number;
+    outfits: {
+        lockedFemaleOutfit?: string;
+        lockedFemaleOutfit2?: string;
+        lockedMaleOutfit?: string;
+    };
+    backgroundContext?: string;
+}
+
+export const buildFinalPrompt = (options: PromptBuilderOptions): string => {
+    const {
+        generationMode,
+        modeTemplates,
+        genre,
+        topic,
+        target,
+        scriptCount,
+        outfits,
+        backgroundContext
+    } = options;
+
+    // 1. Resolve Outfits & Guidance Block
+    const { lockedFemaleOutfit, lockedFemaleOutfit2, lockedMaleOutfit } = outfits;
+    const fallbackMaleOutfit = lockedMaleOutfit || 'Light Grey Linen Shirt + White Pants';
+
+    let outfitGuidanceBlock = '';
+
+    // If main outfit is missing (Random Mode), generate strong guidance for AI
+    if (!lockedFemaleOutfit) {
+        // 카테고리별 의상 리스트 생성
+        const categoryInfo = [
+            `[카테고리 1: 모던 시크 - Royal Signature]`,
+            `Tops: ${OUTFIT_COLLECTIONS.MODERN_CHIC.tops.slice(0, 5).join(', ')}, ...`,
+            `Bottoms: ${OUTFIT_COLLECTIONS.MODERN_CHIC.bottoms.slice(0, 5).join(', ')}, ...`,
+            `Dresses: ${OUTFIT_COLLECTIONS.MODERN_CHIC.dresses.join(', ')}`,
+            ``,
+            `[카테고리 2: 글래머 & 파티]`,
+            `Tops: ${OUTFIT_COLLECTIONS.GLAMOUR_PARTY.tops.join(', ')}`,
+            `Bottoms: ${OUTFIT_COLLECTIONS.GLAMOUR_PARTY.bottoms.join(', ')}`,
+            `Dresses: ${OUTFIT_COLLECTIONS.GLAMOUR_PARTY.dresses.slice(0, 3).join(', ')}, ...`,
+            ``,
+            `[카테고리 3: 액티비티 & 럭셔리 (Golf)]`,
+            `Tops: ${OUTFIT_COLLECTIONS.ACTIVITY_LUXURY.tops.slice(0, 5).join(', ')}, ...`,
+            `Bottoms: ${OUTFIT_COLLECTIONS.ACTIVITY_LUXURY.bottoms.slice(0, 5).join(', ')}, ...`,
+            `Dresses: ${OUTFIT_COLLECTIONS.ACTIVITY_LUXURY.dresses.join(', ')}`,
+            ``,
+            `[카테고리 4: 시크릿 로맨스]`,
+            `Tops: ${OUTFIT_COLLECTIONS.SECRET_ROMANCE.tops.slice(0, 4).join(', ')}, ...`,
+            `Bottoms: ${OUTFIT_COLLECTIONS.SECRET_ROMANCE.bottoms.join(', ')}`,
+            `Dresses: ${OUTFIT_COLLECTIONS.SECRET_ROMANCE.dresses.slice(0, 3).join(', ')}, ...`
+        ].join('\n');
+
+        outfitGuidanceBlock = [
+            `- Main (한국인 여성): **AI CHOICE**`,
+            `  **의상 선택 가이드**: 아래 카테고리에서 장르와 상황에 맞는 의상을 1개 선택하세요.`,
+            ``,
+            categoryInfo,
+            ``,
+            `  **CRITICAL**: 한 번 선택한 의상은 모든 씬(6개)에서 동일하게 사용해야 합니다. 절대 변경 금지!`,
+            `  - Sub (한국인 여성): 메인과 대비되는 의상을 위 리스트에서 선택`,
+            `  - Korean Man: ${fallbackMaleOutfit}`
+        ].join('\n');
+    } else {
+        // Fixed Mode
+        const resolvedMain = lockedFemaleOutfit;
+        const resolvedSub = lockedFemaleOutfit2 || 'AI CHOICE from engine list';
+        outfitGuidanceBlock = [
+            `- Main (한국인 여성): ${resolvedMain}`,
+            `  - Sub (한국인 여성): ${resolvedSub}`,
+            `  - Korean Man: ${fallbackMaleOutfit}`
+        ].join('\n');
+    }
+
+    // 2. Select Mode Template
+    const baseTemplate = generationMode === 'script-only'
+        ? modeTemplates.scriptOnly
+        : modeTemplates.scriptImage;
+
+    // 3. Prepare Variables
+    const variables: Record<string, string> = {
+        GENRE: genre || '일상',
+        TOPIC: topic || '(소재 입력 필요)',
+        TARGET_LABEL: target || '40대',
+        SCRIPT_COUNT: String(scriptCount),
+        LOCKED_FEMALE_OUTFIT: lockedFemaleOutfit || 'AI CHOICE',
+        LOCKED_FEMALE_OUTFIT2: lockedFemaleOutfit2 || 'AI CHOICE',
+        LOCKED_MALE_OUTFIT: lockedMaleOutfit || 'AI CHOICE',
+        LOCKED_BACKGROUND: backgroundContext || topic || genre || '일상적인 공간',
+        SPECIFIC_INSTRUCTIONS: `
+    **[스타일 제약 사항]**
+    - **진부한 표현 금지**: "으슥한", "거친 숨소리", "입김을 몰아쉬며", "두근거리는 심장" 같은 뻔한 소설적 묘사는 절대 금지합니다.
+    - **담백한 묘사**: 감정을 서술하지 말고, 행동과 대사로만 보여주세요.
+    `,
+        STYLE_GUIDE: '', // Can be added if needed
+        OUTFIT_BLOCK: outfitGuidanceBlock,
+        CREATIVITY_BOOSTER: `${Date.now()}_${Math.random().toString(36).substring(2, 15)}_${Math.random().toString(36).substring(2, 15)}` // [FIX] Enhanced unique token
+    };
+
+    // 4. Fill Template
+    const filledTemplate = fillTemplate(baseTemplate, variables);
+
+    // 5. Get Genre Guideline (NEW - Replaces Engine Prompt)
+    const genreGuideline = getGenreGuideline(genre);
+    const genrePrompt = genreGuideline
+        ? fillTemplate(`[장르: ${genreGuideline.name}]\n${genreGuideline.prompt}`, variables)
+        : '[장르: 일반]\n일상적인 이야기를 자연스럽게 작성해주세요.';
+
+    // 6. Combine All Parts (SIMPLIFIED)
+    // Order: Genre Guideline -> Mode Template
+    const parts = [
+        genrePrompt,
+        filledTemplate && `[생성 모드 템플릿]\n${filledTemplate}`
+    ].filter(Boolean);
+
+    if (parts.length === 0) {
+        return '⚠️ 프롬프트가 설정되지 않았습니다.';
+    }
+
+    // [FIX] Add unique identifiers to prevent AI caching
+    const uniqueFooter = `\n\n${'='.repeat(80)}\n[Unique Request ID: ${variables.CREATIVITY_BOOSTER}]\n[Timestamp: ${new Date().toISOString()}]\n${'='.repeat(80)}`;
+
+    return parts.join('\n\n' + '='.repeat(80) + '\n\n') + uniqueFooter;
+};

@@ -1386,63 +1386,61 @@ async function startFreshGeminiChat() {
 export async function submitPromptAndCaptureImage(serviceName, prompt, screenshotPath, options = {}) {
     const config = SERVICES[serviceName];
     if (!config) throw new Error(`Unknown service: ${serviceName}`);
-    if (serviceName !== 'GEMINI') {
-        throw new Error("Image capture is only supported for GEMINI service.");
+    
+    // [V3.5.4] GENSPARK 이미지 생성 지원 추가 (실험적)
+    if (serviceName !== 'GEMINI' && serviceName !== 'GENSPARK') {
+        throw new Error("Image capture is currently supported for GEMINI and GENSPARK services.");
     }
 
     const { requestToken, storyId, sceneNumber, attempt = 1 } = options;
     const captureLabel = `[${storyId || 'unknown'}:${sceneNumber ?? '?'}|attempt-${attempt}]`;
 
-    await launchImageBrowser();
+    if (serviceName === 'GEMINI') {
+        await launchImageBrowser();
+    } else {
+        await switchScriptService(serviceName);
+    }
+    
     if (!scriptPage) throw new Error("Script page not initialized");
 
-    try {
-        await startFreshGeminiChat();
-    } catch (err) {
-        console.warn(`[Puppeteer] Failed to reset Gemini chat session: ${err?.message || err}`);
+    if (serviceName === 'GEMINI') {
+        try {
+            await startFreshGeminiChat();
+        } catch (err) {
+            console.warn(`[Puppeteer] Failed to reset Gemini chat session: ${err?.message || err}`);
+        }
     }
 
     const downloadDir = path.dirname(path.resolve(screenshotPath));
     fs.mkdirSync(downloadDir, { recursive: true });
     console.log(`[Puppeteer Image] 🎨 Download directory set to: ${downloadDir}`);
 
-    const cleanupOldGeminiFiles = () => {
+    const cleanupOldFiles = () => {
         try {
             const existingFiles = fs.readdirSync(downloadDir);
-            const geminiFiles = existingFiles.filter(f => f.startsWith('Gemini_Generated_Image_'));
-            if (geminiFiles.length === 0) {
-                console.log(`[Puppeteer] 🧹 No old Gemini files to clean up`);
-                return;
+            // Gemini 및 Genspark 관련 파일 패턴 정리
+            const filesToClean = existingFiles.filter(f => 
+                f.startsWith('Gemini_Generated_Image_') || 
+                f.toLowerCase().includes('genspark') ||
+                f.startsWith('image_')
+            );
+            if (filesToClean.length === 0) return;
+            
+            console.log(`[Puppeteer] 🧹 Cleaning ${filesToClean.length} old files before capture`);
+            for (const file of filesToClean) {
+                try { fs.unlinkSync(path.join(downloadDir, file)); } catch (e) { }
             }
-            console.log(`[Puppeteer] 🧹 Cleaning ${geminiFiles.length} Gemini files before capture`);
-            for (const file of geminiFiles) {
-                const filePath = path.join(downloadDir, file);
-                try {
-                    fs.unlinkSync(filePath);
-                } catch (err) {
-                    console.warn(`[Puppeteer] ⚠️ Failed to delete ${file}: ${err.message}`);
-                }
-            }
-        } catch (err) {
-            console.error(`[Puppeteer] ❌ Cleanup error: ${err.message}`);
-        }
+        } catch (err) { }
     };
-    cleanupOldGeminiFiles();
+    cleanupOldFiles();
 
     const downloadStartTime = Date.now();
     console.log(`[Puppeteer] ${captureLabel} Download start at ${new Date(downloadStartTime).toISOString()}`);
 
-    // [FIX] Always recreate CDP session to ensure fresh download behavior
+    // CDP 세션 설정 (다운로드 허용)
     if (scriptCdpClient) {
-        try {
-            await scriptCdpClient.detach();
-            console.log('[Puppeteer] 🔄 Detached previous CDP session');
-        } catch (err) {
-            console.warn(`[Puppeteer] ⚠️ Failed to detach CDP: ${err.message}`);
-        }
+        try { await scriptCdpClient.detach(); } catch (e) { }
     }
-
-    console.log('[Puppeteer] 🔄 Creating fresh CDP session for download behavior');
     scriptCdpClient = await scriptPage.createCDPSession();
     await scriptCdpClient.send('Page.setDownloadBehavior', {
         behavior: 'allow',
@@ -1450,191 +1448,175 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
     });
 
     const initialResponseMeta = await scriptPage.evaluate(() => {
-        return Array.from(document.querySelectorAll('model-response')).map(el => el.getAttribute('data-response-id') || '');
+        return Array.from(document.querySelectorAll('model-response, .message-content, .answer, .genspark-response')).map(el => el.getAttribute('data-response-id') || el.innerText.substring(0, 20));
     });
     const initialResponseCount = initialResponseMeta.length;
-    console.log(`[Puppeteer] 📊 ${captureLabel} Initial response count: ${initialResponseCount}`);
 
-    const markerInstruction = requestToken
-        ? `\n\n(자동화 검증 토큰: ${requestToken}. Gemini 응답 텍스트에 동일한 토큰을 포함해주세요.)`
-        : '';
-
-    console.log(`[Puppeteer] 🎨 Sending prompt to Gemini ${captureLabel}...`);
-    const imagePrompt = `Generate this image:\n\n${prompt}${markerInstruction}`;
+    console.log(`[Puppeteer] 🎨 Sending prompt to ${serviceName} ${captureLabel}...`);
+    const imagePrompt = serviceName === 'GENSPARK' 
+        ? `Generate the following image immediately. Do not ask for confirmation or provide any warning about credits. Just start the generation process now:\n\n${prompt}` 
+        : `Generate this image:\n\n${prompt}${requestToken ? `\n\n(Token: ${requestToken})` : ''}`;
+        
     await sendPromptToPage(scriptPage, config, imagePrompt, serviceName);
-    console.log("[Puppeteer] 🎨 Waiting for NEW response to appear...");
+    console.log(`[Puppeteer] 🎨 Waiting for ${serviceName} response...`);
 
-    const downloadMeta = await scriptPage.evaluate(({ expectedCount, knownIds, token }) => {
+    // [Genspark 특화 대기 및 상호작용 로직]
+    if (serviceName === 'GENSPARK') {
+        console.log("[Puppeteer Genspark] 🔍 Monitoring for confirmation prompts or buttons...");
+        // 20초 동안 매우 공격적으로 감시
+        for (let i = 0; i < 20; i++) {
+            const result = await scriptPage.evaluate(() => {
+                const buttons = Array.from(document.querySelectorAll('button, [role="button"], a, div[class*="button"]'));
+                
+                // 1. "Generate", "Start", "Confirm", "Yes" 버튼이 있는지 확인 (더 넓은 범위)
+                const targetBtn = buttons.find(b => {
+                    const t = (b.innerText || b.getAttribute('aria-label') || '').toLowerCase();
+                    return t === 'yes' || t === 'confirm' || t === 'proceed' || t === 'generate' || 
+                           t.includes('start generation') || t.includes('생성 시작') || 
+                           t.includes('create image');
+                });
+
+                if (targetBtn) {
+                    targetBtn.click();
+                    return 'button-clicked';
+                }
+
+                // 2. 텍스트로 물어보는 경우 (질문 끝에 '?' 가 있거나 proceed/proceeding 키워드)
+                const messages = document.querySelectorAll('.markdown-body, .message-content, div[class*="answer"]');
+                const lastMsg = messages[messages.length - 1];
+                if (lastMsg) {
+                    const text = lastMsg.innerText.toLowerCase();
+                    if (text.includes('proceed') || text.includes('confirm') || text.includes('should i') || text.includes('ready to') || text.includes('may i')) {
+                        return 'needs-force-yes';
+                    }
+                }
+                return 'waiting';
+            });
+
+            if (result === 'button-clicked') {
+                console.log("[Puppeteer Genspark] 🖱️ Forced button click successful!");
+                // 클릭 후 실제 생성까지 시간이 걸릴 수 있으므로 2초 더 감시 후 탈출
+                await new Promise(r => setTimeout(r, 2000));
+            } else if (result === 'needs-force-yes') {
+                console.log("[Puppeteer Genspark] 🤖 AI is talking. Forcing 'Yes'...");
+                await scriptPage.keyboard.type('YES', { delay: 10 });
+                await scriptPage.keyboard.press('Enter');
+                await new Promise(r => setTimeout(r, 2000));
+            }
+            
+            // 이미지 태그가 생겼는지 수시로 체크해서 생겼으면 조기 탈출
+            const hasImage = await scriptPage.evaluate(() => {
+                const imgs = document.querySelectorAll('img[src*="genspark"], img[src*="blob"], img[src*="googleusercontent"]');
+                return Array.from(imgs).some(img => {
+                    const r = img.getBoundingClientRect();
+                    return r.width > 200 && r.height > 200;
+                });
+            });
+            if (hasImage) {
+                console.log("[Puppeteer Genspark] 🖼️ Image detected! Proceeding to capture...");
+                break;
+            }
+
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+
+    const downloadMeta = await scriptPage.evaluate(({ expectedCount, serviceName }) => {
         return new Promise((resolve) => {
-            const knownSet = new Set((knownIds || []).filter(Boolean));
-
             let checkCount = 0;
             const checkInterval = setInterval(() => {
                 checkCount++;
-                const responses = Array.from(document.querySelectorAll('model-response'));
+                const responses = serviceName === 'GEMINI' 
+                    ? Array.from(document.querySelectorAll('model-response'))
+                    : Array.from(document.querySelectorAll('.markdown-body, .message-content, div[class*="answer"], div[class*="response"]'));
 
-                // [DEBUG] 30초마다 상태 출력 (60회 체크 = 30초)
-                if (checkCount % 60 === 0) {
-                    console.log(`[Puppeteer Image] 🔍 Still waiting... Current responses: ${responses.length}, Expected: ${expectedCount}`);
-                }
+                if (responses.length <= expectedCount && checkCount < 60) return;
 
-                if (responses.length <= expectedCount) {
-                    return;
-                }
+                const targetEl = responses[responses.length - 1];
+                if (!targetEl) return;
 
-                const newResponses = responses.filter((_, idx) => idx >= expectedCount);
-                let targetResponse = null;
+                const images = Array.from(targetEl.querySelectorAll('img, canvas, [role="img"]'));
+                let validImage = images.find(img => {
+                    const rect = img.getBoundingClientRect();
+                    return rect.width > 100 && rect.height > 100;
+                });
 
-                for (let i = newResponses.length - 1; i >= 0; i--) {
-                    const el = newResponses[i];
-                    const responseId = el.getAttribute('data-response-id') || el.getAttribute('data-id') || `${Date.now()}-${i}`;
-                    if (!responseId || knownSet.has(responseId)) continue;
-                    const text = (el.innerText || el.textContent || '').trim();
-                    const tokenMatched = token ? text.includes(token) : false;
-                    targetResponse = { el, responseId, tokenMatched };
-                    knownSet.add(responseId);
-                    console.log(`[Puppeteer Image] 🎯 New response detected! ID: ${responseId}, Token match: ${tokenMatched}`);
-                    break;
-                }
+                if (validImage) {
+                    validImage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Gemini 스타일 다운로드 버튼 찾기
+                    const buttons = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+                    const downloadBtn = buttons.find(btn => {
+                        const txt = (btn.getAttribute('aria-label') || btn.title || btn.innerText || '').toLowerCase();
+                        return txt.includes('download') || txt.includes('다운로드') || txt.includes('원본');
+                    });
 
-                if (!targetResponse) {
-                    return;
-                }
-
-                const queryTargets = [
-                    ...targetResponse.el.querySelectorAll('img'),
-                    ...targetResponse.el.querySelectorAll('canvas')
-                ];
-
-                console.log(`[Puppeteer Image] 🔍 Searching for images/canvas... Found ${queryTargets.length} elements`);
-
-                let lastValidImage = null;
-                for (const target of queryTargets) {
-                    const rect = target.getBoundingClientRect();
-                    if (!rect || rect.width < 200 || rect.height < 200) continue;
-
-                    const tag = target.tagName ? target.tagName.toLowerCase() : '';
-                    if (tag === 'img') {
-                        const img = target;
-                        if (img.complete && img.naturalWidth > 200 && img.naturalHeight > 200) {
-                            lastValidImage = target;
-                        }
-                    } else if (tag === 'canvas') {
-                        const canvas = target;
-                        if (canvas.width > 200 && canvas.height > 200) {
-                            lastValidImage = target;
-                        }
+                    if (downloadBtn) {
+                        downloadBtn.click();
+                        clearInterval(checkInterval);
+                        resolve({ clicked: true });
+                    } else if (serviceName === 'GENSPARK') {
+                        // Genspark에서 버튼이 없는 경우 이미지 소스 추출 시도 (서버에서 별도 처리)
+                        clearInterval(checkInterval);
+                        resolve({ clicked: false, fallbackSrc: validImage.src || (validImage.toDataURL ? validImage.toDataURL() : null) });
                     }
                 }
-
-                if (lastValidImage) {
-                    console.log(`[Puppeteer Image] ✅ Valid image found! Scrolling and hovering...`);
-                    lastValidImage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    lastValidImage.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true }));
-
-                    setTimeout(() => {
-                        const buttons = Array.from(document.querySelectorAll('button, span[role="button"], md-icon-button, a'));
-                        const downloadBtn = buttons.find(btn => {
-                            const label = (btn.getAttribute('aria-label') || btn.getAttribute('data-tooltip') || btn.getAttribute('title') || btn.innerText || '').trim();
-                            return label.includes('원본') || label.includes('다운로드') || label.toLowerCase().includes('download');
-                        });
-
-                        if (downloadBtn) {
-                            console.log(`[Puppeteer Image] 🖱️ Download button found! Clicking...`);
-                            downloadBtn.click();
-                            clearInterval(checkInterval);
-                            resolve({
-                                clicked: true,
-                                responseId: targetResponse.responseId,
-                                tokenMatched: targetResponse.tokenMatched
-                            });
-                        } else {
-                            console.log(`[Puppeteer Image] ⚠️ Download button NOT found!`);
-                        }
-                    }, 1000);
-                }
-            }, 500);
-
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                resolve({ clicked: false, reason: 'timeout' });
-            }, 120000);
+            }, 1000);
+            setTimeout(() => { clearInterval(checkInterval); resolve({ clicked: false, reason: 'timeout' }); }, 120000);
         });
-    }, {
-        expectedCount: initialResponseCount,
-        knownIds: initialResponseMeta,
-        token: requestToken
-    });
+    }, { expectedCount: initialResponseCount, serviceName });
 
-    if (!downloadMeta?.clicked) {
-        throw new Error("Download button not found or not clickable");
+    if (!downloadMeta?.clicked && !downloadMeta?.fallbackSrc) {
+        throw new Error(`${serviceName}에서 이미지를 생성하거나 다운로드 버튼을 찾지 못했습니다.`);
     }
 
-    console.log(`[Puppeteer Image] ✅ Response ${downloadMeta.responseId || 'unknown'} (token match: ${downloadMeta.tokenMatched ? 'yes' : 'no'})`);
-
-    console.log(`[Puppeteer Image] 🎨 Download button clicked, waiting for file...`);
-
+    // 파일 대기 (다운로드 완료 확인)
     let downloadedFile = null;
-    const maxWaitTime = 30000;
-    const startTime = Date.now();
-
-    while (!downloadedFile && (Date.now() - startTime) < maxWaitTime) {
-        await new Promise(r => setTimeout(r, 1000));
-
-        try {
+    if (downloadMeta.clicked) {
+        const maxWaitTime = 45000;
+        const startTime = Date.now();
+        while (Date.now() - startTime < maxWaitTime) {
             const files = fs.readdirSync(downloadDir);
-            const geminiFiles = files.filter(f => f.startsWith('Gemini_Generated_Image_'));
-
-            if (geminiFiles.length > 0) {
-                const imageFiles = geminiFiles
-                    .filter(f => {
-                        const ext = f.toLowerCase();
-                        return (ext.endsWith('.png') || ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.webp'))
-                            && !ext.endsWith('.crdownload') && !ext.endsWith('.tmp');
-                    })
-                    .map(f => {
-                        const filePath = path.join(downloadDir, f);
-                        const stats = fs.statSync(filePath);
-                        return {
-                            name: f,
-                            path: filePath,
-                            mtime: stats.mtime.getTime(),
-                            ctime: stats.ctime.getTime()
-                        };
-                    })
-                    .filter(f => f.ctime >= downloadStartTime)
-                    .sort((a, b) => b.mtime - a.mtime);
-
-                if (imageFiles.length > 0) {
-                    downloadedFile = imageFiles[0].path;
-                    console.log(`[Puppeteer] ✅ Found newly downloaded file: ${downloadedFile}`);
-                    break;
-                }
+            const newFiles = files.filter(f => {
+                const stat = fs.statSync(path.join(downloadDir, f));
+                return stat.birthtimeMs > downloadStartTime && !f.endsWith('.crdownload') && !f.endsWith('.tmp');
+            });
+            if (newFiles.length > 0) {
+                downloadedFile = path.join(downloadDir, newFiles[0]);
+                break;
             }
-        } catch (err) {
-            console.error(`[Puppeteer] Error reading download dir: ${err.message}`);
+            await new Promise(r => setTimeout(r, 1000));
         }
+    } else if (downloadMeta.fallbackSrc) {
+        // base64 또는 URL 직접 저장
+        downloadedFile = screenshotPath;
+        const data = downloadMeta.fallbackSrc.startsWith('data:') 
+            ? Buffer.from(downloadMeta.fallbackSrc.split(',')[1], 'base64')
+            : await (await fetch(downloadMeta.fallbackSrc)).arrayBuffer();
+        fs.writeFileSync(downloadedFile, Buffer.from(data));
     }
 
-    if (!downloadedFile) {
-        throw new Error("Failed to download image via download button");
+    if (!downloadedFile || !fs.existsSync(downloadedFile)) {
+        throw new Error("이미지 파일이 생성되지 않았습니다.");
     }
 
-    if (downloadedFile !== path.resolve(screenshotPath)) {
+    // 최종 파일 이동 (요청된 screenshotPath로)
+    if (downloadedFile !== screenshotPath) {
         fs.copyFileSync(downloadedFile, screenshotPath);
-        console.log(`[Puppeteer] ✅ Image saved to: ${screenshotPath}`);
-        try {
-            fs.unlinkSync(downloadedFile);
-        } catch (err) {
-            console.warn(`[Puppeteer] ⚠️ Failed to delete original download ${downloadedFile}: ${err.message}`);
-        }
+        try { fs.unlinkSync(downloadedFile); } catch (e) { }
     }
 
-    const fileBuffer = fs.readFileSync(screenshotPath);
-    const fileHash = crypto.createHash('sha1').update(fileBuffer).digest('hex');
-    const bytes = fileBuffer.length;
+    const stats = fs.statSync(screenshotPath);
+    return {
+        success: true,
+        path: screenshotPath,
+        bytes: stats.size,
+        hash: crypto.createHash('md5').update(fs.readFileSync(screenshotPath)).digest('hex')
+    };
+}
 
-    const tokenMatched = requestToken ? Boolean(downloadMeta?.tokenMatched) : true;
+export async function submitPromptAndCaptureImage_LEGACY(serviceName, prompt, screenshotPath, options = {}) {
+    const config = SERVICES[serviceName];
 
     return {
         path: screenshotPath,

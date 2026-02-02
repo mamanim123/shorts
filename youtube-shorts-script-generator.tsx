@@ -410,6 +410,99 @@ const hasFemaleInScene = (
   return /(여성|여자|female|woman|wife|아줌마|부인|lady)/i.test(text);
 };
 
+/**
+ * [Phase 3] Replace truncated/incorrect AI-generated body descriptions with correct ones
+ * @param prompt - The current prompt text
+ * @param correctBody - The correct full body description from characterMap
+ * @returns Updated prompt with body replaced
+ */
+const replaceAIBodyWithCorrectBody = (prompt: string, correctBody: string): string => {
+  if (!correctBody || !prompt) return prompt;
+
+  // If full body already exists, no replacement needed
+  if (prompt.includes(correctBody)) return prompt;
+
+  // Extract signature phrase (first clause before comma, max 50 chars)
+  const signatureMatch = correctBody.match(/^([^,]{10,50})/);
+  if (!signatureMatch) return prompt;
+
+  const signature = signatureMatch[1].trim();
+
+  // Check if signature exists in prompt (indicating truncated body)
+  const signatureIndex = prompt.indexOf(signature);
+  if (signatureIndex === -1) return prompt;
+
+  // Find the extent of the truncated body description
+  // Look for the end marker: comma, period, or "wearing"/"Outfit:"
+  const afterSignature = prompt.slice(signatureIndex);
+  const endMatch = afterSignature.match(/^[^,.]+(,|\.|(?=\s+wearing)|(?=\s+Outfit:))/);
+
+  if (!endMatch) return prompt;
+
+  const truncatedBody = endMatch[0].replace(/[,.]$/, '').trim();
+
+  // Replace truncated body with full correct body
+  const updated = prompt.replace(truncatedBody, correctBody);
+
+  return updated;
+};
+
+/**
+ * [Phase 4] Insert body into Person block for multi-character scenes
+ * @param prompt - The current prompt text
+ * @param characterId - Character ID (e.g., 'WomanA', 'ManB')
+ * @param characterIds - Array of all character IDs in this scene (in Person order)
+ * @param correctBody - The correct body description to insert
+ * @returns Updated prompt with body inserted into correct Person block
+ */
+const insertBodyIntoPersonBlock = (
+  prompt: string,
+  characterId: string,
+  characterIds: string[],
+  correctBody: string
+): string => {
+  if (!correctBody || !prompt || !characterIds || characterIds.length === 0) return prompt;
+
+  // Check if this is a Person block scene
+  if (!prompt.includes('[Person ')) return prompt;
+
+  // Find the Person number for this character (1-indexed)
+  const personIndex = characterIds.indexOf(characterId);
+  if (personIndex === -1) return prompt;
+
+  const personNumber = personIndex + 1;
+  const personBlockPattern = new RegExp(
+    `\\[Person ${personNumber}:([^\\]]+)\\]`,
+    'i'
+  );
+
+  const match = prompt.match(personBlockPattern);
+  if (!match) return prompt;
+
+  const personBlockContent = match[1];
+
+  // Check if body already exists in this Person block
+  if (personBlockContent.includes(correctBody)) return prompt;
+
+  // Find where to insert body: after hair, before "wearing"
+  // Pattern: identity, hair, [BODY HERE], wearing outfit
+  const wearingMatch = personBlockContent.match(/(,\s*wearing\s+)/i);
+
+  if (wearingMatch && wearingMatch.index !== undefined) {
+    // Insert body before "wearing"
+    const insertPosition = match.index! + '[Person X:'.length + wearingMatch.index;
+    const beforeWearing = prompt.slice(0, insertPosition);
+    const afterWearing = prompt.slice(insertPosition);
+    return `${beforeWearing}, ${correctBody}${afterWearing}`;
+  }
+
+  // If no "wearing" found, append body before closing bracket
+  const closeBracketIndex = match.index! + match[0].length - 1;
+  const beforeBracket = prompt.slice(0, closeBracketIndex);
+  const afterBracket = prompt.slice(closeBracketIndex);
+  return `${beforeBracket}, ${correctBody}${afterBracket}`;
+};
+
 const enhanceScenePrompt = (
   text: string = "",
   options: {
@@ -455,6 +548,23 @@ const enhanceScenePrompt = (
       }
       if (ch.hair && !updated.includes(ch.hair)) {
         updated += `, ${ch.hair}`;
+      }
+      // [Phase 3] Replace truncated/incorrect body descriptions before adding
+      if (ch.body) {
+        updated = replaceAIBodyWithCorrectBody(updated, ch.body);
+      }
+      // [Phase 4] Insert body into Person block for multi-character scenes
+      // [Phase 2] Add body to post-processing if still missing
+      if (ch.body && !updated.includes(ch.body)) {
+        // Try Person block insertion first (for two-shot/three-shot scenes)
+        const withPersonBlock = insertBodyIntoPersonBlock(updated, id, options.characterIds, ch.body);
+        if (withPersonBlock !== updated) {
+          // Successfully inserted into Person block
+          updated = withPersonBlock;
+        } else {
+          // No Person block found, use simple append (single character scenes)
+          updated += `, ${ch.body}`;
+        }
       }
     });
   }

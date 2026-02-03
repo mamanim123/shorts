@@ -3615,6 +3615,11 @@ ${scriptInput}
             // [v3.5.3] 의상 선택 방식 결정 (1단계 lockedOutfits 우선 사용)
             // 🔹 [FIX] 1단계에서 AI가 선택한 의상(lockedOutfits)을 2단계에서 우선 사용
             const step1LockedOutfits = parsed.lockedOutfits || {};
+
+            // 🔹 [FIX] 의상 중복 방지를 위한 사용된 의상 추적
+            const usedFemaleOutfits: string[] = [];
+            const usedMaleOutfits: string[] = [];
+
             const characterList = allSlotIds.map((slotId) => {
                 const gender = slotId.startsWith('Woman') ? 'female' : 'male';
                 let outfit = '';
@@ -3628,10 +3633,13 @@ ${scriptInput}
                     outfit = step1Outfit;
                 } else if (useRandomOutfits) {
                     // 1단계 의상이 없고 랜덤 선택 ON인 경우에만 로컬 카탈로그에서 할당
+                    // 🔹 [FIX] 이전에 선택된 의상을 excludeList로 전달하여 중복 방지
                     if (gender === 'female') {
-                        outfit = pickFemaleOutfit(aiGenre, aiTopic, [], allowedOutfitCategories);
+                        outfit = pickFemaleOutfit(aiGenre, aiTopic, usedFemaleOutfits, allowedOutfitCategories);
+                        if (outfit) usedFemaleOutfits.push(outfit);
                     } else {
-                        outfit = pickMaleOutfit(aiTopic, [], allowedOutfitCategories);
+                        outfit = pickMaleOutfit(aiTopic, usedMaleOutfits, allowedOutfitCategories);
+                        if (outfit) usedMaleOutfits.push(outfit);
                     }
                 }
 

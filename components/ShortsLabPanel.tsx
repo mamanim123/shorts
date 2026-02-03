@@ -3612,13 +3612,22 @@ ${scriptInput}
             });
             const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
 
-            // [v3.5.3] 의상 선택 방식 결정 (랜덤 선택 옵션 준수)
+            // [v3.5.3] 의상 선택 방식 결정 (1단계 lockedOutfits 우선 사용)
+            // 🔹 [FIX] 1단계에서 AI가 선택한 의상(lockedOutfits)을 2단계에서 우선 사용
+            const step1LockedOutfits = parsed.lockedOutfits || {};
             const characterList = allSlotIds.map((slotId) => {
                 const gender = slotId.startsWith('Woman') ? 'female' : 'male';
                 let outfit = '';
 
-                if (useRandomOutfits) {
-                    // 랜덤 선택 ON인 경우 로컬 카탈로그에서 미리 할당
+                // 1단계 lockedOutfits에서 의상 확인 (womanA, womanB, manA 등의 키로 저장됨)
+                const outfitKey = slotId.toLowerCase().replace(' ', ''); // "WomanA" -> "womana"
+                const step1Outfit = step1LockedOutfits[outfitKey] || step1LockedOutfits[slotId.toLowerCase()];
+
+                if (step1Outfit) {
+                    // 1단계에서 선택된 의상이 있으면 그것을 우선 사용
+                    outfit = step1Outfit;
+                } else if (useRandomOutfits) {
+                    // 1단계 의상이 없고 랜덤 선택 ON인 경우에만 로컬 카탈로그에서 할당
                     if (gender === 'female') {
                         outfit = pickFemaleOutfit(aiGenre, aiTopic, [], allowedOutfitCategories);
                     } else {

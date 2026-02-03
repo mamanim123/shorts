@@ -1640,14 +1640,16 @@ export const pickFemaleOutfit = (
   excludeOutfits: string[] = [],
   allowedOutfitCategories?: string[]
 ): string => {
-  // SEXY 의상은 '불륜/외도' 장르만 사용
-  // '대박 반전'은 일반 의상 입고 상황이 야하게 보이는 것이므로 SEXY 의상 사용 안 함
-  const isSexyGenre = genre === 'affair-suspicion';
   const selectionRules = getOutfitSelectionRules();
   const allowDuplicates = selectionRules.allowDuplicateFemale;
   const normalizeList = (items?: string[]) =>
     Array.isArray(items) ? items.map(item => item.trim()).filter(Boolean) : [];
   const allowedCategories = normalizeList(allowedOutfitCategories);
+  
+  // 1. Genre Detection (마마님 요청: affair, suspicion, 불륜, 외도, 섹시 키워드 감지)
+  const sexyKeywords = ['affair', 'suspicion', '불륜', '외도', '섹시'];
+  const isSexyGenre = sexyKeywords.some(keyword => genre.toLowerCase().includes(keyword.toLowerCase()));
+
   const allowList = normalizeList(selectionRules.femaleAllowList);
   const excludeList = normalizeList(selectionRules.femaleExcludeList);
   const excludeSet = new Set([
@@ -1655,26 +1657,58 @@ export const pickFemaleOutfit = (
     ...(allowDuplicates ? [] : excludeOutfits)
   ]);
 
-  const candidates = getOutfitPool().filter(item => {
+  const pool = getOutfitPool();
+
+  const candidates = pool.filter(item => {
     if (isMaleOutfit(item)) return false;
     if (allowList.length > 0 && !allowList.includes(item.name)) return false;
     if (excludeSet.has(item.name)) return false;
-    if (isSexyGenre) return item.categories.includes('SEXY');
-    if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
-    return !item.categories.includes('SEXY');
+
+    // 카테고리 명시적 허용 시 최우선 처리 (Cross-picking 허용 구간)
+    if (allowedCategories.length > 0) {
+      return allowedCategories.some(cat => item.categories.includes(cat));
+    }
+
+    // 장르별 카테고리 엄격 매핑 (마마님 요청)
+    if (isSexyGenre) {
+      // Sexy/Affair 장르: ONLY 'SEXY' 카테고리
+      return item.categories.includes('SEXY');
+    } else {
+      // 그 외 (Comedy, Romance, Viral 등): ONLY 'ROYAL', 'YOGA', 'GOLF LUXURY'
+      return item.categories.includes('ROYAL') || 
+             item.categories.includes('YOGA') || 
+             item.categories.includes('GOLF LUXURY');
+    }
   });
 
-  const fallbackCandidates = getOutfitPool().filter(item => {
-    if (isMaleOutfit(item)) return false;
-    if (allowList.length > 0 && !allowList.includes(item.name)) return false;
-    if (excludeSet.has(item.name)) return false;
-    // SEXY 의상 필터링 - 폴백에서도 적용 (버그 수정)
-    if (isSexyGenre) return item.categories.includes('SEXY');
-    if (allowedCategories.length > 0 && !allowedCategories.some((cat) => item.categories.includes(cat))) return false;
-    return !item.categories.includes('SEXY');
-  });
+  // 폴백 로직 (조건에 맞는 의상이 없을 경우의 최소 안전장치)
+  let poolToUse = candidates;
+  if (poolToUse.length === 0) {
+    poolToUse = pool.filter(item => {
+      if (isMaleOutfit(item)) return false;
+      if (excludeSet.has(item.name)) return false;
+      
+      if (allowedCategories.length > 0) {
+        return allowedCategories.some(cat => item.categories.includes(cat));
+      }
 
-  const poolToUse = candidates.length > 0 ? candidates : fallbackCandidates;
+      if (isSexyGenre) {
+        return item.categories.includes('SEXY');
+      } else {
+        // 폴백에서도 SEXY 카테고리는 철저히 배제
+        return !item.categories.includes('SEXY') && 
+               (item.categories.includes('ROYAL') || 
+                item.categories.includes('YOGA') || 
+                item.categories.includes('GOLF LUXURY'));
+      }
+    });
+  }
+
+  // 최종 안전장치: 아예 풀이 비어버린 경우 (SEXY 제외)
+  if (poolToUse.length === 0 && !isSexyGenre) {
+    poolToUse = pool.filter(item => !isMaleOutfit(item) && !item.categories.includes('SEXY'));
+  }
+
   const selectedName = poolToUse.length > 0
     ? poolToUse[Math.floor(Math.random() * poolToUse.length)].name
     : 'White Halter-neck Knit + Red Micro Mini Skirt';

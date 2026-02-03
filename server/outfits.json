@@ -255,6 +255,13 @@
       "category": "ROYAL",
       "createdAt": "2026-02-03T01:20:17.228Z",
       "imageUrl": "/generated_scripts/outfit_previews/outfit-1770081617228_2026-02-03T01-22-38-441Z.png"
+    },
+    {
+      "id": "outfit-1770098003013",
+      "name": "화이트 시스루 셔츠 + 화이트 하이웨이스트 핫팬츠",
+      "prompt": "White See-through Shirt + White High-waist Hot Pants (Pure Luxury)",
+      "category": "SEXY",
+      "createdAt": "2026-02-03T05:53:23.013Z"
     }
   ],
   "categories": [

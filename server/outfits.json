@@ -51,10 +51,10 @@
     {
       "id": "outfit-1769079711361",
       "name": "베이지 리브드 스쿱넥 롱슬리브 티셔츠",
-      "prompt": "minimalist beige oatmeal ribbed long-sleeve knit top with a deep scoop neckline, narrow rib-knit texture throughout the fabric providing a body-hugging fitted silhouette, medium-weight cotton-poly blend with a matte finish, opaque and solid-colored material, long sleeves reaching the wrists with simple finished cuffs, seamless shoulders and clean construction without visible hardware or closures, casual yet sophisticated essential wear suitable for layering or standalone use",
+      "prompt": "Beige Oatmeal Ribbed Deep Scoop Long-Sleeve Knit Top + whit hot pant",
       "category": "ROYAL",
       "createdAt": "2026-01-22T11:01:51.361Z",
-      "imageUrl": "/generated_scripts/outfit_previews/outfit-1769079711361_2026-02-03T01-53-21-337Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769079711361_2026-02-03T06-44-18-316Z.png"
     },
     {
       "id": "outfit-1769304349951",
@@ -262,6 +262,38 @@
       "prompt": "White See-through Shirt + White High-waist Hot Pants (Pure Luxury)",
       "category": "SEXY",
       "createdAt": "2026-02-03T05:53:23.013Z"
+    },
+    {
+      "id": "outfit-1770100235906",
+      "name": "차콜 슬리브리스 목넥 + 블랙 마이크로 플리츠 스커트",
+      "prompt": "Charcoal Sleeveless Mock-neck + ultra-short high-waisted black micro pleated skirt with an incredibly short hemline that barely covers the hip",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-02-03T06:30:35.906Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770100235906_2026-02-03T06-32-47-665Z.png"
+    },
+    {
+      "id": "outfit-1770100537351",
+      "name": "베이지&화이트 아가일 체크 V넥 세트",
+      "prompt": "Beige & White Argyle Check V-neck tight Set (Glitz & Glam)",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-02-03T06:35:37.351Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770100537351_2026-02-03T06-36-01-429Z.png"
+    },
+    {
+      "id": "outfit-1770100615465",
+      "name": "샴페인 새틴 레이서백 골프 미니 드레스",
+      "prompt": "Champagne Satin Racerback Golf tight Mini Dress",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-02-03T06:36:55.465Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770100615465_2026-02-03T06-37-17-237Z.png"
+    },
+    {
+      "id": "outfit-1770100711891",
+      "name": "틸 모크 랩 미니 드레스(콘트라스트 파이핑)",
+      "prompt": "Teal Mock-wrap Mini tight Dress with Contrast Piping",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-02-03T06:38:31.891Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770100711891_2026-02-03T06-39-05-999Z.png"
     }
   ],
   "categories": [

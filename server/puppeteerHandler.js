@@ -1409,7 +1409,11 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
     const { requestToken, storyId, sceneNumber, attempt = 1 } = options;
     const captureLabel = `[${storyId || 'unknown'}:${sceneNumber ?? '?'}|attempt-${attempt}]`;
 
-    if (serviceName === 'GEMINI') {
+    const releaseLock = await acquireLock();
+    let cdpClient = null;
+
+    try {
+        if (serviceName === 'GEMINI') {
         await launchImageBrowser();
     } else {
         await switchScriptService(serviceName);
@@ -1452,11 +1456,8 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
     console.log(`[Puppeteer] ${captureLabel} Download start at ${new Date(downloadStartTime).toISOString()}`);
 
     // CDP 세션 설정 (다운로드 허용)
-    if (scriptCdpClient) {
-        try { await scriptCdpClient.detach(); } catch (e) { }
-    }
-    scriptCdpClient = await scriptPage.createCDPSession();
-    await scriptCdpClient.send('Page.setDownloadBehavior', {
+    cdpClient = await scriptPage.createCDPSession();
+    await cdpClient.send('Page.setDownloadBehavior', {
         behavior: 'allow',
         downloadPath: downloadDir
     });
@@ -1627,6 +1628,12 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
         bytes: stats.size,
         hash: crypto.createHash('md5').update(fs.readFileSync(screenshotPath)).digest('hex')
     };
+    } finally {
+        if (cdpClient) {
+            await cdpClient.detach().catch(() => {});
+        }
+        releaseLock();
+    }
 }
 
 export async function submitPromptAndCaptureImage_LEGACY(serviceName, prompt, screenshotPath, options = {}) {

@@ -3638,6 +3638,14 @@ ${scriptInput}
             const characterIds = characterList.map(item => item.id);
             let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, enableWinterAccessories);
 
+            // 🔹 [FIX] characterList에서 선택한 의상을 autoCharacterMap에 적용 (의상 일관성 유지)
+            characterList.forEach(char => {
+                if (char.outfit && autoCharacterMap.has(char.id)) {
+                    const meta = autoCharacterMap.get(char.id)!;
+                    autoCharacterMap.set(char.id, { ...meta, outfit: char.outfit });
+                }
+            });
+
             const scenePrompt = buildManualSceneDecompositionPrompt({
                 scriptLines,
                 characters: characterList,

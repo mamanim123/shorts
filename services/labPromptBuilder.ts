@@ -286,6 +286,14 @@ export interface LabGenreGuideline {
   supportingCharacterTwistPatterns?: string[];
   badTwistExamples: string[];
   allowedOutfitCategories?: string[];
+  postProcessConfig?: {
+    enabled: boolean;
+    skipIdentityInjection: boolean;
+    cleanupPatterns: string[];
+    customPrefix: string;
+    customSuffix: string;
+    useSafeGlamour: boolean;
+  };
 }
 
 export interface LabGenreGuidelineEntry extends LabGenreGuideline {

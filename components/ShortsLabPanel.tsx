@@ -25,6 +25,7 @@ import { shortsLabStep2PromptRulesManager } from '../services/shortsLabStep2Prom
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
+import { enhancePromptWithSafeGlamour } from '../services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
 import CharacterPanel from './CharacterPanel';
@@ -788,6 +789,15 @@ const WINTER_ACCESSORIES = [
     'elegant knee-high suede boots with fur lining'
 ];
 
+const DEFAULT_POST_PROCESS_CONFIG = {
+    enabled: true,
+    skipIdentityInjection: false,
+    cleanupPatterns: [] as string[],
+    customPrefix: '',
+    customSuffix: '',
+    useSafeGlamour: true
+};
+
 // ============================================
 // 장르 옵션 - useShortsLabGenreManager hook에서 동적으로 로드
 // ============================================
@@ -805,7 +815,8 @@ const EMPTY_GENRE_TEMPLATE: Omit<LabGenreGuidelineEntry, 'id'> = {
     forbiddenPatterns: [],
     goodTwistExamples: [],
     supportingCharacterTwistPatterns: [],
-    badTwistExamples: []
+    badTwistExamples: [],
+    postProcessConfig: { ...DEFAULT_POST_PROCESS_CONFIG }
 };
 
 const AGE_OPTIONS = [
@@ -962,6 +973,41 @@ interface IdentityCharacter {
     accessories: string[];
 }
 
+const escapeCleanupPattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const applyCleanupPatterns = (prompt: string, patterns: string[]) => {
+    if (!prompt || patterns.length === 0) return prompt;
+    let cleaned = prompt;
+    patterns.forEach((pattern) => {
+        const trimmed = pattern.trim();
+        if (!trimmed) return;
+        const regex = new RegExp(escapeCleanupPattern(trimmed), 'gi');
+        cleaned = cleaned.replace(regex, '');
+    });
+    return cleaned
+        .replace(/,\s*,/g, ',')
+        .replace(/^,\s*/, '')
+        .replace(/,\s*$/, '')
+        .trim();
+};
+
+const applyPostProcessAffixes = (
+    prompt: string,
+    config?: LabGenreGuidelineEntry['postProcessConfig']
+) => {
+    if (!config?.enabled) return prompt;
+    let updated = prompt.trim();
+    const prefix = config.customPrefix?.trim();
+    const suffix = config.customSuffix?.trim();
+    if (prefix) {
+        updated = `${prefix}, ${updated}`.replace(/,\s*,/g, ', ').trim();
+    }
+    if (suffix) {
+        updated = `${updated}, ${suffix}`.replace(/,\s*,/g, ', ').trim();
+    }
+    return updated;
+};
+
 
 /**
  * AI 생성된 씬들을 후처리하는 함수
@@ -978,6 +1024,7 @@ const postProcessAiScenes = (
         totalScenes?: number; // [v3.6] 전체 장면 수 추가
         enableWinterAccessories?: boolean;
         useGenderGuard?: boolean; // [NEW] 성별 가드 옵션 추가
+        postProcessConfig?: LabGenreGuidelineEntry['postProcessConfig'];
     }
 ): any[] => {
     if (!Array.isArray(scenes)) return [];
@@ -987,6 +1034,9 @@ const postProcessAiScenes = (
     const totalScenes = options.totalScenes || scenes.length || 12;
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
     let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
+    const postProcessConfig = options.postProcessConfig;
+    const postProcessEnabled = postProcessConfig?.enabled !== false;
+    const skipIdentityInjection = postProcessConfig?.skipIdentityInjection === true;
 
     if (options.enableWinterAccessories) {
         if (accessoryMap.size === 0 && characterInfoMap.size > 0) {
@@ -1007,6 +1057,16 @@ const postProcessAiScenes = (
         const sceneNumber = scene.sceneNumber || idx + 1;
         const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
         const shotType = normalizeShotType(scene.shotType, characterIds);
+        const basePrompt = scene.longPrompt || scene.shortPrompt || scene.prompt || '';
+
+        if (!postProcessEnabled) {
+            const rawPrompt = basePrompt;
+            return {
+                ...scene,
+                longPrompt: rawPrompt,
+                shortPrompt: scene.shortPrompt || rawPrompt
+            };
+        }
 
         // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
         const sceneGender = characterIds.length === 1
@@ -1016,30 +1076,34 @@ const postProcessAiScenes = (
             ? characterInfoMap.get(characterIds[0])?.outfit
             : undefined;
 
-        let processedPrompt = enhanceScenePrompt(
-            scene.longPrompt || scene.shortPrompt || '',
-            {
-                sceneNumber,
-                femaleOutfit: sceneGender === 'female' ? sceneOutfit : undefined,
-                maleOutfit: sceneGender === 'male' ? sceneOutfit : undefined,
-                targetAgeLabel: options.targetAgeLabel,
-                gender: sceneGender,
-                genre: options.genre,         // v3.6
-                totalScenes: totalScenes      // v3.6
-            }
-        );
+        let processedPrompt = basePrompt;
 
-        // 2. [V3.2] 신규 검증 및 자동 수정 레이어 적용
-        // 프롬프트 검증 및 수정
-        const characterInfos = characterIds
-            .map((id: string) => characterInfoMap.get(id))
-            .filter(Boolean) as CharacterInfo[];
-        const fallbackCharacters = characterInfos.length > 0
-            ? characterInfos
-            : Array.from(characterInfoMap.values()).slice(0, 3);
-        const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: options.useGenderGuard });
+        if (!skipIdentityInjection) {
+            processedPrompt = enhanceScenePrompt(
+                basePrompt,
+                {
+                    sceneNumber,
+                    femaleOutfit: sceneGender === 'female' ? sceneOutfit : undefined,
+                    maleOutfit: sceneGender === 'male' ? sceneOutfit : undefined,
+                    targetAgeLabel: options.targetAgeLabel,
+                    gender: sceneGender,
+                    genre: options.genre,         // v3.6
+                    totalScenes: totalScenes      // v3.6
+                }
+            );
 
-        processedPrompt = applyAccessoriesToPrompt(validation.fixedPrompt, characterIds, accessoryMap);
+            // 2. [V3.2] 신규 검증 및 자동 수정 레이어 적용
+            // 프롬프트 검증 및 수정
+            const characterInfos = characterIds
+                .map((id: string) => characterInfoMap.get(id))
+                .filter(Boolean) as CharacterInfo[];
+            const fallbackCharacters = characterInfos.length > 0
+                ? characterInfos
+                : Array.from(characterInfoMap.values()).slice(0, 3);
+            const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: options.useGenderGuard });
+
+            processedPrompt = applyAccessoriesToPrompt(validation.fixedPrompt, characterIds, accessoryMap);
+        }
 
         // 3. 네거티브 프롬프트 분리 처리
         const extracted = extractNegativePrompt(processedPrompt);
@@ -1057,14 +1121,31 @@ const postProcessAiScenes = (
         }
         const negativePrompt = scene.negativePrompt || extracted.negative || '';
 
+        if (postProcessConfig?.useSafeGlamour) {
+            processedPrompt = enhancePromptWithSafeGlamour(processedPrompt);
+        }
+        processedPrompt = applyCleanupPatterns(processedPrompt, postProcessConfig?.cleanupPatterns || []);
+        processedPrompt = applyPostProcessAffixes(processedPrompt, postProcessConfig);
+
+        let shortPrompt = scene.shortPrompt
+            ? (skipIdentityInjection
+                ? scene.shortPrompt
+                : enhanceScenePrompt(
+                    scene.shortPrompt,
+                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes }
+                ))
+            : processedPrompt;
+        if (postProcessConfig?.useSafeGlamour) {
+            shortPrompt = enhancePromptWithSafeGlamour(shortPrompt);
+        }
+        shortPrompt = applyCleanupPatterns(shortPrompt, postProcessConfig?.cleanupPatterns || []);
+        shortPrompt = applyPostProcessAffixes(shortPrompt, postProcessConfig);
+
         return {
             ...scene,
             longPrompt: processedPrompt,
             negativePrompt: negativePrompt, // [NEW] 필드 추가
-            shortPrompt: scene.shortPrompt ? enhanceScenePrompt(
-                scene.shortPrompt,
-                { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes }
-            ) : processedPrompt
+            shortPrompt: shortPrompt
         };
     });
 };
@@ -2399,6 +2480,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         try {
             const selectedService = targetService || 'GEMINI';
             const finalScript = scriptInput.trim();
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const postProcessConfig = selectedGenreData?.postProcessConfig;
+            const postProcessEnabled = postProcessConfig?.enabled !== false;
+            const skipIdentityInjection = postProcessConfig?.skipIdentityInjection === true;
 
             // 1단계: 대본에서 스크립트 라인 추출 및 성별 추론
             const scriptLines = extractManualScriptLines(finalScript);
@@ -2610,56 +2695,71 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     groupActionFlavor,
                     cleanedLongPrompt
                 ]);
-                const normalizedPrompt = composeManualPrompt(
-                    narrativeParts || sceneText,
-                    sceneNumber,
-                    sceneCharacterIds,
-                    autoCharacterMap,
-                    { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
-                );
-                const characterInfos = sceneCharacterIds
-                    .map((id) => autoCharacterMap.get(id))
-                    .filter(Boolean)
-                    .map((item) => ({
-                        identity: item!.identity,
-                        hair: item!.hair,
-                        body: item!.body,
-                        outfit: item!.outfit
-                    })) as CharacterInfo[];
-                const fallbackCharacters = characterInfos.length > 0
-                    ? characterInfos
-                    : Array.from(autoCharacterMap.values())
-                        .slice(0, 3)
-                        .map((item) => ({
-                            identity: item.identity,
-                            hair: item.hair,
-                            body: item.body,
-                            outfit: item.outfit
-                        }));
-                const fixed = validateAndFixPrompt(
-                    normalizedPrompt,
-                    shotType,
-                    fallbackCharacters
-                );
-                let mergedPrompt = fixed.fixedPrompt;
-                if (enableWinterAccessories) {
-                    const winterGender = sceneCharacterIds.some((id) => getCharacterGender(id) === 'female')
-                        ? 'female'
-                        : 'male';
-                    const winterApplied = applyWinterLookToExistingPrompt(mergedPrompt, '', winterGender, { applyAccessories: false });
-                    mergedPrompt = winterApplied.longPrompt;
+                const basePrompt = scene.longPrompt || narrativeParts || sceneText;
+                let mergedPrompt = basePrompt;
+
+                if (postProcessEnabled) {
+                    if (!skipIdentityInjection) {
+                        const normalizedPrompt = composeManualPrompt(
+                            narrativeParts || sceneText,
+                            sceneNumber,
+                            sceneCharacterIds,
+                            autoCharacterMap,
+                            { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
+                        );
+                        const characterInfos = sceneCharacterIds
+                            .map((id) => autoCharacterMap.get(id))
+                            .filter(Boolean)
+                            .map((item) => ({
+                                identity: item!.identity,
+                                hair: item!.hair,
+                                body: item!.body,
+                                outfit: item!.outfit
+                            })) as CharacterInfo[];
+                        const fallbackCharacters = characterInfos.length > 0
+                            ? characterInfos
+                            : Array.from(autoCharacterMap.values())
+                                .slice(0, 3)
+                                .map((item) => ({
+                                    identity: item.identity,
+                                    hair: item.hair,
+                                    body: item.body,
+                                    outfit: item.outfit
+                                }));
+                        const fixed = validateAndFixPrompt(
+                            normalizedPrompt,
+                            shotType,
+                            fallbackCharacters
+                        );
+                        mergedPrompt = fixed.fixedPrompt;
+                    }
+
+                    if (enableWinterAccessories) {
+                        const winterGender = sceneCharacterIds.some((id) => getCharacterGender(id) === 'female')
+                            ? 'female'
+                            : 'male';
+                        const winterApplied = applyWinterLookToExistingPrompt(mergedPrompt, '', winterGender, { applyAccessories: false });
+                        mergedPrompt = winterApplied.longPrompt;
+                    }
+
+                    const accessoryMap = new Map<string, string[]>();
+                    sceneCharacterIds.forEach((id) => {
+                        const meta = autoCharacterMap.get(id);
+                        accessoryMap.set(id, meta?.accessories || []);
+                    });
+                    mergedPrompt = applyAccessoriesToPrompt(mergedPrompt, sceneCharacterIds, accessoryMap);
+
+                    if (postProcessConfig?.useSafeGlamour) {
+                        mergedPrompt = enhancePromptWithSafeGlamour(mergedPrompt);
+                    }
+                    mergedPrompt = applyCleanupPatterns(mergedPrompt, postProcessConfig?.cleanupPatterns || []);
+                    mergedPrompt = applyPostProcessAffixes(mergedPrompt, postProcessConfig);
                 }
-                const accessoryMap = new Map<string, string[]>();
-                sceneCharacterIds.forEach((id) => {
-                    const meta = autoCharacterMap.get(id);
-                    accessoryMap.set(id, meta?.accessories || []);
-                });
-                const promptWithAccessories = applyAccessoriesToPrompt(mergedPrompt, sceneCharacterIds, accessoryMap);
 
                 return {
                     number: sceneNumber,
                     text: sceneText,
-                    prompt: promptWithAccessories,
+                    prompt: mergedPrompt,
                     imageUrl: undefined,
                     shortPromptKo: '',
                     longPromptKo: '',
@@ -3256,7 +3356,8 @@ ${scriptInput}
                         genre: aiGenre,                    // v3.6: 장르 정보 전달
                         totalScenes: scenesSource.length,   // v3.6: 전체 장면 수 전달
                         enableWinterAccessories,
-                        useGenderGuard: settings.useGenderGuard // 성별 가드 전달
+                        useGenderGuard: settings.useGenderGuard, // 성별 가드 전달
+                        postProcessConfig: selectedGenreData?.postProcessConfig
                     });
 
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
@@ -4764,9 +4865,6 @@ ${scriptInput}
                                                 <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, 'GENSPARK')} disabled={gensparkForwardingId === `scene-${scene.number}`} className="p-2 bg-blue-600/90 hover:bg-blue-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="Genspark 생성">
                                                     {gensparkForwardingId === `scene-${scene.number}` ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
                                                 </button>
-                                                <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, 'GEMINI')} disabled={aiForwardingId === `scene-${scene.number}`} className="p-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="Gemini 생성">
-                                                    {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
-                                                </button>
                                                 <button
                                                     onClick={() => {
                                                         setSceneTabs(prev => ({ ...prev, [scene.number]: 'VIDEO' }));
@@ -5475,7 +5573,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onDeleteFemaleCharacter,
     onDeleteMaleCharacter
 }) => {
-    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'post_process' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
@@ -5524,8 +5622,17 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         forbiddenPatterns: [],
         goodTwistExamples: [],
         supportingCharacterTwistPatterns: [],
-        badTwistExamples: []
+        badTwistExamples: [],
+        postProcessConfig: { ...DEFAULT_POST_PROCESS_CONFIG }
     });
+    const [postProcessGenreId, setPostProcessGenreId] = useState('');
+    const [postProcessConfig, setPostProcessConfig] = useState<LabGenreGuidelineEntry['postProcessConfig']>({
+        ...DEFAULT_POST_PROCESS_CONFIG
+    });
+    const [postProcessCleanupText, setPostProcessCleanupText] = useState('');
+    const [postProcessDirty, setPostProcessDirty] = useState(false);
+    const [postProcessError, setPostProcessError] = useState<string | null>(null);
+    const [postProcessBackupName, setPostProcessBackupName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [backupName, setBackupName] = useState('');
     const [backupEdits, setBackupEdits] = useState<Record<string, string>>({});
@@ -5642,6 +5749,78 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         });
         setSelectedGenre(null);
         setMode('add');
+    };
+
+    const resolvePostProcessConfig = (config?: LabGenreGuidelineEntry['postProcessConfig']) => ({
+        enabled: typeof config?.enabled === 'boolean' ? config.enabled : DEFAULT_POST_PROCESS_CONFIG.enabled,
+        skipIdentityInjection: typeof config?.skipIdentityInjection === 'boolean'
+            ? config.skipIdentityInjection
+            : DEFAULT_POST_PROCESS_CONFIG.skipIdentityInjection,
+        cleanupPatterns: Array.isArray(config?.cleanupPatterns)
+            ? config!.cleanupPatterns
+            : DEFAULT_POST_PROCESS_CONFIG.cleanupPatterns,
+        customPrefix: config?.customPrefix || DEFAULT_POST_PROCESS_CONFIG.customPrefix,
+        customSuffix: config?.customSuffix || DEFAULT_POST_PROCESS_CONFIG.customSuffix,
+        useSafeGlamour: typeof config?.useSafeGlamour === 'boolean'
+            ? config.useSafeGlamour
+            : DEFAULT_POST_PROCESS_CONFIG.useSafeGlamour
+    });
+
+    const handleSelectPostProcessGenre = (id: string) => {
+        setPostProcessGenreId(id);
+        const target = genres.find(item => item.id === id);
+        const resolved = resolvePostProcessConfig(target?.postProcessConfig);
+        setPostProcessConfig(resolved);
+        setPostProcessCleanupText((resolved.cleanupPatterns || []).join('\n'));
+        setPostProcessDirty(false);
+        setPostProcessError(null);
+    };
+
+    React.useEffect(() => {
+        if (postProcessDirty) return;
+        if (postProcessGenreId || genres.length === 0) return;
+        handleSelectPostProcessGenre(genres[0].id);
+    }, [genres, postProcessDirty, postProcessGenreId]);
+
+    const handlePostProcessSave = async () => {
+        if (!postProcessGenreId) {
+            alert('후처리 설정을 적용할 장르를 선택해주세요.');
+            return;
+        }
+        const cleanupPatterns = postProcessCleanupText
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean);
+        const nextConfig = {
+            ...postProcessConfig,
+            cleanupPatterns,
+            customPrefix: postProcessConfig?.customPrefix?.trim() || '',
+            customSuffix: postProcessConfig?.customSuffix?.trim() || ''
+        };
+        try {
+            await onUpdate(postProcessGenreId, { postProcessConfig: nextConfig });
+            setPostProcessConfig(nextConfig);
+            setPostProcessDirty(false);
+            setPostProcessError(null);
+        } catch (err) {
+            console.error('Failed to save post process config:', err);
+            setPostProcessError('후처리 설정 저장에 실패했습니다.');
+        }
+    };
+
+    const handlePostProcessReset = () => {
+        if (!postProcessGenreId) return;
+        handleSelectPostProcessGenre(postProcessGenreId);
+    };
+
+    const handlePostProcessBackupCreate = async () => {
+        try {
+            await onBackupCreate(postProcessBackupName);
+            setPostProcessBackupName('');
+        } catch (err) {
+            console.error('Failed to create post process backup:', err);
+            alert('후처리 백업 생성에 실패했습니다.');
+        }
     };
 
     const handleSave = async () => {
@@ -6251,6 +6430,15 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
         showToast('지침이 다운로드되었습니다.', 'success');
     };
 
+    const postProcessDisabled = !postProcessGenreId;
+    const postProcessSelectedGenre = postProcessGenreId
+        ? genres.find(item => item.id === postProcessGenreId)
+        : null;
+    const postProcessCleanupCount = postProcessCleanupText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean).length;
+
     return (
         <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"
@@ -6326,6 +6514,19 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 }`}
                         >
                             2단계규칙
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('post_process');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'post_process'
+                                ? 'bg-amber-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            후처리
                         </button>
                         <button
                             onClick={() => {
@@ -6722,6 +6923,206 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                 </div>
                             </details>
+                        </div>
+                    )}
+
+                    {activeTab === 'post_process' && (
+                        <div className="space-y-5">
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-200">후처리 제어</h3>
+                                        <p className="text-[11px] text-slate-500">장르별 후처리 간섭을 직접 관리합니다.</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handlePostProcessReset}
+                                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
+                                        >
+                                            되돌리기
+                                        </button>
+                                        <button
+                                            onClick={handlePostProcessSave}
+                                            className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            저장
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-900/60 border border-slate-700 rounded-xl p-3 text-xs text-slate-300 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-[10px] text-slate-500">적용 장르</span>
+                                        <span className="px-2 py-0.5 rounded-full bg-slate-700/70 text-slate-200">
+                                            {postProcessSelectedGenre?.name || '미선택'}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.enabled !== false ? 'bg-emerald-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                            후처리 {postProcessConfig?.enabled !== false ? 'ON' : 'OFF'}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.skipIdentityInjection ? 'bg-amber-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                            인물 박제 {postProcessConfig?.skipIdentityInjection ? 'OFF' : 'ON'}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.useSafeGlamour ? 'bg-purple-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                            Safe Glamour {postProcessConfig?.useSafeGlamour ? 'ON' : 'OFF'}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                                            클린업 {postProcessCleanupCount}개
+                                        </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">
+                                        적용 순서: ① 후처리 ON 여부 → ② 인물 박제/검증 → ③ 겨울 악세(별도 토글) → ④ Safe Glamour → ⑤ 클린업 패턴 → ⑥ Prefix/Suffix
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">
+                                        후처리 OFF면 LLM 원본 프롬프트를 그대로 사용합니다.
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row gap-3">
+                                    <select
+                                        value={postProcessGenreId}
+                                        onChange={(e) => handleSelectPostProcessGenre(e.target.value)}
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    >
+                                        <option value="">장르를 선택해주세요</option>
+                                        {genres.map((genre) => (
+                                            <option key={genre.id} value={genre.id}>
+                                                {genre.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="text-[11px] text-slate-500 flex items-center">
+                                        장르 백업에 함께 저장됩니다. 복구는 '장르 관리' 탭에서 가능합니다.
+                                    </div>
+                                </div>
+
+                                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
+                                    <div className="space-y-3">
+                                        <ToggleItem
+                                            checked={Boolean(postProcessConfig?.enabled)}
+                                            onChange={(checked) => {
+                                                setPostProcessConfig((prev) => ({
+                                                    ...DEFAULT_POST_PROCESS_CONFIG,
+                                                    ...prev,
+                                                    enabled: checked
+                                                }));
+                                                setPostProcessDirty(true);
+                                            }}
+                                            label="후처리 활성화"
+                                            description="AI 결과에 후처리(청소/강제문구)를 적용합니다."
+                                        />
+                                        <ToggleItem
+                                            checked={Boolean(postProcessConfig?.skipIdentityInjection)}
+                                            onChange={(checked) => {
+                                                setPostProcessConfig((prev) => ({
+                                                    ...DEFAULT_POST_PROCESS_CONFIG,
+                                                    ...prev,
+                                                    skipIdentityInjection: checked
+                                                }));
+                                                setPostProcessDirty(true);
+                                            }}
+                                            label="인물 박제 스킵"
+                                            description="[Person] 블록 강제 주입을 중단합니다."
+                                        />
+                                        <ToggleItem
+                                            checked={Boolean(postProcessConfig?.useSafeGlamour)}
+                                            onChange={(checked) => {
+                                                setPostProcessConfig((prev) => ({
+                                                    ...DEFAULT_POST_PROCESS_CONFIG,
+                                                    ...prev,
+                                                    useSafeGlamour: checked
+                                                }));
+                                                setPostProcessDirty(true);
+                                            }}
+                                            label="Safe Glamour 적용"
+                                            description="화보용 고급 태그를 자동 삽입합니다."
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Prefix</label>
+                                            <textarea
+                                                value={postProcessConfig?.customPrefix || ''}
+                                                onChange={(e) => {
+                                                    setPostProcessConfig((prev) => ({
+                                                        ...DEFAULT_POST_PROCESS_CONFIG,
+                                                        ...prev,
+                                                        customPrefix: e.target.value
+                                                    }));
+                                                    setPostProcessDirty(true);
+                                                }}
+                                                rows={3}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                                                placeholder="프롬프트 앞에 항상 붙일 문구"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Suffix</label>
+                                            <textarea
+                                                value={postProcessConfig?.customSuffix || ''}
+                                                onChange={(e) => {
+                                                    setPostProcessConfig((prev) => ({
+                                                        ...DEFAULT_POST_PROCESS_CONFIG,
+                                                        ...prev,
+                                                        customSuffix: e.target.value
+                                                    }));
+                                                    setPostProcessDirty(true);
+                                                }}
+                                                rows={3}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                                                placeholder="프롬프트 끝에 항상 붙일 문구"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className={`${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                        클린업 패턴 <span className="text-slate-500">(한 줄에 하나)</span>
+                                    </label>
+                                    <textarea
+                                        value={postProcessCleanupText}
+                                        onChange={(e) => {
+                                            setPostProcessCleanupText(e.target.value);
+                                            setPostProcessDirty(true);
+                                        }}
+                                        rows={6}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none font-mono"
+                                        placeholder="예: wearing\nmini skirt\nphotorealistic"
+                                    />
+                                    <div className="text-[11px] text-slate-500 mt-1">
+                                        입력한 문구가 포함된 부분을 제거합니다. 정규식이 아닌 단순 문자열 기준입니다.
+                                    </div>
+                                </div>
+
+                                {postProcessError && (
+                                    <div className="text-xs text-rose-400">{postProcessError}</div>
+                                )}
+                            </div>
+
+                            <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-200">후처리 백업</h3>
+                                        <p className="text-[11px] text-slate-500">장르 전체 설정을 백업합니다.</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col md:flex-row gap-2">
+                                    <input
+                                        type="text"
+                                        value={postProcessBackupName}
+                                        onChange={(e) => setPostProcessBackupName(e.target.value)}
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                        placeholder="백업 이름 (비워두면 자동 생성)"
+                                    />
+                                    <button
+                                        onClick={handlePostProcessBackupCreate}
+                                        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        백업 생성
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 

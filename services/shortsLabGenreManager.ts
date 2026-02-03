@@ -8,10 +8,44 @@ const MAX_BACKUPS = 5;
 // ⚠️ 중요: 백업 키 변경 방지 - 기존 백업 보호
 const BACKUP_KEY_VERSION = 'v1';
 
+const DEFAULT_POST_PROCESS_CONFIG = {
+  enabled: true,
+  skipIdentityInjection: false,
+  cleanupPatterns: [] as string[],
+  customPrefix: '',
+  customSuffix: '',
+  useSafeGlamour: true,
+};
+
+type LabGenrePostProcessConfig = NonNullable<LabGenreGuidelineEntry['postProcessConfig']>;
+
+const normalizePostProcessConfig = (input?: LabGenreGuidelineEntry['postProcessConfig']): LabGenrePostProcessConfig => {
+  const cleanupPatterns = Array.isArray(input?.cleanupPatterns)
+    ? input!.cleanupPatterns.map((item) => String(item).trim()).filter(Boolean)
+    : DEFAULT_POST_PROCESS_CONFIG.cleanupPatterns;
+
+  return {
+    enabled: typeof input?.enabled === 'boolean' ? input.enabled : DEFAULT_POST_PROCESS_CONFIG.enabled,
+    skipIdentityInjection: typeof input?.skipIdentityInjection === 'boolean'
+      ? input.skipIdentityInjection
+      : DEFAULT_POST_PROCESS_CONFIG.skipIdentityInjection,
+    cleanupPatterns,
+    customPrefix: input?.customPrefix?.trim() || DEFAULT_POST_PROCESS_CONFIG.customPrefix,
+    customSuffix: input?.customSuffix?.trim() || DEFAULT_POST_PROCESS_CONFIG.customSuffix,
+    useSafeGlamour: typeof input?.useSafeGlamour === 'boolean'
+      ? input.useSafeGlamour
+      : DEFAULT_POST_PROCESS_CONFIG.useSafeGlamour,
+  };
+};
+
 primeAppStorageCache();
 
 const buildDefaultGenres = (): LabGenreGuidelineEntry[] =>
-  Object.entries(LAB_GENRE_GUIDELINES).map(([id, guide]) => ({ id, ...guide }));
+  Object.entries(LAB_GENRE_GUIDELINES).map(([id, guide]) => ({
+    id,
+    ...guide,
+    postProcessConfig: normalizePostProcessConfig((guide as LabGenreGuidelineEntry).postProcessConfig)
+  }));
 
 let cachedGenres: LabGenreGuidelineEntry[] | null = null;
 type GenreListener = (genres: LabGenreGuidelineEntry[]) => void;
@@ -56,6 +90,7 @@ const normalizeGenre = (genre: Partial<LabGenreGuidelineEntry> & { id: string })
     ? genre.supportingCharacterTwistPatterns.filter(Boolean)
     : undefined,
   badTwistExamples: Array.isArray(genre.badTwistExamples) ? genre.badTwistExamples.filter(Boolean) : [],
+  postProcessConfig: normalizePostProcessConfig(genre.postProcessConfig),
 });
 
 const normalizeGenreWithFallback = (genre: Partial<LabGenreGuidelineEntry>, index: number): LabGenreGuidelineEntry => {

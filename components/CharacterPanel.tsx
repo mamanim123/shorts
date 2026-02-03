@@ -1430,15 +1430,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     showToast('의상이 사용자 목록에 저장되었습니다.', 'success');
   }, [editingBaseOutfitName, editingBaseOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedBaseOutfit]);
 
+  const openOutfitEditModal = useCallback((outfit?: any) => {
+    setShowOutfitEditModal(true);
+  }, []);
+
   const handleSelectOutfit = useCallback((outfit: Outfit) => {
     setSelectedOutfitId(outfit.id);
     setSelectedBaseOutfitId(null);
     onOutfitSelect?.(outfit);
-  }, [onOutfitSelect]);
-
-  const openOutfitEditModal = useCallback(() => {
-    setShowOutfitEditModal(true);
-  }, []);
+    openOutfitEditModal(outfit);
+  }, [onOutfitSelect, openOutfitEditModal]);
 
   const closeOutfitEditModal = useCallback(() => {
     setShowOutfitEditModal(false);
@@ -1511,8 +1512,18 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     };
     
     onOutfitSelect?.(outfitData);
+    
+    const tempOutfit: any = {
+        id: item.id,
+        name: item.name,
+        prompt: item.prompt || item.name,
+        imageUrl: '',
+        createdAt: new Date().toISOString()
+    };
+    openOutfitEditModal(tempOutfit);
+    
     showToast(`'${item.translation}' 의상이 선택되었습니다.`, 'success');
-  }, [onOutfitSelect]);
+  }, [onOutfitSelect, openOutfitEditModal]);
 
   // body 기반 style 자동 생성 함수
   const generateStyleFromBody = useCallback((body: string, gender: 'female' | 'male'): string => {

@@ -14,7 +14,7 @@
       "prompt": "light gray shorts-sleeved turtleneck top with embroidery on left chest, tight fitted, paired with high-waisted black mini pencil skirt with horizontal ruching and shirring details",
       "category": "ROYAL",
       "createdAt": "2026-01-22T05:47:32.068Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-01-31T23-41-17-147Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-02-03T01-29-21-195Z.png"
     },
     {
       "id": "outfit-1769063025448",
@@ -247,6 +247,14 @@
       "category": "GOLF LUXURY",
       "createdAt": "2026-02-01T00:21:44.406Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769905304406_2026-02-01T00-22-04-137Z.png"
+    },
+    {
+      "id": "outfit-1770081617228",
+      "name": "핫핑크 슬리브리스 루싱 미니 바디콘 드레스",
+      "prompt": "vibrant hot pink sleeveless tube top bodycon mini dress, stretchable synthetic blend fabric, subtle sheen, intricate horizontal ruching, gathered seam details along side panels, textured draped effect across torso, tight-fitting silhouette, body-conforming fit, short mini-length hemline, mid-thigh length, seamless front panel construction, hidden side stitching, opaque medium-weight material, structured flexible fit, minimalist aesthetic, no visible closures or hardware",
+      "category": "ROYAL",
+      "createdAt": "2026-02-03T01:20:17.228Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770081617228_2026-02-03T01-22-38-441Z.png"
     }
   ],
   "categories": [

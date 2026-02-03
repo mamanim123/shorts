@@ -15,14 +15,29 @@ if (!fs.existsSync(USER_DATA_BASE)) fs.mkdirSync(USER_DATA_BASE, { recursive: tr
 // 🔹 통합 브라우저 (대본 생성 + 이미지 생성 모두 사용)
 let scriptBrowser;
 let scriptPage;
-let scriptCdpClient = null;
 let scriptBrowserLaunchPromise = null;
+
+// 🔹 이미지 생성 동시성 제어용 락
+let imageCaptureLock = Promise.resolve();
+
+/**
+ * 이미지 캡처 프로세스의 순차적 실행을 보장하기 위한 락 획득
+ */
+async function acquireLock() {
+    let release;
+    const waitPromise = new Promise(resolve => {
+        release = resolve;
+    });
+    const previousLock = imageCaptureLock;
+    imageCaptureLock = previousLock.then(() => waitPromise).catch(() => waitPromise);
+    await previousLock;
+    return release;
+}
 
 // 🔹 [DEPRECATED] 이미지 브라우저는 더 이상 사용하지 않음 - scriptBrowser로 통합됨
 // 하위 호환성을 위해 별칭만 유지
 let imageBrowser = null;
 let imagePage = null;
-let imageCdpClient = null;
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -176,7 +191,6 @@ export async function launchImageBrowser() {
     // 별칭 설정 (하위 호환성)
     imageBrowser = scriptBrowser;
     imagePage = scriptPage;
-    imageCdpClient = scriptCdpClient;
 }
 
 // 🔹 비디오 생성용 브라우저 실행

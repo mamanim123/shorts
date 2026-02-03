@@ -2131,8 +2131,8 @@ const enhanceMultiPersonBlocks = (
   const useGenderGuard = options?.useGenderGuard !== false;
 
   // 성별별 캐릭터 분리 및 사용 카운터
-  const maleCharacters = characters.filter(c => /\bman\b/i.test(c.identity));
-  const femaleCharacters = characters.filter(c => /\bwoman\b/i.test(c.identity));
+  const maleCharacters = characters.filter(c => /\bman\b/i.test(String(c.identity || '')));
+  const femaleCharacters = characters.filter(c => /\bwoman\b/i.test(String(c.identity || '')));
   let maleIndex = 0;
   let femaleIndex = 0;
 
@@ -2169,41 +2169,57 @@ const enhanceMultiPersonBlocks = (
     }
 
     if (character) {
-      const isMaleChar = String(character.id || '').toLowerCase().startsWith('man') || 
-                     (character.gender && String(character.gender).toUpperCase() === 'MALE');
+      // [Hard-Pinning] Strict reconstruction using MASTER data
+      const parts = content.split(',').map(p => p.trim());
+      
+      // 1. Extract Position and Color Palette to preserve them
+      const positionKeywords = /on the left|on the right|in the center|left side|right side|center/i;
+      const colorKeywords = /color palette/i;
+      const posPart = parts.find(p => positionKeywords.test(p)) || 
+                      MULTI_PERSON_POSITIONS[index] || 
+                      MULTI_PERSON_POSITIONS[MULTI_PERSON_POSITIONS.length - 1];
+      const colorPart = parts.find(p => colorKeywords.test(p)) || 
+                        `${MULTI_PERSON_COLORS[index] || MULTI_PERSON_COLORS[MULTI_PERSON_COLORS.length - 1]} color palette`;
 
-      if (isMaleChar && useGenderGuard) {
-        // [V3.5.3] Gender Guard: Remove feminine clothing keywords for male characters
-        const feminineKeywords = /\b(mini\s+)?(dress|skirt|micro|bodycon|feminine|lady|wife|cleavage|bra|her)\b/gi;
-        if (feminineKeywords.test(content)) {
-          content = content
-            .replace(feminineKeywords, '')
-            .replace(/\bher\b/gi, 'his')
-            .replace(/\bshe\b/gi, 'he')
-            .replace(/,\s*,/g, ',')
-            .trim();
-        }
-      }
+      // 2. Extract LLM Action/Expression (Only preserve what's NOT master data or position/color)
+      const traitKeywords = [
+        character.identity, character.hair, character.body, 
+        'stunning', 'handsome', 'korean', 'woman', 'man', 'hairstyle', 'figure', 'build', 'frame', 'physique'
+      ].map(t => t.toLowerCase());
 
-      if (character.outfit) {
-        const outfitClean = character.outfit.replace(/^wearing\s+/i, '').trim();
-        // If outfit is missing or was stripped by gender guard, force it back
-        if (!content.toLowerCase().includes(outfitClean.toLowerCase())) {
-          if (/wearing\s+[^,]+/i.test(content)) {
-            content = content.replace(/wearing\s+[^,]+/i, `wearing ${outfitClean}`);
-          } else {
-            content = `${content}, wearing ${outfitClean}`;
-          }
-        }
-      }
+      const actionParts = parts.filter(p => {
+        const lp = p.toLowerCase();
+        if (lp.includes('wearing')) return false;
+        if (positionKeywords.test(lp)) return false;
+        if (colorKeywords.test(lp)) return false;
+        // If it's too similar to known master traits or generic descriptors, skip it
+        if (traitKeywords.some(t => lp.includes(t) || t.includes(lp))) return false;
+        return p.length > 0;
+      });
+      const llmAction = actionParts.join(', ').trim();
+
+      // 3. Assemble with Master Data
+      const masterOutfit = character.outfit.replace(/^wearing\s+/i, '').trim();
+      const reconstructed = [
+        character.identity,
+        character.hair,
+        character.body,
+        `wearing ${masterOutfit}`,
+        llmAction,
+        posPart,
+        colorPart
+      ].filter(Boolean).join(', ');
+
+      return `[Person ${indexRaw}: ${reconstructed}]`;
     }
 
+    // Fallback if no character found
     if (!/on the left|on the right|in the center|left side|right side|center/i.test(content)) {
       const position = MULTI_PERSON_POSITIONS[index] || MULTI_PERSON_POSITIONS[MULTI_PERSON_POSITIONS.length - 1];
       content = `${content}, ${position}`;
     }
 
-    if (!/pastel|beige|navy|black|white|red|blue|green|purple|color palette/i.test(content)) {
+    if (!/color palette/i.test(content)) {
       const color = MULTI_PERSON_COLORS[index] || MULTI_PERSON_COLORS[MULTI_PERSON_COLORS.length - 1];
       content = `${content}, ${color} color palette`;
     }
@@ -2228,58 +2244,46 @@ export const validateAndFixPrompt = (
   // 1. 필수 시작 문구 확인
   if (!longPrompt.includes('unfiltered raw photograph')) {
   } else if (!hasPersonMarkers) {
-    // One-shot synchronization and de-duplication
+    // [V3.5.3] One-shot strict reconstruction and hard-pinning
     const character = characters[0];
     if (character) {
-      const traitPrefix = promptConstants.START;
-      const traits = [character.identity, character.hair, character.body].filter(Boolean);
+      const prefix = promptConstants.START;
+      const masterOutfit = character.outfit.replace(/^wearing\s+/i, '').trim();
 
-      // Remove existing traits to avoid duplicates
-      traits.forEach(trait => {
-        const regex = new RegExp(`,?\\s*${trait.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'gi');
-        fixedPrompt = fixedPrompt.replace(regex, '');
+      // Extract LLM Action from the original prompt
+      const contentWithoutPrefix = fixedPrompt.replace(prefix, '').trim();
+      const parts = contentWithoutPrefix.split(',').map(p => p.trim());
+      
+      const traitKeywords = [
+        character.identity, character.hair, character.body,
+        'stunning', 'handsome', 'korean', 'woman', 'man', 'hairstyle', 'figure', 'build', 'frame', 'physique'
+      ].map(t => t.toLowerCase());
+
+      const actionParts = parts.filter(p => {
+        const lp = p.toLowerCase();
+        if (lp.includes('wearing')) return false;
+        if (lp.includes('photorealistic') || lp.includes('high-fashion')) return false;
+        if (traitKeywords.some(t => lp.includes(t) || t.includes(lp))) return false;
+        return p.length > 0;
       });
+      const llmAction = actionParts.join(', ').trim();
 
-      // Re-insert standard traits at the beginning after prefix
-      const goldenTraits = traits.join(', ');
-      if (fixedPrompt.includes(traitPrefix)) {
-        fixedPrompt = fixedPrompt.replace(traitPrefix, `${traitPrefix}, ${goldenTraits}`);
-      } else {
-        fixedPrompt = `${traitPrefix}, ${goldenTraits}, ${fixedPrompt}`;
-      }
+      // Reconstruct using MASTER data in strict [Person 1] format
+      const reconstructedBlock = [
+        character.identity,
+        character.hair,
+        character.body,
+        `wearing ${masterOutfit}`,
+        llmAction,
+        MULTI_PERSON_POSITIONS[0],
+        `${MULTI_PERSON_COLORS[0]} color palette`
+      ].filter(Boolean).join(', ');
 
-      // Outfit sync
-      if (character.outfit) {
-        if (useGenderGuard) {
-          const isMale = String(character.id || '').toLowerCase().startsWith('man') || 
-                         (character.gender && String(character.gender).toUpperCase() === 'MALE');
-
-          if (isMale) {
-            const feminineKeywords = /\b(mini\s+)?(dress|skirt|micro|bodycon|feminine|lady|wife|cleavage|bra|her)\b/gi;
-            fixedPrompt = fixedPrompt
-              .replace(feminineKeywords, '')
-              .replace(/\bher\b/gi, 'his')
-              .replace(/\bshe\b/gi, 'he');
-          }
-        }
-
-        const outfitClean = character.outfit.replace(/^wearing\s+/i, '');
-        const wearingRegex = /wearing\s+[^,]+/i;
-        if (wearingRegex.test(fixedPrompt)) {
-          fixedPrompt = fixedPrompt.replace(wearingRegex, `wearing ${outfitClean}`);
-        } else {
-          const qualityIdx = fixedPrompt.indexOf(', photorealistic');
-          if (qualityIdx !== -1) {
-            fixedPrompt = fixedPrompt.slice(0, qualityIdx) + `, wearing ${outfitClean}` + fixedPrompt.slice(qualityIdx);
-          } else {
-            fixedPrompt += `, wearing ${outfitClean}`;
-          }
-        }
-      }
+      fixedPrompt = `${prefix}, [Person 1: ${reconstructedBlock}], ${promptConstants.END}`;
     }
   }
 
-  if (shotType !== '원샷' && hasPersonMarkers) {
+  if (hasPersonMarkers) {
     fixedPrompt = enhanceMultiPersonBlocks(fixedPrompt, characters, { useGenderGuard });
   }
 

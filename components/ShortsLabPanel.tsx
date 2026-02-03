@@ -6959,8 +6959,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.enabled !== false ? 'bg-emerald-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
                                             후처리 {postProcessConfig?.enabled !== false ? 'ON' : 'OFF'}
                                         </span>
-                                        <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.skipIdentityInjection ? 'bg-amber-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
-                                            인물 박제 {postProcessConfig?.skipIdentityInjection ? 'OFF' : 'ON'}
+                                        <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.skipIdentityInjection ? 'bg-slate-700 text-slate-300' : 'bg-amber-600/80 text-white'}`}>
+                                            캐릭터/의상 고정 {postProcessConfig?.skipIdentityInjection ? 'OFF' : 'ON'}
                                         </span>
                                         <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.useSafeGlamour ? 'bg-purple-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
                                             Safe Glamour {postProcessConfig?.useSafeGlamour ? 'ON' : 'OFF'}
@@ -6970,7 +6970,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         </span>
                                     </div>
                                     <div className="text-[11px] text-slate-500">
-                                        적용 순서: ① 후처리 ON 여부 → ② 인물 박제/검증 → ③ 겨울 악세(별도 토글) → ④ Safe Glamour → ⑤ 클린업 패턴 → ⑥ Prefix/Suffix
+                                        적용 순서: ① 후처리 ON 여부 → ② 캐릭터/의상 고정·검증 → ③ 겨울 악세(별도 토글) → ④ Safe Glamour → ⑤ 클린업 패턴 → ⑥ Prefix/Suffix
                                     </div>
                                     <div className="text-[11px] text-slate-500">
                                         후처리 OFF면 LLM 원본 프롬프트를 그대로 사용합니다.
@@ -6995,34 +6995,43 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                 </div>
 
-                                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
-                                    <div className="space-y-3">
-                                        <ToggleItem
-                                            checked={Boolean(postProcessConfig?.enabled)}
-                                            onChange={(checked) => {
-                                                setPostProcessConfig((prev) => ({
-                                                    ...DEFAULT_POST_PROCESS_CONFIG,
-                                                    ...prev,
-                                                    enabled: checked
-                                                }));
-                                                setPostProcessDirty(true);
-                                            }}
-                                            label="후처리 활성화"
-                                            description="AI 결과에 후처리(청소/강제문구)를 적용합니다."
-                                        />
-                                        <ToggleItem
-                                            checked={Boolean(postProcessConfig?.skipIdentityInjection)}
-                                            onChange={(checked) => {
-                                                setPostProcessConfig((prev) => ({
-                                                    ...DEFAULT_POST_PROCESS_CONFIG,
-                                                    ...prev,
-                                                    skipIdentityInjection: checked
-                                                }));
-                                                setPostProcessDirty(true);
-                                            }}
-                                            label="인물 박제 스킵"
-                                            description="[Person] 블록 강제 주입을 중단합니다."
-                                        />
+                                <div className={`space-y-3 ${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
+                                    <ToggleItem
+                                        checked={Boolean(postProcessConfig?.enabled)}
+                                        onChange={(checked) => {
+                                            setPostProcessConfig((prev) => ({
+                                                ...DEFAULT_POST_PROCESS_CONFIG,
+                                                ...prev,
+                                                enabled: checked
+                                            }));
+                                            setPostProcessDirty(true);
+                                        }}
+                                        label="후처리 활성화"
+                                        description="ON: 캐릭터/의상 고정·검증이 동작합니다. OFF: LLM 원본 프롬프트 유지"
+                                    />
+                                    <ToggleItem
+                                        checked={!postProcessConfig?.skipIdentityInjection}
+                                        onChange={(checked) => {
+                                            setPostProcessConfig((prev) => ({
+                                                ...DEFAULT_POST_PROCESS_CONFIG,
+                                                ...prev,
+                                                skipIdentityInjection: !checked
+                                            }));
+                                            setPostProcessDirty(true);
+                                        }}
+                                        label="캐릭터/의상 고정"
+                                        description="슬롯(A/B/C/D) 기준 의상·인물 정보를 씬마다 강제 동기화합니다."
+                                    />
+                                    <div className="text-[11px] text-slate-500">
+                                        ⚠️ 이 옵션을 끄면 씬마다 의상이 바뀌는 문제가 다시 생길 수 있습니다.
+                                    </div>
+                                </div>
+
+                                <details className={`bg-slate-900/50 border border-slate-700 rounded-xl p-4 ${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
+                                    <summary className="text-sm font-medium text-slate-300 cursor-pointer hover:text-white">
+                                        고급 옵션 (필요할 때만 사용)
+                                    </summary>
+                                    <div className="mt-4 space-y-4">
                                         <ToggleItem
                                             checked={Boolean(postProcessConfig?.useSafeGlamour)}
                                             onChange={(checked) => {
@@ -7034,65 +7043,64 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                 setPostProcessDirty(true);
                                             }}
                                             label="Safe Glamour 적용"
-                                            description="화보용 고급 태그를 자동 삽입합니다."
+                                            description="화보 느낌의 품질 태그를 자동으로 추가합니다."
                                         />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Prefix</label>
-                                            <textarea
-                                                value={postProcessConfig?.customPrefix || ''}
-                                                onChange={(e) => {
-                                                    setPostProcessConfig((prev) => ({
-                                                        ...DEFAULT_POST_PROCESS_CONFIG,
-                                                        ...prev,
-                                                        customPrefix: e.target.value
-                                                    }));
-                                                    setPostProcessDirty(true);
-                                                }}
-                                                rows={3}
-                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                                                placeholder="프롬프트 앞에 항상 붙일 문구"
-                                            />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Prefix</label>
+                                                <textarea
+                                                    value={postProcessConfig?.customPrefix || ''}
+                                                    onChange={(e) => {
+                                                        setPostProcessConfig((prev) => ({
+                                                            ...DEFAULT_POST_PROCESS_CONFIG,
+                                                            ...prev,
+                                                            customPrefix: e.target.value
+                                                        }));
+                                                        setPostProcessDirty(true);
+                                                    }}
+                                                    rows={3}
+                                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                                                    placeholder="프롬프트 앞에 항상 붙일 문구"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Suffix</label>
+                                                <textarea
+                                                    value={postProcessConfig?.customSuffix || ''}
+                                                    onChange={(e) => {
+                                                        setPostProcessConfig((prev) => ({
+                                                            ...DEFAULT_POST_PROCESS_CONFIG,
+                                                            ...prev,
+                                                            customSuffix: e.target.value
+                                                        }));
+                                                        setPostProcessDirty(true);
+                                                    }}
+                                                    rows={3}
+                                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                                                    placeholder="프롬프트 끝에 항상 붙일 문구"
+                                                />
+                                            </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Suffix</label>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                                클린업 패턴 <span className="text-slate-500">(한 줄에 하나)</span>
+                                            </label>
                                             <textarea
-                                                value={postProcessConfig?.customSuffix || ''}
+                                                value={postProcessCleanupText}
                                                 onChange={(e) => {
-                                                    setPostProcessConfig((prev) => ({
-                                                        ...DEFAULT_POST_PROCESS_CONFIG,
-                                                        ...prev,
-                                                        customSuffix: e.target.value
-                                                    }));
+                                                    setPostProcessCleanupText(e.target.value);
                                                     setPostProcessDirty(true);
                                                 }}
-                                                rows={3}
-                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                                                placeholder="프롬프트 끝에 항상 붙일 문구"
+                                                rows={6}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none font-mono"
+                                                placeholder="예: wearing\nmini skirt\nphotorealistic"
                                             />
+                                            <div className="text-[11px] text-slate-500 mt-1">
+                                                입력한 문구가 포함된 부분을 제거합니다. 정규식이 아닌 단순 문자열 기준입니다.
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className={`${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                        클린업 패턴 <span className="text-slate-500">(한 줄에 하나)</span>
-                                    </label>
-                                    <textarea
-                                        value={postProcessCleanupText}
-                                        onChange={(e) => {
-                                            setPostProcessCleanupText(e.target.value);
-                                            setPostProcessDirty(true);
-                                        }}
-                                        rows={6}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none font-mono"
-                                        placeholder="예: wearing\nmini skirt\nphotorealistic"
-                                    />
-                                    <div className="text-[11px] text-slate-500 mt-1">
-                                        입력한 문구가 포함된 부분을 제거합니다. 정규식이 아닌 단순 문자열 기준입니다.
-                                    </div>
-                                </div>
+                                </details>
 
                                 {postProcessError && (
                                     <div className="text-xs text-rose-400">{postProcessError}</div>

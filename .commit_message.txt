@@ -1,1 +1,1 @@
-🐛 2단계생성 버튼의 의상 중복 방지 로직 추가 - usedFemaleOutfits/usedMaleOutfits 추적
+✨ ShortsLabPanel.tsx 및 labPromptBuilder.ts 파일 대규모 삭제 코드 복구 (HEAD~1 시점으로 복구)

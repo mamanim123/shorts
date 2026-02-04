@@ -699,6 +699,47 @@ export const resetAngleHistory = (): void => {
   angleHistory = [];
 };
 
+const CAMERA_SEGMENT_REGEX = /\b(close[-\s]?up|over-the-shoulder|over the shoulder|drone|aerial|bird['’]s-eye|pov|point of view|low-angle|high-angle|establishing)\b/i;
+
+const isCameraSegment = (segment: string): boolean => {
+  const normalized = segment.toLowerCase();
+  if (CAMERA_SEGMENT_REGEX.test(normalized)) return true;
+  if (/(medium|wide|full|long)/.test(normalized) && /(shot|view|angle|framing)/.test(normalized)) return true;
+  if (normalized.includes('full body')) return true;
+  return false;
+};
+
+const extractCameraPhraseFromText = (text: string): string => {
+  if (!text) return '';
+  const segments = text.split(',').map(part => part.trim()).filter(Boolean);
+  for (const segment of segments) {
+    if (isCameraSegment(segment)) return segment;
+  }
+  return '';
+};
+
+const normalizeCameraAngleLabel = (segment: string): string => {
+  const normalized = segment.toLowerCase();
+  if (!normalized) return '';
+  if (normalized.includes('pov') || normalized.includes('point of view')) return 'pov';
+  if (normalized.includes('drone') || normalized.includes('aerial') || normalized.includes('bird')) return 'aerial';
+  if (normalized.includes('over-the-shoulder') || normalized.includes('over the shoulder')) return 'over-shoulder';
+  if (normalized.includes('close-up') || normalized.includes('close up')) return 'close-up';
+  if (normalized.includes('low-angle')) return 'low-angle';
+  if (normalized.includes('high-angle')) return 'high-angle';
+  if (normalized.includes('wide') || normalized.includes('establishing')) return 'wide';
+  if (normalized.includes('full') && (normalized.includes('shot') || normalized.includes('body'))) return 'full';
+  if (normalized.includes('long shot')) return 'full';
+  if (normalized.includes('medium')) return 'medium';
+  return 'custom';
+};
+
+const stripExactCameraPhrase = (text: string, phrase: string): string => {
+  if (!text || !phrase) return text;
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`\\s*,?\\s*${escaped}\\s*,?`, 'i'), ', ');
+};
+
 /**
  * 스마트 카메라 앵글 선택
  * - 연속 2회 이상 동일 앵글 사용 방지
@@ -974,6 +1015,7 @@ export const enhanceScenePrompt = (
     genre?: string;           // v3.6: 장르 추가
     totalScenes?: number;     // v3.6: 전체 장면 수 추가
     action?: string;          // v3.7: 동작 묘사 추가
+    cameraAngle?: string;     // v3.9.3: LLM 카메라 앵글 우선 존중
   } = {}
 ): string => {
   if (!text) return text;
@@ -988,8 +1030,26 @@ export const enhanceScenePrompt = (
   // 표정 키워드 (맨 앞에 배치할 것)
   const expressionKeywords = getExpressionForScene(genre, storyStage);
 
-  // 카메라 앵글 프롬프트 (샷 다양화 적용)
-  const cameraPrompt = getSmartCameraPrompt(sceneNum, totalScenes).prompt;
+  const rawCameraAngle = options.cameraAngle ? options.cameraAngle.trim() : '';
+  const hasHangul = /[가-힣]/.test(rawCameraAngle);
+  const cameraFromOption = !hasHangul && /shot|view|pov|angle|framing/i.test(rawCameraAngle) ? rawCameraAngle : '';
+  const cameraFromText = cameraFromOption ? '' : extractCameraPhraseFromText(updated);
+  const llmCameraPrompt = cameraFromOption || cameraFromText;
+
+  const llmAngleLabel = normalizeCameraAngleLabel(llmCameraPrompt);
+  const lastTwo = angleHistory.slice(-2);
+  const shouldOverrideLlmCamera = llmCameraPrompt
+    ? (llmAngleLabel !== 'custom' && lastTwo.length >= 2 && lastTwo.every(a => a === llmAngleLabel))
+    : false;
+
+  let cameraPrompt = '';
+  if (llmCameraPrompt && !shouldOverrideLlmCamera) {
+    cameraPrompt = llmCameraPrompt;
+    angleHistory.push(llmAngleLabel || 'custom');
+  } else {
+    const fallback = getSmartCameraPrompt(sceneNum, totalScenes);
+    cameraPrompt = fallback.prompt;
+  }
 
   // v3.7: 동작 묘사 영어 변환
   let actionPrompt = '';
@@ -1012,9 +1072,14 @@ export const enhanceScenePrompt = (
   }
 
   // v3.6: 표정과 카메라 앵글을 맨 앞에 삽입
-  // 기존 카메라 앵글이 이미 있으면 제거 후 새로 추가
-  const existingCameraPattern = /^(close-up|medium shot|wide shot|extreme close-up|over-the-shoulder)[^,]*,?\s*/i;
-  updated = updated.replace(existingCameraPattern, '');
+  // LLM 카메라가 있으면 동일 문구 중복 제거
+  if (llmCameraPrompt) {
+    updated = stripExactCameraPhrase(updated, llmCameraPrompt);
+    updated = updated.replace(/,\s*,/g, ', ').replace(/\s{2,}/g, ' ').replace(/^,\s*/, '').trim();
+  } else {
+    const existingCameraPattern = /^(close-up|medium shot|wide shot|extreme close-up|over-the-shoulder)[^,]*,?\s*/i;
+    updated = updated.replace(existingCameraPattern, '');
+  }
 
   // Scene 번호 처리
   if (options.sceneNumber !== undefined) {

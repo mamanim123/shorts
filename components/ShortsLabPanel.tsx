@@ -1088,7 +1088,8 @@ const postProcessAiScenes = (
                     targetAgeLabel: options.targetAgeLabel,
                     gender: sceneGender,
                     genre: options.genre,         // v3.6
-                    totalScenes: totalScenes      // v3.6
+                    totalScenes: totalScenes,     // v3.6
+                    cameraAngle: scene.cameraAngle || scene.camera || ''
                 }
             );
 
@@ -1132,7 +1133,7 @@ const postProcessAiScenes = (
                 ? scene.shortPrompt
                 : enhanceScenePrompt(
                     scene.shortPrompt,
-                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes }
+                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes, cameraAngle: scene.cameraAngle || scene.camera || '' }
                 ))
             : processedPrompt;
         if (postProcessConfig?.useSafeGlamour) {

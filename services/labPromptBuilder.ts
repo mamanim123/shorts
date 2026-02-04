@@ -1926,6 +1926,7 @@ ${characterSection}
 5. **캔디드 에스테틱 (Candid Aesthetic) & 카메라 시선**:
    - **Scene 1 (Hook)**: 시청자와의 연결을 위해 카메라를 정면 응시하며 미소 지을 것 (Eye contact, smiling at camera).
     - **Scene 2~8**: 자연스러운 일상의 찰나를 포착한 **Candid Shot**이어야 함. 캐릭터는 **카메라를 절대 응시하지 말고(Looking away from camera)** 자신의 행동이나 상대방에게 집중할 것. 인위적인 포즈(Posed) 금지.${golfCaddyRule}
+   - **투샷/쓰리샷 캔디샷 필수**: 여러 인물이 함께 있는 장면은 반드시 **캔디샷 느낌(즉흥·자연스러운 포착)**이어야 하며, 각 인물의 **손동작/입모양/표정/시선/자세를 서로 다르게** 구체적으로 작성할 것. **동일한 행동/표정 반복 금지**.
   6. **텍스트 금지**: 이미지 내에 어떠한 글자, 로고, 워터마크도 포함되지 않도록 "no text, no letters, no typography"를 강조할 것.
 7. **투샷/쓰리샷에서는 각 인물마다 identity+hair+body+wearing+outfit 전체를 개별로 명시**
 8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
@@ -1942,6 +1943,7 @@ ${imagePromptRulesExtra ? `\n${imagePromptRulesExtra}\n` : ''}
 
 ### 🚨 투샷/쓰리샷 longPrompt 작성 필수 규칙 (매우 중요!)
 **여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분해야 합니다!**
+**각 Person의 행동/손동작/입모양/표정/시선은 서로 다르게 명시하고, 동일 문구/동작 반복 금지.**
 
 ✅ **원샷 예시** (1명):
 \`\`\`

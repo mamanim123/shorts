@@ -113,6 +113,9 @@ const DEFAULT_OUTFIT_CATEGORIES = [
     { id: 'MALE', name: 'MALE', gender: 'male' }
 ];
 
+const SUPPORTED_PUPPETEER_SERVICES = new Set(['GEMINI', 'CHATGPT', 'CLAUDE', 'GENSPARK', 'VIDEOFX']);
+
+
 const lastImageFingerprintsByStory = new Map();
 const AUTO_LAUNCH_DELAY_MS = Number(process.env.PUPPETEER_AUTO_LAUNCH_DELAY_MS || 5000);
 const AUTO_LAUNCH_MAX_ATTEMPTS = Number(process.env.PUPPETEER_AUTO_LAUNCH_MAX_ATTEMPTS || 3);
@@ -243,7 +246,7 @@ class DailyLimitError extends Error {
 // Gemini API 호출 헬퍼 함수
 async function callGeminiAPI(prompt, model = 'gemini-2.0-flash') {
     console.log(`[GeminiAPI] Calling ${model}...`);
-    
+
     const usageKey = resolveUsageKey(model);
     const dailyLimit = DAILY_REQUEST_LIMITS[usageKey];
     if (typeof dailyLimit === 'number' && dailyLimit > 0) {
@@ -848,6 +851,12 @@ app.post('/api/launch', async (req, res) => {
 // --- Script Generation API ---
 app.post('/api/generate/raw', async (req, res) => {
     const { service, prompt, folderName: requestedFolderName, skipFolderCreation, freshChat } = req.body;
+
+    console.log('--------------------------------------------------');
+    console.log('[API] /api/generate/raw Request Received');
+    console.log('[API] Raw Service Input:', service);
+    console.log('[API] Supported Services:', Array.from(SUPPORTED_PUPPETEER_SERVICES));
+
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });
     }
@@ -855,6 +864,10 @@ app.post('/api/generate/raw', async (req, res) => {
     const requestedService = typeof service === 'string' && SUPPORTED_PUPPETEER_SERVICES.has(service)
         ? service
         : 'GEMINI';
+
+    console.log('[API] Final Selected Service:', requestedService);
+    console.log('--------------------------------------------------');
+
 
     try {
         console.log(`[Server] Generating content via ${requestedService}...`);
@@ -1172,9 +1185,9 @@ Now analyze the image with MAXIMUM DETAIL and return ONLY the JSON object:`;
 // ✅ 영문 프롬프트에서 한글 의상 이름 생성
 function generateKoreanOutfitName(englishPrompt) {
     if (!englishPrompt) return '추출된 의상';
-    
+
     const prompt = englishPrompt.toLowerCase();
-    
+
     // 색상 매핑
     const colorMap = {
         'black': '블랙', 'white': '화이트', 'red': '레드', 'blue': '블루',
@@ -1187,7 +1200,7 @@ function generateKoreanOutfitName(englishPrompt) {
         'turquoise': '터콰이즈', 'lavender': '라벤더', 'peach': '피치',
         'rose': '로즈', 'teal': '틸', 'maroon': '마룬', 'indigo': '인디고'
     };
-    
+
     // 상의 매핑
     const topMap = {
         'tube top': '튜브탑', 'crop top': '크롭탑', 'tank top': '탱크탑',
@@ -1201,7 +1214,7 @@ function generateKoreanOutfitName(englishPrompt) {
         'halter': '홀터넥', 'one-shoulder': '원숄더', 'knit': '니트',
         'top': '탑', 'pullover': '풀오버'
     };
-    
+
     // 하의 매핑
     const bottomMap = {
         'skirt': '스커트', 'mini skirt': '미니스커트', 'midi skirt': '미디스커트',
@@ -1212,7 +1225,7 @@ function generateKoreanOutfitName(englishPrompt) {
         'leggings': '레깅스', 'culottes': '큐롯', 'wide pants': '와이드팬츠',
         'slacks': '슬랙스', 'chinos': '치노'
     };
-    
+
     // 원피스 매핑
     const dressMap = {
         'dress': '드레스', 'mini dress': '미니 드레스', 'midi dress': '미디 드레스',
@@ -1221,7 +1234,7 @@ function generateKoreanOutfitName(englishPrompt) {
         'wrap dress': '랩 드레스', 'slip dress': '슬립 드레스',
         'shirt dress': '셔츠 드레스', 'romper': '롬퍼', 'jumpsuit': '점프수트'
     };
-    
+
     // 소재 매핑
     const materialMap = {
         'silk': '실크', 'satin': '새틴', 'cotton': '코튼', 'linen': '린넨',
@@ -1231,7 +1244,7 @@ function generateKoreanOutfitName(englishPrompt) {
         'tweed': '트위드', 'sequin': '시퀸', 'mesh': '메쉬',
         'spandex': '스판덱스', 'jersey': '저지', 'ribbed': '골지'
     };
-    
+
     // 색상 찾기 함수
     const findColor = (text) => {
         for (const [eng, kor] of Object.entries(colorMap)) {
@@ -1239,7 +1252,7 @@ function generateKoreanOutfitName(englishPrompt) {
         }
         return '';
     };
-    
+
     // 소재 찾기
     let foundMaterial = '';
     for (const [eng, kor] of Object.entries(materialMap)) {
@@ -1248,7 +1261,7 @@ function generateKoreanOutfitName(englishPrompt) {
             break;
         }
     }
-    
+
     // 원피스 확인
     for (const [eng, kor] of Object.entries(dressMap)) {
         if (prompt.includes(eng)) {
@@ -1256,7 +1269,7 @@ function generateKoreanOutfitName(englishPrompt) {
             return [color, foundMaterial, kor].filter(Boolean).join(' ') || '추출된 드레스';
         }
     }
-    
+
     // 상의 찾기
     let foundTop = '';
     let topColor = '';
@@ -1270,7 +1283,7 @@ function generateKoreanOutfitName(englishPrompt) {
             break;
         }
     }
-    
+
     // 하의 찾기
     let foundBottom = '';
     let bottomColor = '';
@@ -1291,7 +1304,7 @@ function generateKoreanOutfitName(englishPrompt) {
             break;
         }
     }
-    
+
     // 이름 조합
     if (foundTop && foundBottom) {
         const topName = [topColor, foundMaterial, foundTop].filter(Boolean).join(' ');
@@ -1302,7 +1315,7 @@ function generateKoreanOutfitName(englishPrompt) {
     } else if (foundBottom) {
         return [bottomColor, foundMaterial, foundBottom].filter(Boolean).join(' ') || '추출된 하의';
     }
-    
+
     // 기본값
     const defaultColor = findColor(prompt);
     return [defaultColor, foundMaterial, '의상'].filter(Boolean).join(' ') || '추출된 의상';
@@ -1311,7 +1324,7 @@ function generateKoreanOutfitName(englishPrompt) {
 // ✅ 의상 프롬프트에서 불필요한 요소 필터링
 function filterOutfitPrompt(prompt) {
     if (!prompt || typeof prompt !== 'string') return prompt;
-    
+
     const removePatterns = [
         /\b(korean\s+)?(woman|man|lady|girl|boy|person|model|figure)\b/gi,
         /\b(beautiful|gorgeous|stunning|attractive|elegant|sexy)\s+(woman|lady|girl|person)\b/gi,
@@ -1332,12 +1345,12 @@ function filterOutfitPrompt(prompt) {
         /\bbokeh\b/gi,
         /\bphotorealistic\b/gi,
     ];
-    
+
     let cleaned = prompt;
     removePatterns.forEach(pattern => {
         cleaned = cleaned.replace(pattern, '');
     });
-    
+
     return cleaned
         .replace(/,\s*,/g, ',')
         .replace(/,\s*\./g, '.')
@@ -1592,7 +1605,7 @@ ${text}
 
 English prompt:`
             : normalizedType === 'hair'
-            ? `You are a hair prompt translator. Translate this Korean hairstyle description into a detailed English prompt optimized for AI image generation.
+                ? `You are a hair prompt translator. Translate this Korean hairstyle description into a detailed English prompt optimized for AI image generation.
 
 RULES:
 - Translate accurately while expanding with relevant hair terminology
@@ -1605,8 +1618,8 @@ Korean input:
 ${text}
 
 English prompt:`
-            : normalizedType === 'body'
-            ? `You are a body-shape prompt translator. Translate this Korean body/silhouette description into a detailed English prompt optimized for AI image generation.
+                : normalizedType === 'body'
+                    ? `You are a body-shape prompt translator. Translate this Korean body/silhouette description into a detailed English prompt optimized for AI image generation.
 
 RULES:
 - Translate accurately while expanding with relevant body/pose terminology
@@ -1619,7 +1632,7 @@ Korean input:
 ${text}
 
 English prompt:`
-            : `You are a portrait prompt translator. Translate this Korean facial feature description into a detailed English prompt optimized for AI portrait generation (Stable Diffusion/Midjourney).
+                    : `You are a portrait prompt translator. Translate this Korean facial feature description into a detailed English prompt optimized for AI portrait generation (Stable Diffusion/Midjourney).
 
 RULES:
 - Translate accurately while expanding with relevant beauty/facial terminology
@@ -2834,7 +2847,7 @@ app.get('/api/scripts/by-folder/:folderName', (req, res) => {
     }
 });
 
-const SUPPORTED_PUPPETEER_SERVICES = new Set(['GEMINI', 'CHATGPT', 'CLAUDE', 'GENSPARK', 'VIDEOFX']);
+
 
 app.post('/api/video/refine-prompt', async (req, res) => {
     const { script, visualPrompt, scriptLine, action, emotion, targetAge, characterSlot } = req.body || {};
@@ -4759,7 +4772,7 @@ app.post('/api/zinius-chat', async (req, res) => {
         // Build conversation context from chat history
         let conversationContext = '';
         if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
-            conversationContext = chatHistory.map((msg) => 
+            conversationContext = chatHistory.map((msg) =>
                 `${msg.role === 'user' ? '사용자' : '지니어스'}: ${msg.content}`
             ).join('\n\n');
         }

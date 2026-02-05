@@ -45,6 +45,8 @@ interface BaseOutfitItem {
 interface CharacterPanelProps {
   onCharacterSelect?: (character: Character | null, slot: string) => void;
   onOutfitSelect?: (outfit: Outfit | null) => void;
+  onCharactersSaved?: (characters: Character[]) => void;
+  onCharacterAdded?: (character: Character) => void;
   selectedSlot?: string;
 }
 
@@ -93,6 +95,8 @@ const DEFAULT_CATEGORY_IDS = new Set(DEFAULT_OUTFIT_CATEGORIES.map(category => c
 const CharacterPanel: React.FC<CharacterPanelProps> = ({
   onCharacterSelect,
   onOutfitSelect,
+  onCharactersSaved,
+  onCharacterAdded,
   selectedSlot = 'woman-a'
 }) => {
   // 탭 상태
@@ -339,6 +343,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const saveCharactersToBE = async (newChars: Character[]) => {
     try {
       await saveCharacters(newChars);
+      onCharactersSaved?.(newChars);
     } catch (error) {
       console.error('캐릭터 저장 실패:', error);
     }
@@ -1561,6 +1566,23 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     // body 기반으로 style 자동 생성
     const autoStyle = generateStyleFromBody(newCharacter.body, newCharacter.gender);
 
+    if (selectedCharacterId) {
+      const target = characters.find((char) => char.id === selectedCharacterId);
+      if (!target) return;
+      const updatedCharacter: Character = {
+        ...target,
+        ...newCharacter,
+        style: newCharacter.style || autoStyle
+      };
+      const updated = characters.map((char) => (
+        char.id === selectedCharacterId ? updatedCharacter : char
+      ));
+      setCharacters(updated);
+      saveCharactersToBE(updated);
+      showToast(`${updatedCharacter.name} 캐릭터가 수정되었습니다.`, 'success');
+      return;
+    }
+
     const character: Character = {
       id: `char-${Date.now()}`,
       ...newCharacter,
@@ -1571,6 +1593,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const updated = [...characters, character];
     setCharacters(updated);
     saveCharactersToBE(updated);
+    onCharacterAdded?.(character);
     setNewCharacter({
       name: '',
       age: '30대',
@@ -1582,7 +1605,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     });
     setActiveTab('select');
     showToast(`${character.name} 캐릭터가 저장되었습니다.`, 'success');
-  }, [newCharacter, characters, generateStyleFromBody]);
+  }, [newCharacter, characters, generateStyleFromBody, selectedCharacterId]);
 
   const resolveExtractionImageData = useCallback(async (value: string | null) => {
     if (!value) return null;
@@ -1762,6 +1785,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       key={char.id}
                       onClick={() => {
                         setSelectedCharacterId(char.id);
+                        setNewCharacter({
+                          name: char.name,
+                          age: char.age || '30대',
+                          gender: char.gender,
+                          face: char.face || '',
+                          hair: char.hair || '',
+                          body: char.body || '',
+                          style: char.style || ''
+                        });
+                        setActiveTab('manage');
                         onCharacterSelect?.(char, selectedSlot);
                       }}
                       className={`group p-3 rounded-xl border cursor-pointer transition-all ${selectedCharacterId === char.id
@@ -2118,7 +2151,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               <Save size={16} />
-              새 캐릭터 저장
+              {selectedCharacterId ? '캐릭터 수정' : '새 캐릭터 저장'}
             </button>
           </div>
         )}

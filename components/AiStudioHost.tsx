@@ -75,6 +75,10 @@ const AiStudioHost: React.FC = () => {
               // Support both old format (string) and new format (object with metadata)
               const filename = typeof item === 'string' ? item : item.filename;
               const prompt = typeof item === 'string' ? item : (item.prompt || filename);
+              const isUnifiedPath = typeof item === 'object' ? item.isUnifiedPath : false;
+              const resolvedUrl = isUnifiedPath
+                ? `http://localhost:3002/generated_scripts/${filename}`
+                : `http://localhost:3002/generated_scripts/images/${filename}`;
 
               console.log(`[AiStudioHost] Processing item ${idx}: filename=${filename}, prompt=${prompt?.substring(0, 50)}...`);
 
@@ -88,6 +92,7 @@ const AiStudioHost: React.FC = () => {
                   ? new Date(item.createdAt).getTime()
                   : Date.now() - idx,
                 localFilename: filename,
+                url: resolvedUrl,
                 settings: {
                   mode: 'Generate',
                   aspectRatio: '9:16',
@@ -117,16 +122,17 @@ const AiStudioHost: React.FC = () => {
     fetchRemoteImagesForStory(storyFilter);
   }, [storyFilter, fetchRemoteImagesForStory]);
 
+  const loadedIdsRef = useRef<Set<string>>(new Set());
+
   // blob -> URL 로드 (PERFORMANCE: 디바운스 및 중복 로딩 방지)
   useEffect(() => {
     let mounted = true;
     let debounceTimer: NodeJS.Timeout | null = null;
-    const loadedIds = new Set<string>(); // Track loaded images
+    const loadedIds = loadedIdsRef.current;
 
     const loadUrls = async () => {
       // Only load images that haven't been loaded yet
-      const combinedHistory = [...imageHistory, ...remoteFolderImages];
-      const needsLoad = combinedHistory.filter(item =>
+      const needsLoad = displayHistory.filter(item =>
         !historyUrls[item.id] && !loadedIds.has(item.id)
       );
 
@@ -134,53 +140,53 @@ const AiStudioHost: React.FC = () => {
 
       console.log(`[Performance] AiStudio loading ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
 
-      const fetchFromLocalFile = async (filename: string): Promise<string | null> => {
-        const candidates = [
-          `/generated_scripts/images/${filename}`,
-          `http://localhost:3002/generated_scripts/images/${filename}`,
-          `http://127.0.0.1:3002/generated_scripts/images/${filename}`
-        ];
-        for (const url of candidates) {
-          try {
-            const resp = await fetch(url);
-            if (resp.ok) {
-              const blob = await resp.blob();
-              return URL.createObjectURL(blob);
-            }
-          } catch (e) {
-            // Silently try next candidate
-          }
+      const buildLocalUrl = (filename: string, storyId?: string): string => {
+        const trimmed = filename.replace(/^\/+/, '');
+        if (trimmed.startsWith('대본폴더/')) {
+          return `/generated_scripts/${trimmed}`;
         }
-        return null;
+        if (trimmed.includes('/')) {
+          return `/generated_scripts/${trimmed}`;
+        }
+        if (storyId) {
+          return `/generated_scripts/대본폴더/${storyId}/images/${trimmed}`;
+        }
+        return `/generated_scripts/images/${trimmed}`;
       };
 
       const urls: Record<string, string> = {};
-      for (const item of needsLoad) {
-        // dataUrl 우선 복원 (하위 호환성)
-        if (item.dataUrl) {
-          urls[item.id] = item.dataUrl;
-          loadedIds.add(item.id);
-          continue;
-        }
-        if (item.generatedImageId) {
-          try {
-            const blob = await getBlob(item.generatedImageId);
-            if (blob && mounted) {
-              urls[item.id] = URL.createObjectURL(blob);
-              loadedIds.add(item.id);
-              continue;
-            }
-          } catch (e) {
-            console.error('Failed to load blob', e);
+      const batchSize = 12;
+      for (let i = 0; i < needsLoad.length; i += batchSize) {
+        const batch = needsLoad.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (item) => {
+          // dataUrl 우선 복원 (하위 호환성)
+          if (item.dataUrl) {
+            urls[item.id] = item.dataUrl;
+            loadedIds.add(item.id);
+            return;
           }
-        }
-        if (item.localFilename) {
-          const resolved = await fetchFromLocalFile(item.localFilename);
-          if (resolved) {
-            urls[item.id] = resolved;
+          if (item.url) {
+            urls[item.id] = item.url;
+            loadedIds.add(item.id);
+            return;
+          }
+          if (item.generatedImageId) {
+            try {
+              const blob = await getBlob(item.generatedImageId);
+              if (blob && mounted) {
+                urls[item.id] = URL.createObjectURL(blob);
+                loadedIds.add(item.id);
+                return;
+              }
+            } catch (e) {
+              console.error('Failed to load blob', e);
+            }
+          }
+          if (item.localFilename) {
+            urls[item.id] = buildLocalUrl(item.localFilename, item.storyId);
             loadedIds.add(item.id);
           }
-        }
+        }));
       }
       if (mounted && Object.keys(urls).length > 0) {
         setHistoryUrls(prev => ({ ...prev, ...urls }));
@@ -378,6 +384,13 @@ const AiStudioHost: React.FC = () => {
     return favoritesOnly ? sorted.filter(item => item?.favorite) : sorted;
   }, [combinedHistory, favoritesOnly, storyFilter]);
 
+  const displayHistory = useMemo(() => {
+    if (storyFilter === STORY_FILTER_ALL) {
+      return orderedHistory.slice(0, 50);
+    }
+    return orderedHistory;
+  }, [orderedHistory, storyFilter]);
+
   const storyFilterOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [{ value: STORY_FILTER_ALL, label: '전체보기' }];
     const seen = new Set<string>();
@@ -494,10 +507,10 @@ const AiStudioHost: React.FC = () => {
                 폴더 이미지를 불러오는 중...
               </div>
             )}
-            {orderedHistory.length === 0 ? (
+            {displayHistory.length === 0 ? (
               <div className="text-center text-xs text-gray-600 mt-10 px-1">No images yet</div>
             ) : (
-              orderedHistory.map(item => (
+              displayHistory.map(item => (
                 <div
                   key={item.id}
                   className="relative group w-full h-32 rounded-lg overflow-hidden cursor-pointer border border-gray-800 hover:border-purple-500 transition-all flex-shrink-0 bg-gray-900 shadow-md"
@@ -511,7 +524,13 @@ const AiStudioHost: React.FC = () => {
                   title={item.prompt}
                 >
                   {historyUrls[item.id] ? (
-                    <img src={historyUrls[item.id]} alt="History" className="w-full h-full object-cover" />
+                    <img
+                      src={historyUrls[item.id]}
+                      alt="History"
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-800 animate-pulse">
                       <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />

@@ -68,9 +68,9 @@ const SERVICES = {
         }
     },
     GENSPARK: {
-        url: 'https://genspark.ai',
+        url: 'https://genspark.ai/ai_image',
         selectors: {
-            input: 'textarea.search-input, .j-search-input, textarea[placeholder]',
+            input: 'textarea[placeholder*="Describe"], textarea[placeholder*="scene"], textarea[placeholder*="imagine"], textarea[placeholder*="이미지"], textarea.search-input, .j-search-input, textarea[placeholder], div[contenteditable="true"], div[role="textbox"]',
             // Found via agent: element 27 (textarea) -> element 28 (div button)
             sendBtn: '.j-search-input + div, textarea.search-input + div, div[class*="send-button"], button[aria-label="Send"]',
             response: '.markdown-body, .message-content, div[class*="answer"], div[class*="model-response"], .prose, div[class*="response"], div[class*="content"], div[class*="result"], div[class*="output"]',
@@ -1544,10 +1544,13 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
                 const responses = serviceName === 'GEMINI' 
                     ? Array.from(document.querySelectorAll('model-response'))
                     : Array.from(document.querySelectorAll('.markdown-body, .message-content, div[class*="answer"], div[class*="response"]'));
+                const noResponses = responses.length === 0;
 
-                if (responses.length <= expectedCount && checkCount < 60) return;
+                if (!noResponses && responses.length <= expectedCount && checkCount < 60) return;
 
-                const targetEl = responses[responses.length - 1];
+                const targetEl = (noResponses && serviceName === 'GENSPARK')
+                    ? document.body
+                    : responses[responses.length - 1];
                 if (!targetEl) return;
 
                 const images = Array.from(targetEl.querySelectorAll('img, canvas, [role="img"]'));
@@ -1558,13 +1561,110 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
 
                 if (validImage) {
                     validImage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // Gemini 스타일 다운로드 버튼 찾기
-                    const buttons = Array.from(document.querySelectorAll('button, a, [role="button"]'));
-                    const downloadBtn = buttons.find(btn => {
+                    if (validImage instanceof HTMLElement) {
+                        validImage.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+                        validImage.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                    }
+
+                    const isDownloadButton = (btn) => {
+                        if (!btn) return false;
                         const txt = (btn.getAttribute('aria-label') || btn.title || btn.innerText || '').toLowerCase();
-                        return txt.includes('download') || txt.includes('다운로드') || txt.includes('원본');
-                    });
+                        return (
+                            txt.includes('download') ||
+                            txt.includes('다운로드') ||
+                            txt.includes('원본') ||
+                            txt.includes('save')
+                        );
+                    };
+
+                    const findInContainer = (container) => {
+                        if (!container) return null;
+                        const candidates = Array.from(container.querySelectorAll('button, a, [role="button"]'));
+                        return candidates.find(isDownloadButton) || null;
+                    };
+
+                    let downloadBtn = findInContainer(targetEl);
+                    if (!downloadBtn) {
+                        let current = validImage.parentElement;
+                        for (let depth = 0; depth < 6 && current; depth++) {
+                            downloadBtn = findInContainer(current);
+                            if (downloadBtn) break;
+                            current = current.parentElement;
+                        }
+                    }
+
+                    if (!downloadBtn) {
+                        const imgRect = validImage.getBoundingClientRect();
+                        const isNearImage = (btn) => {
+                            const rect = btn.getBoundingClientRect();
+                            if (rect.width === 0 || rect.height === 0) return false;
+                            const margin = 120;
+                            const nearHoriz = rect.left <= imgRect.right + margin && rect.right >= imgRect.left - margin;
+                            const nearVert = rect.top <= imgRect.bottom + margin && rect.bottom >= imgRect.top - margin;
+                            return nearHoriz && nearVert;
+                        };
+                        const globalButtons = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+                        downloadBtn = globalButtons.find(btn => isDownloadButton(btn) && isNearImage(btn)) || null;
+                    }
+
+                    if (!downloadBtn && serviceName === 'GENSPARK') {
+                        const imgRect = validImage.getBoundingClientRect();
+                        const pickClosestToBottomCenter = (buttons) => {
+                            if (!buttons.length) return null;
+                            const targetX = imgRect.left + imgRect.width / 2;
+                            const targetY = imgRect.bottom - 24;
+                            let best = null;
+                            let bestDist = Number.POSITIVE_INFINITY;
+                            for (const btn of buttons) {
+                                const rect = btn.getBoundingClientRect();
+                                const cx = rect.left + rect.width / 2;
+                                const cy = rect.top + rect.height / 2;
+                                const dist = Math.hypot(cx - targetX, cy - targetY);
+                                if (dist < bestDist) {
+                                    bestDist = dist;
+                                    best = btn;
+                                }
+                            }
+                            return best;
+                        };
+
+                        const isIconOnlyButton = (btn) => {
+                            if (!btn) return false;
+                            const txt = (btn.innerText || '').trim();
+                            const aria = (btn.getAttribute('aria-label') || btn.title || '').trim();
+                            if (txt || aria) return false;
+                            return !!btn.querySelector('svg');
+                        };
+
+                        const isOverlayOnImage = (btn) => {
+                            const rect = btn.getBoundingClientRect();
+                            if (rect.width === 0 || rect.height === 0) return false;
+                            const withinHoriz = rect.left >= imgRect.left - 8 && rect.right <= imgRect.right + 8;
+                            const withinVert = rect.top >= imgRect.top - 8 && rect.bottom <= imgRect.bottom + 8;
+                            return withinHoriz && withinVert;
+                        };
+
+                        const iconButtons = [];
+                        const containers = [];
+                        let current = validImage.parentElement;
+                        for (let depth = 0; depth < 6 && current; depth++) {
+                            containers.push(current);
+                            current = current.parentElement;
+                        }
+                        containers.push(targetEl);
+
+                        for (const container of containers) {
+                            if (!container) continue;
+                            const candidates = Array.from(container.querySelectorAll('button, a, [role="button"]'));
+                            for (const btn of candidates) {
+                                if (isIconOnlyButton(btn) && isOverlayOnImage(btn)) {
+                                    iconButtons.push(btn);
+                                }
+                            }
+                        }
+
+                        downloadBtn = pickClosestToBottomCenter(iconButtons);
+                    }
 
                     if (downloadBtn) {
                         downloadBtn.click();

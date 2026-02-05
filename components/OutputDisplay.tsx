@@ -127,6 +127,10 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
               // Support both old format (string) and new format (object with metadata)
               const filename = typeof item === 'string' ? item : item.filename;
               const prompt = typeof item === 'string' ? item : (item.prompt || filename);
+              const isUnifiedPath = typeof item === 'object' ? item.isUnifiedPath : false;
+              const resolvedUrl = isUnifiedPath
+                ? `http://localhost:3002/generated_scripts/${filename}`
+                : `http://localhost:3002/generated_scripts/images/${filename}`;
 
               console.log(`[OutputDisplay] Processing item ${idx}: filename=${filename}, prompt=${prompt?.substring(0, 50)}...`);
 
@@ -140,6 +144,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
                   ? new Date(item.createdAt).getTime()
                   : Date.now() - idx,
                 localFilename: filename,
+                url: resolvedUrl,
                 settings: {
                   mode: 'Generate',
                   aspectRatio: '9:16',
@@ -287,7 +292,11 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
     const combinedHistory = [...imageHistory, ...remoteFolderImages];
     if (combinedHistory.length === 0) return;
 
-    const needsLoad = combinedHistory.filter(item =>
+    const displayPool = storyFilter === STORY_FILTER_ALL
+      ? combinedHistory.slice(0, 50)
+      : combinedHistory;
+
+    const needsLoad = displayPool.filter(item =>
       (item.generatedImageId || item.localFilename || (item as any).url) &&
       !historyImages[item.id] &&
       !loadingIdsRef.current.has(item.id) &&
@@ -300,55 +309,54 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
 
     needsLoad.forEach(item => loadingIdsRef.current.add(item.id));
 
-    const fetchFromLocalFile = async (filename: string): Promise<string | null> => {
-      const candidates = [
-        `/generated_scripts/images/${filename}`,
-        `http://localhost:3002/generated_scripts/images/${filename}`,
-        `http://127.0.0.1:3002/generated_scripts/images/${filename}`
-      ];
-      for (const url of candidates) {
-        try {
-          const resp = await fetch(url);
-          if (resp.ok) {
-            const blob = await resp.blob();
-            return URL.createObjectURL(blob);
-          }
-        } catch {
-          // ignore and try next candidate
-        }
+    const buildLocalUrl = (filename: string, storyId?: string): string => {
+      const trimmed = filename.replace(/^\/+/, '');
+      if (trimmed.startsWith('대본폴더/')) {
+        return `/generated_scripts/${trimmed}`;
       }
-      return null;
+      if (trimmed.includes('/')) {
+        return `/generated_scripts/${trimmed}`;
+      }
+      if (storyId) {
+        return `/generated_scripts/대본폴더/${storyId}/images/${trimmed}`;
+      }
+      return `/generated_scripts/images/${trimmed}`;
     };
 
     const newUrls: Record<string, string> = {};
-    await Promise.all(needsLoad.map(async (item) => {
-      try {
-        let url: string | null = null;
-        if (item.generatedImageId) {
-          const blob = await getBlob(item.generatedImageId);
-          if (blob) {
-            url = URL.createObjectURL(blob);
+    const batchSize = 12;
+    for (let i = 0; i < needsLoad.length; i += batchSize) {
+      const batch = needsLoad.slice(i, i + batchSize);
+      await Promise.all(batch.map(async (item) => {
+        try {
+          let url: string | null = null;
+
+          if (!url && (item as any).url) {
+            url = (item as any).url;
           }
-        }
 
-        if (!url && item.localFilename) {
-          url = await fetchFromLocalFile(item.localFilename);
-        }
+          if (!url && item.generatedImageId) {
+            const blob = await getBlob(item.generatedImageId);
+            if (blob) {
+              url = URL.createObjectURL(blob);
+            }
+          }
 
-        if (!url && (item as any).url) {
-          url = (item as any).url;
-        }
+          if (!url && item.localFilename) {
+            url = buildLocalUrl(item.localFilename, item.storyId);
+          }
 
-        if (url && isMountedRef.current) {
-          newUrls[item.id] = url;
-          loadedIdsRef.current.add(item.id);
+          if (url && isMountedRef.current) {
+            newUrls[item.id] = url;
+            loadedIdsRef.current.add(item.id);
+          }
+        } catch (e) {
+          console.error(`Failed to load image for ${item.id}`, e);
+        } finally {
+          loadingIdsRef.current.delete(item.id);
         }
-      } catch (e) {
-        console.error(`Failed to load image for ${item.id}`, e);
-      } finally {
-        loadingIdsRef.current.delete(item.id);
-      }
-    }));
+      }));
+    }
 
     if (isMountedRef.current && Object.keys(newUrls).length > 0) {
       setHistoryImages(prev => ({ ...prev, ...newUrls }));
@@ -969,6 +977,13 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
 
     return showFavoritesOnly ? sorted.filter(item => item.favorite) : sorted;
   }, [imageHistory, remoteFolderImages, showFavoritesOnly, storyFilter]);
+
+  const displayHistory = useMemo(() => {
+    if (storyFilter === STORY_FILTER_ALL) {
+      return orderedHistory.slice(0, 50);
+    }
+    return orderedHistory;
+  }, [orderedHistory, storyFilter]);
 
   const handleEnhanceAll = async () => {
     if (!data.scenes || data.scenes.length === 0) return;
@@ -1722,12 +1737,12 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
               폴더 이미지를 불러오는 중...
             </div>
           )}
-          {orderedHistory.length === 0 ? (
+          {displayHistory.length === 0 ? (
             <div className="text-center text-xs text-gray-600 mt-10 px-1">
               No images yet
             </div>
           ) : (
-            orderedHistory.map((item) => (
+            displayHistory.map((item) => (
               <div
                 key={item.id}
                 className="relative group w-full h-32 rounded-lg overflow-hidden cursor-pointer border border-gray-800 hover:border-purple-500 transition-all flex-shrink-0 bg-gray-900 shadow-md"
@@ -1745,6 +1760,8 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, onUpdate }) 
                   <img
                     src={historyImages[item.id]}
                     alt="History"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 ) : (

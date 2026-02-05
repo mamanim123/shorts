@@ -156,7 +156,7 @@ export const selectWinterItems = (gender: 'female' | 'male' = 'female'): { outer
   const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
   if (gender === 'male') {
-    const pool = Math.random() < 0.5 ? WINTER_COLLECTION.HEADWEAR : WINTER_COLLECTION.SCARVES;
+    const pool = WINTER_COLLECTION.SCARVES;
     accessories = [pick(pool)];
   } else {
     const categories = Object.keys(WINTER_COLLECTION) as Array<keyof typeof WINTER_COLLECTION>;

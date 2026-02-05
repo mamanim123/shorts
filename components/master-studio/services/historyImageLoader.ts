@@ -37,11 +37,21 @@ export const resolveImageHistoryUrls = async (
 
             // 2) Saved local filename (served statically)
             if (item.localFilename) {
+                const trimmed = item.localFilename.replace(/^\/+/, '');
+                const baseName = trimmed.split('/').pop() || trimmed;
+                const storyId = (item as any).storyId as string | undefined;
+                const storyPath = storyId ? `대본폴더/${storyId}/images/${baseName}` : null;
                 const candidates = [
-                    `/generated_scripts/images/${item.localFilename}`,
-                    `http://localhost:3002/generated_scripts/images/${item.localFilename}`,
-                    `http://127.0.0.1:3002/generated_scripts/images/${item.localFilename}`
-                ];
+                    `/generated_scripts/images/${trimmed}`,
+                    `/generated_scripts/${trimmed}`,
+                    storyPath ? `/generated_scripts/${storyPath}` : null,
+                    `http://localhost:3002/generated_scripts/images/${trimmed}`,
+                    `http://localhost:3002/generated_scripts/${trimmed}`,
+                    storyPath ? `http://localhost:3002/generated_scripts/${storyPath}` : null,
+                    `http://127.0.0.1:3002/generated_scripts/images/${trimmed}`,
+                    `http://127.0.0.1:3002/generated_scripts/${trimmed}`,
+                    storyPath ? `http://127.0.0.1:3002/generated_scripts/${storyPath}` : null
+                ].filter(Boolean) as string[];
                 for (const url of candidates) {
                     try {
                         const resp = await fetch(url);

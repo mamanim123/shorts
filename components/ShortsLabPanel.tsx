@@ -251,8 +251,11 @@ const buildWinterAccessoryMap = (characterIds: string[]) => {
     const used = new Set<string>();
     const map = new Map<string, string[]>();
     characterIds.forEach((id) => {
-        if (getCharacterGender(id) !== 'female') {
-            map.set(id, []);
+        const gender = getCharacterGender(id);
+        if (gender !== 'female') {
+            const picks = selectWinterItems('male').accessories.slice(0, 1);
+            picks.forEach((item) => used.add(item));
+            map.set(id, picks);
             return;
         }
         const picks = pickUniqueItems(pool, used, 2);
@@ -421,7 +424,6 @@ const buildAccessoryMap = (
             : [];
         ids.forEach((id) => {
             const gender = getCharacterGender(id);
-            if (gender === 'male') return;
             let accessories: string[] = [];
             let attempts = 0;
             while (attempts < 5 && accessories.length === 0) {
@@ -431,6 +433,10 @@ const buildAccessoryMap = (
                 attempts += 1;
             }
             accessories.forEach((item) => usedAccessories.add(item));
+            if (gender === 'male') {
+                map.set(id, accessories.slice(0, 1));
+                return;
+            }
             const current = map.get(id) || [];
             const merged = Array.from(new Set([...current, ...accessories]));
             map.set(id, merged);
@@ -531,7 +537,9 @@ const buildRandomAccessoriesByCharacter = (characterIds: string[], enableWinter?
     characterIds.forEach((id) => {
         const gender = getCharacterGender(id);
         if (gender === 'male') {
-            map.set(id, []);
+            const winterAccessories = enableWinter ? selectWinterItems('male').accessories.slice(0, 1) : [];
+            winterAccessories.forEach(item => used.add(item));
+            map.set(id, winterAccessories);
             return;
         }
         const basePool = GENERAL_ACCESSORIES.flatMap(group => group.items);
@@ -1221,6 +1229,23 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         updateCharacter
     } = useShortsLabCharacterRulesManager();
 
+    const handleCharacterAddedToRules = useCallback(async (char: CharacterItem) => {
+        try {
+            const updated = char.gender === 'female'
+                ? await addFemaleCharacter()
+                : await addMaleCharacter();
+            const slots = char.gender === 'female' ? updated.females : updated.males;
+            const targetSlotId = slots[slots.length - 1]?.id;
+            if (!targetSlotId) return;
+            await shortsLabCharacterRulesManager.importCharacter(char, targetSlotId);
+            await refreshCharacterRules();
+            showToast(`${char.name} 캐릭터가 의상규칙에 추가되었습니다.`, 'success');
+        } catch (err) {
+            console.error('Failed to sync character to rules:', err);
+            showToast('의상규칙 동기화 실패', 'error');
+        }
+    }, [addFemaleCharacter, addMaleCharacter, refreshCharacterRules]);
+
 
     // 지침 전체 보기 모달 상태는 GenreManagementModal에서 관리합니다
 
@@ -1240,6 +1265,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isMasterGenerating, setIsMasterGenerating] = useState(false);
     const [isTwoStepGenerating, setIsTwoStepGenerating] = useState(false);
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
@@ -3440,6 +3466,360 @@ ${scriptInput}
         }
     };
 
+    const handleMasterGenerate = async () => {
+        if (!aiTopic.trim()) {
+            setGenerationError('주제를 입력해주세요.');
+            return;
+        }
+        if (isGenerating || isMasterGenerating) return;
+
+        setIsMasterGenerating(true);
+        setGenerationError(null);
+
+        try {
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
+            const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
+                ? {
+                    name: selectedGenreData.name,
+                    description: selectedGenreData.description,
+                    emotionCurve: selectedGenreData.emotionCurve,
+                    structure: selectedGenreData.structure,
+                    killerPhrases: selectedGenreData.killerPhrases,
+                    supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                    bodyReactions: selectedGenreData.bodyReactions,
+                    forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                    goodTwistExamples: selectedGenreData.goodTwistExamples,
+                    supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                    badTwistExamples: selectedGenreData.badTwistExamples,
+                    allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
+                }
+                : undefined;
+
+            const prompt = buildLabScriptPrompt({
+                topic: aiTopic,
+                genre: aiGenre,
+                targetAge: aiTargetAge,
+                gender: settings.koreanGender,
+                genreGuideOverride,
+                enableWinterAccessories: enableWinterAccessories,
+                useRandomOutfits,
+                allowedOutfitCategories,
+                characterSlotMode: scriptCharacterMode
+            });
+
+            const selectedService = targetService || 'GEMINI';
+            showToast(`${selectedService} AI로 마스터 대본을 생성하고 있습니다...`, 'info');
+
+            const response = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt,
+                    maxTokens: 2000,
+                    temperature: 0.9
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 오류: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const generatedText = data.rawResponse || data.text || data.result || '';
+
+            if (data._folderName) {
+                setCurrentFolderName(data._folderName);
+                console.log(`[ShortsLab] Story folder assigned: ${data._folderName}`);
+            }
+
+            let finalScript = '';
+            let extractedScenes: Scene[] = [];
+
+            try {
+                let jsonClean = generatedText.trim();
+                jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
+                if (jsonClean.startsWith('```')) {
+                    jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+                }
+
+                const parsed = parseJsonFromText<any>(jsonClean, [
+                    'script',
+                    'scriptBody',
+                    'scriptLine',
+                    'shortPrompt',
+                    'shortPromptKo',
+                    'longPrompt',
+                    'longPromptKo',
+                    'hook',
+                    'punchline',
+                    'twist',
+                    'title'
+                ]);
+                if (!parsed) {
+                    throw new Error('JSON parse failed');
+                }
+
+                const scriptData = parsed.scripts?.[0] || parsed;
+                const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || '';
+                if (rawScript) {
+                    const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
+                    finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
+                }
+
+                const scenesSource = scriptData.scenes || parsed.scenes;
+                if (scenesSource && Array.isArray(scenesSource)) {
+                    const rawCharacters = Array.isArray(scriptData.characters)
+                        ? scriptData.characters
+                        : (Array.isArray(parsed.characters) ? parsed.characters : []);
+                    const normalizedCharacters = rawCharacters.map((character: any) => {
+                        const id = normalizeSlotId(String(character?.id || character?.slot || character?.slotId || character?.characterSlot || '').trim());
+                        if (!id) return character;
+                        if (id.toLowerCase().startsWith('man') && typeof character.identity === 'string') {
+                            const fixedIdentity = character.identity.replace(/\bin her\b/gi, 'in his');
+                            return { ...character, id, identity: fixedIdentity };
+                        }
+                        return { ...character, id };
+                    });
+
+                    const lockedOutfits = scriptData.lockedOutfits || parsed.lockedOutfits || {};
+                    const hasCaddy = normalizedCharacters.some((char: any) => {
+                        const name = (char.name || '').trim();
+                        const role = (char.role || '').trim();
+                        return /캐디|caddy/i.test(name) || /캐디|caddy/i.test(role) || /WomanD/i.test(String(char.id || ''));
+                    });
+
+                    const collectSceneIds = (scene: any) => {
+                        const ids: string[] = [];
+                        if (Array.isArray(scene.characterIds)) {
+                            ids.push(...scene.characterIds.map((value: any) => String(value || '').trim()).filter(Boolean));
+                        }
+                        if (typeof scene.characterSlot === 'string') {
+                            ids.push(...scene.characterSlot.split(/[|,]/).map((value: string) => value.trim()).filter(Boolean));
+                        }
+                        return ids;
+                    };
+
+                    const rawSlotIds = [
+                        ...normalizedCharacters.map((char: any) => String(char.id || '').trim()).filter(Boolean),
+                        ...scenesSource.flatMap((scene: any) => collectSceneIds(scene))
+                    ];
+
+                    const allSlotIds = normalizeSlotList(rawSlotIds, settings.koreanGender, hasCaddy);
+                    const slotMap = new Map<string, string>();
+                    allSlotIds.forEach((id) => slotMap.set(id, id));
+                    normalizedCharacters.forEach((char: any) => {
+                        const id = normalizeSlotId(String(char.id || '').trim());
+                        if (!id) return;
+                        if (char.name) {
+                            slotMap.set(String(char.name).trim(), id);
+                        }
+                    });
+
+                    let accessoryMap = buildAccessoryMap(normalizedCharacters, enableWinterAccessories);
+                    if (enableWinterAccessories && accessoryMap.size === 0 && allSlotIds.length > 0) {
+                        accessoryMap = buildWinterAccessoryMap(allSlotIds);
+                    }
+
+                    const resolveLockedOutfit = (slotId: string): string => {
+                        if (!lockedOutfits) return '';
+                        const compact = slotId.replace(/\s+/g, '');
+                        const lower = compact.toLowerCase();
+                        const variants = [
+                            slotId,
+                            compact,
+                            lower,
+                            `${lower.charAt(0)}${lower.slice(1)}`
+                        ];
+                        for (const key of variants) {
+                            if (lockedOutfits[key]) return lockedOutfits[key];
+                        }
+                        return '';
+                    };
+
+                    const applyWinterOnce = (outfit: string, gender: 'female' | 'male'): string => {
+                        if (!outfit) return outfit;
+                        if (!enableWinterAccessories || gender !== 'female') return outfit;
+                        return convertToTightLongSleeveWithShoulderLine(outfit);
+                    };
+
+                    const masterMap = buildAutoCharacterMap(allSlotIds, aiTargetAge, false);
+                    masterMap.forEach((meta, id) => {
+                        const charOverride = normalizedCharacters.find((char: any) => normalizeSlotId(String(char.id || '').trim()) === id);
+                        const gender = meta.gender;
+                        const lockedOutfit = resolveLockedOutfit(id);
+                        const candidateOutfit = lockedOutfit || charOverride?.outfit || meta.outfit;
+                        const updatedOutfit = candidateOutfit ? applyWinterOnce(candidateOutfit, gender) : candidateOutfit;
+                        const accessories = accessoryMap.get(id) || [];
+                        masterMap.set(id, {
+                            ...meta,
+                            identity: charOverride?.identity || meta.identity,
+                            hair: charOverride?.hair || meta.hair,
+                            body: charOverride?.body || meta.body,
+                            outfit: updatedOutfit || meta.outfit,
+                            accessories
+                        });
+                    });
+
+                    resetAngleHistory();
+                    const totalScenes = scenesSource.length || 8;
+                    let lastExpressionKeyword = '';
+                    let lastCameraKeyword = '';
+                    let lastActionFlavor = '';
+                    let lastGroupActionFlavor = '';
+
+                    extractedScenes = scenesSource.map((scene: any, idx: number) => {
+                        const sceneNumber = scene.sceneNumber || idx + 1;
+                        const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
+                        const rawSceneIds = collectSceneIds(scene);
+                        const sceneCharacterIds = normalizeSceneCharacterIds(
+                            rawSceneIds,
+                            slotMap,
+                            settings.koreanGender,
+                            hasCaddy
+                        );
+                        let shotType = normalizeShotType(scene.shotType, sceneCharacterIds);
+                        shotType = enforceShotTypeMix(shotType, sceneCharacterIds, idx, totalScenes);
+                        const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
+                        const expressionCandidates = getExpressionCandidates(aiGenre, storyStage);
+                        let expression = pickRotatingCandidate(expressionCandidates, idx, lastExpressionKeyword);
+                        if (!expression) {
+                            expression = 'candid, off-guard';
+                        } else if (lastExpressionKeyword && expression.toLowerCase() === lastExpressionKeyword.toLowerCase()) {
+                            if (!expression.toLowerCase().includes('candid')) {
+                                expression = `${expression}, candid, off-guard`;
+                            }
+                        }
+                        const baseCameraPrompt = scene.cameraAngle || getCameraPromptForScene(storyStage);
+                        const cameraPrompt = pickCameraPrompt(baseCameraPrompt, idx, lastCameraKeyword);
+                        lastExpressionKeyword = expression;
+                        const cameraKeyword = detectCameraKeyword(cameraPrompt);
+                        if (cameraKeyword) {
+                            lastCameraKeyword = cameraKeyword;
+                        }
+                        const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
+                        lastActionFlavor = actionFlavor;
+                        const isGroupShot = sceneCharacterIds.length >= 2;
+                        const groupActionFlavor = isGroupShot
+                            ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
+                            : '';
+                        if (groupActionFlavor) {
+                            lastGroupActionFlavor = groupActionFlavor;
+                        }
+                        const narrativeParts = mergeNarrativeParts([
+                            scene.background,
+                            scene.summary,
+                            scene.action,
+                            actionFlavor,
+                            groupActionFlavor
+                        ]);
+
+                        const normalizedPrompt = composeManualPrompt(
+                            narrativeParts || sceneText,
+                            sceneNumber,
+                            sceneCharacterIds,
+                            masterMap,
+                            { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
+                        );
+                        const characterInfos = sceneCharacterIds
+                            .map((id) => masterMap.get(id))
+                            .filter(Boolean)
+                            .map((item) => ({
+                                identity: item!.identity,
+                                hair: item!.hair,
+                                body: item!.body,
+                                outfit: item!.outfit
+                            })) as CharacterInfo[];
+                        const fallbackCharacters = characterInfos.length > 0
+                            ? characterInfos
+                            : Array.from(masterMap.values())
+                                .slice(0, 3)
+                                .map((item) => ({
+                                    identity: item.identity,
+                                    hair: item.hair,
+                                    body: item.body,
+                                    outfit: item.outfit
+                                }));
+                        const fixed = validateAndFixPrompt(normalizedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
+                        let mergedPrompt = fixed.fixedPrompt;
+
+                        if (selectedGenreData?.postProcessConfig?.useSafeGlamour) {
+                            mergedPrompt = enhancePromptWithSafeGlamour(mergedPrompt);
+                        }
+                        const cleanupPatterns = selectedGenreData?.postProcessConfig?.cleanupPatterns || [];
+                        mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
+
+                        const narrationText = typeof scene.narration === 'string'
+                            ? scene.narration
+                            : scene.narration?.text || '';
+                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
+                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
+
+                        return {
+                            number: sceneNumber,
+                            text: sceneText,
+                            prompt: mergedPrompt,
+                            imageUrl: undefined,
+                            shortPromptKo: scene.shortPromptKo || '',
+                            longPromptKo: scene.longPromptKo || '',
+                            summary: scene.summary || sceneText,
+                            camera: scene.camera || '',
+                            shotType,
+                            age: scene.age || '',
+                            outfit: scene.outfit || '',
+                            isSelected: true,
+                            videoPrompt: scene.videoPrompt || '',
+                            dialogue: scene.dialogue || lipSyncLine || '',
+                            voiceType,
+                            narrationText: narrationText || sceneText,
+                            narrationEmotion: scene.narration?.emotion || '',
+                            narrationSpeed: scene.narration?.speed || 'normal',
+                            lipSyncSpeaker: scene.lipSync?.speaker || '',
+                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
+                            lipSyncLine: lipSyncLine || '',
+                            lipSyncEmotion: scene.lipSync?.emotion || '',
+                            lipSyncTiming: scene.lipSync?.timing || undefined
+                        } as Scene;
+                    });
+                }
+            } catch (e) {
+                console.warn('[ShortsLab] JSON parsing failed in master generate:', e);
+                const scriptMatch = generatedText.match(/---\s*([\s\S]*?)\s*---/);
+                if (scriptMatch) {
+                    finalScript = scriptMatch[1].trim();
+                }
+                if (!finalScript) {
+                    const scriptBodyMatch = generatedText.match(/"scriptBody"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                    if (scriptBodyMatch && scriptBodyMatch[1]) {
+                        try {
+                            finalScript = JSON.parse(`"${scriptBodyMatch[1]}"`);
+                        } catch {
+                            finalScript = scriptBodyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                        }
+                    }
+                }
+            }
+
+            if (!finalScript && extractedScenes.length === 0) {
+                throw new Error('대본을 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
+            }
+
+            if (finalScript) setScriptInput(finalScript.trim());
+
+            if (extractedScenes.length > 0) {
+                setScenes(extractedScenes);
+                setActiveTab('preview');
+                showToast(`✅ ${selectedService} AI로 마스터 대본이 생성되었습니다! (${extractedScenes.length}개 씬)`, 'success');
+            }
+        } catch (error) {
+            console.error('AI 마스터 생성 실패:', error);
+            setGenerationError(error instanceof Error ? error.message : '마스터 생성에 실패했습니다.');
+        } finally {
+            setIsMasterGenerating(false);
+        }
+    };
+
     // ============================================
     // 폴더 불러오기 (신규!)
     // ============================================
@@ -4514,17 +4894,17 @@ ${scriptInput}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <button
                                             onClick={handleAiGenerate}
-                                            disabled={isGenerating || isTwoStepGenerating || !aiTopic.trim()}
+                                            disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
                                             className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
                                         >
                                             {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> AI가 대본을 작성 중...</> : <><Wand2 className="w-5 h-5" /> AI 대본 생성</>}
                                         </button>
                                         <button
-                                            onClick={handleTwoStepGenerate}
-                                            disabled={isGenerating || isTwoStepGenerating || !aiTopic.trim()}
+                                            onClick={handleMasterGenerate}
+                                            disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
                                             className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
                                         >
-                                            {isTwoStepGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> 2단계 생성 중...</> : <><Sparkles className="w-5 h-5" /> 2단계 생성</>}
+                                            {isMasterGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> 마스터 생성 중...</> : <><Sparkles className="w-5 h-5" /> AI 마스터 생성</>}
                                         </button>
                                     </div>
                                 </div>
@@ -4709,11 +5089,11 @@ ${scriptInput}
                             ) : (
                                 <CharacterPanel
                                     selectedSlot={settings.selectedSlot}
+                                    onCharacterAdded={handleCharacterAddedToRules}
                                     onCharacterSelect={(char, slot) => {
                                         if (char) {
                                             updateSetting('selectedSlot', slot as any);
                                             updateSetting('useSlotSystem', true);
-                                            showToast(`${char.name} 캐릭터가 ${slot} 슬롯에 설정되었습니다.`, 'success');
                                         }
                                     }}
                                     onOutfitSelect={(outfit) => {
@@ -5733,6 +6113,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [isFemaleSectionExpanded, setIsFemaleSectionExpanded] = useState(true);
     const [isMaleSectionExpanded, setIsMaleSectionExpanded] = useState(true);
 
+    const formatSlotLabel = (id: string, idx: number, gender: 'female' | 'male') => {
+        const normalized = id.trim();
+        const match = normalized.match(/^(Woman|Man)([A-Z])$/);
+        if (match) {
+            return `${match[1]} ${match[2]}`;
+        }
+        const letter = String.fromCharCode(65 + idx);
+        return `${gender === 'female' ? 'Woman' : 'Man'} ${letter}`;
+    };
+
     React.useEffect(() => {
         if (step2RulesDirty) return;
         const rulesValue = (step2Rules || {}) as {
@@ -5754,8 +6144,18 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         if (characterRulesDirty) return;
         if (characterRules) {
             setCharacterRulesState({
-                females: characterRules.females || [],
-                males: characterRules.males || [],
+                females: (characterRules.females || []).map((char) => ({
+                    ...char,
+                    id: typeof char.id === 'string'
+                        ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                        : char.id
+                })),
+                males: (characterRules.males || []).map((char) => ({
+                    ...char,
+                    id: typeof char.id === 'string'
+                        ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                        : char.id
+                })),
                 common: characterRules.common || { negativePrompt: '', qualityTags: '' }
             });
         }
@@ -7454,7 +7854,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     if (updated?.females) {
                                                         setCharacterRulesState((prev) => {
                                                             const existing = new Set(prev.females.map((char) => char.id));
-                                                            const additions = updated.females.filter((char) => !existing.has(char.id));
+                                                            const additions = updated.females.map((char: any) => ({
+                                                                ...char,
+                                                                id: typeof char.id === 'string'
+                                                                    ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                                                                    : char.id
+                                                            })).filter((char: any) => !existing.has(char.id));
                                                             if (additions.length === 0) return prev;
                                                             return {
                                                                 ...prev,
@@ -7489,8 +7894,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
-                                                            Female {String.fromCharCode(65 + idx)}
-                                                            {char.id === 'femaleD' && (
+                                                            {formatSlotLabel(char.id, idx, 'female')}
+                                                            {char.id === 'WomanD' && (
                                                                 <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
                                                             )}
                                                         </div>
@@ -7506,7 +7911,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             <Download className="w-3 h-3" />
                                                             가져오기
                                                         </button>
-                                                        {char.id !== 'femaleD' && (
+                                                        {char.id !== 'WomanD' && (
                                                             <button
                                                                 onClick={async (e) => {
                                                                     e.stopPropagation();
@@ -7580,7 +7985,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                                     placeholder="tight-fitting, form-hugging"
                                                                 />
                                                             </div>
-                                                            {char.id === 'femaleD' && (
+                                                        {char.id === 'WomanD' && (
                                                                 <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
                                                                     <div className="flex items-center gap-2">
                                                                         <Lock className="w-3.5 h-3.5 text-emerald-400" />
@@ -7631,7 +8036,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     if (updated?.males) {
                                                         setCharacterRulesState((prev) => {
                                                             const existing = new Set(prev.males.map((char) => char.id));
-                                                            const additions = updated.males.filter((char) => !existing.has(char.id));
+                                                            const additions = updated.males.map((char: any) => ({
+                                                                ...char,
+                                                                id: typeof char.id === 'string'
+                                                                    ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                                                                    : char.id
+                                                            })).filter((char: any) => !existing.has(char.id));
                                                             if (additions.length === 0) return prev;
                                                             return {
                                                                 ...prev,
@@ -7665,7 +8075,9 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         <ChevronDown
                                                             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                         />
-                                                        <div className="text-sm font-semibold text-slate-200">Male {String.fromCharCode(65 + idx)}</div>
+                                                        <div className="text-sm font-semibold text-slate-200">
+                                                            {formatSlotLabel(char.id, idx, 'male')}
+                                                        </div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
                                                         <button

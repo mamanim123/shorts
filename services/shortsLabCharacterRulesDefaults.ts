@@ -9,7 +9,7 @@
  */
 
 export interface CharacterSlotRule {
-  id: string;            // "femaleA", "maleB" 등
+  id: string;            // "WomanA", "ManB" 등
   identity: string;      // "A stunning Korean woman"
   hair: string;          // "long soft-wave hairstyle"
   body: string;          // "slim hourglass figure..."
@@ -35,32 +35,32 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
   // 여성 캐릭터 (동적 배열)
   females: [
     {
-      id: 'femaleA',
-      identity: 'A stunning Korean woman',
+      id: 'WomanA',
+      identity: 'A stunning Korean woman in her 40s',
       hair: 'long soft-wave hairstyle',
       body: 'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
       style: 'perfectly managed sophisticated look, confident presence',
       outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
     },
     {
-      id: 'femaleB',
-      identity: 'A stunning Korean woman',
+      id: 'WomanB',
+      identity: 'A stunning Korean woman in her 40s',
       hair: 'short chic bob cut',
       body: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line',
       style: 'charming presence, expressive and lively reactions',
       outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
     },
     {
-      id: 'femaleC',
-      identity: 'A stunning Korean woman',
+      id: 'WomanC',
+      identity: 'A stunning Korean woman in her 40s',
       hair: 'elegant high ponytail',
       body: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
       style: 'composed and calm observer demeanor, elegant presence',
       outfitFit: 'tight-fitting, form-hugging, accentuating curves naturally'
     },
     {
-      id: 'femaleD',
-      identity: 'A stunning Korean woman',
+      id: 'WomanD',
+      identity: 'A stunning Korean woman in her early 20s',
       hair: 'high-bun hairstyle',
       body: 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
       style: 'bright cheerful professional presence, sophisticated and beautiful caddy look',
@@ -73,24 +73,24 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
   // 남성 캐릭터 (동적 배열)
   males: [
     {
-      id: 'maleA',
-      identity: 'A handsome Korean man',
+      id: 'ManA',
+      identity: 'A handsome Korean man in his 40s',
       hair: 'short neat hairstyle',
       body: 'fit athletic build with broad shoulders',
       style: 'dandy and refined presence, well-groomed and polished appearance',
       outfitFit: 'tailored slim-fit, clean and sharp lines'
     },
     {
-      id: 'maleB',
-      identity: 'A handsome Korean man',
+      id: 'ManB',
+      identity: 'A handsome Korean man in his 40s',
       hair: 'clean short cut hair',
       body: 'fit athletic build with broad shoulders',
       style: 'casual and approachable demeanor, friendly presence',
       outfitFit: 'tailored slim-fit, clean and sharp lines'
     },
     {
-      id: 'maleC',
-      identity: 'A handsome Korean man',
+      id: 'ManC',
+      identity: 'A handsome Korean man in his 40s',
       hair: 'stylish side-part hair',
       body: 'well-built physique with strong shoulders',
       style: 'professional and confident presence, business casual elegance',
@@ -110,7 +110,8 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
  */
 export const generateCharacterId = (gender: 'female' | 'male', index: number): string => {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  return `${gender}${letters[index] || index}`;
+  const prefix = gender === 'female' ? 'Woman' : 'Man';
+  return `${prefix}${letters[index] || index}`;
 };
 
 /**

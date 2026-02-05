@@ -7,7 +7,7 @@
  * - 동적 배열 구조 지원
  */
 
-import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule, generateCharacterId } from './shortsLabCharacterRulesDefaults';
+import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule, generateCharacterId, ruleKeyToSlotId } from './shortsLabCharacterRulesDefaults';
 import {
   getAppStorageCachedValue,
   getAppStorageValue,
@@ -23,8 +23,8 @@ export const convertCharacterToSlotRule = (
 ): CharacterSlotRule => ({
   id: targetSlotId,
   identity: char.gender === 'female'
-    ? 'A stunning Korean woman'
-    : 'A handsome Korean man',
+    ? `A stunning Korean woman${char.age ? ` in her ${char.age}` : ''}`
+    : `A handsome Korean man${char.age ? ` in his ${char.age}` : ''}`,
   hair: char.hair || 'elegant hairstyle',
   body: char.body || 'graceful figure',
   style: char.style || (char.gender === 'female'
@@ -67,8 +67,12 @@ const notifyBackupListeners = (backups: ShortsLabCharacterRulesBackup[]) => {
 
 const normalizeCharacterSlot = (input?: Partial<CharacterSlotRule>): CharacterSlotRule => {
   const source = input || {};
+  const rawId = typeof source.id === 'string' ? source.id : '';
+  const normalizedId = rawId
+    ? ruleKeyToSlotId(rawId)
+    : '';
   return {
-    id: typeof source.id === 'string' ? source.id : '',
+    id: normalizedId,
     identity: typeof source.identity === 'string' ? source.identity : '',
     hair: typeof source.hair === 'string' ? source.hair : '',
     body: typeof source.body === 'string' ? source.body : '',
@@ -77,6 +81,11 @@ const normalizeCharacterSlot = (input?: Partial<CharacterSlotRule>): CharacterSl
     isFixedAge: source.isFixedAge === true,
     fixedAge: typeof source.fixedAge === 'string' ? source.fixedAge : undefined
   };
+};
+
+const hasLegacyIds = (rules: ShortsLabCharacterRules) => {
+  const legacy = (id: string) => /^female|^male/.test(id);
+  return rules.females.some((slot) => legacy(slot.id)) || rules.males.some((slot) => legacy(slot.id));
 };
 
 const normalizeRules = (input?: Partial<ShortsLabCharacterRules>): ShortsLabCharacterRules => {
@@ -199,6 +208,9 @@ export const shortsLabCharacterRulesManager = {
     await primeAppStorageCache();
     const stored = await getAppStorageValue<ShortsLabCharacterRules | null>(STORAGE_KEY, null);
     cachedRules = stored ? normalizeRules(stored) : readStoredRules();
+    if (stored && hasLegacyIds(cachedRules)) {
+      writeStoredRules(cachedRules);
+    }
     notifyRulesListeners(cachedRules);
     return cachedRules;
   },
@@ -229,7 +241,7 @@ export const shortsLabCharacterRulesManager = {
 
     const newCharacter: CharacterSlotRule = {
       id: newId,
-      identity: 'A stunning Korean woman',
+      identity: 'A stunning Korean woman in her 40s',
       hair: 'elegant hairstyle',
       body: 'graceful figure',
       style: 'elegant presence',
@@ -254,7 +266,7 @@ export const shortsLabCharacterRulesManager = {
 
     const newCharacter: CharacterSlotRule = {
       id: newId,
-      identity: 'A handsome Korean man',
+      identity: 'A handsome Korean man in his 40s',
       hair: 'neat hairstyle',
       body: 'athletic build',
       style: 'refined presence',
@@ -276,8 +288,8 @@ export const shortsLabCharacterRulesManager = {
     const rules = cachedRules || readStoredRules();
 
     // femaleD (캐디)는 삭제 방지
-    if (id === 'femaleD') {
-      throw new Error('캐디(Female D)는 삭제할 수 없습니다.');
+    if (id === 'WomanD') {
+      throw new Error('캐디(Woman D)는 삭제할 수 없습니다.');
     }
 
     // 최소 1개는 유지

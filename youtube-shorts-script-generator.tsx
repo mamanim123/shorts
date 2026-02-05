@@ -2516,12 +2516,21 @@ JSON 형식으로만 답변:
     // Mark as loading
     needsLoad.forEach(item => loadingIdsRef.current.add(item.id));
 
-    const fetchFromLocalFile = async (filename: string): Promise<string | null> => {
+    const fetchFromLocalFile = async (filename: string, storyId?: string): Promise<string | null> => {
+      const trimmed = filename.replace(/^\/+/, '');
+      const baseName = trimmed.split('/').pop() || trimmed;
+      const storyPath = storyId ? `대본폴더/${storyId}/images/${baseName}` : null;
       const candidates = [
-        `/generated_scripts/images/${filename}`,
-        `http://localhost:3002/generated_scripts/images/${filename}`,
-        `http://127.0.0.1:3002/generated_scripts/images/${filename}`
-      ];
+        `/generated_scripts/images/${trimmed}`,
+        `/generated_scripts/${trimmed}`,
+        storyPath ? `/generated_scripts/${storyPath}` : null,
+        `http://localhost:3002/generated_scripts/images/${trimmed}`,
+        `http://localhost:3002/generated_scripts/${trimmed}`,
+        storyPath ? `http://localhost:3002/generated_scripts/${storyPath}` : null,
+        `http://127.0.0.1:3002/generated_scripts/images/${trimmed}`,
+        `http://127.0.0.1:3002/generated_scripts/${trimmed}`,
+        storyPath ? `http://127.0.0.1:3002/generated_scripts/${storyPath}` : null
+      ].filter(Boolean) as string[];
       for (const url of candidates) {
         try {
           const resp = await fetch(url);
@@ -2551,7 +2560,7 @@ JSON 형식으로만 답변:
 
         // 2. Try Loading from Local File (Fallback)
         if (!url && item.localFilename) {
-          url = await fetchFromLocalFile(item.localFilename);
+          url = await fetchFromLocalFile(item.localFilename, (item as any).storyId);
         }
 
         if (url && isMountedRef.current) {

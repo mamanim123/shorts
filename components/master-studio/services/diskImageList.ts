@@ -34,6 +34,8 @@ export interface StoryFolderInfo {
 export const fetchImageStoryFolders = async (): Promise<StoryFolderInfo[]> => {
     try {
         const candidates = [
+            'http://localhost:3002/api/scripts/story-folders',
+            'http://127.0.0.1:3002/api/scripts/story-folders',
             'http://localhost:3002/api/images/story-folders',
             'http://127.0.0.1:3002/api/images/story-folders'
         ];

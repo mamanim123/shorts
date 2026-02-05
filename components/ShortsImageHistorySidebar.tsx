@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Copy, History as HistoryIcon, Loader2, Star, X, RefreshCw } from 'lucide-react';
+import { Copy, History as HistoryIcon, Loader2, Star, X, RefreshCw, Pencil } from 'lucide-react';
 
 type HistoryItem = {
   id: string;
@@ -23,6 +23,7 @@ interface Props {
   onCopyPrompt: (prompt: string, e: React.MouseEvent) => void;
   onDelete: (id: string, e?: React.MouseEvent) => void;
   onSelectImage?: (url: string, item: HistoryItem) => void;
+  onEdit?: (item: HistoryItem, e: React.MouseEvent) => void;
   enableDrag?: boolean;
   onRefresh?: () => void;
 }
@@ -38,6 +39,7 @@ const ShortsImageHistorySidebar: React.FC<Props> = ({
   onCopyPrompt,
   onDelete,
   onSelectImage,
+  onEdit,
   enableDrag = true,
   onRefresh
 }) => {
@@ -114,13 +116,46 @@ const ShortsImageHistorySidebar: React.FC<Props> = ({
                 </div>
               )}
               <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] flex justify-around items-center py-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => onToggleFavorite(item.id, e)} title={item.favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'} className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(item.id, e);
+                  }}
+                  title={item.favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                  className="flex items-center gap-1"
+                >
                   <Star size={10} className={item.favorite ? 'fill-yellow-300 text-yellow-300' : 'text-yellow-200'} />
                 </button>
-                <button onClick={(e) => onCopyPrompt(item.prompt || '', e)} title="프롬프트 복사" className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCopyPrompt(item.prompt || '', e);
+                  }}
+                  title="프롬프트 복사"
+                  className="flex items-center gap-1"
+                >
                   <Copy size={10} />
                 </button>
-                <button onClick={(e) => onDelete(item.id, e)} title="삭제" className="flex items-center gap-1 text-red-300">
+                {onEdit && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(item, e);
+                    }}
+                    title="편집"
+                    className="flex items-center gap-1 text-sky-200"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(item.id, e);
+                  }}
+                  title="삭제"
+                  className="flex items-center gap-1 text-red-300"
+                >
                   <X size={10} />
                 </button>
               </div>

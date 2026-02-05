@@ -22,9 +22,15 @@ const ImageHistorySidebar: React.FC<ImageHistorySidebarProps> = ({
     historyImages,
     onSelect,
     onDelete,
-    onToggleFavorite
+    onToggleFavorite,
+    onEdit
 }) => {
     const [favoritesOnly, setFavoritesOnly] = useState(false);
+    type HistoryLike = { id: string; prompt?: string } & Record<string, unknown>;
+    const coerceHistoryItem = (item: HistoryLike) => ({
+        ...item,
+        prompt: item.prompt ?? ''
+    }) as ImageHistoryItem;
 
     const handleCopyPrompt = async (prompt: string = '', e: React.MouseEvent) => {
         e.stopPropagation();
@@ -46,7 +52,8 @@ const ImageHistorySidebar: React.FC<ImageHistorySidebarProps> = ({
             onToggleFavorite={(id, e) => onToggleFavorite?.(id, e)}
             onCopyPrompt={handleCopyPrompt}
             onDelete={onDelete}
-            onSelectImage={(_, item) => onSelect(item)}
+            onSelectImage={(_, item) => onSelect(coerceHistoryItem(item))}
+            onEdit={onEdit ? (item, e) => onEdit(coerceHistoryItem(item), e) : undefined}
             enableDrag
         />
     );

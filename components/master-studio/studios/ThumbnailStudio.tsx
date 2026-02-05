@@ -65,6 +65,7 @@ const ThumbnailStudio: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const logoInputRef = useRef<HTMLInputElement>(null);
     const createdUrlsRef = useRef<string[]>([]);
@@ -97,7 +98,7 @@ const ThumbnailStudio: React.FC = () => {
             }
         };
         load();
-    }, [historyItems, historyImages]);
+    }, [historyItems]);
 
     useEffect(() => {
         return () => {
@@ -106,6 +107,13 @@ const ThumbnailStudio: React.FC = () => {
             if (logoImage) URL.revokeObjectURL(logoImage.url);
         };
     }, [backgroundImage, logoImage]);
+
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
 
     const drawThumbnail = useCallback(() => {
         const canvas = canvasRef.current;
@@ -639,6 +647,15 @@ const ThumbnailStudio: React.FC = () => {
                     setNotification({ message: '이미지 스튜디오에서 편집을 계속하세요.', type: 'success' });
                 }}
             />
+
+            {/* Notification Toast */}
+            {notification && (
+                <div className={`fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+                    notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                } text-white`}>
+                    {notification.message}
+                </div>
+            )}
         </div>
     );
 };

@@ -1,1 +1,9 @@
-✨ ShortsLabPanel.tsx 및 labPromptBuilder.ts 파일 대규모 삭제 코드 복구 (HEAD~1 시점으로 복구)
+🔧 악세서리 일관성 문제 수정 (v3.5.4)
+
+- CharacterInfo 타입에 accessories 필드 추가
+- enhanceMultiPersonBlocks에서 악세서리 마스터 데이터 적용
+- validateAndFixPrompt에서 악세서리 처리 로직 추가
+- buildCharacterInfoMap에서 accessories 전달 추가
+- fallbackCharacters 생성 시 accessories 포함
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>

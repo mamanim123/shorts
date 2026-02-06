@@ -98,6 +98,22 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
       twist: 'shocked frozen face, disbelief expression, stunned realization',
       outro: 'satisfied peaceful smile, justice-served expression, content relief'
     },
+    'affair-suspicion': {
+      hook: 'suspicious narrow eyes, doubtful expression, wary gaze',
+      setup: 'nervous anxious look, subtle worry, guarded expression',
+      buildup: 'increasingly tense face, paranoid look, jealous eyes',
+      climax: 'shocked betrayed expression, devastated face, tearful anger',
+      twist: 'relieved embarrassed smile, sheepish guilty look, apologetic expression',
+      outro: 'reconciled warm smile, grateful tender eyes, loving forgiveness'
+    },
+    'hit-twist-spicy': {
+      hook: 'intrigued raised eyebrow, curious smirk, mischievous gaze',
+      setup: 'playful confident smile, teasing expression, sly look',
+      buildup: 'escalating excitement, anticipating grin, building tension face',
+      climax: 'explosive surprised face, jaw-dropping shock, mind-blown expression',
+      twist: 'triumphant satisfied smirk, gotcha moment, victorious grin',
+      outro: 'satisfied knowing smile, content smirk, entertained expression'
+    },
     default: {
       hook: 'expressive engaging face, attention-grabbing expression',
       setup: 'natural relaxed expression, authentic genuine look',
@@ -141,9 +157,66 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
     allowDuplicateFemale: false
   },
   promptSections: {
-    hairstyleSection: '',
-    characterSection: '',
+    hairstyleSection: `## 💇 헤어스타일 세부 규칙
+
+1. **WomanA (지영)**: long soft-wave hairstyle (어깨 아래 긴 웨이브)
+   - 모든 씬에서 정확히 "long soft-wave hairstyle" 사용
+   - 절대 "wavy hair", "long hair"로 축약 금지
+
+2. **WomanB (혜경)**: short chic bob cut (턱선 단발)
+   - 모든 씬에서 정확히 "short chic bob cut" 사용
+   - 절대 "bob", "short hair"로 축약 금지
+
+3. **WomanD (캐디)**: high ponytail / sleek bun (활동적인 스타일)
+   - 골프 관련 주제: "high sleek ponytail"
+   - 기타 주제: "elegant low bun"
+
+4. **ManA (준호)**: clean short cut (단정한 짧은 머리)
+   - 모든 씬에서 "clean short cut" 사용
+
+5. **ManB (민수)**: short neat hairstyle (깔끔한 스타일)
+   - 모든 씬에서 "short neat hairstyle" 사용
+
+⚠️ **절대 규칙**: 헤어스타일 명칭은 한 글자도 바꾸지 말고 위 정확한 명칭 사용`,
+    characterSection: `## 👥 캐릭터 관계 및 상호작용 규칙
+
+1. **캐릭터 관계 명시**:
+   - 첫 등장 씬에서 관계를 자연스럽게 드러내기
+   - "내 친구 혜경이", "남편 준호", "회사 동료 민수" 등
+
+2. **시선 처리**:
+   - Scene 1 (Hook): 카메라 정면 응시 + 미소 (looking at camera, smiling)
+   - Scene 2~12: 자연스러운 캔디드 샷 (looking away from camera, natural candid moment)
+
+3. **투샷/쓰리샷 상호작용**:
+   - 각 캐릭터의 행동을 서로 다르게 명시
+   - 예: [Person 1: smiling and gesturing with hands] [Person 2: listening attentively, nodding]
+   - 금지: 같은 행동 반복 (both smiling, both laughing)
+
+4. **POV (1인칭 시점) 샷 특수 규칙**:
+   - "지영의 시선에서" = 지영 제외, 보이는 대상만 프롬프트에 포함
+   - "준호가 보는" = 준호 제외, 앞에 있는 사람만 포함`,
     outfitRulesSection: '',
-    imagePromptRulesExtra: ''
+    imagePromptRulesExtra: `## 🎨 이미지 품질 향상 규칙
+
+1. **배경 일관성**:
+   - Scene 1에서 설정한 배경(골프장, 카페 등)은 장소 전환이 명시되지 않는 한 모든 씬에서 동일하게 유지
+   - 배경 묘사 복사: "snowy golf course with luxury clubhouse background" → 전체 문구 그대로 복사
+
+2. **조명 일관성**:
+   - 시간대를 Scene 1에서 명시 (morning sunlight / afternoon warm light / evening golden hour)
+   - 이후 모든 씬에서 동일한 조명 환경 유지
+
+3. **계절/날씨 일관성**:
+   - 겨울(snowy), 봄(cherry blossoms), 여름(bright sunny), 가을(autumn leaves) 중 하나로 통일
+   - Scene 1에서 설정한 날씨를 모든 씬에 적용
+
+4. **소품 일관성**:
+   - 안경, 시계, 반지 등의 소품은 Scene 1에 명시했다면 모든 씬에서 동일하게 포함
+   - 골프채, 골프공, 카트 등 주제 관련 소품도 일관성 유지
+
+5. **NO TEXT 강조 (매우 중요)**:
+   - 모든 longPrompt 끝에 "no text, no letters, no typography, no watermarks, no logos, no signs, no captions" 반드시 포함
+   - 특히 골프장, 카페 등 간판/표지판이 있을 수 있는 장소에서는 2번 강조`
   }
 };

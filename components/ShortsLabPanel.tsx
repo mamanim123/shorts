@@ -798,7 +798,7 @@ const WINTER_ACCESSORIES = [
 ];
 
 const DEFAULT_POST_PROCESS_CONFIG = {
-    enabled: true,
+    enabled: false,
     skipIdentityInjection: false,
     cleanupPatterns: [] as string[],
     customPrefix: '',
@@ -6959,7 +6959,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         >
                             2단계규칙
                         </button>
-                        <button
+                        {/* 후처리 탭 버튼 - 사용하지 않으므로 숨김 */}
+                        {/* <button
                             onClick={() => {
                                 setActiveTab('post_process');
                                 setMode('list');
@@ -6971,7 +6972,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 }`}
                         >
                             후처리
-                        </button>
+                        </button> */}
                         <button
                             onClick={() => {
                                 setActiveTab('character_rules');
@@ -7370,7 +7371,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         </div>
                     )}
 
-                    {activeTab === 'post_process' && (
+                    {/* 후처리 탭 내용 - 사용하지 않으므로 숨김 */}
+                    {false && activeTab === 'post_process' && (
                         <div className="space-y-5">
                             <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">

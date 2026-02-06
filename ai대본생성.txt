@@ -14,7 +14,7 @@
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 주제: "눈오는 골프장 라운지에 아름다운 여성들"
+📌 주제: "눈오는 골프장에 아름다운 여성들"
 
 📌 장르: 로맨스/설렘
 
@@ -62,39 +62,45 @@
 
 ## 🎯 이 장르의 핵심
 
-**중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림**
+**중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림 + 오해 반전**
 
 
 
 ## 📈 감정 곡선
 
-😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"
+😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 😅 "아, 착각이었네" 또는 🤔 "나만 이런가?"
 
 
 
 ## 🎲 창작 힌트
 
-- 장소 힌트: 대형마트
+- 장소 힌트: 백화점
 
-- 소품 힌트: 성형외과 명함
+- 소품 힌트: 건강식품
 
-- 신체반응 참고: 숨이 턱 막힘
+- 신체반응 참고: 목소리가 갈라짐
 
-- 오해 방향: 퇴직 통보받은 줄
+- 오해 방향: 이혼 준비하는 줄
 
-- 반전 유형: 건강 관련 좋은 소식 또는 배려
+- 반전 유형: 말하기 쑥스러운 취미/자기계발
 
-- 구체 반전(황당) 힌트: 알고보니 휴대폰 플래시가 계속 켜져 있었음 (예시, 복사 금지)
+- 구체 반전(황당) 힌트: 알고보니 바지 주머니에서 영수증이 길게 삐져나와 있었음 (예시, 복사 금지)
 
 
 
 ## 🎭 스토리 구조
 
-[HOOK] ⚡ 사건/충격을 첫 문장에 바로 던지기
+[HOOK] ⚡ 설렘의 결과를 첫 문장에 즉시 제시 (배경 설명 금지!)
 
-→ "캐디가 내 손목을 붙잡는 순간 숨이 멎었어"
+→ "그가 내 손을 잡는 순간, 시간이 멈췄어" (✅ 즉시 상황)
 
-→ "문 열자마자 들린 한마디에 다리가 풀렸어"
+→ "오늘 그 사람한테서 향수 냄새가 달랐어" (✅ 감각적 디테일)
+
+→ "그의 눈빛이 내게 머무는 순간 심장이 쿵했어" (✅ 직접적 충격)
+
+❌ 금지: "오늘 그 사람을 만났는데 심장이 뛰었어" (배경 설명처럼 느껴짐)
+
+❌ 금지: "최근에 이상한 일이 생겼어" (추상적)
 
 
 
@@ -102,7 +108,9 @@
 
 → 늘 보던 사람인데 오늘 뭔가 다름
 
-→ "평소처럼 (행동)하는데..."
+→ "평소처럼 (행동)하는데... 뭔가 이상해"
+
+→ 미묘한 변화 포착 (시선, 목소리, 향기, 미소)
 
 
 
@@ -112,23 +120,51 @@
 
 → 시간이 느려지는 느낌 묘사
 
-→ 신체반응 필수
+→ 신체반응 필수 (귀 빨개짐, 손 떨림, 숨 참기)
+
+→ 내적 갈등 ("다가가야 하나 말아야 하나")
 
 
 
-[CLIMAX] 😳 결정적 순간
+[CLIMAX] 😳 결정적 순간 (설렘의 정점)
 
 → 의미심장한 한마디 or 행동
 
-→ "그때 그 사람이 (말/행동)하더니..."
+→ "그때 그 사람이 내 귀에 속삭였어..."
+
+→ "손이 스치는 순간 전기가 흐르는 것 같았어"
 
 
 
-[TWIST] 🤔 혼란 + 여운
+[TWIST] 💡 반전 (3가지 패턴 중 선택)
 
-→ 확신 없는 결말
+1️⃣ 오해 반전 (추천!) - 바이럴력 높음
 
-→ "나만 이런 건가?", "뭔가 있는 건가?"
+→ "설레는 줄 알았는데 알고 보니 다른 의미였다"
+
+→ 예: "우리 와이프도 그 향수 쓰거든요", "동생 선물 고르는 거였어"
+
+→ 결말: 😅 "이게 뭐야 진짜, 완전 착각했잖아"
+
+
+
+2️⃣ 여운 반전 - 재시청 유도
+
+→ "나만 이런 건가?", "설마... 아니겠지?"
+
+→ 확신 없는 결말로 시청자에게 상상 여지
+
+
+
+3️⃣ 확신 반전 - 감동
+
+→ "그 순간 확신했어, 이 사람 나한테 관심 있구나"
+
+→ 조연의 눈치로 확인 ("두 분 뭔가 있어 보여요")
+
+
+
+⚠️ 중요: 오해 반전을 우선적으로 사용하면 댓글/공유 폭발!
 
 
 
@@ -254,11 +290,11 @@
 
 ## 👗 의상 설정 (이미지 프롬프트용)
 
-- **Woman A (지영)**: A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density.
+- **Woman A (지영)**: Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)
 
-- **Woman B (혜경)**: White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt
+- **Woman B (혜경)**: White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt
 
-- **Woman D (캐디)**: White Off-shoulder tight-fitting long-sleeve Tight-fitting long-sleeve + Navy Mini Skirt
+- **Woman D (캐디)**: White Chiffon Shirt (Unbuttoned) (Tight-fitting long-sleeve version) + Navy Lace Micro Mini Skirt
 
 - **Man A (준호)**: Navy Slim-fit Polo + White Tailored Golf Pants
 
@@ -310,35 +346,85 @@
 
 
 
-## 💇 헤어스타일
-
-- **Woman A (지영)**: long soft-wave hairstyle
-
-- **Woman B (혜경)**: short chic bob cut
-
-- **Woman D (캐디)**: high-bun hairstyle (Professional golf caddy look)
-
-- **Man A (준호)**: short neat hairstyle
-
-- **Man B (민수)**: clean short cut
+## 💇 헤어스타일 세부 규칙
 
 
 
-## 👥 캐릭터 설정 (각 인물별 고유 외모 특징 필수)
+1. **WomanA (지영)**: long soft-wave hairstyle (어깨 아래 긴 웨이브)
 
-- **Woman A (지영)**: 40대 주인공, 우아하고 자신감 있는 여성, **세련된 지적인 인상의 얼굴, 날렵한 턱선, 우아한 이목구비**
+- 모든 씬에서 정확히 "long soft-wave hairstyle" 사용
 
-- **Woman B (혜경)**: 40대 친구, 활발하고 장난기 있는 성격, **밝고 생기있는 인상의 얼굴, 귀여운 미소, 에너지 넘치는 표정**
+- 절대 "wavy hair", "long hair"로 축약 금지
 
-- **Woman D (캐디)**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional 20-something golf caddy), **청순하고 프로페셔널한 인상**
 
-- **말투 규칙**: 캐디는 항상 정중하고 상냥한 **존댓말**(~해요, ~하세요)을 사용하며, 사회초년생의 밝은 에너지가 느껴져야 함.
 
-- **Man A (준호)**: 40대 남성, 댄디하고 세련된 신사, **지적인 인상의 얼굴, 부드러운 이목구비, 세련된 분위기의 외모**
+2. **WomanB (혜경)**: short chic bob cut (턱선 단발)
 
-- **Man B (민수)**: 40대 남성 친구, 솔직하고 유머러스함, **남성적인 인상의 얼굴, 강인한 턱선, 활기찬 표정의 외모**
+- 모든 씬에서 정확히 "short chic bob cut" 사용
 
-- **쌍둥이 방지 규칙**: 두 인물이 함께 등장할 때는 반드시 **서로 다른 얼굴 특징(not twins, distinct faces, different individuals)**을 명시할 것
+- 절대 "bob", "short hair"로 축약 금지
+
+
+
+3. **WomanD (캐디)**: high ponytail / sleek bun (활동적인 스타일)
+
+- 골프 관련 주제: "high sleek ponytail"
+
+- 기타 주제: "elegant low bun"
+
+
+
+4. **ManA (준호)**: clean short cut (단정한 짧은 머리)
+
+- 모든 씬에서 "clean short cut" 사용
+
+
+
+5. **ManB (민수)**: short neat hairstyle (깔끔한 스타일)
+
+- 모든 씬에서 "short neat hairstyle" 사용
+
+
+
+⚠️ **절대 규칙**: 헤어스타일 명칭은 한 글자도 바꾸지 말고 위 정확한 명칭 사용
+
+
+
+## 👥 캐릭터 관계 및 상호작용 규칙
+
+
+
+1. **캐릭터 관계 명시**:
+
+- 첫 등장 씬에서 관계를 자연스럽게 드러내기
+
+- "내 친구 혜경이", "남편 준호", "회사 동료 민수" 등
+
+
+
+2. **시선 처리**:
+
+- Scene 1 (Hook): 카메라 정면 응시 + 미소 (looking at camera, smiling)
+
+- Scene 2~12: 자연스러운 캔디드 샷 (looking away from camera, natural candid moment)
+
+
+
+3. **투샷/쓰리샷 상호작용**:
+
+- 각 캐릭터의 행동을 서로 다르게 명시
+
+- 예: [Person 1: smiling and gesturing with hands] [Person 2: listening attentively, nodding]
+
+- 금지: 같은 행동 반복 (both smiling, both laughing)
+
+
+
+4. **POV (1인칭 시점) 샷 특수 규칙**:
+
+- "지영의 시선에서" = 지영 제외, 보이는 대상만 프롬프트에 포함
+
+- "준호가 보는" = 준호 제외, 앞에 있는 사람만 포함
 
 
 
@@ -371,6 +457,102 @@
 9. **의상 명칭 보존 (중요)**: `shortPrompt`와 `longPrompt` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.
 
 10. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
+
+
+
+### 🔴 투샷/쓰리샷 필드 복사 절대 규칙 (매우 중요!)
+
+⚠️ **투샷/쓰리샷에서 각 캐릭터의 모든 필드를 characters 배열에서 100% 그대로 복사해야 합니다!**
+
+
+
+**❌ 절대 금지 (자동 실패):**
+
+- identity 필드 축약 (예: "with a sharp jawline and elegant features" 같은 세부 특징 생략)
+
+- body 필드 누락 (예: "high-seated chest line, extraordinarily voluminous..." 전체 생략)
+
+- outfit 필드 축약 (예: 긴 의상 설명의 일부만 사용)
+
+- 프롬프트 길이를 줄이기 위한 임의 생략
+
+
+
+**✅ 올바른 방법:**
+
+1. characters 배열에서 해당 캐릭터의 identity 전체 문자열 복사 (한 글자도 빼지 말 것)
+
+2. hair 필드 전체 복사
+
+3. body 필드 전체 복사 (절대 생략 금지!)
+
+4. outfit 필드 전체 복사 (긴 설명이어도 전부 포함)
+
+5. outfitPrefix (보통 "wearing") 추가
+
+
+
+**예시 (WomanA의 경우):**
+
+```
+
+[Person 1: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing ultra-short matte black long-sleeved bodycon micro mini dress, vertical ribbed knit pattern, lightweight stretch ribbed fabric, skin-tight fitted silhouette, classic round crew neckline, snug full-length sleeves extending to wrists, seamless minimalist construction, opaque matte texture, non-reflective finish, micro mini length hemline, high-density knit material, streamlined profile, no closures or hardware, form-fitting architectural seams.]
+
+```
+
+
+
+**⚠️ 다중 인물 씬에서도 예외 없음:**
+
+- 4명이 나오는 씬이어도 각 캐릭터의 모든 필드를 100% 포함할 것
+
+- "프롬프트가 너무 길어진다"는 이유로 축약 절대 금지
+
+- 캐릭터 일관성이 최우선 순위
+
+
+
+## 🎨 이미지 품질 향상 규칙
+
+
+
+1. **배경 일관성**:
+
+- Scene 1에서 설정한 배경(골프장, 카페 등)은 장소 전환이 명시되지 않는 한 모든 씬에서 동일하게 유지
+
+- 배경 묘사 복사: "snowy golf course with luxury clubhouse background" → 전체 문구 그대로 복사
+
+
+
+2. **조명 일관성**:
+
+- 시간대를 Scene 1에서 명시 (morning sunlight / afternoon warm light / evening golden hour)
+
+- 이후 모든 씬에서 동일한 조명 환경 유지
+
+
+
+3. **계절/날씨 일관성**:
+
+- 겨울(snowy), 봄(cherry blossoms), 여름(bright sunny), 가을(autumn leaves) 중 하나로 통일
+
+- Scene 1에서 설정한 날씨를 모든 씬에 적용
+
+
+
+4. **소품 일관성**:
+
+- 안경, 시계, 반지 등의 소품은 Scene 1에 명시했다면 모든 씬에서 동일하게 포함
+
+- 골프채, 골프공, 카트 등 주제 관련 소품도 일관성 유지
+
+
+
+5. **NO TEXT 강조 (매우 중요)**:
+
+- 모든 longPrompt 끝에 "no text, no letters, no typography, no watermarks, no logos, no signs, no captions" 반드시 포함
+
+- 특히 골프장, 카페 등 간판/표지판이 있을 수 있는 장소에서는 2번 강조
 
 
 
@@ -586,15 +768,15 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 "narrator": { "slot": "WomanA", "name": "지영" },
 
-"emotionFlow": "😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"",
+"emotionFlow": "😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 😅 "아, 착각이었네" 또는 🤔 "나만 이런가?"",
 
 "lockedOutfits": {
 
-"womanA": "A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density.",
+"womanA": "Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)",
 
-"womanB": "White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt",
+"womanB": "White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt",
 
-"womanD": "White Off-shoulder tight-fitting long-sleeve Tight-fitting long-sleeve + Navy Mini Skirt",
+"womanD": "White Chiffon Shirt (Unbuttoned) (Tight-fitting long-sleeve version) + Navy Lace Micro Mini Skirt",
 
 "manA": "Navy Slim-fit Polo + White Tailored Golf Pants",
 
@@ -604,15 +786,15 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 "characters": [
 
-{ "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her 40s", "hair": "long soft-wave hairstyle", "body": "perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves", "outfit": "A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density.", "outfitPrefix": "wearing" },
+{ "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her 40s", "hair": "long soft-wave hairstyle", "body": "perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves", "outfit": "Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)", "outfitPrefix": "wearing" },
 
-{ "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her 40s", "hair": "short chic bob cut", "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line", "outfit": "White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt", "outfitPrefix": "wearing" },
+{ "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her 40s", "hair": "short chic bob cut", "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line", "outfit": "White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt", "outfitPrefix": "wearing" },
 
 { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his 40s", "hair": "short neat hairstyle", "body": "fit athletic build with broad shoulders", "outfit": "Navy Slim-fit Polo + White Tailored Golf Pants", "outfitPrefix": "wearing" },
 
 { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his 40s", "hair": "clean short cut", "body": "fit athletic build with broad shoulders", "outfit": "White Performance Polo + Beige Chino Golf Pants", "outfitPrefix": "wearing" },
 
-{ "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves", "outfit": "White Off-shoulder tight-fitting long-sleeve Tight-fitting long-sleeve + Navy Mini Skirt", "outfitPrefix": "wearing" }
+{ "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves", "outfit": "White Chiffon Shirt (Unbuttoned) (Tight-fitting long-sleeve version) + Navy Lace Micro Mini Skirt", "outfitPrefix": "wearing" }
 
 ],
 
@@ -672,7 +854,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 "shortPromptKo": "[카메라 앵글], [인물 설명 및 의상 색상], [행동/표정], [배경]. 2명 이상 시 각 인물별 의상 색상 명시 필수",
 
-"longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity], [hair], [body], wearing [outfit], [행동/표정], [배경], high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16",
+"longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity - 전체 문자열 100% 복사], [characters[해당캐릭터].hair - 전체 복사], [characters[해당캐릭터].body - 전체 복사, 절대 생략 금지!], wearing [characters[해당캐릭터].outfit - 전체 복사, 축약 금지], [행동/표정], [배경], high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16. ⚠️ 투샷/쓰리샷: 각 Person마다 [Person X: identity, hair, body, wearing outfit] 형식으로 모든 필드 100% 포함. body 필드 누락 절대 금지!",
 
 "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
 
@@ -724,11 +906,11 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 **이미지 프롬프트 (필수!):**
 
-11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/medium/over-shoulder/POV)
+11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/full-body/aerial/drone/POV)
 
 12. ✅ 모든 씬에서 같은 앵글 2연속 없음? (미디움샷만 계속 ❌)
 
-13. ✅ 클로즈업, 와이드샷, 오버숄더/POV 각각 최소 1개 이상?
+13. ✅ close-up은 최소화, wide/full-body/aerial/drone 샷이 대부분?
 
 14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
 
@@ -736,16 +918,289 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
 
-17. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
+17. ✅ **투샷/쓰리샷 body 필드 검증**: 모든 캐릭터의 body 필드가 누락 없이 100% 포함?
 
-18. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
+18. ✅ **투샷/쓰리샷 identity 검증**: 세부 특징(얼굴 설명, 성격 등) 축약 없이 전체 포함?
+
+19. ✅ **투샷/쓰리샷 outfit 검증**: 긴 의상 설명도 전체 포함? (일부 축약 금지)
+
+20. ✅ **다중 인물 씬 일관성**: 4명 등장 씬에서도 각 캐릭터의 모든 필드 100% 포함?
+
+21. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
+
+22. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
 
 
 
 **음성:**
 
-19. ✅ 모든 씬에 voiceType 지정?
+23. ✅ 모든 씬에 voiceType 지정?
 
-20. ✅ 작은따옴표 대사 있으면 lipSync 생성?
+24. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 
-{ "title": "눈 오는 골프장, 내 파우치 속 성형외과 명함의 행방", "titleOptions": [ "라운지에서 마주친 준호 씨의 서늘한 눈빛", "파우치에 넣어둔 명함 한 장이 부른 대참사", "설원 위 골프장에서 심장이 멎을 뻔한 사연" ], "scriptBody": "함박눈이 쏟아지는 골프장 라운지에서 우린 따뜻한 커피 한 잔에 몸을 녹이고 있었어.\n혜경이가 내 파우치를 뒤적거리더니 성형외과 명함 한 장을 쓱 꺼내더라고.\n'지영아, 너 설마 여기서 견적 내려고?'라며 혜경이가 짓궂게 웃길래 등 가운데가 식은땀으로 젖었지.\n그때 옆 테이블에 있던 준호 씨가 우리 쪽으로 고개를 돌리는데, 눈이 딱 마주쳐서 숨이 턱 막히더라.\n준호 씨는 아무 말 없이 일어나더니 내 파우치를 빤히 쳐다보며 천천히 다가왔어.\n손끝이 미세하게 떨리는데 그가 내 파우치를 집어 들길래 퇴직 통보라도 받은 사람처럼 얼굴이 하얘졌지.\n캐디인 WomanD가 '손님, 물건 확인해 드릴까요?'라며 다가왔지만 준호 씨는 요지부동이었어.\n준호 씨가 파우치 안에서 명함이 아니라 작게 접힌 종이 한 장을 꺼내 내밀더라고.\n'지영 씨, 아까 카트에서 이거 떨어뜨리셨어요'라는데 그건 명함이 아니라 딸아이 편지였지.\n내 파우치 지퍼가 열려 있어서 내용물이 보일까 봐 준호 씨가 계속 신경 쓰고 있었던 거야.\n그의 낮은 목소리가 귓가에 맴도는데, 입술이 바짝 말라서 고맙다는 말도 제대로 못 했어.\n눈 내리는 창밖을 보는데 괜히 얼굴이 화끈거려서 나만 이런 건가 싶더라고.", "punchline": "파우치 열린 줄도 모르고 엄한 명함 걱정만 했네.", "hook": "함박눈이 쏟아지는 골프장 라운지에서 우린 따뜻한 커피 한 잔에 몸을 녹이고 있었어.", "twist": "준호 씨가 신경 쓴 건 성형외과 명함이 아니라 열려 있던 내 파우치 지퍼와 딸의 편지였어.", "foreshadowing": "혜경이가 내 파우치를 뒤적거리더니 성형외과 명함 한 장을 쓱 꺼내더라고.", "narrator": { "slot": "WomanA", "name": "지영" }, "emotionFlow": "😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 나만 이런가?", "lockedOutfits": { "womanA": "A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density.", "womanB": "White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt", "womanD": "White Off-shoulder tight-fitting long-sleeve Tight-fitting long-sleeve + Navy Mini Skirt", "manA": "Navy Slim-fit Polo + White Tailored Golf Pants", "manB": "White Performance Polo + Beige Chino Golf Pants" }, "characters": [ { "id": "WomanA", "name": "지영", "identity": "A stunning Korean woman in her 40s", "hair": "long soft-wave hairstyle", "body": "perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves", "outfit": "A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density.", "outfitPrefix": "wearing" }, { "id": "WomanB", "name": "혜경", "identity": "A stunning Korean woman in her 40s", "hair": "short chic bob cut", "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line", "outfit": "White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt", "outfitPrefix": "wearing" }, { "id": "ManA", "name": "준호", "identity": "A handsome Korean man in his 40s", "hair": "short neat hairstyle", "body": "fit athletic build with broad shoulders", "outfit": "Navy Slim-fit Polo + White Tailored Golf Pants", "outfitPrefix": "wearing" }, { "id": "ManB", "name": "민수", "identity": "A handsome Korean man in his 40s", "hair": "clean short cut", "body": "fit athletic build with broad shoulders", "outfit": "White Performance Polo + Beige Chino Golf Pants", "outfitPrefix": "wearing" }, { "id": "WomanD", "name": "캐디", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves", "outfit": "White Off-shoulder tight-fitting long-sleeve Tight-fitting long-sleeve + Navy Mini Skirt", "outfitPrefix": "wearing" } ], "scenes": [ { "sceneNumber": 1, "cameraAngle": "close-up portrait shot, face in focus", "characterSlot": "WomanA", "shotType": "원샷", "emotionBeat": "평온한 시작", "summary": "눈 내리는 창밖을 보며 미소 짓는 지영", "scriptLine": "함박눈이 쏟아지는 골프장 라운지에 우린 따뜻한 커피 한 잔에 몸을 녹이고 있었어.", "action": "지영이 따뜻한 커피잔을 들고 창밖의 눈을 보며 환하게 웃음", "emotion": "😐 → 😊", "voiceType": "narration", "narration": { "text": "함박눈이 쏟아지는 골프장 라운지에서 우린 따뜻한 커피 한 잔에 몸을 녹이고 있었어.", "emotion": "따뜻함", "speed": "normal" }, "shortPrompt": "close-up portrait shot, [Person 1: A stunning Korean woman in her 40s, sky blue dress, beanie], smiling at camera, snowy golf resort lounge background", "shortPromptKo": "클로즈업 포트레이트, 40대 한국 여성, 하늘색 원피스, 비니 착용, 카메라 보며 미소, 눈 내리는 골프 리조트 라운지 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores, professional cinematic lighting, RAW photo, candid photography style, close-up portrait shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density, wearing a white beanie, smiling at camera, snowy golf resort lounge background, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "무보정 실사 사진, 8k 초고화질, 초정밀 피부 질감, 전문적인 시네마틱 조명, 클로즈업 포트레이트 샷, 얼굴 초점, 40대 아름다운 한국 여성, 긴 소프트 웨이브 헤어, 세련된 외모, 볼륨감 있는 몸매, 하늘색 리브 니트 바디콘 미니 드레스 착용(상세 설명 포함), 흰색 비니 착용, 카메라를 보며 미소, 눈 내리는 골프 리조트 라운지 배경, 85mm 렌즈 사용, 글자 없음.", "videoPrompt": "40대 한국인 여성이 따뜻한 커피잔을 들고 창밖의 눈을 보며 카메라를 향해 우아하게 미소 짓는 모습" }, { "sceneNumber": 2, "cameraAngle": "wide establishing shot", "characterSlot": "WomanA, WomanB, WomanD", "shotType": "쓰리샷", "emotionBeat": "일상적인 수다", "summary": "라운지 테이블에서 지영의 파우치를 보는 혜경", "scriptLine": "혜경이가 내 파우치를 뒤적거리더니 성형외과 명함 한 장을 쓱 꺼내더라고.", "action": "혜경이 지영의 파우치에서 명함을 꺼내 보이고, 지영은 당황하며 말림. 배경에 캐디가 보임.", "emotion": "😊 → 😲", "voiceType": "narration", "narration": { "text": "혜경이가 내 파우치를 뒤적거리더니 성형외과 명함 한 장을 쓱 꺼내더라고.", "emotion": "놀람", "speed": "slightly-fast" }, "shortPrompt": "wide establishing shot, [Person 1: 지영 in sky blue dress] [Person 2: 혜경 in White Lace Top] [Person 3: 캐디 in White Off-shoulder], snowy golf lounge, looking away from camera", "shortPromptKo": "와이드 에스태블리싱 샷, 지영(하늘색 드레스), 혜경(화이트 레이스 탑), 캐디(화이트 오프숄더), 눈 내리는 골프 라운지, 카메라를 보지 않는 자연스러운 모습", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture, professional cinematic lighting, RAW photo, candid photography style, wide establishing shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing A sky blue ribbed knit bodycon mini dress featuring an Off-shoulder tight-fitting long-sleeve neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density, wearing white earmuffs, looking surprised] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt, wearing leather gloves, holding a business card and laughing] [Person 3: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing White Off-shoulder tight-fitting long-sleeve Tight-fitting long-sleeve + Navy Mini Skirt, standing in background organizing table] snowy golf resort lounge background, looking away from camera, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "와이드 에스태블리싱 샷, 지영(하늘색 드레스, 귀마개), 혜경(화이트 레이스 탑, 장갑), 캐디(화이트 오프숄더, 배경에 서 있음), 혜경이 명함을 들고 웃고 지영은 놀란 표정, 눈 내리는 골프 라운지 배경, 카메라 응시하지 않음, 8k 초고화질.", "videoPrompt": "40대 여성 두 명이 라운지 테이블에 앉아 있고, 한 명이 파우치에서 명함을 꺼내며 웃자 다른 한 명이 당황해하는 와이드 샷" }, { "sceneNumber": 3, "cameraAngle": "medium shot, waist-up framing", "characterSlot": "WomanB", "shotType": "원샷", "emotionBeat": "장난스러움", "summary": "명함을 흔들며 농담하는 혜경", "scriptLine": "'지영아, 너 설마 여기서 견적 내려고?'라며 혜경이가 짓궂게 웃길래 등 가운데가 식은땀으로 젖었지.", "action": "혜경이 명함을 손가락으로 가리키며 장난스럽게 입을 가리고 웃음", "emotion": "😆 → 😈", "voiceType": "lipSync", "lipSync": { "speaker": "WomanB", "speakerName": "혜경", "line": "지영아, 너 설마 여기서 견적 내려고?", "emotion": "playful", "timing": "start" }, "shortPrompt": "medium shot, [Person 1: 혜경 in White Lace Top], holding card, laughing mischievously, snowy golf lounge background", "shortPromptKo": "미디엄 샷, 혜경(화이트 레이스 탑), 명함을 들고 짓궂게 웃는 모습, 눈 내리는 골프 라운지 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed, professional cinematic lighting, RAW photo, candid photography style, medium shot, waist-up framing, A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing White Lace Crop Top (Tight-fitting long-sleeve version) + Deep Blue Satin Micro Mini Skirt, wearing a navy scarf, holding a small card and laughing mischievously, snowy golf resort lounge background, looking away from camera, high-fashion editorial refined, shot on 85mm lens, f/1.8, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "미디엄 샷, 허리 위 프레이밍, 40대 혜경, 짧은 보브컷, 화이트 레이스 크롭탑과 네이비 스카프 착용, 명함을 들고 짓궂게 웃는 표정, 카메라를 보지 않음, 눈 내리는 배경, 8k.", "videoPrompt": "40대 여성이 명함을 흔들며 친구에게 장난을 치며 짓궂게 웃는 미디엄 샷" }, { "sceneNumber": 4, "cameraAngle": "wide landscape shot, background emphasis", "characterSlot": "ManA, ManB", "shotType": "투샷", "emotionBeat": "시선의 교차", "summary": "옆 테이블에서 지켜보던 준호와 민수", "scriptLine": "그때 옆 테이블에 있던 준호 씨가 우리 쪽으로 고개를 돌리는데, 눈이 딱 마주쳐서 숨이 턱 막히더라.", "action": "준호가 고개를 돌려 지영을 뚫어지게 바라보고, 민수는 옆에서 커피를 마심", "emotion": "😐 → 🧐", "voiceType": "narration", "narration": { "text": "그때 옆 테이블에 있던 준호 씨가 우리 쪽으로 고개를 돌리는데, 눈이 딱 마주쳐서 숨이 턱 막히더라.", "emotion": "긴장됨", "speed": "normal" }, "shortPrompt": "wide landscape shot, [Person 1: 준호 in Navy Polo] [Person 2: 민수 in White Polo], looking toward camera, snowy golf lounge background", "shortPromptKo": "와이드 랜드스케이프 샷, 준호(네이비 폴로), 민수(화이트 폴로), 준호가 카메라(지영 시점)를 바라봄, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, wide landscape shot, background emphasis, deep focus, [Person 1: A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants, wearing leather gloves, turning head to look at camera with serious expression] [Person 2: A handsome Korean man in his 40s, clean short cut, fit athletic build with broad shoulders, wearing White Performance Polo + Beige Chino Golf Pants, sitting and holding coffee cup, looking away], snowy golf resort lounge background, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "와이드 랜드스케이프 샷, 준호(네이비 폴로)와 민수(화이트 폴로)가 앉아 있음, 준호가 진지한 표정으로 고개를 돌려 지영 쪽(카메라)을 바라봄, 민수는 커피를 마시며 다른 곳을 봄, 눈 내리는 배경.", "videoPrompt": "라운지 옆 테이블에 앉아 있던 남성이 진지한 표정으로 고개를 돌려 화면 정면을 응시하는 장면" }, { "sceneNumber": 5, "cameraAngle": "close-up shot, dramatic expression", "characterSlot": "ManA", "shotType": "원샷", "emotionBeat": "긴장감 조성", "summary": "지영에게 천천히 다가오는 준호", "scriptLine": "준호 씨는 아무 말 없이 일어나더니 내 파우치를 빤히 쳐다보며 천천히 다가왔어.", "action": "준호가 의자에서 일어나 지영의 테이블 쪽으로 천천히 걸어옴. 시선은 테이블 위 파우치에 고정.", "emotion": "🧐 → 🚶", "voiceType": "narration", "narration": { "text": "준호 씨는 아무 말 없이 일어나더니 내 파우치를 빤히 쳐다보며 천천히 다가왔어.", "emotion": "미스테리함", "speed": "slow" }, "shortPrompt": "close-up shot, [Person 1: 준호 in Navy Polo], walking forward, focused gaze on table, snowy lounge background", "shortPromptKo": "클로즈업 샷, 준호(네이비 폴로), 앞으로 걸어오며 테이블 위의 파우치를 집중해서 보는 시선, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture, professional cinematic lighting, RAW photo, candid photography style, close-up shot, dramatic expression, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants, wearing a dark navy scarf, walking forward, focused gaze looking down at table (POV toward pouch), snowy golf resort lounge background, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "클로즈업 샷, 40대 준호, 네이비 폴로와 스카프 착용, 테이블 위의 무언가를 응시하며 천천히 다가오는 진지한 표정, 눈 내리는 배경.", "videoPrompt": "진지한 표정의 남성이 무언가를 결심한 듯 자리에서 일어나 화면 쪽으로 천천히 다가오는 클로즈업 샷" }, { "sceneNumber": 6, "cameraAngle": "over-the-shoulder shot", "characterSlot": "WomanA, ManA", "shotType": "투샷", "emotionBeat": "두려움과 의구심", "summary": "지영의 파우치를 집어 드는 준호", "scriptLine": "손끝이 미세하게 떨리는데 그가 내 파우치를 집어 들길래 퇴직 통보라도 받은 사람처럼 얼굴이 하얘졌지.", "action": "지영의 어깨 너머로 준호가 테이블 위 하늘색 파우치를 집어 드는 순간. 지영의 옆얼굴은 경직됨.", "emotion": "😲 → 😨", "voiceType": "narration", "narration": { "text": "손끝이 미세하게 떨리는데 그가 내 파우치를 집어 들길래 퇴직 통보라도 받은 사람처럼 얼굴이 하얘졌지.", "emotion": "공포", "speed": "normal" }, "shortPrompt": "over-the-shoulder shot, [Person 1: 지영 in sky blue dress] [Person 2: 준호 in Navy Polo], 준호 picking up pouch, snowy lounge background", "shortPromptKo": "오버 더 숄더 샷, 지영의 어깨 너머로 준호가 파우치를 집어 드는 모습, 긴장한 지영의 표정, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, over-the-shoulder shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing A sky blue ribbed knit bodycon mini dress... (as specified), looking pale and nervous, profile view] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, wearing Navy Slim-fit Polo..., wearing gloves, hand reaching out to pick up a sky blue cosmetic pouch on table], snowy golf resort lounge background, looking away from camera, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "오버 더 숄더 샷, 지영의 어깨 쪽에서 바라본 시점, 준호가 테이블 위의 하늘색 파우치를 집어 들고 있고 지영은 창백해진 표정으로 굳어 있음, 눈 내리는 배경.", "videoPrompt": "여성의 어깨 너머로 남성의 손이 파우치를 집어 드는 긴박한 순간과 긴장한 여성의 얼굴" }, { "sceneNumber": 7, "cameraAngle": "low-angle wide shot, full body visible", "characterSlot": "WomanA, ManA, WomanD", "shotType": "쓰리샷", "emotionBeat": "긴장의 정점", "summary": "준호와 지영 사이를 중재하려는 캐디", "scriptLine": "캐디인 WomanD가 '손님, 물건 확인해 드릴까요?'라며 다가왔지만 준호 씨는 요지부동이었어.", "action": "캐디가 걱정스러운 표정으로 준호의 옆에 서서 묻고, 준호는 지영만 바라봄", "emotion": "😨 → 🥶", "voiceType": "both", "narration": { "text": "캐디인 WomanD가 물건 확인해 드릴까요 라며 다가왔지만 준호 씨는 요지부동이었어.", "emotion": "긴박함", "speed": "normal" }, "lipSync": { "speaker": "WomanD", "speakerName": "캐디", "line": "손님, 물건 확인해 드릴까요?", "emotion": "polite but concerned", "timing": "mid" }, "shortPrompt": "low-angle wide shot, full body visible, [Person 1: 지영 in sky blue dress] [Person 2: 준호 in Navy Polo] [Person 3: 캐디 in White Off-shoulder], snowy lounge", "shortPromptKo": "로우 앵글 와이드 샷, 전신 노출, 지영, 준호, 캐디가 한 화면에, 캐디가 걱정스레 묻는 장면, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, low-angle wide shot, full body visible, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing A sky blue ribbed knit bodycon mini dress..., standing stiffly, looking anxious] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, wearing Navy Slim-fit Polo + White Tailored Golf Pants, holding a pouch, looking down at 지영] [Person 3: A stunning Korean woman in her early 20s, high-bun hairstyle, wearing White Off-shoulder tight-fitting long-sleeve..., looking at 준호 with concerned expression, hands together], snowy golf resort lounge background, looking away from camera, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "로우 앵글 와이드 샷, 전신, 굳어 있는 지영과 파우치를 든 준호, 그 옆에서 걱정스럽게 묻는 캐디, 눈 덮인 골프 리조트 라운지 배경, 8k.", "videoPrompt": "세 사람이 라운지에서 대치하는 로우 앵글 샷, 캐디가 다가가서 말을 거는 모습" }, { "sceneNumber": 8, "cameraAngle": "POV (target: WomanA)", "characterSlot": "ManA", "shotType": "원샷", "emotionBeat": "반전의 시작", "summary": "지영에게 종이를 내미는 준호", "scriptLine": "준호 씨가 파우치 안에서 명함이 아니라 작게 접힌 종이 한 장을 꺼내 내밀더라고.", "action": "준호가 파우치 속에서 작은 종이를 꺼내 지영(카메라) 쪽으로 정중하게 내밈", "emotion": "🥶 → ❓", "voiceType": "narration", "narration": { "text": "준호 씨가 파우치 안에서 명함이 아니라 작게 접힌 종이 한 장을 꺼내 내밀더라고.", "emotion": "의아함", "speed": "normal" }, "shortPrompt": "first-person POV shot, [Person 1: 준호 in Navy Polo], holding out a folded paper to camera, looking at camera (POV target), snowy background", "shortPromptKo": "1인칭 POV 샷, 준호(네이비 폴로)가 카메라(지영 시점)를 향해 접힌 종이를 내미는 모습, 카메라 응시, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture, professional cinematic lighting, RAW photo, candid photography style, first-person POV shot, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants, wearing a navy beanie, holding a small folded paper in his gloved hand and extending it toward the camera, looking at camera (POV target) with a gentle and polite expression, snowy golf resort lounge background, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "1인칭 시점 샷, 준호가 카메라(지영의 눈)를 향해 작은 종이를 정중하게 내밀고 있음, 부드러운 표정으로 카메라를 응시, 눈 내리는 배경, 8k.", "videoPrompt": "남성이 파우치에서 종이를 꺼내 정중하게 화면 앞으로 내미는 1인칭 시점 샷" }, { "sceneNumber": 9, "cameraAngle": "close-up shot, dramatic expression", "characterSlot": "ManA", "shotType": "원샷", "emotionBeat": "다정함", "summary": "다정한 목소리로 진실을 말하는 준호", "scriptLine": "'지영 씨, 아까 카트에서 이거 떨어뜨리셨어요'라는데 그건 명함이 아니라 딸아이 편지였지.", "action": "준호가 살짝 미소 지으며 부드럽게 말함. 지영은 놀라움에 눈이 커짐.", "emotion": "❓ → 💖", "voiceType": "both", "narration": { "text": "지영 씨 아까 카트에서 이거 떨어뜨리셨어요 라는데 그건 명함이 아니라 딸아이 편지였지.", "emotion": "감동", "speed": "normal" }, "lipSync": { "speaker": "ManA", "speakerName": "준호", "line": "지영 씨, 아까 카트에서 이거 떨어뜨리셨어요.", "emotion": "gentle", "timing": "start" }, "shortPrompt": "close-up shot, [Person 1: 준호 in Navy Polo], speaking with a gentle smile, snowy lounge background", "shortPromptKo": "클로즈업 샷, 준호(네이비 폴로)가 부드러운 미소를 지으며 말하는 모습, 눈 내리는 라운지 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture, professional cinematic lighting, RAW photo, candid photography style, close-up shot, dramatic expression, A handsome Korean man in his 40s, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants, wearing a navy beanie, speaking with a subtle gentle smile, warm eyes looking slightly off-camera, snowy golf resort lounge background, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "클로즈업 샷, 40대 준호, 네이비 비니와 폴로 착용, 따뜻한 눈빛으로 부드럽게 미소 지으며 말하는 표정, 눈 내리는 골프 리조트 배경, 8k.", "videoPrompt": "남성이 부드러운 미소를 지으며 진심 어린 목소리로 말을 건네는 클로즈업 샷" }, { "sceneNumber": 10, "cameraAngle": "medium shot, waist-up framing", "characterSlot": "ManA, WomanA", "shotType": "투샷", "emotionBeat": "배려에 대한 감동", "summary": "파우치를 닫아주며 배려하는 준호", "scriptLine": "내 파우치 지퍼가 열려 있어서 내용물이 보일까 봐 준호 씨가 계속 신경 쓰고 있었던 거야.", "action": "준호가 지영의 파우치 지퍼를 정중하게 닫아주며 건네고, 지영은 부끄러워함", "emotion": "💖 → 😳", "voiceType": "narration", "narration": { "text": "내 파우치 지퍼가 열려 있어서 내용물이 보일까 봐 준호 씨가 계속 신경 쓰고 있었던 거야.", "emotion": "부끄러움", "speed": "normal" }, "shortPrompt": "medium shot, [Person 1: 지영 in sky blue dress] [Person 2: 준호 in Navy Polo], 준호 closing pouch zipper, snowy lounge background", "shortPromptKo": "미디엄 샷, 준호가 지영의 파우치 지퍼를 닫아주는 모습, 지영의 수줍은 표정, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, medium shot, waist-up framing, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing A sky blue ribbed knit bodycon mini dress..., looking down shyly, face slightly blushing] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, wearing Navy Slim-fit Polo..., carefully closing the zipper of a sky blue pouch on table], snowy golf resort lounge background, looking away from camera, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "미디엄 샷, 준호가 테이블 위의 파우치 지퍼를 조심스럽게 닫아주고 있고, 지영은 고개를 숙이며 수줍어하는 모습, 눈 내리는 골프 라운지 배경.", "videoPrompt": "남성이 여성의 파우치 지퍼를 닫아주는 세심한 행동을 하고 여성이 부끄러워하는 미디엄 샷" }, { "sceneNumber": 11, "cameraAngle": "close-up portrait shot, face in focus", "characterSlot": "WomanA", "shotType": "원샷", "emotionBeat": "설렘", "summary": "준호의 목소리를 떠올리며 수줍어하는 지영", "scriptLine": "그의 낮은 목소리가 귓가에 맴도는데, 입술이 바짝 말라서 고맙다는 말도 제대로 못 했어.", "action": "지영이 손으로 자신의 뺨을 만지며 먼 곳을 응시, 수줍은 미소", "emotion": "😳 → 💓", "voiceType": "narration", "narration": { "text": "그의 낮은 목소리가 귓가에 맴도는데, 입술이 바짝 말라서 고맙다는 말도 제대로 못 했어.", "emotion": "설렘", "speed": "slightly-slow" }, "shortPrompt": "close-up portrait shot, [Person 1: 지영 in sky blue dress], blushing, touching cheek, snowy lounge background", "shortPromptKo": "클로즈업 포트레이트, 발그레해진 얼굴로 뺨을 만지는 지영, 설레는 표정, 눈 내리는 배경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture, professional cinematic lighting, RAW photo, candid photography style, close-up portrait shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing A sky blue ribbed knit bodycon mini dress..., wearing a white beanie, cheeks slightly red and blushing, touching her cheek with one hand, looking away with a dreamy and shy smile, snowy golf resort lounge background, high-fashion editorial refined, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "클로즈업 포트레이트, 40대 지영, 발그레해진 얼굴로 수줍게 웃으며 뺨을 만지는 모습, 흰색 비니와 하늘색 드레스, 눈 내리는 배경, 8k.", "videoPrompt": "여성이 설레는 표정으로 뺨을 만지며 수줍게 미소 짓는 감성적인 클로즈업 샷" }, { "sceneNumber": 12, "cameraAngle": "aerial view, drone shot, wide shot", "characterSlot": "WomanA, ManA", "shotType": "투샷", "emotionBeat": "여운", "summary": "눈 내리는 골프장을 배경으로 한 지영과 준호", "scriptLine": "눈 내리는 창밖을 보는데 괜히 얼굴이 화끈거려서 나만 이런 건가 싶더라고.", "action": "창가에 나란히 서서 밖을 보는 지영과 준호. 지영은 여전히 상기된 표정.", "emotion": "💓 → 🤔", "voiceType": "narration", "narration": { "text": "눈 내리는 창밖을 보는데 괜히 얼굴이 화끈거려서 나만 이런 건가 싶더라고.", "emotion": "여운", "speed": "normal" }, "shortPrompt": "aerial view, drone shot, [Person 1: 지영 in sky blue dress] [Person 2: 준호 in Navy Polo], standing by large window, snowy golf course landscape", "shortPromptKo": "에어리얼 뷰, 드론 샷, 큰 창가에 서 있는 지영과 준호, 눈 덮인 아름다운 골프장 풍경", "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, aerial view, drone shot, wide shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing A sky blue ribbed knit bodycon mini dress..., standing by a large glass window] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, wearing Navy Slim-fit Polo..., standing slightly behind her, looking out at the snow], magnificent snowy golf course landscape background, looking away from camera, 8k ultra-hd, no text, --ar 9:16", "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing", "longPromptKo": "드론 항공 샷, 라운지 큰 유리창 앞에 서 있는 지영과 준호, 창밖으로 펼쳐진 광활한 눈 덮인 골프 코스 풍경, 아름다운 겨울 정경, 8k.", "videoPrompt": "눈 덮인 골프 리조트 라운지의 큰 창가에 서 있는 남녀의 뒷모습과 광활한 겨울 풍경을 담은 드론 샷" } ] }
+JSON
+{
+  "title": "눈 오는 골프장, 그 사람 주머니에서 나온 결정적 증거",
+  "titleOptions": [
+    "함박눈 속에서 들킨 그 남자의 비밀",
+    "준호 씨 주머니에서 나온 건 이혼 서류?",
+    "설레던 라운딩이 갑자기 호러가 된 이유"
+  ],
+  "scriptBody": "함박눈이 쏟아지는 골프장에서 준호 씨가 내 코트 주머니에 슬쩍 손을 넣었어.\n내 친구 혜경이는 눈치채고 벌써 저만치 앞서가며 키득거리고 있더라고.\n평소엔 무뚝뚝하던 사람이 오늘따라 자꾸 내 곁을 맴도는데 목소리까지 낮게 깔리는 거야.\n'지영아, 너한테 꼭 줄 게 있어'라며 속삭이는데 손끝이 미세하게 떨리는 게 느껴졌지.\n순간 '설마 이거 고백인가?' 싶어서 입안이 바짝 마르고 심장이 미친 듯이 뛰기 시작했어.\n준호 씨가 주머니에서 하얀 봉투를 꺼내는데, 요즘 부부 사이 안 좋다더니 혹시 이혼 서류인가 싶어 숨이 턱 막히더라고.\n내가 당황해서 아무 말도 못 하고 있으니까 뒤에서 미숙 언니가 '어머, 두 분 분위기 뭐야?' 하며 소리를 지르지 뭐야.\n캐디인 WomanD까지 눈을 동그랗게 뜨고 우리를 쳐다보는데 정말 시간이 멈춘 것 같았어.\n긴장한 채로 봉투를 열어봤는데, 거기엔 커다란 글씨로 '전립선 건강 상담'이라고 적힌 영수증이 들어있더라.\n알고 보니 아까 백화점에서 산 건강식품 영수증을 버린다는 게 내 주머니에 잘못 넣은 거였어.\n준호 씨는 얼굴이 홍당무가 돼서 '그게 왜 거기 있어!'라며 허둥지둥 영수증을 뺏어갔지.\n결국 설렘은커녕 눈밭에서 배꼽 빠지게 웃느라 라운딩도 제대로 못 끝냈잖아.",
+  "punchline": "고백인 줄 알았더니 건강 상담 영수증이라니, 내 심장 돌려내!",
+  "hook": "함박눈이 쏟아지는 골프장에서 준호 씨가 내 코트 주머니에 슬쩍 손을 넣었어.",
+  "twist": "고백이나 이혼 서류인 줄 알았던 봉투 내용물이 전립선 건강 상담 영수증이었음.",
+  "foreshadowing": "요즘 부부 사이 안 좋다더니 혹시 이혼 서류인가 싶어 숨이 턱 막히더라고.",
+  "narrator": {
+    "slot": "WomanA",
+    "name": "지영"
+  },
+  "emotionFlow": "😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 😅 아, 착각이었네",
+  "lockedOutfits": {
+    "womanA": "Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)",
+    "womanB": "White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt",
+    "womanD": "White Chiffon Shirt (Unbuttoned) (Tight-fitting long-sleeve version) + Navy Lace Micro Mini Skirt",
+    "manA": "Navy Slim-fit Polo + White Tailored Golf Pants",
+    "manB": "White Performance Polo + Beige Chino Golf Pants"
+  },
+  "characters": [
+    {
+      "id": "WomanA",
+      "name": "지영",
+      "identity": "A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features",
+      "hair": "long soft-wave hairstyle",
+      "body": "perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves",
+      "outfit": "Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "WomanB",
+      "name": "혜경",
+      "identity": "A stunning Korean woman in her 40s, bright and energetic aura",
+      "hair": "short chic bob cut",
+      "body": "Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line",
+      "outfit": "White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "ManA",
+      "name": "준호",
+      "identity": "A handsome Korean man in his 40s, charismatic and tall",
+      "hair": "short neat hairstyle",
+      "body": "fit athletic build with broad shoulders",
+      "outfit": "Navy Slim-fit Polo + White Tailored Golf Pants",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "ManB",
+      "name": "민수",
+      "identity": "A handsome Korean man in his 40s, friendly neighbor image",
+      "hair": "clean short cut",
+      "body": "fit athletic build with broad shoulders",
+      "outfit": "White Performance Polo + Beige Chino Golf Pants",
+      "outfitPrefix": "wearing"
+    },
+    {
+      "id": "WomanD",
+      "name": "캐디",
+      "identity": "A stunning Korean woman in her early 20s, bright cheerful professional presence",
+      "hair": "high-bun hairstyle",
+      "body": "bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves",
+      "outfit": "White Chiffon Shirt (Unbuttoned) (Tight-fitting long-sleeve version) + Navy Lace Micro Mini Skirt",
+      "outfitPrefix": "wearing"
+    }
+  ],
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "cameraAngle": "close-up portrait shot",
+      "characterSlot": "WomanA",
+      "shotType": "원샷",
+      "emotionBeat": "설렘의 시작",
+      "summary": "함박눈 속에서 묘한 표정을 짓는 지영",
+      "scriptLine": "함박눈이 쏟아지는 골프장에서 준호 씨가 내 코트 주머니에 슬쩍 손을 넣었어.",
+      "action": "지영이 살짝 놀란 듯 카메라를 응시하며 수줍게 미소 지음, 배경에 눈이 내림",
+      "emotion": "😐 → 👀",
+      "voiceType": "narration",
+      "narration": {
+        "text": "함박눈이 쏟아지는 골프장에서 준호 씨가 내 코트 주머니에 슬쩍 손을 넣었어.",
+        "emotion": "설렘",
+        "speed": "normal"
+      },
+      "shortPrompt": "close-up portrait shot, [Person 1: Ji-young in Peach], smiling at camera, snowy golf course, winter beanie, gloves",
+      "shortPromptKo": "클로즈업 포트레이트, [지영: 피치색 상의], 카메라를 보며 미소, 눈 내리는 골프장, 겨울 비니와 장갑",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture with visible pores and natural skin imperfections, professional cinematic lighting, RAW photo, real human skin texture, candid photography style, close-up portrait shot, face in focus, [Person 1: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)], wearing winter beanie and gloves, smiling at camera, snowy golf course with luxury clubhouse background, afternoon warm light, high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "함박눈이 내리는 럭셔리 골프장 배경, 클로즈업 샷. 40대 한국인 여성 지영(Peach Silk Tight-fitting long-sleeve, White High-waist Micro Skirt)이 겨울 비니와 장갑을 착용하고 카메라를 보며 수줍게 미소 짓고 있음. 정교한 피부 결, 자연스러운 채광, 8k 초고화질.",
+      "videoPrompt": "40대 한국인 여성이 눈 내리는 골프장에서 카메라를 보며 수줍게 미소 짓는 모습, 클로즈업 샷, 따뜻한 오후 햇살"
+    },
+    {
+      "sceneNumber": 2,
+      "cameraAngle": "wide establishing shot",
+      "characterSlot": "WomanB",
+      "shotType": "투샷",
+      "emotionBeat": "상황의 관찰",
+      "summary": "저만치 앞서가며 웃는 혜경과 뒤에 남은 지영",
+      "scriptLine": "내 친구 혜경이는 눈치채고 벌써 저만치 앞서가며 키득거리고 있더라고.",
+      "action": "혜경이 뒤를 돌아보며 손을 흔들고 웃음, 지영은 멀리서 준호 곁에 서 있음",
+      "emotion": "👀 → 💓",
+      "voiceType": "narration",
+      "narration": {
+        "text": "내 친구 혜경이는 눈치채고 벌써 저만치 앞서가며 키득거리고 있더라고.",
+        "emotion": "즐거움",
+        "speed": "normal"
+      },
+      "shortPrompt": "wide establishing shot, [Person 1: Hye-kyung in White] [Person 2: Ji-young in Peach], walking on snow, luxury golf course, winter earmuffs",
+      "shortPromptKo": "와이드 에스타블리싱 샷, [혜경: 화이트 상의] [지영: 피치 상의], 눈 위를 걷는 모습, 럭셔리 골프장, 겨울 귀마개",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, ultra detailed skin texture, professional cinematic lighting, RAW photo, candid photography style, wide establishing shot, full body visible, [Person 1: A stunning Korean woman in her 40s, bright and energetic aura, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt] [Person 2: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)], [Person 1: looking back and laughing, gesturing] [Person 2: standing still in background], snowy golf course background, winter earmuffs and boots, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "넓은 설원 골프장 배경. 혜경(White Turtleneck)이 앞에서 장난스럽게 웃으며 뒤를 돌아보고, 지영(Peach Silk)은 뒤쪽에서 준호와 함께 있는 모습. 캔디드 스타일, 겨울 액세서리 포함.",
+      "videoPrompt": "눈 덮인 골프장에서 두 여성이 멀리 떨어져 걷고 있는 와이드 샷, 한 여성이 뒤를 돌아보며 웃음"
+    },
+    {
+      "sceneNumber": 3,
+      "cameraAngle": "medium shot",
+      "characterSlot": "ManA",
+      "shotType": "투샷",
+      "emotionBeat": "미묘한 분위기",
+      "summary": "지영 곁에서 목소리를 낮추는 준호",
+      "scriptLine": "평소엔 무뚝뚝하던 사람이 오늘따라 자꾸 내 곁을 맴도는데 목소리까지 낮게 깔리는 거야.",
+      "action": "준호가 지영의 귀에 가까이 대고 무언가 말하는 듯한 포즈, 지영은 긴장함",
+      "emotion": "💓 → 💓",
+      "voiceType": "narration",
+      "narration": {
+        "text": "평소엔 무뚝뚝하던 사람이 오늘따라 자꾸 내 곁을 맴도는데 목소리까지 낮게 깔리는 거야.",
+        "emotion": "신비로움",
+        "speed": "normal"
+      },
+      "shortPrompt": "medium shot, [Person 1: Jun-ho in Navy] [Person 2: Ji-young in Peach], whispering, snowy background, winter scarf",
+      "shortPromptKo": "미디엄 샷, [준호: 네이비 상의] [지영: 피치 상의], 귓속말하는 모습, 눈 내리는 배경, 겨울 목도리",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, medium shot, waist-up framing, [Person 1: A handsome Korean man in his 40s, charismatic and tall, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants] [Person 2: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)], [Person 1: leaning in and whispering into her ear] [Person 2: looking away with a tense, fluttering expression], snowy golf course, wearing winter scarves, looking away from camera, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "미디엄 샷. 준호(Navy Polo)가 지영(Peach Silk)의 귓가에 밀착해 무언가 속삭이는 장면. 지영은 긴장한 듯 시선을 피하며 설레는 표정. 눈 덮인 골프장, 두 사람 모두 목도리 착용.",
+      "videoPrompt": "남자가 여자의 귀에 대고 무언가 속삭이는 미디엄 샷, 눈 내리는 골프장 배경"
+    },
+    {
+      "sceneNumber": 4,
+      "cameraAngle": "close-up shot",
+      "characterSlot": "ManA",
+      "shotType": "투샷",
+      "emotionBeat": "결정적 고백 예고",
+      "summary": "떨리는 손으로 주머니에서 무언가 꺼내려는 준호",
+      "scriptLine": "'지영아, 너한테 꼭 줄 게 있어'라며 속삭이는데 손끝이 미세하게 떨리는 게 느껴졌지.",
+      "action": "준호의 손이 코트 주머니로 향함, 지영의 어깨가 살짝 들썩임",
+      "emotion": "💓 → 😳",
+      "voiceType": "both",
+      "narration": {
+        "text": "지영아, 너한테 꼭 줄 게 있어라며 속삭이는데 손끝이 미세하게 떨리는 게 느껴졌지.",
+        "emotion": "긴장",
+        "speed": "slow"
+      },
+      "lipSync": {
+        "speaker": "ManA",
+        "speakerName": "준호",
+        "line": "지영아, 너한테 꼭 줄 게 있어.",
+        "emotion": "serious",
+        "timing": "start"
+      },
+      "shortPrompt": "close-up shot, [Person 1: Jun-ho in Navy] [Person 2: Ji-young in Peach], hands near pocket, snowy background, winter gloves",
+      "shortPromptKo": "클로즈업 샷, [준호: 네이비 상의] [지영: 피치 상의], 주머니 근처의 손, 눈 내리는 배경, 겨울 장갑",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, close-up shot, focus on hands and expressions, [Person 1: A handsome Korean man in his 40s, charismatic and tall, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants] [Person 2: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)], [Person 1: reaching into a pocket with a nervous hand] [Person 2: biting her lip, looking expectant and nervous], winter gloves, snowy golf course, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "클로즈업 샷. 준호의 떨리는 손이 주머니로 향하는 순간과 지영의 기대에 찬 표정. 눈 덮인 골프장, 장갑을 낀 손의 디테일 강조.",
+      "videoPrompt": "남자의 손이 주머니에서 뭔가를 꺼내려는 찰나를 포착한 클로즈업 샷, 긴장감이 흐르는 분위기"
+    },
+    {
+      "sceneNumber": 5,
+      "cameraAngle": "POV (지영의 시점)",
+      "characterSlot": "ManA",
+      "shotType": "원샷",
+      "emotionBeat": "오해의 절정",
+      "summary": "준호가 하얀 봉투를 내미는 시점",
+      "scriptLine": "준호 씨가 주머니에서 하얀 봉투를 꺼내는데, 요즘 부부 사이 안 좋다더니 혹시 이혼 서류인가 싶어 숨이 턱 막히더라고.",
+      "action": "준호가 하얀 봉투를 들고 카메라(지영)를 진지하게 쳐다봄",
+      "emotion": "😳 → 😳",
+      "voiceType": "narration",
+      "narration": {
+        "text": "준호 씨가 주머니에서 하얀 봉투를 꺼내는데, 혹시 이혼 서류인가 싶어 숨이 턱 막히더라고.",
+        "emotion": "당황",
+        "speed": "normal"
+      },
+      "shortPrompt": "POV shot, [Person 1: Jun-ho in Navy], holding a white envelope, looking at camera (POV target), snowy background",
+      "shortPromptKo": "POV 샷, [준호: 네이비 상의], 하얀 봉투를 들고 카메라를 응시, 눈 내리는 배경",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, first-person POV shot, [Person 1: A handsome Korean man in his 40s, charismatic and tall, short neat hairstyle, fit athletic build with broad shoulders, wearing Navy Slim-fit Polo + White Tailored Golf Pants], [Person 1: holding out a plain white envelope, looking directly at camera (POV target) with a serious and slightly apologetic expression], snowy golf course background, winter gloves, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "1인칭 POV 샷. 지영의 시선에서 준호가 하얀 봉투를 내미는 장면. 준호는 매우 진지한 표정으로 카메라(지영)를 응시함. 배경은 눈 덮인 골프장.",
+      "videoPrompt": "남자가 진지한 표정으로 하얀 봉투를 내미는 1인칭 시점 샷, 눈 내리는 풍경"
+    },
+    {
+      "sceneNumber": 6,
+      "cameraAngle": "wide landscape shot",
+      "characterSlot": "WomanD",
+      "shotType": "쓰리샷",
+      "emotionBeat": "주변의 시선",
+      "summary": "멀리서 지켜보는 조연들과 지영/준호",
+      "scriptLine": "캐디인 WomanD까지 눈을 동그랗게 뜨고 우리를 쳐다보는데 정말 시간이 멈춘 것 같았어.",
+      "action": "WomanD(캐디)와 혜경이 멀리서 둘을 유심히 지켜봄",
+      "emotion": "😳 → 😳",
+      "voiceType": "narration",
+      "narration": {
+        "text": "캐디까지 눈을 동그랗게 뜨고 우리를 쳐다보는데 정말 시간이 멈춘 것 같았어.",
+        "emotion": "압박감",
+        "speed": "normal"
+      },
+      "shortPrompt": "wide landscape shot, [Person 1: WomanD in White] [Person 2: Hye-kyung in White] [Person 3: Jun-ho in Navy], watching, snowy golf course",
+      "shortPromptKo": "와이드 랜드스케이프 샷, [캐디: 화이트 상의] [혜경: 화이트 상의] [준호: 네이비 상의], 지켜보는 모습, 눈 내리는 골프장",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, wide landscape shot, background emphasis, [Person 1: A stunning Korean woman in her early 20s, high-bun hairstyle, bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing White Chiffon Shirt (Unbuttoned) (Tight-fitting long-sleeve version) + Navy Lace Micro Mini Skirt] [Person 2: A stunning Korean woman in her 40s, short chic bob cut, Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line, wearing White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt] [Person 3: A handsome Korean man in his 40s, charismatic and tall, short neat hairstyle, wearing Navy Slim-fit Polo + White Tailored Golf Pants], [Person 1 & 2: standing together in distance, looking surprised with wide eyes] [Person 3: standing in foreground facing away], snowy golf course, winter boots, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "와이드 샷. 멀리서 캐디(WomanD)와 혜경이 눈을 동그랗게 뜨고 준호와 지영을 주시하고 있음. 눈이 덮인 드넓은 골프장 배경. 캐릭터들의 서로 다른 놀란 표정 포착.",
+      "videoPrompt": "멀리서 지켜보는 사람들의 놀란 시선과 눈 덮인 골프장의 광활한 풍경"
+    },
+    {
+      "sceneNumber": 7,
+      "cameraAngle": "low-angle wide shot",
+      "characterSlot": "WomanA",
+      "shotType": "원샷",
+      "emotionBeat": "반전의 순간",
+      "summary": "봉투 속 영수증을 보고 멍해진 지영",
+      "scriptLine": "긴장한 채로 봉투를 열어봤는데, 거기엔 커다란 글씨로 '전립선 건강 상담'이라고 적힌 영수증이 들어있더라.",
+      "action": "지영이 영수증을 들고 황당한 표정으로 서 있음, 로우 앵글로 전체 모습 포착",
+      "emotion": "😳 → 😅",
+      "voiceType": "narration",
+      "narration": {
+        "text": "거기엔 커다란 글씨로 전립선 건강 상담이라고 적힌 영수증이 들어있더라.",
+        "emotion": "황당",
+        "speed": "normal"
+      },
+      "shortPrompt": "low-angle wide shot, [Person 1: Ji-young in Peach], holding a receipt, bewildered face, snowy golf course, winter boots",
+      "shortPromptKo": "로우 앵글 와이드 샷, [지영: 피치 상의], 영수증을 들고 황당한 표정, 눈 내리는 골프장, 겨울 부츠",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, low-angle wide shot, full body visible, [Person 1: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)], [Person 1: holding a long paper receipt, looking at it with a bewildered and dumbfounded expression, standing in deep snow], snowy luxury golf course, winter boots, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "로우 앵글 와이드 샷. 지영(Peach Silk)이 길게 늘어진 영수증을 들고 어안이 벙벙한 표정으로 눈밭에 서 있음. 전신이 노출되며, 황당한 상황이 배경과 대조됨.",
+      "videoPrompt": "여자가 황당한 표정으로 긴 영수증을 쳐다보는 로우 앵글 전신 샷"
+    },
+    {
+      "sceneNumber": 8,
+      "cameraAngle": "aerial view",
+      "characterSlot": "ManA",
+      "shotType": "쓰리샷",
+      "emotionBeat": "웃음으로 마무리",
+      "summary": "다같이 폭소하며 눈밭을 걷는 일행",
+      "scriptLine": "결국 설렘은커녕 눈밭에서 배꼽 빠지게 웃느라 라운딩도 제대로 못 끝냈잖아.",
+      "action": "지영, 준호, 혜경이 서로 웃으며 눈싸움을 하거나 걷는 모습",
+      "emotion": "😅 → 😂",
+      "voiceType": "narration",
+      "narration": {
+        "text": "결국 설렘은커녕 눈밭에서 배꼽 빠지게 웃느라 라운딩도 제대로 못 끝냈잖아.",
+        "emotion": "유쾌함",
+        "speed": "normal"
+      },
+      "shortPrompt": "aerial view, [Person 1: Ji-young in Peach] [Person 2: Jun-ho in Navy] [Person 3: Hye-kyung in White], laughing and walking, snowy golf course",
+      "shortPromptKo": "항공 샷, [지영: 피치 상의] [준호: 네이비 상의] [혜경: 화이트 상의], 웃으며 걷는 모습, 눈 내리는 골프장",
+      "longPrompt": "unfiltered raw photograph, 8k ultra photorealism, professional cinematic lighting, RAW photo, candid photography style, aerial view, drone shot, wide shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, wearing Peach Silk Tight-fitting long-sleeve + White High-waist Micro Skirt (Soft Luxury)] [Person 2: A handsome Korean man in his 40s, short neat hairstyle, wearing Navy Slim-fit Polo + White Tailored Golf Pants] [Person 3: A stunning Korean woman in her 40s, short chic bob cut, wearing White Tight-fitting long-sleeve Turtleneck + Navy Leather Mini Skirt], [Person 1, 2, 3: all laughing heartily, walking together on white snow, footprints behind them], vast snowy golf course with scattered trees, afternoon golden hour lighting, no text, no captions, no typography, --ar 9:16",
+      "negativePrompt": "NOT cartoon, NOT anime, NOT 3D render, NOT CGI, NOT plastic skin, NOT mannequin, NOT doll-like, NOT airbrushed, NOT overly smooth skin, NOT uncanny valley, NOT artificial looking, NOT illustration, NOT painting, NOT drawing",
+      "longPromptKo": "항공 드론 샷. 눈 덮인 광활한 골프장에서 지영, 준호, 혜경이 서로 웃으며 걸어가는 모습. 뒤로 발자국이 남겨져 있으며, 유쾌한 분위기의 엔딩.",
+      "videoPrompt": "눈 덮인 골프장에서 사람들이 웃으며 걸어가는 모습을 위에서 내려다본 드론 샷"
+    }
+  ]
+}

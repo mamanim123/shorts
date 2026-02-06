@@ -9,7 +9,7 @@ const MAX_BACKUPS = 5;
 const BACKUP_KEY_VERSION = 'v1';
 
 const DEFAULT_POST_PROCESS_CONFIG = {
-  enabled: true,
+  enabled: false,
   skipIdentityInjection: false,
   cleanupPatterns: [] as string[],
   customPrefix: '',

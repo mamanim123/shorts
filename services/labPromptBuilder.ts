@@ -2210,15 +2210,14 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
 };
 
 export interface PromptValidationResult { isValid: boolean; issues: string[]; fixedPrompt: string; }
-export interface CharacterInfo {
+export interface CharacterInfo { 
   id?: string;
   name?: string;
   gender?: string;
-  identity: string;
-  hair: string;
-  body: string;
-  outfit: string;
-  accessories?: string[];  // [v3.5.4] 악세서리 일관성 지원
+  identity: string; 
+  hair: string; 
+  body: string; 
+  outfit: string; 
 }
 
 
@@ -2306,16 +2305,11 @@ const enhanceMultiPersonBlocks = (
 
       // 3. Assemble with Master Data
       const masterOutfit = character.outfit.replace(/^wearing\s+/i, '').trim();
-      // [v3.5.4] 악세서리 일관성: 마스터 데이터에서 악세서리도 적용
-      const masterAccessories = (character.accessories && character.accessories.length > 0)
-        ? `accessorized with ${character.accessories.join(', ')}`
-        : '';
       const reconstructed = [
         character.identity,
         character.hair,
         character.body,
         `wearing ${masterOutfit}`,
-        masterAccessories,
         llmAction,
         posPart,
         colorPart
@@ -2373,17 +2367,11 @@ export const validateAndFixPrompt = (
       const actionParts = parts.filter(p => {
         const lp = p.toLowerCase();
         if (lp.includes('wearing')) return false;
-        if (lp.includes('accessorized')) return false;  // [v3.5.4] 악세서리도 필터링
         if (lp.includes('photorealistic') || lp.includes('high-fashion')) return false;
         if (traitKeywords.some(t => lp.includes(t) || t.includes(lp))) return false;
         return p.length > 0;
       });
       const llmAction = actionParts.join(', ').trim();
-
-      // [v3.5.4] 악세서리 일관성: 마스터 데이터에서 악세서리도 적용
-      const masterAccessories = (character.accessories && character.accessories.length > 0)
-        ? `accessorized with ${character.accessories.join(', ')}`
-        : '';
 
       // Reconstruct using MASTER data in strict [Person 1] format
       const reconstructedBlock = [
@@ -2391,7 +2379,6 @@ export const validateAndFixPrompt = (
         character.hair,
         character.body,
         `wearing ${masterOutfit}`,
-        masterAccessories,
         llmAction,
         MULTI_PERSON_POSITIONS[0],
         `${MULTI_PERSON_COLORS[0]} color palette`

@@ -746,7 +746,8 @@ const buildCharacterInfoMap = (characters: any[] | undefined, targetAgeLabel?: s
                 identity,
                 hair: ch.hair || defaults?.hair || '',
                 body: ch.body || defaults?.body || '',
-                outfit: ch.outfit || ''
+                outfit: ch.outfit || '',
+                accessories: ch.accessories || []  // [v3.5.4] 악세서리 일관성
             });
         });
     }
@@ -2742,7 +2743,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                 identity: item!.identity,
                                 hair: item!.hair,
                                 body: item!.body,
-                                outfit: item!.outfit
+                                outfit: item!.outfit,
+                                accessories: item!.accessories  // [v3.5.4] 악세서리 일관성
                             })) as CharacterInfo[];
                         const fallbackCharacters = characterInfos.length > 0
                             ? characterInfos
@@ -2752,7 +2754,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                                     identity: item.identity,
                                     hair: item.hair,
                                     body: item.body,
-                                    outfit: item.outfit
+                                    outfit: item.outfit,
+                                    accessories: item.accessories  // [v3.5.4] 악세서리 일관성
                                 }));
                         const fixed = validateAndFixPrompt(
                             normalizedPrompt,
@@ -3771,7 +3774,8 @@ ${scriptInput}
                                 identity: item!.identity,
                                 hair: item!.hair,
                                 body: item!.body,
-                                outfit: item!.outfit
+                                outfit: item!.outfit,
+                                accessories: item!.accessories  // [v3.5.4] 악세서리 일관성
                             })) as CharacterInfo[];
                         const fallbackCharacters = characterInfos.length > 0
                             ? characterInfos
@@ -3781,7 +3785,8 @@ ${scriptInput}
                                     identity: item.identity,
                                     hair: item.hair,
                                     body: item.body,
-                                    outfit: item.outfit
+                                    outfit: item.outfit,
+                                    accessories: item.accessories  // [v3.5.4] 악세서리 일관성
                                 }));
                         const fixed = validateAndFixPrompt(normalizedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
                         let mergedPrompt = fixed.fixedPrompt;
@@ -4268,7 +4273,8 @@ ${scriptInput}
                         identity: item!.identity,
                         hair: item!.hair,
                         body: item!.body,
-                        outfit: item!.outfit
+                        outfit: item!.outfit,
+                        accessories: item!.accessories  // [v3.5.4] 악세서리 일관성
                     })) as CharacterInfo[];
                 const fallbackCharacters = characterInfos.length > 0
                     ? characterInfos
@@ -4278,7 +4284,8 @@ ${scriptInput}
                             identity: item.identity,
                             hair: item.hair,
                             body: item.body,
-                            outfit: item.outfit
+                            outfit: item.outfit,
+                            accessories: item.accessories  // [v3.5.4] 악세서리 일관성
                         }));
                 const fixed = validateAndFixPrompt(
                     normalizedPrompt,

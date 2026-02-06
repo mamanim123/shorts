@@ -315,10 +315,6 @@ const AiStudioHost: React.FC = () => {
   // AI Studio에서 새 이미지를 생성했을 때 history에 추가할 수 있도록 콜백 제공
   const handleAddHistoryFromDataUrl = async (dataUrl: string, prompt: string) => {
     try {
-      const activeStoryId = (storyFilter && storyFilter !== STORY_FILTER_ALL && storyFilter !== STORY_FILTER_ORPHANED)
-        ? storyFilter
-        : (lightboxItem?.storyId || undefined);
-
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       const imageId = crypto.randomUUID();
@@ -345,6 +341,10 @@ const AiStudioHost: React.FC = () => {
       }
 
       const previewUrl = URL.createObjectURL(blob);
+
+      const activeStoryId = (storyFilter && storyFilter !== STORY_FILTER_ALL && storyFilter !== STORY_FILTER_ORPHANED)
+        ? storyFilter
+        : (lightboxItem?.storyId || undefined);
 
       const newItem = {
         id: crypto.randomUUID(),
@@ -558,7 +558,6 @@ const AiStudioHost: React.FC = () => {
                       alt="History"
                       loading="lazy"
                       decoding="async"
-                      draggable={false}
                       className="w-full h-full object-cover"
                     />
                   ) : (

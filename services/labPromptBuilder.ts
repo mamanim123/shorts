@@ -669,22 +669,23 @@ export const getCameraPromptForScene = (storyStage: string): string => {
 // ============================================
 
 /**
- * 씬별 권장 카메라 앵글 (배경 강조를 위해 와이드 샷 비중 확대)
- * 12씬 기준 와이드 샷 최소 4개 보장
+ * 씬별 권장 카메라 앵글 (쇼츠 영상 최적화)
+ * 12씬 기준: close-up 2개, medium 2개, wide/full-body 4개 + 다양한 dynamic 앵글
+ * 시원시원하고 역동적인 구성
  */
 const SCENE_ANGLE_MAP: Record<number, { angle: string; prompt: string }> = {
-  1: { angle: 'close-up', prompt: 'close-up portrait shot, face in focus, shallow depth of field, dramatic lighting' },
-  2: { angle: 'drone', prompt: 'drone shot, bird\'s-eye view, wide establishing shot, full body visible, environment context, detailed landscape' },
-  3: { angle: 'medium', prompt: 'medium shot, waist-up framing, natural pose' },
-  4: { angle: 'wide/landscape', prompt: 'wide landscape shot, full body visible, background emphasis, deep focus, environment storytelling' },
-  5: { angle: 'close-up', prompt: 'close-up shot, dramatic expression, face in focus, shallow depth of field' },
-  6: { angle: 'aerial', prompt: 'aerial drone view, looking down at the scene, panoramic background focus' },
-  7: { angle: 'low-angle/wide', prompt: 'low-angle wide shot, revealing context, full body visible, environment storytelling, deep focus' },
-  8: { angle: 'POV', prompt: 'first-person POV shot, subjective camera angle, target looking at camera' },
-  9: { angle: 'drone/side', prompt: 'drone side-view shot, sweeping landscape, character full body in the environment' },
-  10: { angle: 'wide', prompt: 'wide shot, context visible, full body, background details, deep focus' },
-  11: { angle: 'birds-eye', prompt: 'bird\'s-eye view, looking straight down, unique perspective, high-angle' },
-  12: { angle: 'wide', prompt: 'wide establishing shot, final scene, background visible, deep focus, environment context' }
+  1: { angle: 'close-up', prompt: 'close-up portrait shot, face in focus, shallow depth of field, dramatic lighting, eye contact with camera' },
+  2: { angle: 'wide/full-body', prompt: 'wide full body shot, entire body visible head to toe, background visible, natural environment context, deep focus' },
+  3: { angle: 'over-the-shoulder', prompt: 'over-the-shoulder shot, perspective view, showing interaction between two people, natural conversation angle' },
+  4: { angle: 'wide/full-body', prompt: 'wide landscape shot, full body visible, background emphasis, deep focus, environment storytelling' },
+  5: { angle: 'close-up', prompt: 'close-up emotional shot, dramatic expression, face in focus, shallow depth of field, capturing peak emotion' },
+  6: { angle: 'over-the-shoulder', prompt: 'over-the-shoulder dialogue shot, intimate conversation angle, showing facial reactions' },
+  7: { angle: 'wide/full-body', prompt: 'wide shot, full body visible, action and movement emphasized, natural environment context' },
+  8: { angle: 'medium', prompt: 'medium shot, waist-up framing, natural interaction, balanced composition' },
+  9: { angle: 'low-angle/wide', prompt: 'low-angle wide shot, dynamic perspective, full body visible, powerful composition, environment storytelling' },
+  10: { angle: 'wide/full-body', prompt: 'wide establishing shot, full body, context visible, background details, deep focus' },
+  11: { angle: 'medium', prompt: 'medium shot, upper body focus, natural conversation pose, emotional connection' },
+  12: { angle: 'aerial', prompt: 'aerial drone view, bird\'s-eye perspective, final scene, sweeping wide shot, cinematic ending' }
 };
 
 /**
@@ -1188,32 +1189,68 @@ export const LAB_GENRE_GUIDELINES: Record<string, LabGenreGuideline> = {
 
   'comedy-humor': {
     name: '코미디 / 유머',
-    description: '일상의 사소한 오해나 실수로 망가지는 상황. 화보 같은 느낌보다는 **생생하고 익살스러운 표정(expressive facial expressions)**과 **역동적인 굴욕 포즈(dynamic clumsy poses)**가 핵심.',
+    description: '중년의 일상에서 벌어지는 황당하고 웃긴 상황. 화보 같은 느낌보다는 **생생하고 익살스러운 표정**과 **역동적인 굴욕 포즈**가 핵심.',
     emotionCurve: '😊 평화 → 😳 당황 → 😱 충격 → 🤦 민망 → 😂 자폭 웃음',
     structure: `
-[HOOK] 🎯 시청자를 1초 안에 멈추게 하는 오프닝 (⚠️ 예시 그대로 복사 금지! 주제에 맞게 새롭게 창작할 것)
-→ 패턴1: 상황 중간 시작 - "근데 그 사람이 돌아보는 거야", "손님이 갑자기 나를 보더니..."
-→ 패턴2: 질문형 공감 - "혹시 이런 실수 해본 적 있어요?", "이거 나만 그래?"
-→ 패턴3: 결과 스포일러 - "결국 그날... 가족회의 열렸어", "그래서 지금도 그 카페 못 가"
-→ 패턴4: 미스터리/긴장 - "근데 뒤에 있던 사람이...", "웃으면서 다가오는데 뭔가 이상해"
-→ 핵심: "망가지기 직전" 또는 "반전 1초 전"에서 시작해서 궁금증 유발
+[HOOK] 🎯 황당한 결과를 첫 문장에 즉시 제시 (일상적 시작 금지!)
+✅ 추천 패턴:
+1. 충격적 결과 먼저: "오늘 헬스장에서 딸 레깅스 입고 운동했지 뭐야"
+2. 황당한 상황 즉시: "계단 3층 올라가는데 숨이 턱까지 차더라고"
+3. 민망한 순간 직접: "근데 그 사람이 돌아보는 순간 눈이 마주쳤어"
+4. 결과 스포일러: "결국 그날 헬스장 다시 못 가게 됐어"
+
+❌ 금지 패턴:
+- "오늘 헬스장에 갔어" (일상 브이로그처럼 느껴짐)
+- "최근에 이상한 일이 생겼어" (추상적)
 
 [SETUP] 😊 평화로운 일상 + 복선(Foreshadowing)
-→ 아무것도 모른 채 잘난 척하거나 행복한 모습
+→ 아무것도 모른 채 잘난 척하거나 자신만만한 모습
 → 나중에 반전이 될 힌트를 슬쩍 흘림
+→ 예: "새로 산 옷이 잘 맞는다고 생각했어"
 
 [BUILD-UP] 😳 오해의 심화
-→ 주변의 시선, 착각, 어깨에 힘 들어가는 상황
+→ 주변의 이상한 시선, 수군거림
+→ "뭔가 이상한데..." 느끼지만 계속 진행
+→ 어깨에 힘 들어가는 상황
 
 [CLIMAX] 😱 진실의 목격/폭로
 → 가장 민망한 순간에 정체가 탄로남
-→ 예시 패턴: 알고보니 가족, 직장동료, 완전히 다른 상황 (⚠️ 주제에 맞게 새롭게 창작)
+→ "집에 와 보니...", "거울을 보는 순간..."
+→ 알고보니: 착각, 실수, 잘못된 선택
 
-[TWIST] 🤦 민망함의 극치 + 반전 공개
-→ 알고보니 가족, 친척, 혹은 완전히 다른 상황
+[TWIST] 🤦 민망함의 극치 + 황당한 진실
+→ 원인 공개: 착각했던 이유, 실수한 진짜 원인
+→ 예: "내가 입고 간 건 딸 압박복이었어", "내 바지가 아니라 남편 거였어"
 
 [OUTRO] 😂 자폭하며 마무리
-→ 웃음과 함께 교훈 또는 후일담 (⚠️ 주제에 맞게 새롭게 창작)
+→ "이게 뭐야 진짜", "XX 다시 못 가겠어"
+→ 자학 + 다짐 또는 체념
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 코미디 상황 카테고리 (5가지 - 주제에 맞게 선택)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣ 실수형 - 물건/옷 착각
+   예시 주제: 딸 레깅스 입고 헬스장, 남편 바지 입고 출근
+   패턴: 다른 사람 물건을 내 것으로 착각 → 입고 나감 → 나중에 발각
+
+2️⃣ 착각형 - 상황 오해
+   예시 주제: 손님을 지인으로 착각하고 반말, 잘못된 사람한테 인사
+   패턴: 뒷모습/소리로 착각 → 친근하게 대함 → 다른 사람임을 깨달음
+
+3️⃣ 세대차형 - 디지털/신기술 실패
+   예시 주제: 스마트폰 오작동, AI 스피커와 싸움, 앱 사용 실패
+   패턴: 새 기능 사용 시도 → 잘못 조작 → 황당한 결과
+
+4️⃣ 몸치형 - 운동/춤 실패
+   예시 주제: 요가 자세 실패, 댄스 따라하다 넘어짐
+   패턴: 자신만만하게 시작 → 몸이 안 따라줌 → 민망한 순간
+
+5️⃣ 과시형 - 잘난 척하다 망신
+   예시 주제: 골프 실력 자랑하다 헛스윙, 영어 자랑하다 틀림
+   패턴: 자신 있게 과시 → 주변의 기대 → 실패 → 체면 구겨짐
+
+⚠️ 중요: 위 카테고리 중 하나를 선택하고, 주제에 맞게 창작할 것!
 `,
     killerPhrases: [
       // ⚠️ 아래는 참고용 패턴! 그대로 복사하지 말고 주제에 맞게 새롭게 창작할 것
@@ -1262,29 +1299,47 @@ export const LAB_GENRE_GUIDELINES: Record<string, LabGenreGuideline> = {
 
   'romance-flutter': {
     name: '로맨스/설렘',
-    description: '중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림',
-    emotionCurve: '😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 🤔 "나만 이런가?"',
+    description: '중년의 설렘. 첫사랑 감성, 권태기 부부의 재발견, 예상치 못한 두근거림 + 오해 반전',
+    emotionCurve: '😐 무덤덤 → 👀 의식됨 → 💓 두근 → 😳 당황 → 😅 "아, 착각이었네" 또는 🤔 "나만 이런가?"',
     structure: `
-[HOOK] ⚡ 사건/충격을 첫 문장에 바로 던지기
-→ "캐디가 내 손목을 붙잡는 순간 숨이 멎었어"
-→ "문 열자마자 들린 한마디에 다리가 풀렸어"
+[HOOK] ⚡ 설렘의 결과를 첫 문장에 즉시 제시 (배경 설명 금지!)
+→ "그가 내 손을 잡는 순간, 시간이 멈췄어" (✅ 즉시 상황)
+→ "오늘 그 사람한테서 향수 냄새가 달랐어" (✅ 감각적 디테일)
+→ "그의 눈빛이 내게 머무는 순간 심장이 쿵했어" (✅ 직접적 충격)
+❌ 금지: "오늘 그 사람을 만났는데 심장이 뛰었어" (배경 설명처럼 느껴짐)
+❌ 금지: "최근에 이상한 일이 생겼어" (추상적)
 
 [SETUP] 👀 일상 속 만남 + 복선
 → 늘 보던 사람인데 오늘 뭔가 다름
-→ "평소처럼 (행동)하는데..."
+→ "평소처럼 (행동)하는데... 뭔가 이상해"
+→ 미묘한 변화 포착 (시선, 목소리, 향기, 미소)
 
 [BUILD-UP] 💓 물리적/심리적 거리 좁혀짐
 → 우연한 접촉, 눈 마주침, 목소리 톤 변화
 → 시간이 느려지는 느낌 묘사
-→ 신체반응 필수
+→ 신체반응 필수 (귀 빨개짐, 손 떨림, 숨 참기)
+→ 내적 갈등 ("다가가야 하나 말아야 하나")
 
-[CLIMAX] 😳 결정적 순간
+[CLIMAX] 😳 결정적 순간 (설렘의 정점)
 → 의미심장한 한마디 or 행동
-→ "그때 그 사람이 (말/행동)하더니..."
+→ "그때 그 사람이 내 귀에 속삭였어..."
+→ "손이 스치는 순간 전기가 흐르는 것 같았어"
 
-[TWIST] 🤔 혼란 + 여운
-→ 확신 없는 결말
-→ "나만 이런 건가?", "뭔가 있는 건가?"
+[TWIST] 💡 반전 (3가지 패턴 중 선택)
+1️⃣ 오해 반전 (추천!) - 바이럴력 높음
+   → "설레는 줄 알았는데 알고 보니 다른 의미였다"
+   → 예: "우리 와이프도 그 향수 쓰거든요", "동생 선물 고르는 거였어"
+   → 결말: 😅 "이게 뭐야 진짜, 완전 착각했잖아"
+
+2️⃣ 여운 반전 - 재시청 유도
+   → "나만 이런 건가?", "설마... 아니겠지?"
+   → 확신 없는 결말로 시청자에게 상상 여지
+
+3️⃣ 확신 반전 - 감동
+   → "그 순간 확신했어, 이 사람 나한테 관심 있구나"
+   → 조연의 눈치로 확인 ("두 분 뭔가 있어 보여요")
+
+⚠️ 중요: 오해 반전을 우선적으로 사용하면 댓글/공유 폭발!
 `,
     killerPhrases: [
       '오늘따라 왜 이러지',
@@ -2001,6 +2056,32 @@ ${characterSection}
 8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
 9. **의상 명칭 보존 (중요)**: \`shortPrompt\`와 \`longPrompt\` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.
 10. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
+
+### 🔴 투샷/쓰리샷 필드 복사 절대 규칙 (매우 중요!)
+⚠️ **투샷/쓰리샷에서 각 캐릭터의 모든 필드를 characters 배열에서 100% 그대로 복사해야 합니다!**
+
+**❌ 절대 금지 (자동 실패):**
+- identity 필드 축약 (예: "with a sharp jawline and elegant features" 같은 세부 특징 생략)
+- body 필드 누락 (예: "high-seated chest line, extraordinarily voluminous..." 전체 생략)
+- outfit 필드 축약 (예: 긴 의상 설명의 일부만 사용)
+- 프롬프트 길이를 줄이기 위한 임의 생략
+
+**✅ 올바른 방법:**
+1. characters 배열에서 해당 캐릭터의 identity 전체 문자열 복사 (한 글자도 빼지 말 것)
+2. hair 필드 전체 복사
+3. body 필드 전체 복사 (절대 생략 금지!)
+4. outfit 필드 전체 복사 (긴 설명이어도 전부 포함)
+5. outfitPrefix (보통 "wearing") 추가
+
+**예시 (WomanA의 경우):**
+\`\`\`
+[Person 1: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing ultra-short matte black long-sleeved bodycon micro mini dress, vertical ribbed knit pattern, lightweight stretch ribbed fabric, skin-tight fitted silhouette, classic round crew neckline, snug full-length sleeves extending to wrists, seamless minimalist construction, opaque matte texture, non-reflective finish, micro mini length hemline, high-density knit material, streamlined profile, no closures or hardware, form-fitting architectural seams.]
+\`\`\`
+
+**⚠️ 다중 인물 씬에서도 예외 없음:**
+- 4명이 나오는 씬이어도 각 캐릭터의 모든 필드를 100% 포함할 것
+- "프롬프트가 너무 길어진다"는 이유로 축약 절대 금지
+- 캐릭터 일관성이 최우선 순위
 ${imagePromptRulesExtra ? `\n${imagePromptRulesExtra}\n` : ''}
 
 ## 📸 샷 타입 규칙
@@ -2151,7 +2232,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
       "shortPrompt": "[카메라 앵글], [인물 설명 with outfit color], [행동/표정], [배경]. 투샷/쓰리샷 시: [Person 1: Name in White] [Person 2: Name in Navy] 형식으로 색상 구분 필수",
       "shortPromptKo": "[카메라 앵글], [인물 설명 및 의상 색상], [행동/표정], [배경]. 2명 이상 시 각 인물별 의상 색상 명시 필수",
-      "longPrompt": "${promptConstants.START}, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity], [hair], [body], wearing [outfit], [행동/표정], [배경], ${promptConstants.END}",
+      "longPrompt": "${promptConstants.START}, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity - 전체 문자열 100% 복사], [characters[해당캐릭터].hair - 전체 복사], [characters[해당캐릭터].body - 전체 복사, 절대 생략 금지!], wearing [characters[해당캐릭터].outfit - 전체 복사, 축약 금지], [행동/표정], [배경], ${promptConstants.END}. ⚠️ 투샷/쓰리샷: 각 Person마다 [Person X: identity, hair, body, wearing outfit] 형식으로 모든 필드 100% 포함. body 필드 누락 절대 금지!",
       "negativePrompt": "${promptConstants.NEGATIVE}",
       "longPromptKo": "상세 한글 프롬프트",
       "videoPrompt": "[한국어] 40대 한국인 여성이 [동작], [카메라 무빙], [조명/분위기]"
@@ -2177,18 +2258,22 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 10. ✅ 신체 반응 최소 2개?
 
 **이미지 프롬프트 (필수!):**
-11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/medium/over-shoulder/POV)
+11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/full-body/aerial/drone/POV)
 12. ✅ 모든 씬에서 같은 앵글 2연속 없음? (미디움샷만 계속 ❌)
-13. ✅ 클로즈업, 와이드샷, 오버숄더/POV 각각 최소 1개 이상?
+13. ✅ close-up은 최소화, wide/full-body/aerial/drone 샷이 대부분?
 14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
 15. ✅ 배경 문구가 장면 전환 없을 때 동일?
 16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
-17. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
-18. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
+17. ✅ **투샷/쓰리샷 body 필드 검증**: 모든 캐릭터의 body 필드가 누락 없이 100% 포함?
+18. ✅ **투샷/쓰리샷 identity 검증**: 세부 특징(얼굴 설명, 성격 등) 축약 없이 전체 포함?
+19. ✅ **투샷/쓰리샷 outfit 검증**: 긴 의상 설명도 전체 포함? (일부 축약 금지)
+20. ✅ **다중 인물 씬 일관성**: 4명 등장 씬에서도 각 캐릭터의 모든 필드 100% 포함?
+21. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
+22. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
 
 **음성:**
-19. ✅ 모든 씬에 voiceType 지정?
-20. ✅ 작은따옴표 대사 있으면 lipSync 생성?
+23. ✅ 모든 씬에 voiceType 지정?
+24. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 `;
 };
 

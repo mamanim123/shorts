@@ -23,8 +23,8 @@ export const convertCharacterToSlotRule = (
 ): CharacterSlotRule => ({
   id: targetSlotId,
   identity: char.gender === 'female'
-    ? 'A stunning Korean woman'
-    : 'A handsome Korean man',
+    ? `A stunning Korean woman${char.age ? ` in her ${char.age}` : ''}`
+    : `A handsome Korean man${char.age ? ` in his ${char.age}` : ''}`,
   hair: char.hair || 'elegant hairstyle',
   body: char.body || 'graceful figure',
   style: char.style || (char.gender === 'female'

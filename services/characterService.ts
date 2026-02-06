@@ -9,7 +9,6 @@ export interface CharacterItem {
   hair: string;
   body: string;
   style: string;
-  thumbnailUrl?: string;
   createdAt: string;
 }
 
@@ -23,7 +22,6 @@ const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }):
   hair: character.hair || '',
   body: character.body || '',
   style: character.style || '',
-  thumbnailUrl: character.thumbnailUrl || '',
   createdAt: character.createdAt || new Date().toISOString(),
 });
 

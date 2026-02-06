@@ -1,48 +1,48 @@
 {
   "characters": [
     {
-      "id": "char-1770273611376",
-      "name": "제시",
+      "id": "char-1769573224153",
+      "name": "수아",
       "age": "40대",
       "gender": "female",
       "face": "",
       "hair": "",
-      "body": "A full body shot of a slender Korean woman with an hourglass silhouette and soft muscular tone. She has delicate shoulders, narrow collarbones, and elegant proportions. She is leaning forward slightly with her upper body inclined, creating a dynamic yet graceful posture. Her arms are positioned downward, supporting her weight against a surface, which highlights the curve of her back and the natural drape of her floral sundress. The pose captures a candid, leaning-over motion with a balanced distribution of body weight.",
-      "style": "perfectly managed sophisticated look",
-      "createdAt": "2026-02-05T06:40:11.376Z"
+      "body": "A full-body silhouette of a Korean woman with an hourglass figure and a slim waist. She is captured from a side profile, wearing a tight-fitting long-sleeved top and a high-waisted mini skirt that emphasizes her body curves. Her posture is upright and confident as she walks, with one arm slightly back and the other forward. She has a glamorous body proportion with a voluminous chest and balanced hips, creating a soft yet structured silhouette against a neutral urban background.",
+      "style": "",
+      "createdAt": "2026-01-28T04:07:04.153Z"
     },
     {
-      "id": "char-1770348591943",
-      "name": "선화",
-      "age": "",
+      "id": "char-1769578452591",
+      "name": "지아",
+      "age": "40대",
+      "gender": "female",
+      "face": "",
+      "hair": "sophisticated updo hairstyle",
+      "body": "",
+      "style": "perfectly managed sophisticated look",
+      "createdAt": "2026-01-28T05:34:12.591Z"
+    },
+    {
+      "id": "char-1769580400461",
+      "name": "지영",
+      "age": "40대",
       "gender": "female",
       "face": "",
       "hair": "",
-      "body": "A full-body side profile of a Korean woman with a refined hourglass silhouette. She has a slim waist, high-set hips, and toned glutes accentuated by tight-fitting grey skinny jeans. Her posture is elegant and upright as she stands by a chalkboard, one arm extended as if writing. The silhouette emphasizes a graceful S-curve from her back to her lower body, conveying a professional yet athletic and well-proportioned physique.",
-      "style": "confident athletic presence, energetic and vibrant aura",
-      "createdAt": "2026-02-06T03:29:51.943Z"
+      "body": "A side-profile silhouette of a slim Korean woman with an exaggerated hourglass figure and a voluminous chest. She is walking forward with a confident posture, straight back, and elegant arm swing. She is wearing a tight-fitting black long-sleeved ribbed top and a short mini skirt that emphasizes her narrow waist and curved hips. The lighting is backlit, creating a high-contrast silhouette against a blurred urban architectural background.",
+      "style": "glamorous and alluring presence, captivating charm",
+      "createdAt": "2026-01-28T06:06:40.461Z"
     },
     {
-      "id": "char-1770349353073",
-      "name": "지영",
+      "id": "char-1770273611376",
+      "name": "선희",
       "age": "40대",
       "gender": "female",
       "face": "",
       "hair": "",
       "body": "",
       "style": "perfectly managed sophisticated look",
-      "createdAt": "2026-02-06T03:42:33.073Z"
-    },
-    {
-      "id": "char-1770350353762",
-      "name": "지수1",
-      "age": "",
-      "gender": "female",
-      "face": "",
-      "hair": "",
-      "body": "A slim yet curvaceous Korean woman with a pronounced hourglass figure, featuring a narrow waist and full hips. She is wearing a tight-fitting, long-sleeved brown mini dress that accentuates her body contours with horizontal shirring and ruched details. She stands in a frontal pose, slightly tilting her hips to the side to emphasize the silhouette, with one hand resting naturally on her thigh. The posture is elegant and confident, highlighting a balanced body proportion.",
-      "style": "perfectly managed sophisticated look, confident presence",
-      "createdAt": "2026-02-06T03:59:13.762Z"
+      "createdAt": "2026-02-05T06:40:11.376Z"
     }
   ]
 }

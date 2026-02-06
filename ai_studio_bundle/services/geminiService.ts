@@ -132,6 +132,7 @@ export async function generateImageFromImagesAndText(
 export async function editImage(
     imageFile: File,
     prompt: string,
+    mask?: { data: string; mimeType: string }
   ): Promise<string> {
     const ai = getClient();
     const base64ImageData = await fileToBase64(imageFile);
@@ -149,6 +150,7 @@ export async function editImage(
             {
               text: prompt,
             },
+            ...(mask ? [{ inlineData: { data: mask.data, mimeType: mask.mimeType } }] : []),
           ],
         },
         config: {

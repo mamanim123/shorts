@@ -1058,13 +1058,16 @@ export const enhanceScenePrompt = (
   }
 
   const llmProvidedOutfit = updated.includes("Outfit:");
+  
+  // 멀티 캐릭터 장면 체크: [Person 1] 등의 구분자가 있으면 단일 의상 태그 추가하지 않음
+  const isMultiCharacterScene = /\[Person\s+\d+\]|\[\s*Person/i.test(updated);
 
-  if (!llmProvidedOutfit && options.gender === 'male' && options.maleOutfit) {
+  if (!isMultiCharacterScene && !llmProvidedOutfit && options.gender === 'male' && options.maleOutfit) {
     const maleTag = `Outfit: ${options.maleOutfit}`;
     if (!updated.includes(maleTag) && !updated.includes(options.maleOutfit)) {
       updated += `, ${maleTag}`;
     }
-  } else if (!llmProvidedOutfit && options.femaleOutfit) {
+  } else if (!isMultiCharacterScene && !llmProvidedOutfit && options.femaleOutfit) {
     const femaleTag = `Outfit: ${options.femaleOutfit}`;
     if (!updated.includes(femaleTag) && !updated.includes(options.femaleOutfit)) {
       updated += `, ${femaleTag}`;
@@ -1138,13 +1141,13 @@ export const SHOT_TEMPLATES = {
   // 투샷: 2명 캐릭터 등장 - 반드시 [Person 1], [Person 2]로 구분
   TWO_SHOT: {
     description: '2명 캐릭터 상호작용',
-    format: '[Person 1: identity, hair, body, wearing outfit] [Person 2: identity, hair, body, wearing outfit] [Interaction], [Background]',
+    format: '[Person 1: identity, hair, body, wearing outfit] [Person 2: identity, hair, body, wearing outfit] [Interaction], [Background], two distinct individuals, not twins, different faces',
   },
 
   // 쓰리샷: 3명 캐릭터 등장 - 반드시 [Person 1], [Person 2], [Person 3]로 구분
   THREE_SHOT: {
     description: '3명 캐릭터 함께 등장',
-    format: '[Person 1: identity, hair, body, wearing outfit] [Person 2: identity, hair, body, wearing outfit] [Person 3: identity, hair, body, wearing outfit] [Group Action], [Background]',
+    format: '[Person 1: identity, hair, body, wearing outfit] [Person 2: identity, hair, body, wearing outfit] [Person 3: identity, hair, body, wearing outfit] [Group Action], [Background], three distinct individuals, not twins, different faces',
   },
 
   // v3.3 - 카메라 앵글 (영상 다양성을 위한 샷 타입)
@@ -1829,13 +1832,14 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 - **Man A (준호)**: short neat hairstyle
 - **Man B (민수)**: clean short cut`;
 
-  const defaultCharacterSection = `## 👥 캐릭터 설정
-- **Woman A (지영)**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성
-- **Woman B (혜경)**: ${ageLabel} 친구, 활발하고 장난기 있는 성격
-- **Woman D (캐디)**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional 20-something golf caddy)
+  const defaultCharacterSection = `## 👥 캐릭터 설정 (각 인물별 고유 외모 특징 필수)
+- **Woman A (지영)**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성, **세련된 지적인 인상의 얼굴, 날렵한 턱선, 우아한 이목구비**
+- **Woman B (혜경)**: ${ageLabel} 친구, 활발하고 장난기 있는 성격, **밝고 생기있는 인상의 얼굴, 귀여운 미소, 에너지 넘치는 표정**
+- **Woman D (캐디)**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional 20-something golf caddy), **청순하고 프로페셔널한 인상**
   - **말투 규칙**: 캐디는 항상 정중하고 상냥한 **존댓말**(~해요, ~하세요)을 사용하며, 사회초년생의 밝은 에너지가 느껴져야 함.
-- **Man A (준호)**: ${ageLabel} 남성, 댄디하고 세련된 신사
-- **Man B (민수)**: ${ageLabel} 남성 친구, 솔직하고 유머러스함`;
+- **Man A (준호)**: ${ageLabel} 남성, 댄디하고 세련된 신사, **지적인 인상의 얼굴, 부드러운 이목구비, 세련된 분위기의 외모**
+- **Man B (민수)**: ${ageLabel} 남성 친구, 솔직하고 유머러스함, **남성적인 인상의 얼굴, 강인한 턱선, 활기찬 표정의 외모**
+- **쌍둥이 방지 규칙**: 두 인물이 함께 등장할 때는 반드시 **서로 다른 얼굴 특징(not twins, distinct faces, different individuals)**을 명시할 것`;
 
   const maleNarratorInstruction = gender === 'male' ? `
 13. **남성 주인공(준호) 시점 최적화**: 당신은 매너 있는 ${ageLabel} 남성 '준호'입니다. 
@@ -2145,8 +2149,8 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
         "timing": "start | mid | end"
       },
 
-      "shortPrompt": "간단한 영문 프롬프트",
-      "shortPromptKo": "간단한 한글 프롬프트",
+      "shortPrompt": "[카메라 앵글], [인물 설명 with outfit color], [행동/표정], [배경]. 투샷/쓰리샷 시: [Person 1: Name in White] [Person 2: Name in Navy] 형식으로 색상 구분 필수",
+      "shortPromptKo": "[카메라 앵글], [인물 설명 및 의상 색상], [행동/표정], [배경]. 2명 이상 시 각 인물별 의상 색상 명시 필수",
       "longPrompt": "${promptConstants.START}, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity], [hair], [body], wearing [outfit], [행동/표정], [배경], ${promptConstants.END}",
       "negativePrompt": "${promptConstants.NEGATIVE}",
       "longPromptKo": "상세 한글 프롬프트",

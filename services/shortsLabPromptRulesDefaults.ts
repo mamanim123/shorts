@@ -7,6 +7,8 @@ export interface ShortsLabPromptRules {
     FEMALE_BODY_C: string;
     FEMALE_BODY_D: string;
     MALE_BODY: string;
+    MALE_BODY_A: string;
+    MALE_BODY_B: string;
     END: string;
     NEGATIVE: string;
   };
@@ -45,6 +47,9 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
     FEMALE_BODY_D:
       'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
     MALE_BODY: 'fit athletic build with broad shoulders, dandy and refined presence, well-groomed appearance, tailored slim-fit clothes',
+    // 캐릭터별 남성 체형 (ManA vs ManB 차별화)
+    MALE_BODY_A: 'fit athletic build with broad shoulders, refined intellectual appearance, scholarly gentleman presence, elegant facial features, well-groomed sophisticated look',
+    MALE_BODY_B: 'fit athletic build with broad shoulders, strong masculine presence, rugged charm, defined jawline, dynamic energetic appearance',
     END:
       'high-fashion editorial refined, depth of field, shot on 85mm lens, f/1.8, realistic soft skin, 8k ultra-hd, no text, no captions, no typography, --ar 9:16',
     NEGATIVE:
@@ -54,6 +59,14 @@ export const DEFAULT_PROMPT_RULES: ShortsLabPromptRules = {
   enforceKoreanIdentity: true,
   expressionKeywords: {
     'romance-thrill': {
+      hook: 'shy blushing smile, nervous fluttering eyes, heart-fluttering gaze',
+      setup: 'curious gentle smile, soft anticipating eyes, subtle excitement',
+      buildup: 'longing gaze, blushing cheeks, nervous lip bite, trembling anticipation',
+      climax: 'intense eye contact, passionate expression, breathless surprise',
+      twist: 'tearful happy smile, overwhelming emotion, touched expression',
+      outro: 'warm loving smile, soft tender eyes, peaceful contentment'
+    },
+    'romance-flutter': {
       hook: 'shy blushing smile, nervous fluttering eyes, heart-fluttering gaze',
       setup: 'curious gentle smile, soft anticipating eyes, subtle excitement',
       buildup: 'longing gaze, blushing cheeks, nervous lip bite, trembling anticipation',

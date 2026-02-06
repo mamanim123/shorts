@@ -112,7 +112,7 @@ Scenario: 의상 색상 덮어쓰기 방지 확인
   - **Category**: `quick`
   - **Skills**: `[]`
 
-- [ ] 4. shortPrompt 정보량 강화
+- [ ] 4. shortPrompt 정볼량 강화
 
   **What to do**:
   - `shortPrompt` 생성 로직에서 단순히 이름만 넣는 것이 아니라, `[Person 1: Name in White] [Person 2: Name in Navy]` 식으로 핵심 색상을 주입하도록 수정합니다.

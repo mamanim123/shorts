@@ -1,6 +1,8 @@
 {
-  "active_plan": "F:\\test\\쇼츠대본생성기-v3.5.3\\.sisyphus\\plans\\ai-studio-thumbnail-fix.md",
-  "started_at": "2026-02-05T04:10:45.841Z",
-  "session_ids": ["ses_3d4074c7cffehhJvOXKOG5sETH"],
-  "plan_name": "ai-studio-thumbnail-fix"
+  "active_plan": "F:\\test\\쇼츠대본생성기-v3.5.3\\.sisyphus\\plans\\fix-shorts-lab-image-prompts.md",
+  "started_at": "2026-02-06T01:25:00.000Z",
+  "session_ids": [
+    "ses_3cfb512b2fferUlz8px3VV4UnU"
+  ],
+  "plan_name": "fix-shorts-lab-image-prompts"
 }

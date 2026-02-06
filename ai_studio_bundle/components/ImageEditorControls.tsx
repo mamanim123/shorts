@@ -1,17 +1,18 @@
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Spinner from './Spinner';
 
-type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details';
+type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details' | 'object-remove' | 'aspect' | 'image-clean';
 
 interface ImageEditorControlsProps {
     sourceImages: { id: string; file: File | null; name: string }[];
     activeEditingImageId: string | null;
     setActiveEditingImageId: (id: string) => void;
+    activeImageUrl?: string | null;
     editPrompt: string;
     setEditPrompt: (val: string) => void;
     editingState: EditingState;
-    onEditImage: () => void;
+    onEditImage: (mask?: { data: string; mimeType: string }) => void;
     onSpecialEdit: (action: 'text' | 'background' | 'restoration' | 'painting') => void;
     onUpscale: (scale: 2 | 4) => void;
     onGeneratePrompt: () => void;
@@ -24,6 +25,7 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
     sourceImages,
     activeEditingImageId,
     setActiveEditingImageId,
+    activeImageUrl,
     editPrompt,
     setEditPrompt,
     editingState,
@@ -36,6 +38,119 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
     onMultiAgeGeneration
 }) => {
     if (!sourceImages.some(img => img.file)) return null;
+
+    const [isMaskMode, setIsMaskMode] = useState(false);
+    const [brushSize, setBrushSize] = useState(24);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const imageRef = useRef<HTMLImageElement | null>(null);
+
+    const resetMaskCanvas = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    const syncCanvasSize = () => {
+        const canvas = canvasRef.current;
+        const img = imageRef.current;
+        if (!canvas || !img) return;
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        resetMaskCanvas();
+    };
+
+    useEffect(() => {
+        syncCanvasSize();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeEditingImageId, activeImageUrl]);
+
+    const getCanvasPoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: (event.clientX - rect.left) * scaleX,
+            y: (event.clientY - rect.top) * scaleY,
+        };
+    };
+
+    const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+        if (!isMaskMode || editingState !== 'idle') return;
+        const ctx = canvasRef.current?.getContext('2d');
+        const point = getCanvasPoint(event);
+        if (!ctx || !point) return;
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y);
+        setIsDrawing(true);
+    };
+
+    const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+        if (!isDrawing) return;
+        const ctx = canvasRef.current?.getContext('2d');
+        const point = getCanvasPoint(event);
+        if (!ctx || !point) return;
+        ctx.lineTo(point.x, point.y);
+        ctx.stroke();
+    };
+
+    const handlePointerUp = () => {
+        if (!isDrawing) return;
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) {
+            ctx.closePath();
+        }
+        setIsDrawing(false);
+    };
+
+    const buildMaskBase64 = (): { data: string; mimeType: string } | null => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        const processed = document.createElement('canvas');
+        processed.width = canvas.width;
+        processed.height = canvas.height;
+        const pctx = processed.getContext('2d');
+        if (!pctx) return null;
+        pctx.drawImage(canvas, 0, 0);
+
+        const imgData = pctx.getImageData(0, 0, processed.width, processed.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] > 0) {
+                data[i] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
+                data[i + 3] = 255;
+            }
+        }
+        pctx.putImageData(imgData, 0, 0);
+        const dataUrl = processed.toDataURL('image/png');
+        return { data: dataUrl.split(',')[1], mimeType: 'image/png' };
+    };
+
+    const handleApplyEdit = () => {
+        if (!isMaskMode) {
+            onEditImage();
+            return;
+        }
+        const mask = buildMaskBase64();
+        if (!mask) {
+            onEditImage();
+            return;
+        }
+        onEditImage(mask);
+    };
 
     return (
         <div>
@@ -54,6 +169,66 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
                 ))}
             </div>
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <input
+                            id="mask-mode-toggle"
+                            type="checkbox"
+                            checked={isMaskMode}
+                            onChange={(e) => setIsMaskMode(e.target.checked)}
+                            disabled={editingState !== 'idle'}
+                            className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="mask-mode-toggle" className="text-sm text-gray-200">
+                            마스크 편집 사용
+                        </label>
+                    </div>
+                    {isMaskMode && (
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-400" htmlFor="mask-brush">브러시</label>
+                            <input
+                                id="mask-brush"
+                                type="range"
+                                min={8}
+                                max={64}
+                                value={brushSize}
+                                onChange={(e) => setBrushSize(Number(e.target.value))}
+                                className="accent-indigo-500"
+                            />
+                            <button
+                                type="button"
+                                onClick={resetMaskCanvas}
+                                disabled={editingState !== 'idle'}
+                                className="px-2 py-1 text-xs rounded-md bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600"
+                            >
+                                마스크 지우기
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {isMaskMode && activeImageUrl && (
+                    <div className="relative w-full overflow-hidden rounded-md border border-gray-700 bg-gray-900">
+                        <img
+                            ref={imageRef}
+                            src={activeImageUrl}
+                            alt="mask-preview"
+                            className="w-full h-auto block"
+                            onLoad={syncCanvasSize}
+                        />
+                        <canvas
+                            ref={canvasRef}
+                            className="absolute inset-0 w-full h-full cursor-crosshair"
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerLeave={handlePointerUp}
+                        />
+                        <div className="absolute left-2 bottom-2 rounded bg-black/60 px-2 py-1 text-xs text-gray-200">
+                            수정할 영역을 칠하세요 (흰색 마스크로 전송)
+                        </div>
+                    </div>
+                )}
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
@@ -63,7 +238,7 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
                         className="flex-grow bg-gray-700 border border-gray-600 rounded-md p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
                         disabled={editingState !== 'idle'}
                     />
-                    <button onClick={onEditImage} disabled={editingState !== 'idle' || !editPrompt.trim()} className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-md transition disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-sm min-w-[90px]">
+                    <button onClick={handleApplyEdit} disabled={editingState !== 'idle' || !editPrompt.trim()} className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-md transition disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-sm min-w-[90px]">
                         {editingState === 'prompt' ? <Spinner size="sm" /> : '수정 적용'}
                     </button>
                 </div>

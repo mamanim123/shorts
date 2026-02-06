@@ -352,7 +352,7 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
     addToast('success', '이미지가 성공적으로 수정되었습니다.');
   }
 
-  const handleEditImage = async () => {
+  const handleEditImage = async (mask?: { data: string; mimeType: string }) => {
     const activeImage = sourceImages.find(img => img.id === activeEditingImageId);
     const currentFile = activeImage?.file;
 
@@ -363,7 +363,10 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
     setEditingState('prompt');
     try {
       // 사용자 입력 프롬프트는 그대로 사용 (사용자가 영어를 입력할 수도 있으므로)
-      const editedImageUrl = await editImage(currentFile, editPrompt.trim());
+      const prompt = mask
+        ? `Only paint inside the masked area. Do not change anything else. Prompt: "${editPrompt.trim()}"`
+        : editPrompt.trim();
+      const editedImageUrl = await editImage(currentFile, prompt, mask);
       await updateSourceImage(editedImageUrl, currentFile.name, activeEditingImageId!, editPrompt.trim());
       setEditPrompt('');
     } catch (error) {
@@ -1320,6 +1323,7 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
                 sourceImages={sourceImages}
                 activeEditingImageId={activeEditingImageId}
                 setActiveEditingImageId={setActiveEditingImageId}
+                activeImageUrl={sourceImages.find(img => img.id === activeEditingImageId)?.url || null}
                 editPrompt={editPrompt}
                 setEditPrompt={setEditPrompt}
                 editingState={editingState}

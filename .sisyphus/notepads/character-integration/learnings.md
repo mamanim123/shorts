@@ -1,0 +1,1 @@
+- Added `isNarrator` flag for character rules; prompt builder now selects the narrator via this flag with a gender-based fallback.

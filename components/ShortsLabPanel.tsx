@@ -1077,6 +1077,23 @@ const postProcessAiScenes = (
         }
 
         // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
+        // 남성 2명 이상 등장 시 의상 중복 방지 (후처리 단계에서 강제 분리)
+        const maleIds = characterIds.filter((id) => getCharacterGender(id) === 'male');
+        if (maleIds.length >= 2) {
+            const used = new Set<string>();
+            maleIds.forEach((id) => {
+                const info = characterInfoMap.get(id);
+                if (!info) return;
+                const outfit = (info.outfit || '').trim();
+                if (!outfit || used.has(outfit)) {
+                    const newOutfit = pickMaleOutfit('', Array.from(used));
+                    info.outfit = newOutfit;
+                    characterInfoMap.set(id, info);
+                }
+                if (info.outfit) used.add(info.outfit);
+            });
+        }
+
         const sceneGender = characterIds.length === 1
             ? getCharacterGender(characterIds[0])
             : options.gender;
@@ -1109,7 +1126,7 @@ const postProcessAiScenes = (
             const fallbackCharacters = characterInfos.length > 0
                 ? characterInfos
                 : Array.from(characterInfoMap.values()).slice(0, 3);
-            const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: options.useGenderGuard });
+            const validation = validateAndFixPrompt(processedPrompt, shotType, fallbackCharacters, { useGenderGuard: options.useGenderGuard, forceCharacterOrder: true });
 
             processedPrompt = applyAccessoriesToPrompt(validation.fixedPrompt, characterIds, accessoryMap);
         }

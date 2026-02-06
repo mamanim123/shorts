@@ -105,6 +105,7 @@ export interface Scene {
   shortPromptKo: string;
   longPrompt: string;
   longPromptKo: string;
+  negativePrompt?: string;
   soraPrompt?: string;     // Sora Video Prompt
   soraPromptKo?: string;   // Sora Video Prompt Korean
   narration?: string;

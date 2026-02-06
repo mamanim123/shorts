@@ -2227,13 +2227,14 @@ const MULTI_PERSON_COLORS = ['pastel purple', 'beige', 'navy'];
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const enhanceMultiPersonBlocks = (
-  prompt: string, 
+  prompt: string,
   characters: CharacterInfo[],
-  options?: { useGenderGuard?: boolean }
+  options?: { useGenderGuard?: boolean; forceCharacterOrder?: boolean }
 ) => {
   const hasPersonBlocks = /\[Person\s+\d+:/i.test(prompt);
   if (!hasPersonBlocks) return prompt;
   const useGenderGuard = options?.useGenderGuard !== false;
+  const forceCharacterOrder = options?.forceCharacterOrder === true;
 
   // 성별별 캐릭터 분리 및 사용 카운터
   const maleCharacters = characters.filter(c => /\bman\b/i.test(String(c.identity || '')));
@@ -2245,31 +2246,35 @@ const enhanceMultiPersonBlocks = (
     const index = Math.max(0, Number(indexRaw) - 1);
     let content = contentRaw.trim();
     
-    // 블록 내용에서 성별 감지하여 올바른 캐릭터 매칭
-    const isMale = /\bman\b/i.test(content);
-    const isFemale = /\bwoman\b/i.test(content);
-    
     let character: CharacterInfo | undefined;
-    if (isMale && maleCharacters.length > 0) {
-      character = maleCharacters[maleIndex % maleCharacters.length];
-      maleIndex++;
-    } else if (isFemale && femaleCharacters.length > 0) {
-      character = femaleCharacters[femaleIndex % femaleCharacters.length];
-      femaleIndex++;
+    if (forceCharacterOrder) {
+      character = characters[index] || characters[characters.length - 1];
     } else {
-      // 성별 불명확시 인덱스 기반 폴백
-      character = characters[index];
-    }
+      // 블록 내용에서 성별 감지하여 올바른 캐릭터 매칭
+      const isMale = /\bman\b/i.test(content);
+      const isFemale = /\bwoman\b/i.test(content);
 
-    // [V3.5.3] Smart Matching: Handle AI swapping person indices
-    for (const ch of characters) {
-      if (!ch) continue;
-      const idPattern = new RegExp(`\\b${ch.id}\\b`, 'i');
-      const namePattern = ch.name ? new RegExp(`\\b${ch.name}\\b`, 'i') : null;
+      if (isMale && maleCharacters.length > 0) {
+        character = maleCharacters[maleIndex % maleCharacters.length];
+        maleIndex++;
+      } else if (isFemale && femaleCharacters.length > 0) {
+        character = femaleCharacters[femaleIndex % femaleCharacters.length];
+        femaleIndex++;
+      } else {
+        // 성별 불명확시 인덱스 기반 폴백
+        character = characters[index];
+      }
 
-      if (idPattern.test(content) || (namePattern && namePattern.test(content))) {
-        character = ch;
-        break;
+      // [V3.5.3] Smart Matching: Handle AI swapping person indices
+      for (const ch of characters) {
+        if (!ch) continue;
+        const idPattern = new RegExp(`\\b${ch.id}\\b`, 'i');
+        const namePattern = ch.name ? new RegExp(`\\b${ch.name}\\b`, 'i') : null;
+
+        if (idPattern.test(content) || (namePattern && namePattern.test(content))) {
+          character = ch;
+          break;
+        }
       }
     }
 
@@ -2292,11 +2297,13 @@ const enhanceMultiPersonBlocks = (
         'stunning', 'handsome', 'korean', 'woman', 'man', 'hairstyle', 'figure', 'build', 'frame', 'physique'
       ].map(t => t.toLowerCase());
 
+      const cameraKeywords = /\b(scene\s*\d+|shot|framing|view|pov|camera|angle|portrait|wide|medium|close-?up|aerial|over-the-shoulder|drone|full body|waist-up|bird's-eye|low-angle|high-angle)\b/i;
       const actionParts = parts.filter(p => {
         const lp = p.toLowerCase();
         if (lp.includes('wearing')) return false;
         if (positionKeywords.test(lp)) return false;
         if (colorKeywords.test(lp)) return false;
+        if (cameraKeywords.test(lp)) return false;
         // If it's too similar to known master traits or generic descriptors, skip it
         if (traitKeywords.some(t => lp.includes(t) || t.includes(lp))) return false;
         return p.length > 0;
@@ -2338,13 +2345,14 @@ export const validateAndFixPrompt = (
   longPrompt: string, 
   shotType: '원샷' | '투샷' | '쓰리샷', 
   characters: CharacterInfo[],
-  options?: { useGenderGuard?: boolean }
+  options?: { useGenderGuard?: boolean; forceCharacterOrder?: boolean }
 ): PromptValidationResult => {
   const issues: string[] = [];
   let fixedPrompt = longPrompt;
   const promptConstants = getPromptConstants();
   const hasPersonMarkers = /\[Person\s+\d+:/i.test(longPrompt);
   const useGenderGuard = options?.useGenderGuard !== false; // Default to true
+  const forceCharacterOrder = options?.forceCharacterOrder === true;
 
   // 1. 필수 시작 문구 확인
   if (!longPrompt.includes('unfiltered raw photograph')) {
@@ -2389,7 +2397,7 @@ export const validateAndFixPrompt = (
   }
 
   if (hasPersonMarkers) {
-    fixedPrompt = enhanceMultiPersonBlocks(fixedPrompt, characters, { useGenderGuard });
+    fixedPrompt = enhanceMultiPersonBlocks(fixedPrompt, characters, { useGenderGuard, forceCharacterOrder });
   }
 
   // Final cleanup

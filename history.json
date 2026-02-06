@@ -1,5 +1,179 @@
 [
   {
+    "title": "눈 오는 날 골프장 카트의 배신",
+    "titleOptions": [
+      "얼어붙은 골프장의 비명",
+      "카트가 안 멈춰!",
+      "눈길 라운딩의 최후"
+    ],
+    "scriptBody": "아니 골프장에서 우아하게 사진 좀 찍으려다 지옥을 맛봤어.\n그날 함박눈이 예쁘게 내려서 김여사가 카트를 세우고 내렸거든.\n경치가 너무 좋으니까 이여사랑 둘이 포즈 잡고 난리가 난 거야.\n근데 갑자기 뒤에서 박사장이 비명을 지르더라고.\n보니까 세워둔 카트가 눈길에 스르르 미끄러지기 시작했어.\n김여사가 소리 지르며 뛰어갔는데 발이 푹푹 빠져서 마음만 급한 거지.\n이여사는 뒤에서 어머 어머 소리만 지르고 손이 벌벌 떨렸대.\n박사장이 카트 뒤를 잡고 버티는데 힘에 부쳐서 질질 끌려가는 거야.\n결국 카트가 벙커 턱에 툭 걸려서 멈췄는데 다들 넋이 나갔지.\n김여사가 숨을 헐떡이며 박사장한테 괜찮냐고 물어봤거든?\n박사장이 바닥에 주저앉아서 한마디 하더라고.\n내 골프채보다 내 도가니가 먼저 나갈 뻔했네!",
+    "punchline": "내 골프채보다 내 도가니가 먼저 나갈 뻔했네!",
+    "genre": "중년의 일상 코미디",
+    "age": "40대",
+    "outfitPool": "Style 5, 8",
+    "characters": [
+      {
+        "id": "WomanA",
+        "name": "김여사",
+        "slot": "Slot Woman A",
+        "hair": "Long soft-wave hairstyle",
+        "body": "Voluptuous hourglass figure",
+        "outfit": "Pink Satin Bustier Top + White Hot Pants",
+        "outfitSource": "Style 8-9",
+        "accessories": "delicate gold hoop earrings, luxury watch"
+      },
+      {
+        "id": "WomanB",
+        "name": "이여사",
+        "slot": "Slot Woman B",
+        "hair": "Short chic bob cut",
+        "body": "Petite frame with elegant curves",
+        "outfit": "Grey Halter-neck Tight Mini Dress (Sleek)",
+        "outfitSource": "Style 5-21",
+        "accessories": "pearl drop earrings, gold bangle bracelet"
+      },
+      {
+        "id": "ManB",
+        "name": "박사장",
+        "slot": "Slot Man B",
+        "hair": "Clean short cut",
+        "body": "Well-built dandy physique",
+        "outfit": "Burgundy Half-zip Pullover + Cream Pants",
+        "outfitSource": "Custom",
+        "accessories": "smart watch"
+      }
+    ],
+    "scenes": [
+      {
+        "sceneNumber": 1,
+        "shortPrompt": "[Scene 1] Stunning Korean woman 40s, shocked expression, snowing golf course, Pink Satin Bustier Top, White Hot Pants, Close-up, 8k --ar 9:16",
+        "shortPromptKo": "[장면 1] 놀란 표정의 40대 아름다운 한국 여성, 눈 내리는 골프장, 핑크 사틴 뷔스티에 탑, 화이트 핫팬츠, 클로즈업, 8k",
+        "longPrompt": "[Scene 1] A stunning Korean woman in her 40s, Slot Woman A, Voluptuous hourglass figure, Long soft-wave hairstyle, looking at the camera with a shocked and breathless expression, wearing Pink Satin Bustier Top + White Hot Pants, delicate gold hoop earrings, luxury watch, snowing luxury golf course background, Close-up, photorealistic, 8k resolution, cinematic lighting, masterpiece, shallow depth of field --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "WomanA"
+        ]
+      },
+      {
+        "sceneNumber": 2,
+        "shortPrompt": "[Scene 2] Korean woman 40s walking away from a golf cart, heavy snow, Pink Satin Bustier, White Hot Pants, Medium shot, 8k --ar 9:16",
+        "shortPromptKo": "[장면 2] 골프 카트에서 내리는 40대 한국 여성, 함박눈, 핑크 사틴 뷔스티에, 화이트 핫팬츠, 미디엄 샷, 8k",
+        "longPrompt": "[Scene 2] A stunning Korean woman in her 40s, Slot Woman A, Voluptuous hourglass figure, Long soft-wave hairstyle, stepping out of a premium golf cart onto the snowy grass, wearing Pink Satin Bustier Top + White Hot Pants, luxury watch, heavy snowfall, Medium shot, photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "WomanA"
+        ]
+      },
+      {
+        "sceneNumber": 3,
+        "shortPrompt": "[Scene 3] Two stunning Korean women posing in snow, WomanA in Pink Bustier, WomanB in Grey Mini Dress, Two-shot, 8k --ar 9:16",
+        "shortPromptKo": "[장면 3] 눈 속에서 포즈를 취하는 두 명의 한국 여성, 김여사는 핑크 뷔스티에, 이여사는 그레이 미니 드레스, 투샷, 8k",
+        "longPrompt": "[Scene 3] Two stunning Korean women, Slot Woman A (Long soft-wave) and Slot Woman B (Short chic bob), posing elegantly together in the heavy snow, laughing, wearing Pink Satin Bustier Top + White Hot Pants and Grey Halter-neck Tight Mini Dress respectively, snowing golf course, Two-shot, photorealistic, 8k resolution, cinematic lighting --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "WomanA",
+          "WomanB"
+        ]
+      },
+      {
+        "sceneNumber": 4,
+        "shortPrompt": "[Scene 4] Man shouting from distance, Woman looking back, snowing golf field, Burgundy Pullover, Over-the-shoulder, 8k --ar 9:16",
+        "shortPromptKo": "[장면 4] 멀리서 소리치는 남자와 뒤돌아보는 여자, 눈 내리는 골프장, 버건디 풀오버, 오버 더 숄더 샷, 8k",
+        "longPrompt": "[Scene 4] Over-the-shoulder shot from WomanA's perspective looking at Slot Man B in the distance, Slot Man B wearing Burgundy Half-zip Pullover + Cream Pants, shouting and waving arms frantically, snowing golf course, photorealistic, 8k resolution, cinematic lighting --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "ManB",
+          "WomanA"
+        ]
+      },
+      {
+        "sceneNumber": 5,
+        "shortPrompt": "[Scene 5] Golf cart sliding on snow, man chasing it, tilted camera, heavy snow, 8k --ar 9:16",
+        "shortPromptKo": "[장면 5] 눈길에 미끄러지는 골프 카트와 쫓아가는 남자, 기울어진 카메라 앵글, 함박눈, 8k",
+        "longPrompt": "[Scene 5] A premium golf cart sliding uncontrollably down a snowy slope, Slot Man B running desperately behind it, Dutch angle to emphasize chaos, heavy snow, golf course background, photorealistic, 8k resolution, cinematic lighting --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "ManB"
+        ]
+      },
+      {
+        "sceneNumber": 6,
+        "shortPrompt": "[Scene 6] Close-up of shaking hands and panicked face of Korean woman, Short bob, pearl earrings, 8k --ar 9:16",
+        "shortPromptKo": "[장면 6] 떨리는 손과 당황한 여성의 얼굴 근접 촬영, 숏보브 헤어, 진주 귀걸이, 8k",
+        "longPrompt": "[Scene 6] Extreme close-up of Slot Woman B's face and trembling hands held near her mouth, expression of pure panic, wearing pearl drop earrings, snowflakes on her face, photorealistic, 8k resolution, cinematic lighting --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "WomanB"
+        ]
+      },
+      {
+        "sceneNumber": 7,
+        "shortPrompt": "[Scene 7] Man being dragged by a golf cart in deep snow, wide field view, heavy snowfall, 8k --ar 9:16",
+        "shortPromptKo": "[장면 7] 깊은 눈 속에서 카트에 끌려가는 남자, 넓은 골프장 전경, 함박눈, 8k",
+        "longPrompt": "[Scene 7] Wide shot of the vast snowy golf course, Slot Man B desperately holding onto the back of the sliding golf cart, being dragged through the snow, wearing Burgundy Pullover, photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "ManB"
+        ]
+      },
+      {
+        "sceneNumber": 8,
+        "shortPrompt": "[Scene 8] Man sitting on snow exhausted, Woman checking on him, laughing together, snowing golf field, 8k --ar 9:16",
+        "shortPromptKo": "[장면 8] 눈 위에 지쳐 앉은 남자와 살피는 여자, 함께 웃는 모습, 눈 내리는 골프장, 8k",
+        "longPrompt": "[Scene 8] Medium two-shot of Slot Man B sitting on the snowy ground looking exhausted and Slot Woman A standing next to him, laughing at the situation, wearing fixed outfits, background shows the cart stopped at a bunker, photorealistic, 8k resolution, cinematic lighting --ar 9:16",
+        "longPromptKo": "",
+        "soraPrompt": "",
+        "soraPromptKo": "",
+        "narration": "",
+        "dialogue": "",
+        "voiceType": "narration",
+        "characterIds": [
+          "ManB",
+          "WomanA"
+        ]
+      }
+    ],
+    "id": "53303931-446c-442f-90da-98e828ab4994",
+    "createdAt": 1770125705202,
+    "service": "IMPORTED",
+    "_folderName": "260203_2235_눈_오는_날_골프장_카트의_배신"
+  },
+  {
     "title": "폭설 속의 골프장, 그리고 뜻밖의 재회",
     "titleOptions": [
       "연예인 뺨치는 캐디의 정체",

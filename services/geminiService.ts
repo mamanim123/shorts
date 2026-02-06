@@ -24,7 +24,10 @@ import {
   pickFemaleOutfit,
   pickMaleOutfit,
   selectWinterItems,
-  getPromptConstants
+  getPromptConstants,
+  distributeUniqueWinterItems,
+  getSmartCameraPrompt,
+  isWinterTopic
 } from './labPromptBuilder';
 import { getCharacterRules } from './shortsLabCharacterRulesManager';
 
@@ -822,6 +825,207 @@ const ensureCameraShot = (prompt: string, sceneNumber: number, characterCount: n
   return `${selectedShot}, ${prompt}`.replace(/,\s*,/g, ', ').trim();
 };
 
+const ACTION_VARIANTS = [
+  'gesturing lightly with one hand',
+  'holding a small object close',
+  'tilting head slightly with curiosity',
+  'crossing arms while listening',
+  'glancing down with a soft smile',
+  'standing with a relaxed posture'
+];
+
+const inferShotType = (characterCount: number): string => {
+  if (characterCount >= 3) return '쓰리샷';
+  if (characterCount === 2) return '투샷';
+  return '원샷';
+};
+
+const normalizePromptSpacing = (text: string): string =>
+  text.replace(/,\s*,/g, ', ').replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').trim();
+
+const buildPersonBlock = (options: {
+  character: ManualSceneCharacter;
+  action: string;
+  gaze: string;
+  includeAccessories: boolean;
+}) => {
+  const { character, action, gaze, includeAccessories } = options;
+  const outfit = (character.outfit || '').replace(/^wearing\s+/i, '').trim();
+  const accessories = includeAccessories && character.winterAccessories && character.winterAccessories.length > 0
+    ? `accessorized with ${character.winterAccessories.join(', ')}`
+    : '';
+
+  return normalizePromptSpacing([
+    character.identity,
+    character.hair,
+    character.body,
+    outfit ? `wearing ${outfit}` : '',
+    accessories,
+    action,
+    gaze
+  ].filter(Boolean).join(', '));
+};
+
+const buildActionForPerson = (baseAction: string, index: number, total: number): string => {
+  if (!baseAction) {
+    return ACTION_VARIANTS[index % ACTION_VARIANTS.length];
+  }
+  if (total <= 1) return baseAction;
+  const variant = ACTION_VARIANTS[index % ACTION_VARIANTS.length];
+  if (baseAction.includes(variant)) return baseAction;
+  return normalizePromptSpacing(`${baseAction}, ${variant}`);
+};
+
+const normalizeManualScenePrompts = (options: {
+  scenes: ManualSceneSummary[];
+  characters: ManualSceneCharacter[];
+  topic?: string;
+  enableWinterAccessories?: boolean;
+}): { scenes: ManualSceneSummary[]; issues: string[] } => {
+  const { scenes, characters, topic = '', enableWinterAccessories = false } = options;
+  const issues: string[] = [];
+  if (!scenes || scenes.length === 0) return { scenes: [], issues };
+
+  const promptConstants = getPromptConstants();
+  const totalScenes = scenes.length;
+  const characterMap = new Map(characters.map((char) => [char.id, char] as const));
+  const baseBackground = scenes.find((scene) => scene.background)?.background || '';
+  const isGolfContext = /\b(golf|골프|라운딩|티박스|골프장)\b/i.test(topic);
+  const hasCaddy = characterMap.has('WomanD');
+
+  const normalizedScenes = scenes.map((scene, index) => {
+    const sceneNumber = scene.sceneNumber || index + 1;
+    const cameraPrompt = getSmartCameraPrompt(sceneNumber, totalScenes);
+    const isPov = /pov/i.test(scene.cameraAngle || '') || /pov/i.test(cameraPrompt.prompt);
+
+    const incomingIds = Array.isArray(scene.characterIds) ? [...scene.characterIds] : [];
+    const filteredIds = incomingIds.filter((id) => characterMap.has(id));
+    let characterIds = filteredIds.length > 0 ? filteredIds : incomingIds;
+
+    if (isGolfContext && hasCaddy && !isPov && !characterIds.includes('WomanD')) {
+      characterIds = [...characterIds, 'WomanD'];
+    }
+
+    if (isPov && characterIds.length > 1) {
+      characterIds = characterIds.slice(0, 1);
+    }
+
+    const usableCharacters = characterIds
+      .map((id) => characterMap.get(id))
+      .filter((char): char is ManualSceneCharacter => Boolean(char));
+
+    if (usableCharacters.length === 0) {
+      issues.push(`Scene ${sceneNumber}: no matching characterIds for normalization.`);
+      const fallbackLong = scene.longPrompt || '';
+      const fallbackShort = scene.shortPrompt || '';
+      const fallbackLongPrompt = normalizePromptSpacing([
+        cameraPrompt.prompt,
+        fallbackLong
+      ].filter(Boolean).join(', '));
+      const fallbackShortPrompt = normalizePromptSpacing([
+        cameraPrompt.prompt,
+        fallbackShort
+      ].filter(Boolean).join(', '));
+      return {
+        ...scene,
+        sceneNumber,
+        characterIds,
+        cameraAngle: scene.cameraAngle || cameraPrompt.prompt,
+        shotType: scene.shotType || inferShotType(characterIds.length),
+        shortPrompt: fallbackShortPrompt,
+        longPrompt: fallbackLongPrompt,
+        negativePrompt: scene.negativePrompt || promptConstants.NEGATIVE
+      };
+    }
+
+    const actionBase = (scene.action || scene.summary || '').trim();
+    const gazeRule = (() => {
+      if (isPov) return 'looking at camera (POV target)';
+      if (sceneNumber === 1) return 'smiling at camera';
+      if (sceneNumber >= 2 && sceneNumber <= 8) return 'looking away from camera';
+      return 'looking away from camera';
+    })();
+
+    const personBlocks = usableCharacters.map((character, personIndex) => {
+      const action = buildActionForPerson(actionBase, personIndex, usableCharacters.length);
+      return buildPersonBlock({
+        character,
+        action,
+        gaze: gazeRule,
+        includeAccessories: enableWinterAccessories
+      });
+    });
+
+    const personText = personBlocks.length > 1
+      ? personBlocks.map((block, idx) => `[Person ${idx + 1}: ${block}]`).join(' ')
+      : (personBlocks[0] || '');
+
+    const backgroundText = (scene.background || baseBackground || '').trim();
+    const longPrompt = normalizePromptSpacing([
+      cameraPrompt.prompt,
+      promptConstants.START,
+      personText,
+      backgroundText,
+      promptConstants.END
+    ].filter(Boolean).join(', '));
+
+    const shortPrompt = normalizePromptSpacing([
+      cameraPrompt.prompt,
+      personText,
+      backgroundText
+    ].filter(Boolean).join(', '));
+
+    const negativePrompt = promptConstants.NEGATIVE;
+    const shotType = scene.shotType || inferShotType(personBlocks.length);
+
+    if (!personText) {
+      issues.push(`Scene ${sceneNumber}: missing person blocks after normalization.`);
+    }
+    if (!longPrompt.startsWith(cameraPrompt.prompt)) {
+      issues.push(`Scene ${sceneNumber}: longPrompt does not start with camera angle.`);
+    }
+    if (enableWinterAccessories && usableCharacters.length > 0) {
+      usableCharacters.forEach((character) => {
+        const hasAccessories = (character.winterAccessories || []).every((item) =>
+          longPrompt.includes(item) && shortPrompt.includes(item)
+        );
+        if (!hasAccessories) {
+          issues.push(`Scene ${sceneNumber}: winter accessories missing for ${character.id}.`);
+        }
+      });
+    }
+    if (usableCharacters.length > 0) {
+      usableCharacters.forEach((character) => {
+        if (character.outfit && !longPrompt.includes(character.outfit)) {
+          issues.push(`Scene ${sceneNumber}: longPrompt missing outfit for ${character.id}.`);
+        }
+        if (character.outfit && !shortPrompt.includes(character.outfit)) {
+          issues.push(`Scene ${sceneNumber}: shortPrompt missing outfit for ${character.id}.`);
+        }
+      });
+    }
+    if (!isPov && sceneNumber >= 2 && sceneNumber <= 8 && !personText.includes('looking away from camera')) {
+      issues.push(`Scene ${sceneNumber}: non-POV scene should look away from camera.`);
+    }
+    if (isPov && !personText.includes('looking at camera (POV target)')) {
+      issues.push(`Scene ${sceneNumber}: POV scene missing target gaze.`);
+    }
+
+    return {
+      ...scene,
+      sceneNumber,
+      characterIds,
+      cameraAngle: scene.cameraAngle || cameraPrompt.prompt,
+      shotType,
+      shortPrompt,
+      longPrompt,
+      negativePrompt
+    };
+  });
+
+  return { scenes: normalizedScenes, issues };
+};
+
 /**
  * 여러 명의 여성 캐릭터가 함께 등장하도록 보장하는 함수 (하이브리드 방식)
  * AI가 혼자만 등장시키는 경우 자동으로 여러 명 추가
@@ -1232,6 +1436,7 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       const characterRules = getCharacterRules();
       const topic = input.topic || input.category || '';
       const enableWinterAccessories = input.enableWinterAccessories || false;
+      const shouldAddWinterAccessories = enableWinterAccessories || isWinterTopic(topic);
 
       // [v3.5.3] 캐릭터 슬롯 매핑 로직 고도화
       // 1. 고정 역할(주인공, 캐디) 먼저 배정
@@ -1292,6 +1497,10 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
         }
       }
 
+      const winterAccessoryMap = shouldAddWinterAccessories
+        ? distributeUniqueWinterItems(allMappedChars.map((char) => char.slotId))
+        : null;
+
       for (const charItem of allMappedChars) {
         const { slotId } = charItem;
         const gender = slotId.startsWith('Woman') ? 'female' : 'male';
@@ -1307,7 +1516,9 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
 
         // 겨울 악세서리 생성
         let winterAccessories: string[] = [];
-        if (enableWinterAccessories) {
+        if (shouldAddWinterAccessories && winterAccessoryMap) {
+          winterAccessories = winterAccessoryMap[slotId]?.items || [];
+        } else if (shouldAddWinterAccessories) {
           const winterItems = selectWinterItems(gender);
           winterAccessories = winterItems.accessories || [];
         }
@@ -1388,9 +1599,6 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       }
 
       // ===== 결과를 StoryResponse 형식으로 변환 =====
-      const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
-      const userContext = topicContext || "";
-
       // characters 배열 생성
       const outputCharacters = mappedCharacters.map(char => {
         const isWoman = char.id.startsWith('Woman');
@@ -1405,70 +1613,25 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       });
 
       // scenes 배열 생성 및 후처리
-      const outputScenes = sceneResult.scenes.map((scene, index) => {
-        let longPrompt = scene.longPrompt || scene.summary || '';
-        let shortPrompt = scene.shortPrompt || scene.summary || '';
+      const { scenes: normalizedScenes, issues: promptIssues } = normalizeManualScenePrompts({
+        scenes: sceneResult.scenes,
+        characters: mappedCharacters,
+        topic: input.topic || input.category || '',
+        enableWinterAccessories: shouldAddWinterAccessories
+      });
 
-        // 씬 번호 추가
-        const scenePrefix = `Scene ${scene.sceneNumber}. `;
-        if (!longPrompt.startsWith(`Scene ${scene.sceneNumber}`)) {
-          longPrompt = scenePrefix + longPrompt.replace(/^Scene \d+\.\s*/i, '');
-        }
-        if (!shortPrompt.startsWith(`Scene ${scene.sceneNumber}`)) {
-          shortPrompt = scenePrefix + shortPrompt.replace(/^Scene \d+\.\s*/i, '');
-        }
+      if (promptIssues.length > 0) {
+        console.warn('[ShortsLab] Prompt normalization issues:', promptIssues);
+      }
 
-        // Safe Glamour 적용
-        longPrompt = enhancePromptWithSafeGlamour(longPrompt, userContext, enhancementSettings);
-        shortPrompt = enhancePromptWithSafeGlamour(shortPrompt, userContext, enhancementSettings);
-
-        // 표정/동작/악세서리 추가
-        longPrompt = ensureDynamicExpression(longPrompt, index);
-        shortPrompt = ensureDynamicExpression(shortPrompt, index);
-        longPrompt = ensureDynamicAction(longPrompt, index);
-        shortPrompt = ensureDynamicAction(shortPrompt, index);
-
-        const characterIds = scene.characterIds || [];
-        const hasFemaleCharacter = characterIds.some((id: string) =>
-          id.startsWith('Woman') || id === 'A' || id === 'B' || id === 'C'
-        );
-
-        if (hasFemaleCharacter) {
-          const mainCharacterId = characterIds.find((id: string) =>
-            id.startsWith('Woman') || id === 'A' || id === 'B' || id === 'C'
-          ) || 'A';
-          longPrompt = ensureAccessory(longPrompt, mainCharacterId);
-          shortPrompt = ensureAccessory(shortPrompt, mainCharacterId);
-        }
-
-        // 카메라 샷 추가
-        longPrompt = ensureCameraShot(longPrompt, index, characterIds.length);
-        shortPrompt = ensureCameraShot(shortPrompt, index, characterIds.length);
-
-        // 중복 태그 제거
-        const tagsToRemove = [
-          "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
-          "professional photography", "depth of field", "--ar 9:16", "--style raw",
-          "detailed texture", "magazine cover quality", "hyper-realistic"
-        ];
-
-        const cleanPrompt = (text: string) => {
-          let cleaned = text;
-          tagsToRemove.forEach(tag => {
-            const regex = new RegExp(tag.replace(/[-\/^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-            cleaned = cleaned.replace(regex, "");
-          });
-          return cleaned.replace(/,\s*,/g, ",").trim().replace(/,$/, "");
-        };
-
-        longPrompt = ensureAgeMention(cleanPrompt(longPrompt), input.targetAge) + qualitySuffix;
-        shortPrompt = ensureAgeMention(cleanPrompt(shortPrompt), input.targetAge) + qualitySuffix;
-
+      const outputScenes = normalizedScenes.map((scene) => {
+        const longPrompt = scene.longPrompt || '';
         return {
           sceneNumber: scene.sceneNumber,
           characterIds: scene.characterIds || [],
-          shortPrompt,
+          shortPrompt: scene.shortPrompt || '',
           longPrompt,
+          negativePrompt: scene.negativePrompt || '',
           shortPromptKo: scene.scriptLine || '',
           longPromptKo: scene.scriptLine || '',
           soraPrompt: longPrompt,
@@ -1810,85 +1973,128 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
     // [FIX] Universal Quality Tag Enforcement for Main Story Generation
     // Matches the logic used in Script-to-Image mode
     if (parsed.scenes && Array.isArray(parsed.scenes)) {
-      // [ENHANCED] Richer Quality Tags for "Bold Glamour"
-      const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
-      const userContext = topicContext || "";
-
-      // [NEW] 0. 여러 명 등장 보장 (씬 처리 전에 먼저 실행)
-      parsed.scenes = enforceMultipleCharacters(parsed.scenes);
-
-      parsed.scenes.forEach((scene: any, index: number) => {
-        // 1. Apply Unified Safe Glamour Logic with Settings
-        if (scene.shortPrompt) scene.shortPrompt = enhancePromptWithSafeGlamour(scene.shortPrompt, userContext, enhancementSettings);
-        if (scene.longPrompt) scene.longPrompt = enhancePromptWithSafeGlamour(scene.longPrompt, userContext, enhancementSettings);
-
-        // [NEW] 2. 표정 강제 추가 (씬마다 다른 표정)
-        if (scene.longPrompt) {
-          scene.longPrompt = ensureDynamicExpression(scene.longPrompt, index);
-        }
-        if (scene.shortPrompt) {
-          scene.shortPrompt = ensureDynamicExpression(scene.shortPrompt, index);
-        }
-
-        // [NEW] 3. 동작 강제 추가 (씬마다 다른 동작)
-        if (scene.longPrompt) {
-          scene.longPrompt = ensureDynamicAction(scene.longPrompt, index);
-        }
-        if (scene.shortPrompt) {
-          scene.shortPrompt = ensureDynamicAction(scene.shortPrompt, index);
-        }
-
-        // [NEW] 4. 악세서리 강제 추가 (여성 캐릭터만)
-        const characterIds = scene.characterIds || [];
-        const hasFemaleCharacter = characterIds.some((id: string) =>
-          id === 'A' || id === 'B' || id === 'C' || /Slot [ABC]/i.test(id)
+      const shouldAddWinterAccessories = input.enableWinterAccessories || isWinterTopic(resolvedTopic);
+      const canNormalizeByCharacters = Array.isArray(parsed.characters)
+        && parsed.characters.length > 0
+        && parsed.characters.every((char: any) =>
+          char?.id && char?.identity && char?.hair && char?.body && char?.outfit
         );
 
-        if (hasFemaleCharacter) {
-          const mainCharacterId = characterIds.find((id: string) =>
-            id === 'A' || id === 'B' || id === 'C' || /Slot [ABC]/i.test(id)
-          ) || 'A';
+      if (canNormalizeByCharacters) {
+        const accessoryMap = shouldAddWinterAccessories
+          ? distributeUniqueWinterItems(parsed.characters.map((char: any) => String(char.id)))
+          : null;
+        const normalizedCharacters: ManualSceneCharacter[] = parsed.characters.map((char: any) => ({
+          id: String(char.id),
+          name: char.name ? String(char.name) : undefined,
+          slotLabel: char.slotLabel ? String(char.slotLabel) : undefined,
+          identity: String(char.identity),
+          hair: String(char.hair),
+          body: String(char.body),
+          outfit: String(char.outfit),
+          winterAccessories: accessoryMap ? (accessoryMap[String(char.id)]?.items || []) : []
+        }));
 
+        const { scenes: normalizedScenes, issues: promptIssues } = normalizeManualScenePrompts({
+          scenes: parsed.scenes as ManualSceneSummary[],
+          characters: normalizedCharacters,
+          topic: resolvedTopic,
+          enableWinterAccessories: shouldAddWinterAccessories
+        });
+
+        if (promptIssues.length > 0) {
+          console.warn('[ShortsLab] Prompt normalization issues (main flow):', promptIssues);
+        }
+
+        parsed.scenes = normalizedScenes.map((scene) => ({
+          ...scene,
+          shortPrompt: scene.shortPrompt || '',
+          longPrompt: scene.longPrompt || '',
+          negativePrompt: scene.negativePrompt || '',
+          shortPromptKo: scene.shortPromptKo || scene.scriptLine || scene.summary || '',
+          longPromptKo: scene.longPromptKo || scene.scriptLine || scene.summary || ''
+        }));
+      } else {
+        // [ENHANCED] Richer Quality Tags for "Bold Glamour"
+        const qualitySuffix = ", Volumetric lighting, Rim light, Detailed skin texture, 8k uhd, High fashion photography, masterpiece, depth of field --ar 9:16 --style raw --stylize 250";
+        const userContext = topicContext || "";
+
+        // [NEW] 0. 여러 명 등장 보장 (씬 처리 전에 먼저 실행)
+        parsed.scenes = enforceMultipleCharacters(parsed.scenes);
+
+        parsed.scenes.forEach((scene: any, index: number) => {
+          // 1. Apply Unified Safe Glamour Logic with Settings
+          if (scene.shortPrompt) scene.shortPrompt = enhancePromptWithSafeGlamour(scene.shortPrompt, userContext, enhancementSettings);
+          if (scene.longPrompt) scene.longPrompt = enhancePromptWithSafeGlamour(scene.longPrompt, userContext, enhancementSettings);
+
+          // [NEW] 2. 표정 강제 추가 (씬마다 다른 표정)
           if (scene.longPrompt) {
-            scene.longPrompt = ensureAccessory(scene.longPrompt, mainCharacterId);
+            scene.longPrompt = ensureDynamicExpression(scene.longPrompt, index);
           }
           if (scene.shortPrompt) {
-            scene.shortPrompt = ensureAccessory(scene.shortPrompt, mainCharacterId);
+            scene.shortPrompt = ensureDynamicExpression(scene.shortPrompt, index);
           }
-        }
 
-        // [NEW] 5. 카메라 샷 강제 추가 (Two-shot, Three-shot 우선)
-        const characterCount = characterIds.length;
-        if (scene.longPrompt) {
-          scene.longPrompt = ensureCameraShot(scene.longPrompt, index, characterCount);
-        }
-        if (scene.shortPrompt) {
-          scene.shortPrompt = ensureCameraShot(scene.shortPrompt, index, characterCount);
-        }
+          // [NEW] 3. 동작 강제 추가 (씬마다 다른 동작)
+          if (scene.longPrompt) {
+            scene.longPrompt = ensureDynamicAction(scene.longPrompt, index);
+          }
+          if (scene.shortPrompt) {
+            scene.shortPrompt = ensureDynamicAction(scene.shortPrompt, index);
+          }
 
-        // 6. Enforce Aspect Ratio and Quality Tags (DEDUPLICATED)
-        const tagsToRemove = [
-          "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
-          "professional photography", "depth of field", "--ar 9:16", "--style raw",
-          "detailed texture", "magazine cover quality", "hyper-realistic"
-        ];
+          // [NEW] 4. 악세서리 강제 추가 (여성 캐릭터만)
+          const characterIds = scene.characterIds || [];
+          const hasFemaleCharacter = characterIds.some((id: string) =>
+            id === 'A' || id === 'B' || id === 'C' || /Slot [ABC]/i.test(id)
+          );
 
-        const cleanPrompt = (text: string) => {
-          let cleaned = text;
-          tagsToRemove.forEach(tag => {
-            const regex = new RegExp(tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
-            cleaned = cleaned.replace(regex, "");
-          });
-          return cleaned.split(',').map(s => s.trim()).filter(s => s.length > 0).join(', ');
-        };
+          if (hasFemaleCharacter) {
+            const mainCharacterId = characterIds.find((id: string) =>
+              id === 'A' || id === 'B' || id === 'C' || /Slot [ABC]/i.test(id)
+            ) || 'A';
 
-        if (scene.longPrompt) {
-          scene.longPrompt = ensureAgeMention(cleanPrompt(scene.longPrompt), input.targetAge) + qualitySuffix;
-        }
-        if (scene.shortPrompt) {
-          scene.shortPrompt = ensureAgeMention(cleanPrompt(scene.shortPrompt), input.targetAge) + qualitySuffix;
-        }
-      });
+            if (scene.longPrompt) {
+              scene.longPrompt = ensureAccessory(scene.longPrompt, mainCharacterId);
+            }
+            if (scene.shortPrompt) {
+              scene.shortPrompt = ensureAccessory(scene.shortPrompt, mainCharacterId);
+            }
+          }
+
+          // [NEW] 5. 카메라 샷 강제 추가 (Two-shot, Three-shot 우선)
+          const characterCount = characterIds.length;
+          if (scene.longPrompt) {
+            scene.longPrompt = ensureCameraShot(scene.longPrompt, index, characterCount);
+          }
+          if (scene.shortPrompt) {
+            scene.shortPrompt = ensureCameraShot(scene.shortPrompt, index, characterCount);
+          }
+
+          // 6. Enforce Aspect Ratio and Quality Tags (DEDUPLICATED)
+          const tagsToRemove = [
+            "photorealistic", "8k resolution", "cinematic lighting", "masterpiece",
+            "professional photography", "depth of field", "--ar 9:16", "--style raw",
+            "detailed texture", "magazine cover quality", "hyper-realistic"
+          ];
+
+          const cleanPrompt = (text: string) => {
+            let cleaned = text;
+            tagsToRemove.forEach(tag => {
+              const regex = new RegExp(tag.replace(/[-/\\^$*+?.()|[\\]{}]/g, '\\\\$&'), 'gi');
+              cleaned = cleaned.replace(regex, "");
+            });
+            return cleaned.split(',').map(s => s.trim()).filter(s => s.length > 0).join(', ');
+          };
+
+          if (scene.longPrompt) {
+            scene.longPrompt = ensureAgeMention(cleanPrompt(scene.longPrompt), input.targetAge) + qualitySuffix;
+          }
+          if (scene.shortPrompt) {
+            scene.shortPrompt = ensureAgeMention(cleanPrompt(scene.shortPrompt), input.targetAge) + qualitySuffix;
+          }
+        });
+      }
     }
 
     // ✅ FIX: 대본 생성 시 폴더 생성 API 호출하여 _folderName 설정

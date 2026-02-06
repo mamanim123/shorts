@@ -1,0 +1,71 @@
+1단계] 장르매니저 → 의상규칙 탭에서 캐릭터 생성/수정
+    ↓
+    저장: app_storage.json ('shorts-lab-character-rules')
+    - females[0]: WomanA (지영)
+    - females[1]: WomanB (혜경)
+    - females[2]: WomanC
+    - females[3]: WomanD (캐디)
+    - males[0]: ManA (준호)
+    - males[1]: ManB (민수)
+
+  [2단계] getCharacterRules() 호출
+    ↓
+    shortsLabCharacterRulesManager.getRules()
+    ↓
+    의상규칙 탭의 캐릭터 데이터 로드
+
+  [3단계] getPromptConstants() 생성
+    ↓
+    FEMALE_BODY_A: rules.females[0]?.body  ← 의상규칙 탭에서 가져옴
+    FEMALE_BODY_B: rules.females[1]?.body  ← 의상규칙 탭에서 가져옴
+    FEMALE_BODY_D: rules.females[3]?.body  ← 의상규칙 탭에서 가져옴
+    MALE_BODY_A: rules.males[0]?.body      ← 의상규칙 탭에서 가져옴
+    MALE_BODY_B: rules.males[1]?.body      ← 의상규칙 탭에서 가져옴
+
+  [4단계] LLM 프롬프트 생성 (line 2200-2206)
+    ↓
+    "characters": [
+      { "id": "WomanA", "body": "${promptConstants.FEMALE_BODY_A}", ... },
+      { "id": "WomanB", "body": "${promptConstants.FEMALE_BODY_B}", ... },
+      ...
+    ]
+
+  [5단계] LLM이 characters 배열을 참조해서 각 씬의 longPrompt 생성
+    ↓
+    "longPrompt": "..., [characters[WomanA].body], wearing ..."
+
+  [6단계] 후처리 (비활성화 상태이므로 건너뜀)
+    ↓
+    최종 이미지 프롬프트 생성
+
+  ---
+  📊 실제 사용되는 필드
+
+  의상규칙 탭에서 설정한 값:
+
+  | 필드        | 사용 여부 | 사용 위치                                                         |
+  |-----------|-------|---------------------------------------------------------------|
+  | identity  | ✅ 사용됨 | promptConstants → LLM characters 배열                           |
+  | hair      | ✅ 사용됨 | LLM characters 배열의 hair 필드                                    |
+  | body      | ✅ 사용됨 | promptConstants.FEMALE_BODY_A 등 → LLM characters 배열           |
+  | style     | ✅ 사용됨 | getMAMACharacterPresets() (line 897, 903, 909, 915, 922, 928) |
+  | outfitFit | ✅ 사용됨 | getMAMACharacterPresets() (line 898, 904, 910, 916, 923, 929) |
+
+  ---
+  🎯 결론
+
+  네! 의상규칙 탭에서 만든 캐릭터가 100% 활용됩니다!
+
+  사용되는 방식:
+  1. ✅ identity: LLM에게 보내는 characters 배열에 포함
+  2. ✅ hair: LLM에게 보내는 characters 배열에 포함
+  3. ✅ body: promptConstants.FEMALE_BODY_A 등으로 변환 후 LLM 프롬프트에 포함
+  4. ✅ style: 캐릭터 프리셋에서 사용
+  5. ✅ outfitFit: 캐릭터 프리셋에서 사용
+
+  확인된 파일:
+  - 저장소: services/shortsLabCharacterRulesManager.ts:186-189
+  - 로딩: services/labPromptBuilder.ts:616, 891
+  - 사용: services/labPromptBuilder.ts:620-629, 895-930, 2201-2205
+
+  의상규칙 탭에서 캐릭터를 수정하면 즉시 AI 대본 생성에 반영됩니다! 🎉

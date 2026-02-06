@@ -1270,6 +1270,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
+    const [selectedCharacterForMaster, setSelectedCharacterForMaster] = useState<CharacterItem | null>(null);
 
     // 이미지 생성 상태 (신규!)
     const [imageModel] = useState<string>('imagen-4.0-generate-001');
@@ -3477,6 +3478,46 @@ ${scriptInput}
         setGenerationError(null);
 
         try {
+            const resolveSelectedSlotId = (
+                slotKey: keyof typeof SLOT_PRESETS | '' | undefined,
+                gender?: 'female' | 'male'
+            ): string => {
+                if (slotKey === 'woman-a') return 'WomanA';
+                if (slotKey === 'woman-b') return 'WomanB';
+                if (slotKey === 'man-a') return 'ManA';
+                if (gender === 'male') return 'ManA';
+                if (gender === 'female') return 'WomanA';
+                return '';
+            };
+
+            const buildMasterCharacterContext = (): string | undefined => {
+                if (!selectedCharacterForMaster) return undefined;
+                const slotId = resolveSelectedSlotId(settings.selectedSlot, selectedCharacterForMaster.gender);
+                if (!slotId) return undefined;
+                const ageLabel = aiTargetAge ? convertAgeToEnglish(aiTargetAge) : '';
+                const identityBase = selectedCharacterForMaster.gender === 'female'
+                    ? 'A stunning Korean woman'
+                    : 'A handsome Korean man';
+                const agePhrase = ageLabel
+                    ? `${selectedCharacterForMaster.gender === 'female' ? ' in her ' : ' in his '}${ageLabel}`
+                    : '';
+                const identityDetail = [
+                    `${identityBase}${agePhrase}`,
+                    selectedCharacterForMaster.face?.trim(),
+                    selectedCharacterForMaster.style?.trim()
+                ].filter(Boolean).join(', ');
+
+                const detailParts = [
+                    selectedCharacterForMaster.name?.trim() ? `name: ${selectedCharacterForMaster.name.trim()}` : '',
+                    identityDetail ? `identity: ${identityDetail}` : '',
+                    selectedCharacterForMaster.hair?.trim() ? `hair: ${selectedCharacterForMaster.hair.trim()}` : '',
+                    selectedCharacterForMaster.body?.trim() ? `body: ${selectedCharacterForMaster.body.trim()}` : ''
+                ].filter(Boolean);
+
+                if (detailParts.length === 0) return undefined;
+                return `마스터 생성에서는 캐릭터 슬롯 ${slotId}를 다음 정보로 고정: ${detailParts.join(' / ')}. characters 배열과 longPrompt에 반드시 그대로 반영.`;
+            };
+
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
             const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
             const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
@@ -3505,7 +3546,8 @@ ${scriptInput}
                 enableWinterAccessories: enableWinterAccessories,
                 useRandomOutfits,
                 allowedOutfitCategories,
-                characterSlotMode: scriptCharacterMode
+                characterSlotMode: scriptCharacterMode,
+                additionalContext: buildMasterCharacterContext()
             });
 
             const selectedService = targetService || 'GEMINI';
@@ -5095,6 +5137,7 @@ ${scriptInput}
                                             const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
                                             updateSetting('selectedSlot', protagonistSlot as any);
                                             updateSetting('useSlotSystem', true);
+                                            setSelectedCharacterForMaster(char);
                                         }
                                     }}
                                     onOutfitSelect={(outfit) => {

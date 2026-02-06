@@ -124,6 +124,25 @@ const AiStudioHost: React.FC = () => {
 
   const loadedIdsRef = useRef<Set<string>>(new Set());
 
+  const resolveHistoryItemUrl = useCallback((item: any): string | undefined => {
+    if (!item) return undefined;
+    if (item.url) return item.url;
+    if (item.localFilename) {
+      const trimmed = String(item.localFilename).replace(/^\/+/, '');
+      if (trimmed.startsWith('대본폴더/')) {
+        return `/generated_scripts/${trimmed}`;
+      }
+      if (trimmed.includes('/')) {
+        return `/generated_scripts/${trimmed}`;
+      }
+      if (item.storyId) {
+        return `/generated_scripts/대본폴더/${item.storyId}/images/${trimmed}`;
+      }
+      return `/generated_scripts/images/${trimmed}`;
+    }
+    return undefined;
+  }, []);
+
   // blob -> URL 로드 (PERFORMANCE: 디바운스 및 중복 로딩 방지)
   useEffect(() => {
     let mounted = true;
@@ -139,20 +158,6 @@ const AiStudioHost: React.FC = () => {
       if (needsLoad.length === 0) return;
 
       console.log(`[Performance] AiStudio loading ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
-
-      const buildLocalUrl = (filename: string, storyId?: string): string => {
-        const trimmed = filename.replace(/^\/+/, '');
-        if (trimmed.startsWith('대본폴더/')) {
-          return `/generated_scripts/${trimmed}`;
-        }
-        if (trimmed.includes('/')) {
-          return `/generated_scripts/${trimmed}`;
-        }
-        if (storyId) {
-          return `/generated_scripts/대본폴더/${storyId}/images/${trimmed}`;
-        }
-        return `/generated_scripts/images/${trimmed}`;
-      };
 
       const urls: Record<string, string> = {};
       const batchSize = 12;
@@ -183,7 +188,10 @@ const AiStudioHost: React.FC = () => {
             }
           }
           if (item.localFilename) {
-            urls[item.id] = buildLocalUrl(item.localFilename, item.storyId);
+            const resolved = resolveHistoryItemUrl(item);
+            if (resolved) {
+              urls[item.id] = resolved;
+            }
             loadedIds.add(item.id);
           }
         }));
@@ -203,7 +211,7 @@ const AiStudioHost: React.FC = () => {
       mounted = false;
       if (debounceTimer) clearTimeout(debounceTimer);
     };
-  }, [imageHistory, remoteFolderImages]); // Only depend on history arrays, not urls
+  }, [imageHistory, remoteFolderImages, resolveHistoryItemUrl]); // Only depend on history arrays, not urls
 
   useEffect(() => {
     historyUrlsRef.current = historyUrls;
@@ -321,10 +329,12 @@ const AiStudioHost: React.FC = () => {
 
       // 2. 서버 디스크에 저장 (영구 보존)
       let savedFilename: string | undefined;
+      let savedUrl: string | undefined;
       try {
         // dataUrl은 base64 포함 전체 문자열
-        const saveResult = await saveImageToDisk(dataUrl, prompt);
+        const saveResult = await saveImageToDisk(dataUrl, prompt, activeStoryId);
         savedFilename = saveResult?.filename;
+        savedUrl = saveResult?.url;
         console.log('Saved to disk:', savedFilename);
       } catch (err) {
         console.error('Failed to save image to disk', err);
@@ -344,6 +354,7 @@ const AiStudioHost: React.FC = () => {
         // dataUrl, 
         favorite: false,
         localFilename: savedFilename, // 디스크 파일명 저장
+        url: savedUrl,
         createdAt: Date.now(),
         source: 'ai-studio',
         storyId: activeStoryId,
@@ -514,6 +525,24 @@ const AiStudioHost: React.FC = () => {
                 <div
                   key={item.id}
                   className="relative group w-full h-32 rounded-lg overflow-hidden cursor-pointer border border-gray-800 hover:border-purple-500 transition-all flex-shrink-0 bg-gray-900 shadow-md"
+                  draggable={!!(historyUrls[item.id] || item.url || item.localFilename)}
+                  onDragStart={(e) => {
+                    const dragUrl = historyUrls[item.id] || resolveHistoryItemUrl(item);
+                    if (dragUrl) {
+                      e.dataTransfer.setData('text/uri-list', dragUrl);
+                      e.dataTransfer.setData('text/plain', dragUrl);
+                    }
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      type: 'image-history',
+                      generatedImageId: item.generatedImageId,
+                      localFilename: item.localFilename,
+                      storyId: item.storyId,
+                      prompt: item.prompt,
+                      id: item.id,
+                      url: dragUrl
+                    }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
                   onClick={() => {
                     const url = historyUrls[item.id];
                     if (url) {

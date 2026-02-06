@@ -1795,7 +1795,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           style: char.style || ''
                         });
                         setActiveTab('manage');
-                        onCharacterSelect?.(char, selectedSlot);
+                        const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
+                        onCharacterSelect?.(char, protagonistSlot);
                       }}
                       className={`group p-3 rounded-xl border cursor-pointer transition-all ${selectedCharacterId === char.id
                         ? 'border-purple-500 bg-purple-600/10 shadow-lg'

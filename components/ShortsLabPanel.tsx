@@ -5092,7 +5092,8 @@ ${scriptInput}
                                     onCharacterAdded={handleCharacterAddedToRules}
                                     onCharacterSelect={(char, slot) => {
                                         if (char) {
-                                            updateSetting('selectedSlot', slot as any);
+                                            const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
+                                            updateSetting('selectedSlot', protagonistSlot as any);
                                             updateSetting('useSlotSystem', true);
                                         }
                                     }}

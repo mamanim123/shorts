@@ -20,6 +20,33 @@ const ImageDropzone: React.FC<ImageDropzoneProps> = ({ onImageDrop, previewUrl, 
     setIsDraggingOver(isOver);
   };
 
+  const buildLocalUrl = (filename: string, storyId?: string): string => {
+    const trimmed = filename.replace(/^\/+/, '');
+    if (trimmed.startsWith('대본폴더/')) {
+      return `/generated_scripts/${trimmed}`;
+    }
+    if (trimmed.includes('/')) {
+      return `/generated_scripts/${trimmed}`;
+    }
+    if (storyId) {
+      return `/generated_scripts/대본폴더/${storyId}/images/${trimmed}`;
+    }
+    return `/generated_scripts/images/${trimmed}`;
+  };
+
+  const fetchFileFromUrl = async (url: string, fallbackName = 'dropped-image.png'): Promise<File | null> => {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      const nameFromUrl = url.split('/').pop() || fallbackName;
+      const safeName = nameFromUrl.includes('.') ? nameFromUrl : fallbackName;
+      return new File([blob], safeName, { type: blob.type || 'image/png' });
+    } catch {
+      return null;
+    }
+  };
+
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     handleDragEvent(e, false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
@@ -29,6 +56,42 @@ const ImageDropzone: React.FC<ImageDropzoneProps> = ({ onImageDrop, previewUrl, 
       } else {
         alert('이미지 파일을 드롭해주세요.');
       }
+      return;
+    }
+
+    const jsonString = e.dataTransfer.getData('application/json');
+    if (jsonString) {
+      try {
+        const payload = JSON.parse(jsonString);
+        if (payload?.type === 'image-history') {
+          const payloadUrl = payload.url
+            ? String(payload.url)
+            : (payload.localFilename ? buildLocalUrl(String(payload.localFilename), payload.storyId) : '');
+          if (payloadUrl) {
+            fetchFileFromUrl(payloadUrl).then((file) => {
+              if (file && file.type.startsWith('image/')) {
+                onImageDrop(file);
+              } else {
+                alert('이미지 파일을 드롭해주세요.');
+              }
+            });
+            return;
+          }
+        }
+      } catch {
+        // ignore invalid json
+      }
+    }
+
+    const uriList = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (uriList) {
+      fetchFileFromUrl(uriList.trim()).then((file) => {
+        if (file && file.type.startsWith('image/')) {
+          onImageDrop(file);
+        } else {
+          alert('이미지 파일을 드롭해주세요.');
+        }
+      });
     }
   }, [onImageDrop]);
 

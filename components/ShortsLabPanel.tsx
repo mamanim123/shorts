@@ -2495,6 +2495,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         cleanedRemainder = cleanedRemainder.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
 
         if (cleanedRemainder) parts.push(cleanedRemainder);
+
+        // [v3.10] 멀티캐릭터 장면에서 쌍둥이 현상 방지 키워드 추가
+        if (characterIds.length >= 2) {
+            parts.push('two distinct individuals, not twins, different faces, unique facial features');
+        }
+
         parts.push(PROMPT_CONSTANTS.END);
 
         return `${scenePrefix} ${parts.join(', ')}`;
@@ -3054,11 +3060,11 @@ ${scriptInput}
         });
 
         try {
-            const response = await fetch('http://localhost:3002/api/video/generate-smart', {
+            const response = await fetch('http://localhost:3002/api/video/generate-grok', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    refinedPrompt: scene.videoPrompt,
+                    prompt: scene.videoPrompt,
                     storyId: getEffectiveStoryId(),
                     storyTitle: aiTopic?.trim() || 'ShortsLab',
                     sceneNumber: scene.number,
@@ -3068,20 +3074,19 @@ ${scriptInput}
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || '비디오 생성 실패');
+                throw new Error(errorData.error || 'Grok 비디오 생성 실패');
             }
 
             const data = await response.json();
             setScenes(prev => {
                 const updated = [...prev];
-                const resolvedUrl = data.url ? data.url : undefined;
-                updated[sceneIndex] = { ...scene, videoUrl: resolvedUrl, isVideoGenerating: false };
+                updated[sceneIndex] = { ...scene, isVideoGenerating: false };
                 setAppStorageValue('shorts-lab-scenes', updated);
                 return updated;
             });
 
-            if (data.url) {
-                showToast(`${sceneNumber}번 장면의 비디오 생성이 완료되었습니다.`, 'success');
+            if (data.success) {
+                showToast(`${sceneNumber}번 장면: Grok 비디오 생성 시작! 브라우저에서 완료 후 '가져오기' 버튼을 눌러주세요.`, 'success');
             } else if (data.message) {
                 showToast(data.message, 'info');
             }

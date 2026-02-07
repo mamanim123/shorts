@@ -43,7 +43,15 @@
       "WebFetch(domain:abocado.ai)",
       "Bash(curl:*)",
       "Bash(taskkill:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebFetch(domain:docs.x.ai)",
+      "WebFetch(domain:x.ai)",
+      "WebFetch(domain:blog.fal.ai)",
+      "WebFetch(domain:fal.ai)",
+      "WebFetch(domain:www.grokimagineai.net)",
+      "WebFetch(domain:www.datacamp.com)",
+      "WebFetch(domain:www.latent.space)",
+      "WebFetch(domain:www.aifreeapi.com)"
     ]
   }
 }

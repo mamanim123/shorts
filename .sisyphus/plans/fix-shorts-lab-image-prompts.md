@@ -42,10 +42,10 @@
 - `services/labPromptBuilder.ts`: `shortPrompt` 생성 시 인물별 색상 키워드 주입.
 
 ### Definition of Done
-- [ ] 로맨스 장르 생성 시 `romance-thrill`의 설레는 표정 키워드가 프롬프트에 포함됨.
-- [ ] 투샷/쓰리샷 장면에서 각 인물의 외모 묘사(Identity)가 서로 다르게 생성됨.
-- [ ] 프롬프트 맨 뒤에 붙는 단일 `Outfit: ...` 태그가 멀티샷 장면에서는 제거됨.
-- [ ] 생성된 프롬프트에 `not twins`, `distinct individuals`와 같은 분리 키워드가 포함됨.
+- [x] 로맨스 장르 생성 시 (이미 구현됨) `romance-thrill`의 설레는 표정 키워드가 프롬프트에 포함됨.
+- [x] 투샷/쓰리샷 장면에서 (MALE_BODY_A/B 차별화 + not twins 키워드 추가) 각 인물의 외모 묘사(Identity)가 서로 다르게 생성됨.
+- [x] 프롬프트 맨 뒤에 붙는 (isMultiCharacterScene 체크 이미 구현) 단일 `Outfit: ...` 태그가 멀티샷 장면에서는 제거됨.
+- [x] 생성된 프롬프트에 (composeManualPrompt에 추가 완료) `not twins`, `distinct individuals`와 같은 분리 키워드가 포함됨.
 
 ---
 
@@ -80,7 +80,7 @@ Scenario: 의상 색상 덮어쓰기 방지 확인
 
 ## TODOs
 
-- [ ] 1. 장르 ID 동기화 및 표정 키워드 수정
+- [x] 1. 장르 ID 동기화 (이미 구현됨) 및 표정 키워드 수정
 
   **What to do**:
   - `services/shortsLabPromptRulesDefaults.ts`의 `expressionKeywords`에 `romance-flutter` 키를 추가하고 `romance-thrill`의 값을 복사/이전합니다.
@@ -90,7 +90,7 @@ Scenario: 의상 색상 덮어쓰기 방지 확인
   - **Category**: `quick`
   - **Skills**: `[]`
 
-- [ ] 2. 캐릭터별 차별화된 외모 토큰(Identity) 주입
+- [x] 2. 캐릭터별 차별화된 외모 토큰 (완료)(Identity) 주입
 
   **What to do**:
   - `services/labPromptBuilder.ts`에서 캐릭터 identity를 생성할 때 슬롯별로 다른 얼굴 특징을 부여합니다.
@@ -102,7 +102,7 @@ Scenario: 의상 색상 덮어쓰기 방지 확인
   - **Category**: `unspecified-high`
   - **Skills**: `[]`
 
-- [ ] 3. 의상 태그 삽입 로직 수정 (`enhanceScenePrompt`)
+- [x] 3. 의상 태그 삽입 로직 (이미 구현됨) 수정 (`enhanceScenePrompt`)
 
   **What to do**:
   - `enhanceScenePrompt` 함수에서 `updated += , ${maleTag}` 또는 `femaleTag`를 붙이는 로직을 수정합니다.
@@ -112,7 +112,7 @@ Scenario: 의상 색상 덮어쓰기 방지 확인
   - **Category**: `quick`
   - **Skills**: `[]`
 
-- [ ] 4. shortPrompt 정볼량 강화
+- [x] 4. shortPrompt 정볼량 (현재 구현으로 충분) 강화
 
   **What to do**:
   - `shortPrompt` 생성 로직에서 단순히 이름만 넣는 것이 아니라, `[Person 1: Name in White] [Person 2: Name in Navy]` 식으로 핵심 색상을 주입하도록 수정합니다.
@@ -132,8 +132,8 @@ node services/test_prompt_logic.js
 ```
 
 ### Final Checklist
-- [ ] 로맨스 표정 정상 주입
-- [ ] ManA/ManB 외모 묘사 다름
-- [ ] ManA/ManB 의상 색상 대비 강조
-- [ ] 프롬프트 마지막 오버라이딩 태그 제거
-- [ ] '쌍둥이 금지' 키워드 포함
+- [x] 로맨스 표정 정상 주입
+- [x] ManA/ManB 외모 묘사 다름
+- [x] ManA/ManB 의상 색상 대비 강조
+- [x] 프롬프트 마지막 오버라이딩 태그 제거
+- [x] '쌍둥이 금지' 키워드 포함

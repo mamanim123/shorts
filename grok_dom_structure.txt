@@ -1,0 +1,110 @@
+<div> 
+<script> "((a,b,c,d,e,f,g,h)=>{let i=doc"
+<div.group/sidebar-wrapper.flex> "SearchCtrl+K
+Chat
+Ctrl+J
+Voice"
+  <div.absolute.inset-0> 
+    <div.absolute.top-0> 
+      <canvas.w-full.h-full> 
+  <div.group.peer> "SearchCtrl+K
+Chat
+Ctrl+J
+Voice"
+    <div.duration-200.inset-y-0> "SearchCtrl+K
+Chat
+Ctrl+J
+Voice"
+      <div.flex.h-full> "SearchCtrl+K
+Chat
+Ctrl+J
+Voice"
+  <div.flex.w-full> "Private
+
+
+
+
+Auto
+𝕏
+
+Connect y"
+    <div.flex.w-full> "Private
+
+
+
+
+Auto
+𝕏
+
+Connect y"
+      <div.flex.w-full> "Private
+
+
+
+
+Auto
+𝕏
+
+Connect y"
+  <span> "Upgrade to SuperGrok"
+    <h2#radix-_r_5u_.text-lg.font-semibold> "Upgrade to SuperGrok"
+<section> 
+<div> 
+<div#portal> 
+<div#tooltip-portal> 
+<div#dialog-portal> 
+<script#server-client-data-experimentation> "{"status":"ready","serverConfi"
+<script#_R_> 
+<script> "(self.__next_f=self.__next_f||"
+<script> "self.__next_f.push([1,"1:\"$Sr"
+<script> "self.__next_f.push([1,"1b:I[33"
+<script> "self.__next_f.push([1,"1f:I[72"
+<script> "self.__next_f.push([1,"20:I[13"
+<script> "self.__next_f.push([1,"21:I[55"
+<script> "self.__next_f.push([1,"22:I[11"
+<script> "self.__next_f.push([1,"23:I[68"
+<script> "self.__next_f.push([1,"25:I[39"
+<script> "self.__next_f.push([1,"27:I[68"
+<script> "self.__next_f.push([1,"29:I[68"
+<script> "self.__next_f.push([1,"2a:\"$S"
+<script> "self.__next_f.push([1,"0:{\"P\"
+<script> "self.__next_f.push([1,"2:[\"$\"
+<script> "self.__next_f.push([1,"1.js\","
+<script> "self.__next_f.push([1,"19:[\"$"
+<script> "self.__next_f.push([1,"1a:[\"$"
+<script> "self.__next_f.push([1,"2c:I[82"
+<script> "self.__next_f.push([1,"2d:I[72"
+<script> "self.__next_f.push([1,"17:[\"$"
+<script> "self.__next_f.push([1,"35:I[80"
+<script> "self.__next_f.push([1,"36:I[93"
+<script> "self.__next_f.push([1,"37:I[83"
+<script> "self.__next_f.push([1,"38:I[57"
+<script> "self.__next_f.push([1,"3b:I[32"
+<script> "self.__next_f.push([1,"3c:I[37"
+<script> "self.__next_f.push([1,"2e:[\"$"
+<script> "self.__next_f.push([1,"2f:[\"$"
+<script> "self.__next_f.push([1,"30:[\"$"
+<script> "self.__next_f.push([1,"{\"stat"
+<script> "self.__next_f.push([1,"34:[\"$"
+<script> "self.__next_f.push([1,"3e:I[23"
+<script> "self.__next_f.push([1,"3f:I[62"
+<script> "self.__next_f.push([1,"40:I[82"
+<script> "self.__next_f.push([1,"41:I[27"
+<script> "self.__next_f.push([1,"42:I[45"
+<script> "self.__next_f.push([1,"43:I[12"
+<script> "self.__next_f.push([1,"44:I[86"
+<script> "self.__next_f.push([1,"45:I[23"
+<script> "self.__next_f.push([1,"46:I[53"
+<script> "self.__next_f.push([1,"47:I[19"
+<script> "self.__next_f.push([1,"48:I[63"
+<script> "self.__next_f.push([1,"49:I[23"
+<script> "self.__next_f.push([1,"4a:I[95"
+<script> "self.__next_f.push([1,"39:[\"$"
+<script> "self.__next_f.push([1,"3a:[\"$"
+<script> 
+<script#_next-ga-init> "window['dataLayer'] = window['"
+<script#_next-ga> 
+<next-route-announcer> 
+<textarea> 
+<script> 
+<script> 

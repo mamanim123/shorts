@@ -25,6 +25,48 @@ const SCRIPT_USERDATA_FALLBACK = path.join(USER_DATA_BASE, 'script_gen_fallback'
 
 let scriptUserDataDirOverride = null;
 
+// 🔹 Helper functions for file management
+const GENERATED_DIR = path.join(__dirname, '..', 'generated_scripts');
+const SCRIPTS_BASE_DIR = path.join(GENERATED_DIR, '대본폴더');
+
+const sanitizeFolderName = (value = '') => {
+    if (!value || typeof value !== 'string') return '';
+    return value
+        .trim()
+        .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/_{2,}/g, '_')
+        .slice(0, 120);
+};
+
+const ensureStoryMediaDirectories = (storyId, title = null) => {
+    let folderName = '';
+
+    if (storyId && typeof storyId === 'string' && storyId.trim()) {
+        folderName = sanitizeFolderName(storyId);
+    }
+
+    if (!folderName && title && typeof title === 'string') {
+        folderName = sanitizeFolderName(title);
+    }
+
+    if (!folderName) {
+        folderName = 'orphaned';
+    }
+
+    const storyDir = path.join(SCRIPTS_BASE_DIR, folderName);
+    const videoDir = path.join(storyDir, 'video');
+    const audioDir = path.join(storyDir, 'audio');
+    const imagesDir = path.join(storyDir, 'images');
+
+    if (!fs.existsSync(storyDir)) fs.mkdirSync(storyDir, { recursive: true });
+    if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
+    if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+    if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+
+    return { storyDir, videoDir, audioDir, imagesDir, safeId: folderName };
+};
+
 const ensureDir = (dirPath) => {
     if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
@@ -734,13 +776,17 @@ async function switchToGrokImagine() {
     await launchGrokBrowser();
     const config = SERVICES.GROK_VIDEO;
 
-    const currentUrl = grokPage.url();
-    if (currentUrl.includes('grok.com/imagine')) {
-        console.log("[Puppeteer Grok] 🎬 Already on Grok Imagine");
+    // 무조건 새로고침/이동하여 이전 세션(이미지 등) 클리어
+    console.log("[Puppeteer Grok] 🎬 Navigating to Grok Imagine (Fresh Start)...");
+    
+    // 만약 이미 imagine 페이지라면, reload를 통해 상태를 초기화
+    if (grokPage.url().includes('grok.com/imagine')) {
+        await grokPage.reload({ waitUntil: 'networkidle2' });
     } else {
-        console.log("[Puppeteer Grok] 🎬 Navigating to Grok Imagine...");
         await grokPage.goto(config.url, { waitUntil: 'networkidle2', timeout: 60000 });
     }
+    
+    await delay(2000);
 
     // 로그인 확인
     const needsLogin = grokPage.url().includes('sign-in') || grokPage.url().includes('accounts.x.ai');
@@ -778,205 +824,481 @@ async function switchToGrokImagine() {
 }
 
 // 🔹 Grok Video 생성 메인 함수
-export async function generateGrokVideo(prompt, imageUrl, options = {}) {
+export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, sceneNumber, options = {}) {
     const config = SERVICES.GROK_VIDEO;
     const { duration = '6s', resolution = '720p' } = options;
 
     await switchToGrokImagine();
 
-    // 1. Model Select 드롭다운 열기 → "Video" 선택
-    console.log("[Puppeteer Grok] 🎬 Video 모드 전환...");
-    const currentModel = await grokPage.evaluate(() => {
-        const btn = document.querySelector('button[aria-label="Model select"]');
-        return btn ? btn.innerText.trim() : '';
-    });
+    // 🆕 새 세션 시작 (왼쪽 사이드바의 "Imagine" 버튼 클릭)
+    console.log("[Puppeteer Grok] 🆕 새 세션 시작...");
+    try {
+        const newSessionClicked = await grokPage.evaluate(() => {
+            // 왼쪽 사이드바의 "Imagine" 버튼 찾기
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const imagineBtn = buttons.find(btn => {
+                const text = btn.textContent?.trim();
+                return text === 'Imagine';
+            });
 
-    if (currentModel !== 'Video') {
-        // 드롭다운 클릭
-        const modelBtn = await grokPage.$(config.selectors.modelSelect);
-        if (modelBtn) {
-            await modelBtn.click();
-            await delay(1500);
+            if (imagineBtn) {
+                imagineBtn.click();
+                return true;
+            }
+            return false;
+        });
 
-            // "Video" 옵션 클릭
-            const videoSelected = await grokPage.evaluate(() => {
-                const allSpans = Array.from(document.querySelectorAll('span'));
-                for (const span of allSpans) {
-                    const directText = Array.from(span.childNodes)
-                        .filter(n => n.nodeType === 3)
-                        .map(n => n.textContent.trim())
-                        .join('');
-                    if (directText === 'Video') {
-                        // 클릭 가능한 부모 찾기
-                        const clickTarget = span.closest('button') || span.closest('[role="option"]') || span.closest('[role="menuitem"]') || span.parentElement;
-                        if (clickTarget) {
-                            clickTarget.click();
+        if (newSessionClicked) {
+            console.log("[Puppeteer Grok] ✅ 새 세션 시작됨");
+            await delay(2000); // 새 세션 로드 대기
+        } else {
+            console.log("[Puppeteer Grok] ⚠️ Imagine 버튼을 찾지 못했습니다 (기존 세션 사용)");
+        }
+    } catch (e) {
+        console.warn("[Puppeteer Grok] ⚠️ 새 세션 시작 실패 (기존 세션 사용):", e.message);
+    }
+
+    // CDP 세션 설정 (다운로드 허용) - 시스템 다운로드 폴더로 자동 저장되도록 설정
+    let grokCdpClient = null;
+    const os = await import('os');
+    const downloadDir = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
+
+    try {
+        try {
+            grokCdpClient = await grokPage.createCDPSession();
+            await grokCdpClient.send('Page.setDownloadBehavior', {
+                behavior: 'allow',
+                downloadPath: downloadDir
+            });
+            console.log(`[Puppeteer Grok] 📥 Download behavior set to: ${downloadDir}`);
+        } catch (e) {
+            console.warn("[Puppeteer Grok] ⚠️ CDP 세션 설정 실패 (다운로드가 수동으로 필요할 수 있음):", e.message);
+        }
+
+        // 1. Model Select 드롭다운 열기 → "Video" 선택
+        console.log("[Puppeteer Grok] 🎬 Video 모드 전환...");
+        const currentModel = await grokPage.evaluate(() => {
+            const btn = document.querySelector('button[aria-label="Model select"]');
+            return btn ? btn.innerText.trim() : '';
+        });
+
+        if (currentModel !== 'Video') {
+            // 드롭다운 클릭
+            const modelBtn = await grokPage.$(config.selectors.modelSelect);
+            if (modelBtn) {
+                await modelBtn.click();
+                await delay(1500);
+
+                // "Video" 옵션 클릭
+                const videoSelected = await grokPage.evaluate(() => {
+                    const allSpans = Array.from(document.querySelectorAll('span'));
+                    for (const span of allSpans) {
+                        const directText = Array.from(span.childNodes)
+                            .filter(n => n.nodeType === 3)
+                            .map(n => n.textContent.trim())
+                            .join('');
+                        if (directText === 'Video') {
+                            // 클릭 가능한 부모 찾기
+                            const clickTarget = span.closest('button') || span.closest('[role="option"]') || span.closest('[role="menuitem"]') || span.parentElement;
+                            if (clickTarget) {
+                                clickTarget.click();
+                                return true;
+                            }
+                            span.click();
                             return true;
                         }
-                        span.click();
+                    }
+                    return false;
+                });
+
+                if (!videoSelected) {
+                    throw new Error('Grok Imagine에서 Video 옵션을 찾을 수 없습니다.');
+                }
+                console.log("[Puppeteer Grok] ✅ Video 모드 전환 완료");
+                await delay(1500);
+            }
+        } else {
+            console.log("[Puppeteer Grok] 🎬 이미 Video 모드");
+        }
+
+        // 2. Duration / Resolution 설정 (드롭다운 다시 열어서)
+        console.log(`[Puppeteer Grok] 🎬 설정: duration=${duration}, resolution=${resolution}`);
+        const modelBtnForSettings = await grokPage.$(config.selectors.modelSelect);
+        if (modelBtnForSettings) {
+            await modelBtnForSettings.click();
+            await delay(1500);
+
+            // Duration 선택
+            await grokPage.evaluate((targetDuration) => {
+                const allEls = Array.from(document.querySelectorAll('button, span, div, label'));
+                for (const el of allEls) {
+                    const text = (el.innerText || '').trim();
+                    if (text === targetDuration && el.children.length === 0) {
+                        el.click();
                         return true;
                     }
                 }
                 return false;
-            });
+            }, duration);
+            await delay(500);
 
-            if (!videoSelected) {
-                throw new Error('Grok Imagine에서 Video 옵션을 찾을 수 없습니다.');
-            }
-            console.log("[Puppeteer Grok] ✅ Video 모드 전환 완료");
-            await delay(1500);
-        }
-    } else {
-        console.log("[Puppeteer Grok] 🎬 이미 Video 모드");
-    }
-
-    // 2. Duration / Resolution 설정 (드롭다운 다시 열어서)
-    console.log(`[Puppeteer Grok] 🎬 설정: duration=${duration}, resolution=${resolution}`);
-    const modelBtnForSettings = await grokPage.$(config.selectors.modelSelect);
-    if (modelBtnForSettings) {
-        await modelBtnForSettings.click();
-        await delay(1500);
-
-        // Duration 선택
-        await grokPage.evaluate((targetDuration) => {
-            const allEls = Array.from(document.querySelectorAll('button, span, div, label'));
-            for (const el of allEls) {
-                const text = (el.innerText || '').trim();
-                if (text === targetDuration && el.children.length === 0) {
-                    el.click();
-                    return true;
+            // Resolution 선택
+            await grokPage.evaluate((targetRes) => {
+                const allEls = Array.from(document.querySelectorAll('button, span, div, label'));
+                for (const el of allEls) {
+                    const text = (el.innerText || '').trim();
+                    if (text === targetRes && el.children.length === 0) {
+                        el.click();
+                        return true;
+                    }
                 }
-            }
-            return false;
-        }, duration);
-        await delay(500);
+                return false;
+            }, resolution);
+            await delay(500);
 
-        // Resolution 선택
-        await grokPage.evaluate((targetRes) => {
-            const allEls = Array.from(document.querySelectorAll('button, span, div, label'));
-            for (const el of allEls) {
-                const text = (el.innerText || '').trim();
-                if (text === targetRes && el.children.length === 0) {
-                    el.click();
-                    return true;
-                }
-            }
-            return false;
-        }, resolution);
-        await delay(500);
-
-        // 드롭다운 닫기 (외부 클릭)
-        await grokPage.keyboard.press('Escape');
-        await delay(1000);
-    }
-
-    // 3. 이미지 업로드 (Image-to-Video)
-    if (imageUrl) {
-        console.log("[Puppeteer Grok] 🎬 이미지 업로드 중...");
-        console.log(`[Puppeteer Grok] 📍 imageUrl: ${imageUrl}`);
-
-        let normalizedUrl = imageUrl;
-        if (imageUrl.startsWith('http://localhost:3002')) {
-            normalizedUrl = imageUrl.replace('http://localhost:3002', '');
+            // 드롭다운 닫기 (외부 클릭)
+            await grokPage.keyboard.press('Escape');
+            await delay(1000);
         }
-        const fullPath = path.resolve(process.cwd(), normalizedUrl.startsWith("/") ? normalizedUrl.substring(1) : normalizedUrl);
-        console.log(`[Puppeteer Grok] 📍 Full path: ${fullPath}`);
 
-        if (!fs.existsSync(fullPath)) {
-            console.warn(`[Puppeteer Grok] ⚠️ 이미지 파일 없음: ${fullPath}. 텍스트만으로 진행합니다.`);
-        } else {
-            let uploaded = false;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    console.log(`[Puppeteer Grok] Upload attempt ${attempt}...`);
+        // 3. 이미지 업로드 (Image-to-Video)
+        if (imageUrl) {
+            console.log("[Puppeteer Grok] 🎬 이미지 업로드 중...");
+            console.log(`[Puppeteer Grok] 📍 imageUrl: ${imageUrl}`);
 
-                    // Attach 버튼 클릭
-                    const attachBtn = await grokPage.$(config.selectors.attachBtn);
-                    if (attachBtn) {
-                        const chooserPromise = grokPage.waitForFileChooser({ timeout: 10000 }).catch(() => null);
-                        await attachBtn.click();
-                        await delay(1000);
+            let normalizedUrl = imageUrl;
+            if (imageUrl.startsWith('http://localhost:3002')) {
+                normalizedUrl = imageUrl.replace('http://localhost:3002', '');
+            }
+            const fullPath = path.resolve(process.cwd(), normalizedUrl.startsWith("/") ? normalizedUrl.substring(1) : normalizedUrl);
+            console.log(`[Puppeteer Grok] 📍 Full path: ${fullPath}`);
 
-                        const fileChooser = await chooserPromise;
-                        if (fileChooser) {
-                            await fileChooser.accept([fullPath]);
-                            console.log("[Puppeteer Grok] ✅ 이미지 업로드 완료 (FileChooser)");
+            if (!fs.existsSync(fullPath)) {
+                console.warn(`[Puppeteer Grok] ⚠️ 이미지 파일 없음: ${fullPath}. 텍스트만으로 진행합니다.`);
+            } else {
+                let uploaded = false;
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    try {
+                        console.log(`[Puppeteer Grok] Upload attempt ${attempt}...`);
+
+                        // Attach 버튼 클릭
+                        const attachBtn = await grokPage.$(config.selectors.attachBtn);
+                        if (attachBtn) {
+                            const chooserPromise = grokPage.waitForFileChooser({ timeout: 10000 }).catch(() => null);
+                            await attachBtn.click();
+                            await delay(1000);
+
+                            const fileChooser = await chooserPromise;
+                            if (fileChooser) {
+                                await fileChooser.accept([fullPath]);
+                                console.log("[Puppeteer Grok] ✅ 이미지 업로드 완료 (FileChooser)");
+                                uploaded = true;
+                                break;
+                            }
+                        }
+
+                        // 대체: input[type="file"] 직접 사용
+                        const fileInput = await grokPage.$(config.selectors.fileInput);
+                        if (fileInput) {
+                            await fileInput.uploadFile(fullPath);
+                            console.log("[Puppeteer Grok] ✅ 이미지 업로드 완료 (직접 input)");
                             uploaded = true;
                             break;
                         }
+
+                        await delay(2000);
+                    } catch (e) {
+                        console.warn(`[Puppeteer Grok] Upload attempt ${attempt} failed:`, e.message);
+                    }
+                }
+
+                if (uploaded) {
+                    // 이미지 로딩 대기
+                    await delay(3000);
+                } else {
+                    console.warn("[Puppeteer Grok] ⚠️ 이미지 업로드 실패. 텍스트만으로 진행합니다.");
+                }
+            }
+        }
+
+        // 4. 프롬프트 입력
+        console.log("[Puppeteer Grok] 🎬 프롬프트 입력 중...");
+        try {
+            await grokPage.waitForSelector(config.selectors.input, { timeout: 10000 });
+            await grokPage.click(config.selectors.input);
+            await delay(500);
+
+            // 기존 텍스트 클리어
+            await grokPage.keyboard.down('Control');
+            await grokPage.keyboard.press('A');
+            await grokPage.keyboard.up('Control');
+            await grokPage.keyboard.press('Backspace');
+            await delay(300);
+
+            // 프롬프트 타이핑
+            await grokPage.type(config.selectors.input, prompt, { delay: 20 });
+            await delay(1500);
+        } catch (err) {
+            console.error("[Puppeteer Grok] ❌ 프롬프트 입력 실패:", err.message);
+            throw err;
+        }
+
+        // 5. Submit 클릭 (다중 폭백 전략)
+        console.log("[Puppeteer Grok] 🎬 Submit 시도 중...");
+        let submitSuccess = false;
+        
+        // 방법 1: Submit 버튼 클릭
+        try {
+            await grokPage.waitForFunction(() => {
+                const btn = document.querySelector('button[aria-label="Submit"]');
+                return btn && !btn.disabled;
+            }, { timeout: 5000 });
+            
+            await grokPage.evaluate(() => {
+                const btn = document.querySelector('button[aria-label="Submit"]');
+                if (btn) btn.click();
+            });
+            console.log("[Puppeteer Grok] ✅ Submit 버튼 클릭 성공!");
+            submitSuccess = true;
+        } catch (err) {
+            console.log("[Puppeteer Grok] Submit 버튼 실패, 다음 방법 시도...");
+        }
+        
+        // 방법 2: Ctrl+Enter (대체 제출 방법)
+        if (!submitSuccess) {
+            try {
+                await grokPage.keyboard.down('Control');
+                await grokPage.keyboard.press('Enter');
+                await grokPage.keyboard.up('Control');
+                console.log("[Puppeteer Grok] ✅ Ctrl+Enter 전송 성공!");
+                submitSuccess = true;
+            } catch (err) {
+                console.log("[Puppeteer Grok] Ctrl+Enter 실패...");
+            }
+        }
+        
+        // 방법 3: 단순 Enter (최후의 수단)
+        if (!submitSuccess) {
+            try {
+                await grokPage.keyboard.press('Enter');
+                console.log("[Puppeteer Grok] ⚠️ Enter 키로 전송 (제한적)");
+                submitSuccess = true;
+            } catch (err) {
+                console.error("[Puppeteer Grok] ❌ 모든 제출 방법 실패");
+                throw new Error('Grok 제출에 실패했습니다. 수동으로 제출해주세요.');
+            }
+        }
+        
+        // 제출 성공 확인 (UI 변화 감지)
+        try {
+            await grokPage.waitForFunction(() => {
+                // 생성 중 UI 감지: 로딩 인디케이터 또는 "생성 중" 텍스트
+                const loadingIndicators = document.querySelectorAll('[class*="loading"], [class*="spinner"], [class*="progress"]');
+                const generatingText = Array.from(document.querySelectorAll('*')).find(el =>
+                    el.textContent && (el.textContent.includes('생성') || el.textContent.includes('generating'))
+                );
+                return loadingIndicators.length > 0 || generatingText;
+            }, { timeout: 8000 });
+            console.log("[Puppeteer Grok] ✅ 영상 생성이 시작되었습니다!");
+        } catch (waitErr) {
+            console.log("[Puppeteer Grok] ⚠️ 생성 상태 UI 감지 실패 (무시하고 진행):", waitErr.message);
+        }
+
+        // 6. 🎞️ 영상 생성 완료 대기 및 자동 다운로드 (최대 5분)
+        try {
+            console.log("[Puppeteer Grok] 🎞️ 영상이 완성될 때까지 대기합니다... (최대 5분)");
+            const MAX_WAIT_MS = 300000; // 5분
+            const pollInterval = 5000;
+            let elapsed = 0;
+            let downloadClicked = false;
+
+            while (elapsed < MAX_WAIT_MS) {
+                await delay(pollInterval);
+                elapsed += pollInterval;
+
+                // 다운로드 버튼 찾기 및 클릭
+                downloadClicked = await grokPage.evaluate(() => {
+                    // 1. 특정 aria-label 또는 title 찾기
+                    const selectors = [
+                        'button[aria-label*="Download"]',
+                        'a[aria-label*="Download"]',
+                        'button[title*="Download"]',
+                        'a[title*="Download"]',
+                        '[data-testid*="download"]'
+                    ];
+                    
+                    for (const sel of selectors) {
+                        const el = document.querySelector(sel);
+                        if (el && !el.disabled && el.offsetParent !== null) {
+                            el.scrollIntoView();
+                            el.click();
+                            return true;
+                        }
                     }
 
-                    // 대체: input[type="file"] 직접 사용
-                    const fileInput = await grokPage.$(config.selectors.fileInput);
-                    if (fileInput) {
-                        await fileInput.uploadFile(fullPath);
-                        console.log("[Puppeteer Grok] ✅ 이미지 업로드 완료 (직접 input)");
-                        uploaded = true;
-                        break;
-                    }
+                    // 2. SVG 아이콘 기반 찾기 (다운로드 아이콘 경로 포함 여부)
+                    const allButtons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
+                    const iconBtn = allButtons.find(btn => {
+                        const svg = btn.querySelector('svg');
+                        const text = (btn.innerText || '').toLowerCase();
+                        return text.includes('download') || (svg && svg.innerHTML.toLowerCase().includes('download'));
+                    });
 
-                    await delay(2000);
-                } catch (e) {
-                    console.warn(`[Puppeteer Grok] Upload attempt ${attempt} failed:`, e.message);
+                    if (iconBtn && iconBtn.offsetParent !== null) {
+                        iconBtn.click();
+                        return true;
+                    }
+                    
+                    return false;
+                });
+
+                if (downloadClicked) {
+                    console.log("[Puppeteer Grok] 📥 다운로드 버튼 클릭 성공!");
+                    break;
+                }
+
+                if (elapsed % 30000 === 0) {
+                    console.log(`[Puppeteer Grok] 대기 중... (${elapsed / 1000}초 경과)`);
                 }
             }
 
-            if (uploaded) {
-                // 이미지 로딩 대기
-                await delay(3000);
-            } else {
-                console.warn("[Puppeteer Grok] ⚠️ 이미지 업로드 실패. 텍스트만으로 진행합니다.");
+            if (!downloadClicked) {
+                console.warn("[Puppeteer Grok] ⚠️ 타임아웃: 다운로드 버튼을 찾지 못했습니다.");
+                return {
+                    success: true,
+                    message: '영상 생성은 시작되었으나 자동 다운로드에 실패했습니다. 브라우저에서 직접 다운로드 후 가져오기를 눌러주세요.',
+                    status: 'partially_completed',
+                    engine: 'grok'
+                };
+            }
+
+            // 다운로드 완료 대기 (최대 60초)
+            console.log("[Puppeteer Grok] ⏳ 다운로드 완료 대기 중...");
+            const MAX_DOWNLOAD_WAIT_MS = 60000;
+            const downloadPollInterval = 2000;
+            let downloadElapsed = 0;
+            let downloadedFile = null;
+
+            const downloadStartTime = Date.now();
+
+            while (downloadElapsed < MAX_DOWNLOAD_WAIT_MS) {
+                await delay(downloadPollInterval);
+                downloadElapsed += downloadPollInterval;
+
+                // 다운로드 폴더에서 최근 생성된 mp4 파일 찾기
+                try {
+                    const files = fs.readdirSync(downloadDir);
+                    const mp4Files = files
+                        .filter(f => f.toLowerCase().endsWith('.mp4') && !f.endsWith('.crdownload'))
+                        .map(f => {
+                            const filePath = path.join(downloadDir, f);
+                            try {
+                                const stat = fs.statSync(filePath);
+                                return {
+                                    name: f,
+                                    path: filePath,
+                                    mtime: stat.mtimeMs,
+                                    size: stat.size
+                                };
+                            } catch {
+                                return null;
+                            }
+                        })
+                        .filter(Boolean)
+                        .filter(f => f.mtime >= downloadStartTime) // 다운로드 시작 이후 생성된 파일만
+                        .sort((a, b) => b.mtime - a.mtime);
+
+                    if (mp4Files.length > 0 && mp4Files[0].size > 100 * 1024) {
+                        downloadedFile = mp4Files[0];
+                        console.log(`[Puppeteer Grok] ✅ 다운로드 완료: ${downloadedFile.name} (${(downloadedFile.size / (1024 * 1024)).toFixed(2)}MB)`);
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`[Puppeteer Grok] ⚠️ 다운로드 폴더 확인 중 오류: ${e.message}`);
+                }
+            }
+
+            if (!downloadedFile) {
+                console.warn("[Puppeteer Grok] ⚠️ 다운로드 완료 확인 실패");
+                return {
+                    success: true,
+                    message: '영상 생성은 완료되었으나 자동 다운로드 확인에 실패했습니다. [가져오기] 버튼을 눌러주세요.',
+                    status: 'partially_completed',
+                    engine: 'grok'
+                };
+            }
+
+            // 파일을 프로젝트 폴더로 이동
+            console.log("[Puppeteer Grok] 📦 프로젝트 폴더로 파일 이동 중...");
+            try {
+                const mediaDirs = ensureStoryMediaDirectories(storyId, storyTitle);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const sceneLabel = sceneNumber ? `scene-${String(sceneNumber).padStart(2, '0')}` : 'scene';
+                const newFilename = `${sceneLabel}_${timestamp}.mp4`;
+                const targetPath = path.join(mediaDirs.videoDir, newFilename);
+
+                // 파일 이동 (드라이브 간 이동 지원)
+                try {
+                    fs.renameSync(downloadedFile.path, targetPath);
+                } catch (err) {
+                    if (err.code === 'EXDEV') {
+                        fs.copyFileSync(downloadedFile.path, targetPath);
+                        fs.unlinkSync(downloadedFile.path);
+                        console.log(`[Puppeteer Grok] 🔄 Cross-device move handled`);
+                    } else {
+                        throw err;
+                    }
+                }
+
+                const relativePath = `대본폴더/${mediaDirs.safeId}/video/${newFilename}`;
+                const videoUrl = `/generated_scripts/${relativePath}`;
+
+                console.log(`[Puppeteer Grok] ✅ 영상 자동 저장 완료: ${newFilename}`);
+
+                return {
+                    success: true,
+                    message: '영상 생성 및 자동 저장 완료!',
+                    status: 'completed',
+                    engine: 'grok',
+                    filename: newFilename,
+                    url: videoUrl,
+                    path: targetPath,
+                    size: downloadedFile.size
+                };
+
+            } catch (moveErr) {
+                console.error("[Puppeteer Grok] ❌ 파일 이동 중 오류:", moveErr);
+                return {
+                    success: true,
+                    message: '영상 다운로드는 완료되었으나 자동 이동에 실패했습니다. [가져오기] 버튼을 눌러주세요.',
+                    status: 'partially_completed',
+                    engine: 'grok'
+                };
+            }
+
+        } catch (err) {
+            console.error("[Puppeteer Grok] ❌ 다운로드 대기 중 오류:", err.message);
+            return {
+                success: true,
+                message: '영상 생성은 완료되었으나 자동 다운로드 대기 중 오류가 발생했습니다. [가져오기] 버튼을 눌러주세요.',
+                status: 'partially_completed',
+                engine: 'grok'
+            };
+        } finally {
+            if (grokCdpClient) {
+                await grokCdpClient.detach().catch(() => {});
             }
         }
+
+    } catch (mainErr) {
+        console.error("[Puppeteer Grok] ❌ 전체 프로세스 오류:", mainErr);
+        return {
+            success: false,
+            error: mainErr.message || '영상 생성 중 오류 발생',
+            status: 'failed',
+            engine: 'grok'
+        };
     }
-
-    // 4. 프롬프트 입력
-    console.log("[Puppeteer Grok] 🎬 프롬프트 입력 중...");
-    try {
-        await grokPage.waitForSelector(config.selectors.input, { timeout: 10000 });
-        await grokPage.click(config.selectors.input);
-        await delay(500);
-
-        // 기존 텍스트 클리어
-        await grokPage.keyboard.down('Control');
-        await grokPage.keyboard.press('A');
-        await grokPage.keyboard.up('Control');
-        await grokPage.keyboard.press('Backspace');
-        await delay(300);
-
-        // 프롬프트 타이핑
-        await grokPage.type(config.selectors.input, prompt, { delay: 20 });
-        await delay(1500);
-    } catch (err) {
-        console.error("[Puppeteer Grok] ❌ 프롬프트 입력 실패:", err.message);
-        throw err;
-    }
-
-    // 5. Submit 클릭
-    console.log("[Puppeteer Grok] 🎬 Submit 클릭...");
-    try {
-        // Submit 버튼 활성화 대기
-        await grokPage.waitForFunction(() => {
-            const btn = document.querySelector('button[aria-label="Submit"]');
-            return btn && !btn.disabled;
-        }, { timeout: 10000 });
-
-        await grokPage.click(config.selectors.submitBtn);
-        console.log("[Puppeteer Grok] ✅ 영상 생성 요청 완료!");
-    } catch (err) {
-        // 대체: Enter 키
-        console.log("[Puppeteer Grok] Submit 버튼 실패, Enter 시도...");
-        await grokPage.keyboard.press('Enter');
-    }
-
-    console.log("[Puppeteer Grok] ✅ Grok에서 영상 생성이 시작되었습니다. 완료 후 수동 다운로드 후 '가져오기' 버튼을 사용하세요.");
-
-    return {
-        success: true,
-        message: '영상 생성 요청 완료. Grok에서 영상이 완성되면 다운로드 후 가져오기 버튼을 사용하세요.',
-        status: 'submitted',
-        engine: 'grok'
-    };
 }
 
 /*console.log("[Puppeteer Video] 🎞️ Waiting for video generation (this may take a few minutes)...");

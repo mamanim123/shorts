@@ -1278,7 +1278,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [aiTopic, setAiTopic] = useState('');
     const [aiGenre, setAiGenre] = useState('comedy-humor');
     const [aiTargetAge, setAiTargetAge] = useState('40대');
-    const [scriptCharacterMode, setScriptCharacterMode] = useState<'slot-only' | 'slot+name'>('slot-only');
+    const [scriptCharacterMode] = useState<'slot-only' | 'slot+name'>('slot+name');
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
@@ -3078,17 +3078,30 @@ ${scriptInput}
             }
 
             const data = await response.json();
-            setScenes(prev => {
-                const updated = [...prev];
-                updated[sceneIndex] = { ...scene, isVideoGenerating: false };
-                setAppStorageValue('shorts-lab-scenes', updated);
-                return updated;
-            });
 
-            if (data.success) {
-                showToast(`${sceneNumber}번 장면: Grok 비디오 생성 시작! 브라우저에서 완료 후 '가져오기' 버튼을 눌러주세요.`, 'success');
-            } else if (data.message) {
-                showToast(data.message, 'info');
+            if (data.success && data.url) {
+                // 자동 저장 완료 - videoUrl 자동 업데이트
+                setScenes(prev => {
+                    const updated = [...prev];
+                    updated[sceneIndex] = {
+                        ...scene,
+                        isVideoGenerating: false,
+                        videoUrl: data.url,
+                        videoError: undefined
+                    };
+                    setAppStorageValue('shorts-lab-scenes', updated);
+                    return updated;
+                });
+                showToast(data.message || `${sceneNumber}번 장면: Grok 영상 생성 및 자동 저장 완료!`, 'success');
+            } else {
+                // 자동 저장 실패 - 수동 가져오기 필요
+                setScenes(prev => {
+                    const updated = [...prev];
+                    updated[sceneIndex] = { ...scene, isVideoGenerating: false };
+                    setAppStorageValue('shorts-lab-scenes', updated);
+                    return updated;
+                });
+                showToast(data.message || `${sceneNumber}번 장면: Grok 비디오 생성 완료! [가져오기] 버튼을 눌러주세요.`, 'info');
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Grok 비디오 생성 실패';
@@ -4887,32 +4900,6 @@ ${scriptInput}
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                        <div>
-                                            <div className="text-sm font-medium text-slate-300">캐릭터 고정 방식</div>
-                                            <div className="text-[10px] text-slate-500 mt-0.5">캐디는 WomanD 고정</div>
-                                        </div>
-                                        <div className="flex items-center bg-slate-900/60 border border-slate-700 rounded-full p-0.5">
-                                            <button
-                                                onClick={() => setScriptCharacterMode('slot-only')}
-                                                className={`px-3 py-1 text-[11px] font-bold rounded-full transition-all ${scriptCharacterMode === 'slot-only'
-                                                    ? 'bg-purple-600 text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-200'
-                                                    }`}
-                                            >
-                                                슬롯만
-                                            </button>
-                                            <button
-                                                onClick={() => setScriptCharacterMode('slot+name')}
-                                                className={`px-3 py-1 text-[11px] font-bold rounded-full transition-all ${scriptCharacterMode === 'slot+name'
-                                                    ? 'bg-purple-600 text-white shadow-sm'
-                                                    : 'text-slate-400 hover:text-slate-200'
-                                                    }`}
-                                            >
-                                                슬롯+이름
-                                            </button>
-                                        </div>
-                                    </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <button

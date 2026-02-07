@@ -1,11 +1,8 @@
 {
-  "active_plan": "F:\test\쇼츠대본생성기-v3.5.3\.sisyphus\plans\fix-shorts-lab-image-prompts.md",
-  "started_at": "2026-02-06T01:25:00.000Z",
-  "completed_at": "2026-02-07T04:15:00.000Z",
-  "session_ids": [
-    "ses_3cfb512b2fferUlz8px3VV4UnU",
-    "ses_3ca7c8c1effedkHT6eRESOh1IB"
-  ],
-  "plan_name": "fix-shorts-lab-image-prompts",
+  "active_plan": "F:\\projact\\쇼츠대본생성기-v3.5.3\\.sisyphus\\plans\\video-automation.md",
+  "started_at": "2026-02-07T09:48:01.354Z",
+  "completed_at": "2026-02-07T09:52:00.000Z",
+  "session_ids": ["ses_3c8bbd763ffeGIVDMWLC6mzjSt"],
+  "plan_name": "video-automation",
   "status": "completed"
 }

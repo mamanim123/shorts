@@ -28,6 +28,7 @@ import {
     submitPromptOnly,
     submitPromptAndCaptureImage,
     generateVideoFX,
+    generateGrokVideo,
     closeAllBrowsers
 } from './puppeteerHandler.js';
 import { searchYouTube } from './youtubeSearchHandler.js';
@@ -2096,7 +2097,54 @@ const readOutfitCatalog = () => {
         const parsed = JSON.parse(raw);
         const outfits = Array.isArray(parsed?.outfits) ? parsed.outfits : [];
         const categories = normalizeOutfitCategories(parsed?.categories || [], outfits);
-        return { outfits, categories };
+        const normalizedOutfits = outfits.map((outfit) => {
+            if (!outfit) return outfit;
+            const imageUrl = typeof outfit.imageUrl === 'string' ? outfit.imageUrl.trim() : '';
+            if (!imageUrl) return outfit;
+
+            const normalizePreviewUrl = (filename) =>
+                `http://localhost:3002/generated_scripts/outfit_previews/${filename}`;
+
+            const extractFilename = (url) => {
+                if (!url) return '';
+                if (url.startsWith('http://localhost:3002')) {
+                    return url.replace('http://localhost:3002/generated_scripts/outfit_previews/', '');
+                }
+                if (url.startsWith('/generated_scripts/outfit_previews/')) {
+                    return url.replace('/generated_scripts/outfit_previews/', '');
+                }
+                return '';
+            };
+
+            let filename = extractFilename(imageUrl);
+            if (filename) {
+                const fullPath = path.join(OUTFIT_PREVIEW_DIR, filename);
+                if (fs.existsSync(fullPath)) {
+                    return { ...outfit, imageUrl: normalizePreviewUrl(filename) };
+                }
+            }
+
+            if (outfit.id) {
+                const prefix = `${outfit.id}_`;
+                const candidates = fs.readdirSync(OUTFIT_PREVIEW_DIR)
+                    .filter((name) => name.startsWith(prefix));
+                if (candidates.length > 0) {
+                    const newest = candidates
+                        .map((name) => {
+                            const fullPath = path.join(OUTFIT_PREVIEW_DIR, name);
+                            const stat = fs.statSync(fullPath);
+                            return { name, time: stat.mtimeMs || 0 };
+                        })
+                        .sort((a, b) => b.time - a.time)[0];
+                    if (newest?.name) {
+                        return { ...outfit, imageUrl: normalizePreviewUrl(newest.name) };
+                    }
+                }
+            }
+
+            return outfit;
+        });
+        return { outfits: normalizedOutfits, categories };
     } catch (error) {
         console.error('Failed to read outfits:', error);
         return { outfits: [], categories: DEFAULT_OUTFIT_CATEGORIES };
@@ -3056,18 +3104,22 @@ app.post('/api/video/generate-grok', async (req, res) => {
         console.log(`[GrokVideo] Generating video for scene ${sceneNumber ?? '?'} | duration=${duration || '6s'} resolution=${resolution || '720p'}`);
 
         const { generateGrokVideo } = await import('./puppeteerHandler.js');
-        const result = await generateGrokVideo(prompt, imageUrl, { duration, resolution });
+        const result = await generateGrokVideo(prompt, imageUrl, storyId, storyTitle, sceneNumber, { duration, resolution });
 
         if (!result || !result.success) {
             throw new Error(result?.error || "Grok 비디오 생성에 실패했습니다.");
         }
 
-        console.log(`[GrokVideo] ✅ Video generation initiated for scene ${sceneNumber ?? '?'}`);
+        console.log(`[GrokVideo] ✅ Video generation completed for scene ${sceneNumber ?? '?'}`);
 
         res.json({
             success: true,
-            message: "Grok 비디오 생성이 시작되었습니다. Grok 브라우저에서 완료 후 다운로드해주세요.",
-            sceneNumber
+            message: result.message || "영상 생성 및 자동 저장 완료!",
+            status: result.status,
+            sceneNumber,
+            url: result.url,
+            filename: result.filename,
+            size: result.size
         });
 
     } catch (error) {
@@ -4268,6 +4320,14 @@ app.post('/api/video/refine-prompt', async (req, res) => {
     const prompt = [
         '당신은 영상 프롬프트 전문가입니다. 아래 정보를 참고해 비디오 프롬프트를 정교화하세요.',
         '',
+        '⚠️ 중요 지침:',
+        '1. 이미지 프롬프트를 그대로 복사하지 말 것 - 영상용으로 재작성할 것',
+        '2. 피사체의 움직임과 치밀한 동작을 묘사할 것 (걷기, 뛰기, 제스처 등)',
+        '3. 칩거라 워킹을 포함할 것 (팬, 틸트, 줌, 트래킹, 핸드헬드 등)',
+        '4. 시간에 따른 장면의 변화를 설명할 것 (시작→전개→클리막스)',
+        '5. cinematic하고 dynamic한 표현 사용 (영화적, 역동적)',
+        '6. 조명의 변화와 분위기 전환을 묘사할 것',
+        '',
         '- 전체 대본: ' + String(script || '').slice(0, 2000),
         '- 현재 문장: ' + String(scriptLine || ''),
         '- 행동: ' + String(action || ''),
@@ -4278,7 +4338,7 @@ app.post('/api/video/refine-prompt', async (req, res) => {
         '',
         '출력은 반드시 JSON만:',
         '{',
-        '  "refinedPrompt": "(짧고 선명한 영상 프롬프트)",',
+        '  "refinedPrompt": "(영상 전용 - 움직임과 칩거라 동작이 포함된 프롬프트)",',
         '  "dialogue": "(대사 있으면 그대로, 없으면 빈 문자열)"',
         '}'
     ].join('\n');
@@ -4296,8 +4356,9 @@ app.post('/api/video/refine-prompt', async (req, res) => {
             });
         }
 
+        const motionHint = ' (cinematic motion, camera movement, dynamic scene)';
         return res.json({
-            refinedPrompt: String(visualPrompt || scriptLine || '').trim(),
+            refinedPrompt: String(scriptLine || visualPrompt || '').trim() + motionHint,
             dialogue: baseDialogue
         });
     } catch (error) {
@@ -4327,6 +4388,32 @@ app.post('/api/video/generate-smart', async (req, res) => {
         return res.status(500).json({ error: error.message || '영상 생성 실패' });
     }
 });
+
+// ⚠️ 중복된 엔드포인트 - 라인 3096의 것을 사용하세요
+// app.post('/api/video/generate-grok', async (req, res) => {
+//     const { prompt, imageUrl, storyId, storyTitle, sceneNumber } = req.body || {};
+//     if (!prompt || typeof prompt !== 'string') {
+//         return res.status(400).json({ error: 'prompt가 필요합니다.' });
+//     }
+
+//     try {
+//         const result = await generateGrokVideo(prompt, imageUrl, storyId, storyTitle, sceneNumber, { duration: '6s', resolution: '720p' });
+//         return res.json({
+//             success: true,
+//             status: result?.status || 'submitted',
+//             message: result?.message || 'Grok 영상 생성 요청 완료',
+//             storyId: storyId || null,
+//             sceneNumber: sceneNumber || null,
+//             url: result.url,
+//             filename: result.filename,
+//             size: result.size,
+//             engine: 'grok'
+//         });
+//     } catch (error) {
+//         console.error('[Grok Video Generate] ❌ Failed:', error);
+//         return res.status(500).json({ error: error.message || 'Grok 영상 생성 실패' });
+//     }
+// });
 
 const os = await import('os');
 const DOWNLOAD_WATCH_DIR = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
@@ -4455,6 +4542,21 @@ app.post('/api/video/import-from-downloads', async (req, res) => {
             } else {
                 throw err;
             }
+        }
+
+        // FFmpeg로 오디오 제거 (Grok 생성 영상의 오디오는 TTS와 겹침)
+        try {
+            const noAudioPath = targetPath.replace('.mp4', '_noaudio.mp4');
+            await execAsync(`ffmpeg -i "${targetPath}" -an -c:v copy "${noAudioPath}" -y`);
+            
+            // 원본 파일을 오디오 제거된 파일로 교체
+            fs.unlinkSync(targetPath);
+            fs.renameSync(noAudioPath, targetPath);
+            
+            console.log(`[Video Import] 🔇 FFmpeg 오디오 제거 완료: ${newFilename}`);
+        } catch (ffmpegErr) {
+            console.warn('[Video Import] ⚠️ FFmpeg 오디오 제거 실패 (무시):', ffmpegErr.message);
+            // 오디오 제거 실패핏 원본 파일을 그대로 사용
         }
 
         const fileSizeKB = Math.round(latestFile.size / 1024);

@@ -12,6 +12,66 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const USER_DATA_BASE = path.join(__dirname, '..', 'puppeteer_user_data');
 if (!fs.existsSync(USER_DATA_BASE)) fs.mkdirSync(USER_DATA_BASE, { recursive: true });
 
+const CHROME_LOCK_FILES = [
+    'SingletonLock',
+    'SingletonCookie',
+    'SingletonSocket',
+    'SingletonPort',
+    'lockfile'
+];
+
+const SCRIPT_USERDATA_PRIMARY = path.join(USER_DATA_BASE, 'script_gen');
+const SCRIPT_USERDATA_FALLBACK = path.join(USER_DATA_BASE, 'script_gen_fallback');
+
+let scriptUserDataDirOverride = null;
+
+const ensureDir = (dirPath) => {
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+    }
+};
+
+const tryRemoveChromeLocks = (dirPath) => {
+    ensureDir(dirPath);
+    let locked = false;
+    CHROME_LOCK_FILES.forEach((filename) => {
+        const filePath = path.join(dirPath, filename);
+        if (!fs.existsSync(filePath)) return;
+        try {
+            fs.unlinkSync(filePath);
+        } catch (e) {
+            locked = true;
+        }
+    });
+    if (!locked) {
+        locked = CHROME_LOCK_FILES.some((filename) => fs.existsSync(path.join(dirPath, filename)));
+    }
+    return !locked;
+};
+
+const resolveScriptUserDataDir = () => {
+    if (scriptUserDataDirOverride) return scriptUserDataDirOverride;
+
+    const primaryUnlocked = tryRemoveChromeLocks(SCRIPT_USERDATA_PRIMARY);
+    if (primaryUnlocked) {
+        scriptUserDataDirOverride = SCRIPT_USERDATA_PRIMARY;
+        return scriptUserDataDirOverride;
+    }
+
+    console.warn("[Puppeteer Script] ⚠️ script_gen profile appears locked. Falling back to script_gen_fallback.");
+    const fallbackUnlocked = tryRemoveChromeLocks(SCRIPT_USERDATA_FALLBACK);
+    if (fallbackUnlocked) {
+        scriptUserDataDirOverride = SCRIPT_USERDATA_FALLBACK;
+        return scriptUserDataDirOverride;
+    }
+
+    const uniqueDir = path.join(USER_DATA_BASE, `script_gen_${Date.now()}`);
+    ensureDir(uniqueDir);
+    console.warn(`[Puppeteer Script] ⚠️ Both primary and fallback are locked. Using ${uniqueDir}`);
+    scriptUserDataDirOverride = uniqueDir;
+    return scriptUserDataDirOverride;
+};
+
 // 🔹 통합 브라우저 (대본 생성 + 이미지 생성 모두 사용)
 let scriptBrowser;
 let scriptPage;
@@ -119,23 +179,13 @@ export async function launchScriptBrowser() {
                 try { await scriptBrowser.close(); } catch (e) { }
             }
 
-            const userDataDir = path.join(USER_DATA_BASE, 'script_gen');
-            
-            // 🔹 [NEW] 강제 점유 해제 (Windows lockfile 대응)
-            const lockFile = path.join(userDataDir, 'lockfile');
-            if (fs.existsSync(lockFile)) {
-                try {
-                    console.log("[Puppeteer Script] 🔒 Stale lockfile detected, removing...");
-                    fs.unlinkSync(lockFile);
-                } catch (e) {
-                    console.warn("[Puppeteer Script] ⚠️ Failed to remove lockfile, browser might be actually running:", e.message);
-                }
-            }
+            const userDataDir = resolveScriptUserDataDir();
+            console.log(`[Puppeteer Script] Using userDataDir: ${userDataDir}`);
 
             const headless = false;
             console.log(`[Puppeteer Script] Headless mode: ${headless}`);
 
-            scriptBrowser = await puppeteer.launch({
+            const launchArgs = {
                 headless,
                 executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
                 defaultViewport: null,
@@ -149,7 +199,25 @@ export async function launchScriptBrowser() {
                     '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 ],
                 userDataDir
-            });
+            };
+
+            try {
+                scriptBrowser = await puppeteer.launch(launchArgs);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error || '');
+                if (message.includes('already running')) {
+                    console.warn("[Puppeteer Script] ⚠️ userDataDir already in use. Retrying with fallback profile...");
+                    scriptUserDataDirOverride = null;
+                    const fallbackDir = resolveScriptUserDataDir();
+                    if (fallbackDir !== userDataDir) {
+                        scriptBrowser = await puppeteer.launch({ ...launchArgs, userDataDir: fallbackDir });
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    throw error;
+                }
+            }
 
             const pages = await scriptBrowser.pages();
             scriptPage = pages.length > 0 ? pages[0] : await scriptBrowser.newPage();
@@ -747,6 +815,7 @@ export async function closeAllBrowsers() {
     scriptBrowserLaunchPromise = null;
     videoBrowserLaunchPromise = null;
     imageBrowser = null;
+    scriptUserDataDirOverride = null;
 
     console.log("[Puppeteer] 🏠 All browsers cleanup attempt finished.");
     return true;

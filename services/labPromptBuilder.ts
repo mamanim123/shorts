@@ -2030,7 +2030,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
   const golfCaddyRule = isGolfTopic ? `\n11. **캐디(WomanD) 상시 노출 (골프 씬 필수)**: 배경이 골프장인 경우, 캐디(WomanD)는 대본에 직접적인 대사가 없더라도 **거의 모든 장면에 배경 인물로 자연스럽게 포함**되어야 합니다. 주인공의 시선이 닿지 않는 곳에서 카트를 정리하거나 지켜보는 모습으로 배치하세요.` : '';
 
-  return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+  const rawPrompt = `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
 당신은 **대한민국 최고의 유튜브 쇼츠 바이럴 마스터이자 전문 작가**입니다. 
 단 1초 만에 시청자의 시선을 강탈하고, 60초 내내 심장을 쫄깃하게 만들어 "이건 무조건 공유해야 돼!"라는 감탄이 터져 나오는 대박 쇼츠 대본을 집필하세요.
@@ -2356,6 +2356,8 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 23. ✅ 모든 씬에 voiceType 지정?
 24. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 `;
+
+  return applySlotNameOverrides(rawPrompt, slotNames);
 };
 
 export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {

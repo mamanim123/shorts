@@ -3091,11 +3091,11 @@ ${scriptInput}
                 showToast(data.message, 'info');
             }
         } catch (error) {
-            const message = error instanceof Error ? error.message : '비디오 생성 실패';
+            const message = error instanceof Error ? error.message : 'Grok 비디오 생성 실패';
             if (message.includes('aborted')) {
-                showToast('비디오 생성이 취소되었습니다.', 'info');
+                showToast('Grok 비디오 생성이 취소되었습니다.', 'info');
             } else {
-                showToast(`비디오 생성 실패: ${message}`, 'error');
+                showToast(`Grok 비디오 생성 실패: ${message}`, 'error');
             }
             setScenes(prev => {
                 const updated = [...prev];
@@ -5433,9 +5433,9 @@ ${scriptInput}
                                                                 className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-[10px] font-bold rounded-lg border border-emerald-500/50 transition-all flex items-center justify-center gap-2"
                                                             >
                                                                 {scene.isVideoGenerating ? (
-                                                                    <><Loader2 className="w-3 h-3 animate-spin" /> 생성 중...</>
+                                                                    <><Loader2 className="w-3 h-3 animate-spin" /> Grok 생성 중...</>
                                                                 ) : (
-                                                                    <>영상 생성</>
+                                                                    <>Grok 생성</>
                                                                 )}
                                                             </button>
                                                             {scene.isVideoGenerating && (

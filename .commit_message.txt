@@ -1,5 +1,4 @@
-✨ Grok 무료 비디오 생성 엔진 추가 (Puppeteer 자동화)
+✨ ShortsLab 영상 생성 버튼을 Grok 엔진으로 전환
 
-- puppeteerHandler.js: GROK_VIDEO 서비스 + generateGrokVideo() 함수 구현
-- server/index.js: POST /api/video/generate-grok 엔드포인트 추가
-- VideoStudio.tsx: Veo/Grok 엔진 선택 UI 및 Grok 설정 추가
+- handleGenerateSceneVideo: generate-smart(Veo) → generate-grok 엔드포인트로 변경
+- 버튼 텍스트 '영상 생성' → 'Grok 생성' 변경

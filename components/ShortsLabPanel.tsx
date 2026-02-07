@@ -3068,7 +3068,8 @@ ${scriptInput}
                     storyId: getEffectiveStoryId(),
                     storyTitle: aiTopic?.trim() || 'ShortsLab',
                     sceneNumber: scene.number,
-                    imageUrl: scene.imageUrl
+                    imageUrl: scene.imageUrl,
+                    aspectRatio: '9:16'
                 })
             });
 

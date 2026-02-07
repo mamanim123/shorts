@@ -826,31 +826,64 @@ async function switchToGrokImagine() {
 // 🔹 Grok Video 생성 메인 함수
 export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, sceneNumber, options = {}) {
     const config = SERVICES.GROK_VIDEO;
-    const { duration = '6s', resolution = '720p' } = options;
+    const { duration = '6s', resolution = '720p', aspectRatio = '9:16' } = options;
 
     await switchToGrokImagine();
 
     // 🆕 새 세션 시작 (왼쪽 사이드바의 "Imagine" 버튼 클릭)
-    console.log("[Puppeteer Grok] 🆕 새 세션 시작...");
+    console.log("[Puppeteer Grok] 🆕 새 세션 시작 시도...");
     try {
-        const newSessionClicked = await grokPage.evaluate(() => {
-            // 왼쪽 사이드바의 "Imagine" 버튼 찾기
-            const buttons = Array.from(document.querySelectorAll('button'));
-            const imagineBtn = buttons.find(btn => {
-                const text = btn.textContent?.trim();
-                return text === 'Imagine';
-            });
+        // 먼저 현재 URL 저장 (새 세션 시작 확인용)
+        const oldUrl = grokPage.url();
+
+        const result = await grokPage.evaluate(() => {
+            // 디버깅: 모든 버튼 텍스트 확인
+            const allButtons = Array.from(document.querySelectorAll('button'));
+            const buttonTexts = allButtons.map(btn => btn.textContent?.trim()).filter(Boolean);
+            console.log('[Grok Debug] 페이지의 모든 버튼:', buttonTexts);
+
+            // 1. 정확히 "Imagine" 텍스트를 가진 버튼 찾기
+            let imagineBtn = allButtons.find(btn => btn.textContent?.trim() === 'Imagine');
+
+            // 2. 왼쪽 사이드바 내의 Imagine 버튼 찾기
+            if (!imagineBtn) {
+                const sidebar = document.querySelector('nav, aside, [role="navigation"]');
+                if (sidebar) {
+                    const sidebarButtons = Array.from(sidebar.querySelectorAll('button'));
+                    imagineBtn = sidebarButtons.find(btn =>
+                        btn.textContent?.toLowerCase().includes('imagine')
+                    );
+                }
+            }
+
+            // 3. data-testid나 aria-label로 찾기
+            if (!imagineBtn) {
+                imagineBtn = document.querySelector('button[data-testid*="imagine"], button[aria-label*="Imagine"]');
+            }
 
             if (imagineBtn) {
+                console.log('[Grok Debug] Imagine 버튼 찾음:', imagineBtn.textContent?.trim());
+                imagineBtn.scrollIntoView();
                 imagineBtn.click();
-                return true;
+                return { clicked: true, text: imagineBtn.textContent?.trim() };
             }
-            return false;
+
+            console.log('[Grok Debug] Imagine 버튼을 찾지 못함');
+            return { clicked: false, text: null };
         });
 
-        if (newSessionClicked) {
-            console.log("[Puppeteer Grok] ✅ 새 세션 시작됨");
-            await delay(2000); // 새 세션 로드 대기
+        if (result.clicked) {
+            console.log(`[Puppeteer Grok] ✅ Imagine 버튼 클릭 성공: "${result.text}"`);
+
+            // 새 세션 로드 대기 (URL 변경 또는 페이지 리로드 대기)
+            await delay(3000);
+
+            const newUrl = grokPage.url();
+            if (newUrl !== oldUrl) {
+                console.log(`[Puppeteer Grok] ✅ 새 세션 URL로 변경됨: ${newUrl}`);
+            } else {
+                console.log("[Puppeteer Grok] ℹ️ URL은 동일하지만 새 세션 시작됨");
+            }
         } else {
             console.log("[Puppeteer Grok] ⚠️ Imagine 버튼을 찾지 못했습니다 (기존 세션 사용)");
         }
@@ -921,8 +954,8 @@ export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, s
             console.log("[Puppeteer Grok] 🎬 이미 Video 모드");
         }
 
-        // 2. Duration / Resolution 설정 (드롭다운 다시 열어서)
-        console.log(`[Puppeteer Grok] 🎬 설정: duration=${duration}, resolution=${resolution}`);
+        // 2. Duration / Resolution / AspectRatio 설정 (드롭다운 다시 열어서)
+        console.log(`[Puppeteer Grok] 🎬 설정: duration=${duration}, resolution=${resolution}, aspectRatio=${aspectRatio}`);
         const modelBtnForSettings = await grokPage.$(config.selectors.modelSelect);
         if (modelBtnForSettings) {
             await modelBtnForSettings.click();
@@ -954,6 +987,20 @@ export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, s
                 }
                 return false;
             }, resolution);
+            await delay(500);
+
+            // AspectRatio 선택
+            await grokPage.evaluate((targetRatio) => {
+                const allEls = Array.from(document.querySelectorAll('button, span, div, label'));
+                for (const el of allEls) {
+                    const text = (el.innerText || '').trim();
+                    if (text === targetRatio && el.children.length === 0) {
+                        el.click();
+                        return true;
+                    }
+                }
+                return false;
+            }, aspectRatio);
             await delay(500);
 
             // 드롭다운 닫기 (외부 클릭)
@@ -1106,49 +1153,163 @@ export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, s
 
         // 6. 🎞️ 영상 생성 완료 대기 및 자동 다운로드 (최대 5분)
         try {
-            console.log("[Puppeteer Grok] 🎞️ 영상이 완성될 때까지 대기합니다... (최대 5분)");
             const MAX_WAIT_MS = 300000; // 5분
             const pollInterval = 5000;
             let elapsed = 0;
+            let videoStarted = false;
+            let videoCompleted = false;
             let downloadClicked = false;
 
-            while (elapsed < MAX_WAIT_MS) {
+            // 1단계: 영상 생성 **시작** 대기 ("Cancel Video" 버튼이 나타날 때까지)
+            console.log("[Puppeteer Grok] ⏳ 영상 생성 시작 대기 중...");
+            while (elapsed < MAX_WAIT_MS && !videoStarted) {
                 await delay(pollInterval);
                 elapsed += pollInterval;
 
+                videoStarted = await grokPage.evaluate(() => {
+                    const cancelBtn = Array.from(document.querySelectorAll('button')).find(btn => {
+                        const text = btn.textContent || '';
+                        return text.includes('Cancel Video') || text.includes('동영상 취소');
+                    });
+                    return !!cancelBtn;
+                });
+
+                if (videoStarted) {
+                    console.log("[Puppeteer Grok] ✅ 영상 생성 시작됨!");
+                    break;
+                }
+
+                if (elapsed % 30000 === 0) {
+                    console.log(`[Puppeteer Grok] 영상 생성 시작 대기 중... (${elapsed / 1000}초 경과)`);
+                }
+            }
+
+            if (!videoStarted) {
+                console.warn("[Puppeteer Grok] ⚠️ 영상 생성이 시작되지 않았습니다");
+                return {
+                    success: true,
+                    message: '영상 생성이 시작되지 않았습니다. 브라우저를 확인해주세요.',
+                    status: 'partially_completed',
+                    engine: 'grok'
+                };
+            }
+
+            // 2단계: 영상 생성 **완료** 대기 ("Cancel Video" 버튼이 사라질 때까지)
+            console.log("[Puppeteer Grok] 🎞️ 영상이 완성될 때까지 대기합니다...");
+            while (elapsed < MAX_WAIT_MS && !videoCompleted) {
+                await delay(pollInterval);
+                elapsed += pollInterval;
+
+                videoCompleted = await grokPage.evaluate(() => {
+                    // "Cancel Video" / "동영상 취소" 버튼이 사라졌는지 확인
+                    const cancelBtn = Array.from(document.querySelectorAll('button')).find(btn => {
+                        const text = btn.textContent || '';
+                        return text.includes('Cancel Video') || text.includes('동영상 취소');
+                    });
+
+                    if (cancelBtn) {
+                        // 아직 생성 중
+                        return false;
+                    }
+
+                    // video 태그가 있고 재생 가능한지 확인
+                    const video = document.querySelector('video');
+                    if (!video) return false;
+
+                    const isReady = video.readyState >= 3;
+                    const hasDuration = video.duration > 0 && video.duration !== Infinity;
+
+                    if (isReady && hasDuration) {
+                        console.log(`[Grok] Video completed! Duration: ${video.duration}s`);
+                        return true;
+                    }
+
+                    return false;
+                });
+
+                if (videoCompleted) {
+                    console.log("[Puppeteer Grok] ✅ 영상 생성 완료!");
+                    break;
+                }
+
+                if (elapsed % 30000 === 0) {
+                    console.log(`[Puppeteer Grok] 영상 생성 중... (${elapsed / 1000}초 경과)`);
+                }
+            }
+
+            if (!videoCompleted) {
+                console.warn("[Puppeteer Grok] ⚠️ 영상 생성 타임아웃");
+                return {
+                    success: true,
+                    message: '영상 생성 시간이 초과되었습니다. 브라우저에서 확인 후 수동으로 다운로드해주세요.',
+                    status: 'partially_completed',
+                    engine: 'grok'
+                };
+            }
+
+            // 3단계: 다운로드 버튼 클릭 (영상 완성 후)
+            console.log("[Puppeteer Grok] 🔍 다운로드 버튼 찾는 중...");
+            const MAX_DOWNLOAD_WAIT = 30000; // 30초
+            let downloadElapsed = 0;
+
+            while (downloadElapsed < MAX_DOWNLOAD_WAIT && !downloadClicked) {
+                await delay(2000);
+                downloadElapsed += 2000;
+
                 // 다운로드 버튼 찾기 및 클릭
                 downloadClicked = await grokPage.evaluate(() => {
-                    // 1. 특정 aria-label 또는 title 찾기
-                    const selectors = [
-                        'button[aria-label*="Download"]',
-                        'a[aria-label*="Download"]',
-                        'button[title*="Download"]',
-                        'a[title*="Download"]',
-                        '[data-testid*="download"]'
-                    ];
-                    
-                    for (const sel of selectors) {
-                        const el = document.querySelector(sel);
-                        if (el && !el.disabled && el.offsetParent !== null) {
-                            el.scrollIntoView();
-                            el.click();
+                    // 1. aria-label="Download" 정확한 매칭 (가장 확실한 방법)
+                    const downloadBtn = document.querySelector('button[aria-label="Download"]');
+                    if (downloadBtn && !downloadBtn.disabled && downloadBtn.offsetParent !== null) {
+                        downloadBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        downloadBtn.click();
+                        console.log('[Grok] Download button clicked (aria-label)');
+                        return true;
+                    }
+
+                    // 2. lucide-download 클래스를 가진 SVG 찾기
+                    const lucideDownload = document.querySelector('button .lucide-download');
+                    if (lucideDownload) {
+                        const btn = lucideDownload.closest('button');
+                        if (btn && !btn.disabled && btn.offsetParent !== null) {
+                            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            btn.click();
+                            console.log('[Grok] Download button clicked (lucide-download)');
                             return true;
                         }
                     }
 
-                    // 2. SVG 아이콘 기반 찾기 (다운로드 아이콘 경로 포함 여부)
-                    const allButtons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
-                    const iconBtn = allButtons.find(btn => {
-                        const svg = btn.querySelector('svg');
-                        const text = (btn.innerText || '').toLowerCase();
-                        return text.includes('download') || (svg && svg.innerHTML.toLowerCase().includes('download'));
+                    // 3. "Download image" 텍스트를 가진 버튼 찾기
+                    const allButtons = Array.from(document.querySelectorAll('button'));
+                    const downloadImageBtn = allButtons.find(btn => {
+                        const srOnly = btn.querySelector('.sr-only');
+                        return srOnly && srOnly.textContent.includes('Download');
                     });
 
-                    if (iconBtn && iconBtn.offsetParent !== null) {
-                        iconBtn.click();
+                    if (downloadImageBtn && !downloadImageBtn.disabled && downloadImageBtn.offsetParent !== null) {
+                        downloadImageBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        downloadImageBtn.click();
+                        console.log('[Grok] Download button clicked (sr-only text)');
                         return true;
                     }
-                    
+
+                    // 4. 폴백: aria-label에 Download 포함
+                    const fallbackSelectors = [
+                        'button[aria-label*="Download"]',
+                        'a[aria-label*="Download"]',
+                        'button[title*="Download"]'
+                    ];
+
+                    for (const sel of fallbackSelectors) {
+                        const el = document.querySelector(sel);
+                        if (el && !el.disabled && el.offsetParent !== null) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            el.click();
+                            console.log(`[Grok] Download button clicked (${sel})`);
+                            return true;
+                        }
+                    }
+
                     return false;
                 });
 
@@ -1156,34 +1317,30 @@ export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, s
                     console.log("[Puppeteer Grok] 📥 다운로드 버튼 클릭 성공!");
                     break;
                 }
-
-                if (elapsed % 30000 === 0) {
-                    console.log(`[Puppeteer Grok] 대기 중... (${elapsed / 1000}초 경과)`);
-                }
             }
 
             if (!downloadClicked) {
                 console.warn("[Puppeteer Grok] ⚠️ 타임아웃: 다운로드 버튼을 찾지 못했습니다.");
                 return {
                     success: true,
-                    message: '영상 생성은 시작되었으나 자동 다운로드에 실패했습니다. 브라우저에서 직접 다운로드 후 가져오기를 눌러주세요.',
+                    message: '영상은 완성되었으나 다운로드 버튼을 찾지 못했습니다. 브라우저에서 직접 다운로드 후 가져오기를 눌러주세요.',
                     status: 'partially_completed',
                     engine: 'grok'
                 };
             }
 
-            // 다운로드 완료 대기 (최대 60초)
+            // 4단계: 다운로드 완료 대기 (최대 60초)
             console.log("[Puppeteer Grok] ⏳ 다운로드 완료 대기 중...");
             const MAX_DOWNLOAD_WAIT_MS = 60000;
             const downloadPollInterval = 2000;
-            let downloadElapsed = 0;
+            let fileDownloadElapsed = 0;
             let downloadedFile = null;
 
             const downloadStartTime = Date.now();
 
-            while (downloadElapsed < MAX_DOWNLOAD_WAIT_MS) {
+            while (fileDownloadElapsed < MAX_DOWNLOAD_WAIT_MS) {
                 await delay(downloadPollInterval);
-                downloadElapsed += downloadPollInterval;
+                fileDownloadElapsed += downloadPollInterval;
 
                 // 다운로드 폴더에서 최근 생성된 mp4 파일 찾기
                 try {

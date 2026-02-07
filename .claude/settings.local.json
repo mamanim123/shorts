@@ -51,7 +51,13 @@
       "WebFetch(domain:www.grokimagineai.net)",
       "WebFetch(domain:www.datacamp.com)",
       "WebFetch(domain:www.latent.space)",
-      "WebFetch(domain:www.aifreeapi.com)"
+      "WebFetch(domain:www.aifreeapi.com)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_wait_for"
     ]
   }
 }

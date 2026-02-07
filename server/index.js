@@ -3094,17 +3094,17 @@ app.post('/api/video/generate-smart', async (req, res) => {
 
 // ─── Grok Video 생성 (Puppeteer 자동화) ───────────────────────────────
 app.post('/api/video/generate-grok', async (req, res) => {
-    const { prompt, imageUrl, storyId, storyTitle, sceneNumber, duration, resolution } = req.body || {};
+    const { prompt, imageUrl, storyId, storyTitle, sceneNumber, duration, resolution, aspectRatio } = req.body || {};
 
     if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
     }
 
     try {
-        console.log(`[GrokVideo] Generating video for scene ${sceneNumber ?? '?'} | duration=${duration || '6s'} resolution=${resolution || '720p'}`);
+        console.log(`[GrokVideo] Generating video for scene ${sceneNumber ?? '?'} | duration=${duration || '6s'} resolution=${resolution || '720p'} aspectRatio=${aspectRatio || '9:16'}`);
 
         const { generateGrokVideo } = await import('./puppeteerHandler.js');
-        const result = await generateGrokVideo(prompt, imageUrl, storyId, storyTitle, sceneNumber, { duration, resolution });
+        const result = await generateGrokVideo(prompt, imageUrl, storyId, storyTitle, sceneNumber, { duration, resolution, aspectRatio });
 
         if (!result || !result.success) {
             throw new Error(result?.error || "Grok 비디오 생성에 실패했습니다.");

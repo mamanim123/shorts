@@ -1085,6 +1085,7 @@ export const enhanceScenePrompt = (
     totalScenes?: number;     // v3.6: 전체 장면 수 추가
     action?: string;          // v3.7: 동작 묘사 추가
     cameraAngle?: string;     // v3.9.3: LLM 카메라 앵글 우선 존중
+    forceCameraAngle?: boolean; // v3.10: LLM 카메라 앵글 무시하고 강제 적용
   } = {}
 ): string => {
   if (!text) return text;
@@ -1103,7 +1104,9 @@ export const enhanceScenePrompt = (
   const hasHangul = /[가-힣]/.test(rawCameraAngle);
   const cameraFromOption = !hasHangul && /shot|view|pov|angle|framing/i.test(rawCameraAngle) ? rawCameraAngle : '';
   const cameraFromText = cameraFromOption ? '' : extractCameraPhraseFromText(updated);
-  const llmCameraPrompt = cameraFromOption || cameraFromText;
+  const inferredCameraPrompt = cameraFromOption || cameraFromText;
+  const forceCameraAngle = options.forceCameraAngle === true;
+  const llmCameraPrompt = forceCameraAngle ? '' : inferredCameraPrompt;
 
   const llmAngleLabel = normalizeCameraAngleLabel(llmCameraPrompt);
   const lastTwo = angleHistory.slice(-2);
@@ -1145,7 +1148,15 @@ export const enhanceScenePrompt = (
 
   // v3.6: 표정과 카메라 앵글을 맨 앞에 삽입
   // LLM 카메라가 있으면 동일 문구 중복 제거
-  if (llmCameraPrompt) {
+  if (forceCameraAngle) {
+    if (inferredCameraPrompt) {
+      updated = stripExactCameraPhrase(updated, inferredCameraPrompt);
+      updated = updated.replace(/,\s*,/g, ', ').replace(/\s{2,}/g, ' ').replace(/^,\s*/, '').trim();
+    } else {
+      const existingCameraPattern = /^(close-up|medium shot|wide shot|extreme close-up|over-the-shoulder)[^,]*,?\s*/i;
+      updated = updated.replace(existingCameraPattern, '');
+    }
+  } else if (llmCameraPrompt) {
     updated = stripExactCameraPhrase(updated, llmCameraPrompt);
     updated = updated.replace(/,\s*,/g, ', ').replace(/\s{2,}/g, ' ').replace(/^,\s*/, '').trim();
   } else {

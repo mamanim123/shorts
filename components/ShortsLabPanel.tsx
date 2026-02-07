@@ -1043,7 +1043,7 @@ const postProcessAiScenes = (
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
     let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
     const postProcessConfig = options.postProcessConfig;
-    const postProcessEnabled = postProcessConfig?.enabled !== false;
+    const postProcessEnabled = true;
     const skipIdentityInjection = postProcessConfig?.skipIdentityInjection === true;
 
     if (options.enableWinterAccessories) {
@@ -1114,7 +1114,8 @@ const postProcessAiScenes = (
                     gender: sceneGender,
                     genre: options.genre,         // v3.6
                     totalScenes: totalScenes,     // v3.6
-                    cameraAngle: scene.cameraAngle || scene.camera || ''
+                    cameraAngle: scene.cameraAngle || scene.camera || '',
+                    forceCameraAngle: true
                 }
             );
 
@@ -1158,7 +1159,7 @@ const postProcessAiScenes = (
                 ? scene.shortPrompt
                 : enhanceScenePrompt(
                     scene.shortPrompt,
-                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes, cameraAngle: scene.cameraAngle || scene.camera || '' }
+                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes, cameraAngle: scene.cameraAngle || scene.camera || '', forceCameraAngle: true }
                 ))
             : processedPrompt;
         if (postProcessConfig?.useSafeGlamour) {
@@ -2526,7 +2527,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const finalScript = scriptInput.trim();
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
             const postProcessConfig = selectedGenreData?.postProcessConfig;
-            const postProcessEnabled = postProcessConfig?.enabled !== false;
+            const postProcessEnabled = true;
             const skipIdentityInjection = postProcessConfig?.skipIdentityInjection === true;
 
             // 1단계: 대본에서 스크립트 라인 추출 및 성별 추론

@@ -772,13 +772,24 @@ export async function launchGrokBrowser() {
 }
 
 // 🔹 Grok Imagine 페이지 이동 + 로그인 처리
-async function switchToGrokImagine() {
+async function switchToGrokImagine(forceNewPage = false) {
     await launchGrokBrowser();
     const config = SERVICES.GROK_VIDEO;
 
     // 무조건 새로고침/이동하여 이전 세션(이미지 등) 클리어
     console.log("[Puppeteer Grok] 🎬 Navigating to Grok Imagine (Fresh Start)...");
-    
+    if (forceNewPage) {
+        try {
+            if (grokPage && !grokPage.isClosed()) {
+                await grokPage.close({ runBeforeUnload: false });
+            }
+        } catch (e) {
+            console.warn("[Puppeteer Grok] ⚠️ 이전 페이지 종료 실패:", e.message);
+        }
+        grokPage = await grokBrowser.newPage();
+        await grokPage.setBypassCSP(true);
+    }
+
     // 만약 이미 imagine 페이지라면, reload를 통해 상태를 초기화
     if (grokPage.url().includes('grok.com/imagine')) {
         await grokPage.reload({ waitUntil: 'networkidle2' });
@@ -828,7 +839,7 @@ export async function generateGrokVideo(prompt, imageUrl, storyId, storyTitle, s
     const config = SERVICES.GROK_VIDEO;
     const { duration = '6s', resolution = '720p', aspectRatio = '9:16' } = options;
 
-    await switchToGrokImagine();
+    await switchToGrokImagine(true);
 
     // 🆕 새 세션 시작 (왼쪽 사이드바의 "Imagine" 버튼 클릭)
     console.log("[Puppeteer Grok] 🆕 새 세션 시작 시도...");

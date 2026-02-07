@@ -3044,6 +3044,38 @@ app.post('/api/video/generate-smart', async (req, res) => {
     }
 });
 
+// ─── Grok Video 생성 (Puppeteer 자동화) ───────────────────────────────
+app.post('/api/video/generate-grok', async (req, res) => {
+    const { prompt, imageUrl, storyId, storyTitle, sceneNumber, duration, resolution } = req.body || {};
+
+    if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    try {
+        console.log(`[GrokVideo] Generating video for scene ${sceneNumber ?? '?'} | duration=${duration || '6s'} resolution=${resolution || '720p'}`);
+
+        const { generateGrokVideo } = await import('./puppeteerHandler.js');
+        const result = await generateGrokVideo(prompt, imageUrl, { duration, resolution });
+
+        if (!result || !result.success) {
+            throw new Error(result?.error || "Grok 비디오 생성에 실패했습니다.");
+        }
+
+        console.log(`[GrokVideo] ✅ Video generation initiated for scene ${sceneNumber ?? '?'}`);
+
+        res.json({
+            success: true,
+            message: "Grok 비디오 생성이 시작되었습니다. Grok 브라우저에서 완료 후 다운로드해주세요.",
+            sceneNumber
+        });
+
+    } catch (error) {
+        console.error("[GrokVideo] Failed:", error);
+        res.status(500).json({ error: error instanceof Error ? error.message : "Failed to generate Grok video" });
+    }
+});
+
 app.post('/api/image/ai-generate', async (req, res) => {
     const { prompt, service, storyId, sceneNumber, autoCapture, title } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {

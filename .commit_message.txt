@@ -1,1 +1,5 @@
-✨ ShortsLabPanel.tsx 및 labPromptBuilder.ts 파일 대규모 삭제 코드 복구 (HEAD~1 시점으로 복구)
+✨ Grok 무료 비디오 생성 엔진 추가 (Puppeteer 자동화)
+
+- puppeteerHandler.js: GROK_VIDEO 서비스 + generateGrokVideo() 함수 구현
+- server/index.js: POST /api/video/generate-grok 엔드포인트 추가
+- VideoStudio.tsx: Veo/Grok 엔진 선택 UI 및 Grok 설정 추가

@@ -99,6 +99,7 @@ const videoToThumbnailBlob = (videoUrl: string): Promise<Blob | null> => {
 const VideoStudio: React.FC = () => {
     const [videoHistory, setVideoHistory] = useLocalStorage<VideoHistoryItem[]>('videoHistory', []);
     const [prompt, setPrompt] = useState('');
+    const [videoEngine, setVideoEngine] = useState<'veo' | 'grok'>('veo');
     const [model, setModel] = useState('veo-3.0-generate-001');
     const [aspectRatio, setAspectRatio] = useState('16:9');
     const [resolution, setResolution] = useState('720p');
@@ -106,6 +107,7 @@ const VideoStudio: React.FC = () => {
     const [isProMode, setIsProMode] = useState(false);
     const [prioritizeFreedom, setPrioritizeFreedom] = useState(false);
     const [removeBackground, setRemoveBackground] = useState(false); // New state for remove background
+    const [grokDuration, setGrokDuration] = useState<'6s' | '10s'>('6s');
     const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
     // Image History State
@@ -335,6 +337,30 @@ const VideoStudio: React.FC = () => {
         try {
             if (!prompt && !startFrame) {
                 throw new Error("프롬프트를 입력하거나 시작 이미지를 업로드해주세요. / Please enter a prompt or upload a start frame.");
+            }
+
+            // ─── Grok 엔진 분기 ───
+            if (videoEngine === 'grok') {
+                const imageUrl = startFrame?.base64 ? `data:${startFrame.file.type};base64,${startFrame.base64}` : undefined;
+                const grokRes = await fetch('/api/video/generate-grok', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt,
+                        imageUrl,
+                        duration: grokDuration,
+                        resolution,
+                    }),
+                });
+                const grokData = await grokRes.json();
+                if (!grokRes.ok || !grokData.success) {
+                    throw new Error(grokData.error || 'Grok 비디오 생성에 실패했습니다.');
+                }
+                cleanupIntervals();
+                setError(null);
+                setGeneratedVideo(null);
+                alert('Grok 비디오 생성이 시작되었습니다!\n열린 Grok 브라우저에서 완료 후 다운로드해주세요.');
+                return;
             }
 
             const safetySettings = noGuard ? [
@@ -611,34 +637,67 @@ const VideoStudio: React.FC = () => {
                         <h2 className="text-lg font-semibold text-gray-300 mb-3 border-b border-white/10 pb-2">설정 / Settings</h2>
                         <div className="space-y-4 overflow-y-auto pr-2 -mr-4 flex-1">
                             <div>
-                                <label className="text-sm font-semibold text-gray-300 mb-1 block">모델 / Model</label>
-                                <select value={model} onChange={e => setModel(e.target.value)} disabled={isProMode || prioritizeFreedom} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20 disabled:opacity-50">
-                                    {models.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                <label className="text-sm font-semibold text-gray-300 mb-1 block">엔진 / Engine</label>
+                                <select value={videoEngine} onChange={e => setVideoEngine(e.target.value as 'veo' | 'grok')} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
+                                    <option value="veo">Veo (Google API)</option>
+                                    <option value="grok">Grok (무료 자동화)</option>
                                 </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-sm font-semibold text-gray-300 mb-1 block">화면 비율 / Aspect Ratio</label>
-                                    <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
-                                        <option value="16:9">16:9 (Landscape)</option>
-                                        <option value="9:16">9:16 (Portrait)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-semibold text-gray-300 mb-1 block">해상도 / Resolution</label>
-                                    <select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
-                                        <option value="720p">720p</option>
-                                        <option value="1080p" disabled={!model.includes('veo-3.1')}>
-                                            1080p {!model.includes('veo-3.1') && '(Veo 3.1+ 전용)'}
-                                        </option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="space-y-2 pt-2">
-                                <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={noGuard} onChange={e => setNoGuard(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-600" /> <span>가드 해제 / Guard Off</span></label>
-                                <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={isProMode} onChange={e => setIsProMode(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-fuchsia-500 focus:ring-fuchsia-600" /> <span className={`${isProMode ? 'text-fuchsia-400 font-bold' : ''}`}>프로 모드 / Pro Mode</span></label>
-                                <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={prioritizeFreedom} onChange={e => setPrioritizeFreedom(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-teal-500 focus:ring-teal-600" /> <span className={`${prioritizeFreedom ? 'text-teal-400 font-bold' : ''}`}>창작 자유도 우선 (Veo 3)</span></label>
-                            </div>
+                            {videoEngine === 'veo' ? (
+                                <>
+                                    <div>
+                                        <label className="text-sm font-semibold text-gray-300 mb-1 block">모델 / Model</label>
+                                        <select value={model} onChange={e => setModel(e.target.value)} disabled={isProMode || prioritizeFreedom} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20 disabled:opacity-50">
+                                            {models.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-sm font-semibold text-gray-300 mb-1 block">화면 비율 / Aspect Ratio</label>
+                                            <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
+                                                <option value="16:9">16:9 (Landscape)</option>
+                                                <option value="9:16">9:16 (Portrait)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-semibold text-gray-300 mb-1 block">해상도 / Resolution</label>
+                                            <select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
+                                                <option value="720p">720p</option>
+                                                <option value="1080p" disabled={!model.includes('veo-3.1')}>
+                                                    1080p {!model.includes('veo-3.1') && '(Veo 3.1+ 전용)'}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 pt-2">
+                                        <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={noGuard} onChange={e => setNoGuard(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-600" /> <span>가드 해제 / Guard Off</span></label>
+                                        <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={isProMode} onChange={e => setIsProMode(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-fuchsia-500 focus:ring-fuchsia-600" /> <span className={`${isProMode ? 'text-fuchsia-400 font-bold' : ''}`}>프로 모드 / Pro Mode</span></label>
+                                        <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={prioritizeFreedom} onChange={e => setPrioritizeFreedom(e.target.checked)} className="form-checkbox bg-gray-700 border-gray-600 text-teal-500 focus:ring-teal-600" /> <span className={`${prioritizeFreedom ? 'text-teal-400 font-bold' : ''}`}>창작 자유도 우선 (Veo 3)</span></label>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="p-3 bg-emerald-900/30 rounded-lg border border-emerald-500/30">
+                                        <p className="text-xs text-emerald-300">Grok 무료 비디오 생성 (~20회/일). 브라우저 자동화로 동작합니다.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-sm font-semibold text-gray-300 mb-1 block">길이 / Duration</label>
+                                            <select value={grokDuration} onChange={e => setGrokDuration(e.target.value as '6s' | '10s')} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
+                                                <option value="6s">6초</option>
+                                                <option value="10s">10초</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-semibold text-gray-300 mb-1 block">해상도 / Resolution</label>
+                                            <select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full p-2 bg-gray-900/70 rounded-lg border border-white/20">
+                                                <option value="480p">480p</option>
+                                                <option value="720p">720p</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -664,11 +723,11 @@ const VideoStudio: React.FC = () => {
                     <button
                         onClick={handleGenerate}
                         disabled={isLoading}
-                        className={`w-full text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center text-lg disabled:bg-gray-600 disabled:cursor-not-allowed transition-all transform hover:scale-105 ${isProMode ? 'bg-fuchsia-600 hover:bg-fuchsia-700' : prioritizeFreedom ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'
+                        className={`w-full text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center text-lg disabled:bg-gray-600 disabled:cursor-not-allowed transition-all transform hover:scale-105 ${videoEngine === 'grok' ? 'bg-emerald-600 hover:bg-emerald-700' : isProMode ? 'bg-fuchsia-600 hover:bg-fuchsia-700' : prioritizeFreedom ? 'bg-teal-600 hover:bg-teal-700' : 'bg-purple-600 hover:bg-purple-700'
                             }`}
                     >
                         {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
-                        {isProMode ? '프로 생성 (Veo 3.1 Pro)' : prioritizeFreedom ? '자유 생성 (Veo 3)' : '비디오 생성'}
+                        {videoEngine === 'grok' ? 'Grok 비디오 생성' : isProMode ? '프로 생성 (Veo 3.1 Pro)' : prioritizeFreedom ? '자유 생성 (Veo 3)' : '비디오 생성'}
                     </button>
                 </div>
             </div>

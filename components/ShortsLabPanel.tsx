@@ -6089,6 +6089,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [characterRulesState, setCharacterRulesState] = useState<{
         females: Array<{
             id: string;
+            name: string;
             identity: string;
             hair: string;
             body: string;
@@ -6099,6 +6100,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }>;
         males: Array<{
             id: string;
+            name: string;
             identity: string;
             hair: string;
             body: string;
@@ -6131,14 +6133,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [isFemaleSectionExpanded, setIsFemaleSectionExpanded] = useState(true);
     const [isMaleSectionExpanded, setIsMaleSectionExpanded] = useState(true);
 
-    const formatSlotLabel = (id: string, idx: number, gender: 'female' | 'male') => {
+    const formatSlotLabel = (id: string, idx: number, gender: 'female' | 'male', name?: string) => {
         const normalized = id.trim();
         const match = normalized.match(/^(Woman|Man)([A-Z])$/);
         if (match) {
-            return `${match[1]} ${match[2]}`;
+            const base = `${match[1]} ${match[2]}`;
+            return name ? `${base} (${name})` : base;
         }
         const letter = String.fromCharCode(65 + idx);
-        return `${gender === 'female' ? 'Woman' : 'Man'} ${letter}`;
+        const base = `${gender === 'female' ? 'Woman' : 'Man'} ${letter}`;
+        return name ? `${base} (${name})` : base;
     };
 
     React.useEffect(() => {
@@ -6164,12 +6168,14 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             setCharacterRulesState({
                 females: (characterRules.females || []).map((char) => ({
                     ...char,
+                    name: typeof char.name === 'string' ? char.name : '',
                     id: typeof char.id === 'string'
                         ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
                         : char.id
                 })),
                 males: (characterRules.males || []).map((char) => ({
                     ...char,
+                    name: typeof char.name === 'string' ? char.name : '',
                     id: typeof char.id === 'string'
                         ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
                         : char.id
@@ -7876,6 +7882,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             const existing = new Set(prev.females.map((char) => char.id));
                                                             const additions = updated.females.map((char: any) => ({
                                                                 ...char,
+                                                                name: typeof char.name === 'string' ? char.name : '',
                                                                 id: typeof char.id === 'string'
                                                                     ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
                                                                     : char.id
@@ -7914,7 +7921,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
-                                                            {formatSlotLabel(char.id, idx, 'female')}
+                                                            {formatSlotLabel(char.id, idx, 'female', char.name)}
                                                             {char.id === 'WomanD' && (
                                                                 <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
                                                             )}
@@ -7955,6 +7962,16 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 gap-3">
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Name (Korean)</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.name}
+                                                                    onChange={(e) => updateCharacterRulesField('female', char.id, 'name', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="지영"
+                                                                />
+                                                            </div>
                                                             <div>
                                                                 <label className="text-xs text-slate-400 mb-1 block">Identity</label>
                                                                 <input
@@ -8058,6 +8075,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             const existing = new Set(prev.males.map((char) => char.id));
                                                             const additions = updated.males.map((char: any) => ({
                                                                 ...char,
+                                                                name: typeof char.name === 'string' ? char.name : '',
                                                                 id: typeof char.id === 'string'
                                                                     ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
                                                                     : char.id
@@ -8096,7 +8114,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
-                                                            {formatSlotLabel(char.id, idx, 'male')}
+                                                            {formatSlotLabel(char.id, idx, 'male', char.name)}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
@@ -8132,6 +8150,16 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                 {isExpanded && (
                                                     <div className="px-4 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 gap-3">
+                                                            <div>
+                                                                <label className="text-xs text-slate-400 mb-1 block">Name (Korean)</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={char.name}
+                                                                    onChange={(e) => updateCharacterRulesField('male', char.id, 'name', e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="준호"
+                                                                />
+                                                            </div>
                                                             <div>
                                                                 <label className="text-xs text-slate-400 mb-1 block">Identity</label>
                                                                 <input

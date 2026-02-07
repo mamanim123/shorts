@@ -10,6 +10,7 @@
 
 export interface CharacterSlotRule {
   id: string;            // "WomanA", "ManB" 등
+  name?: string;         // "지영", "준호" 등 (한글 이름)
   identity: string;      // "A stunning Korean woman"
   hair: string;          // "long soft-wave hairstyle"
   body: string;          // "slim hourglass figure..."
@@ -36,6 +37,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
   females: [
     {
       id: 'WomanA',
+      name: '지영',
       identity: 'A stunning Korean woman in her 40s',
       hair: 'long soft-wave hairstyle',
       body: 'perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
@@ -44,6 +46,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
     },
     {
       id: 'WomanB',
+      name: '혜경',
       identity: 'A stunning Korean woman in her 40s',
       hair: 'short chic bob cut',
       body: 'Petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves, high-seated chest line',
@@ -52,6 +55,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
     },
     {
       id: 'WomanC',
+      name: '미숙',
       identity: 'A stunning Korean woman in her 40s',
       hair: 'elegant high ponytail',
       body: 'Gracefully toned and slim athletic body, expertly managed sleek silhouette, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
@@ -60,6 +64,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
     },
     {
       id: 'WomanD',
+      name: '캐디',
       identity: 'A stunning Korean woman in her early 20s',
       hair: 'high-bun hairstyle',
       body: 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
@@ -74,6 +79,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
   males: [
     {
       id: 'ManA',
+      name: '준호',
       identity: 'A handsome Korean man in his 40s',
       hair: 'short neat hairstyle',
       body: 'fit athletic build with broad shoulders',
@@ -82,6 +88,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
     },
     {
       id: 'ManB',
+      name: '민수',
       identity: 'A handsome Korean man in his 40s',
       hair: 'clean short cut hair',
       body: 'fit athletic build with broad shoulders',
@@ -90,6 +97,7 @@ export const DEFAULT_CHARACTER_RULES: ShortsLabCharacterRules = {
     },
     {
       id: 'ManC',
+      name: '남성 조연',
       identity: 'A handsome Korean man in his 40s',
       hair: 'stylish side-part hair',
       body: 'well-built physique with strong shoulders',

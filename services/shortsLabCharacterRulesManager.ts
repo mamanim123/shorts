@@ -22,6 +22,7 @@ export const convertCharacterToSlotRule = (
   targetSlotId: string
 ): CharacterSlotRule => ({
   id: targetSlotId,
+  name: typeof char.name === 'string' ? char.name.trim() : '',
   identity: char.gender === 'female'
     ? `A stunning Korean woman${char.age ? ` in her ${char.age}` : ''}`
     : `A handsome Korean man${char.age ? ` in his ${char.age}` : ''}`,
@@ -65,14 +66,23 @@ const notifyBackupListeners = (backups: ShortsLabCharacterRulesBackup[]) => {
   backupListeners.forEach((listener) => listener(backups));
 };
 
+const getDefaultSlotName = (id: string) => {
+  const allDefaults = [...DEFAULT_CHARACTER_RULES.females, ...DEFAULT_CHARACTER_RULES.males];
+  const match = allDefaults.find((slot) => slot.id === id);
+  return match?.name || '';
+};
+
 const normalizeCharacterSlot = (input?: Partial<CharacterSlotRule>): CharacterSlotRule => {
   const source = input || {};
   const rawId = typeof source.id === 'string' ? source.id : '';
   const normalizedId = rawId
     ? ruleKeyToSlotId(rawId)
     : '';
+  const fallbackName = normalizedId ? getDefaultSlotName(normalizedId) : '';
+  const trimmedName = typeof source.name === 'string' ? source.name.trim() : '';
   return {
     id: normalizedId,
+    name: trimmedName || fallbackName,
     identity: typeof source.identity === 'string' ? source.identity : '',
     hair: typeof source.hair === 'string' ? source.hair : '',
     body: typeof source.body === 'string' ? source.body : '',
@@ -241,6 +251,7 @@ export const shortsLabCharacterRulesManager = {
 
     const newCharacter: CharacterSlotRule = {
       id: newId,
+      name: '',
       identity: 'A stunning Korean woman in her 40s',
       hair: 'elegant hairstyle',
       body: 'graceful figure',
@@ -266,6 +277,7 @@ export const shortsLabCharacterRulesManager = {
 
     const newCharacter: CharacterSlotRule = {
       id: newId,
+      name: '',
       identity: 'A handsome Korean man in his 40s',
       hair: 'neat hairstyle',
       body: 'athletic build',

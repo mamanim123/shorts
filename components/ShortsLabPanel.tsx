@@ -2906,6 +2906,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                             .map((id) => autoCharacterMap.get(id))
                             .filter(Boolean)
                             .map((item) => ({
+                                id: item!.id,
+                                name: item!.name || '',
+                                gender: item!.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
                                 identity: item!.identity,
                                 hair: item!.hair,
                                 body: item!.body,
@@ -2916,6 +2919,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                             : Array.from(autoCharacterMap.values())
                                 .slice(0, 3)
                                 .map((item) => ({
+                                    id: item.id,
+                                    name: item.name || '',
+                                    gender: item.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
                                     identity: item.identity,
                                     hair: item.hair,
                                     body: item.body,
@@ -3949,6 +3955,9 @@ ${scriptInput}
                             .map((id) => masterMap.get(id))
                             .filter(Boolean)
                             .map((item) => ({
+                                id: item!.id,
+                                name: item!.name || '',
+                                gender: item!.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
                                 identity: item!.identity,
                                 hair: item!.hair,
                                 body: item!.body,
@@ -3959,6 +3968,9 @@ ${scriptInput}
                             : Array.from(masterMap.values())
                                 .slice(0, 3)
                                 .map((item) => ({
+                                    id: item.id,
+                                    name: item.name || '',
+                                    gender: item.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
                                     identity: item.identity,
                                     hair: item.hair,
                                     body: item.body,
@@ -4446,6 +4458,9 @@ ${scriptInput}
                     .map((id) => autoCharacterMap.get(id))
                     .filter(Boolean)
                     .map((item) => ({
+                        id: item!.id,
+                        name: item!.name || '',
+                        gender: item!.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
                         identity: item!.identity,
                         hair: item!.hair,
                         body: item!.body,
@@ -4456,6 +4471,9 @@ ${scriptInput}
                     : Array.from(autoCharacterMap.values())
                         .slice(0, 3)
                         .map((item) => ({
+                            id: item.id,
+                            name: item.name || '',
+                            gender: item.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
                             identity: item.identity,
                             hair: item.hair,
                             body: item.body,

@@ -367,6 +367,15 @@ export interface LabGenreGuidelineEntry extends LabGenreGuideline {
 export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string => {
   if (!outfit) return outfit;
 
+  // 이미 변환된 의상인지 체크 (중복 변환 방지)
+  const lowerOutfit = outfit.toLowerCase();
+  if (lowerOutfit.includes('fold-over off-shoulder tight-fitting long-sleeve') ||
+      lowerOutfit.includes('one-shoulder tight-fitting long-sleeve') ||
+      lowerOutfit.includes('cold-shoulder tight-fitting long-sleeve') ||
+      (lowerOutfit.includes('tight-fitting long-sleeve') && lowerOutfit.includes('long-sleeve'))) {
+    return outfit; // 이미 변환됨, 그대로 반환
+  }
+
   // 상의와 하의 분리 (+, with, and 등의 구분자 사용)
   const separators = [' + ', ' with ', ' and '];
   let top = outfit;
@@ -517,22 +526,30 @@ export const applyWinterLookToExistingPrompt = (
     technicalPart = technicalTagMarker + parts.slice(1).join(technicalTagMarker);
   }
 
-  // 2. 의상 치환 로직 (contentPart 내에서만 수행)
+  // 2. 의상 치환 로직 (contentPart 내에서만 수행, 여성만!)
   // '+', 'wearing', 'outfit:' 등 다양한 패턴 대응
-  const outfitPattern = /([^,]+[\s\+]+[^,]+(?:Mini Skirt|Shorts|Pants|Dress|Skirt|Leggings)[^,]*)/i;
-  const match = contentPart.match(outfitPattern);
+  if (gender === 'female') {
+    // 여성 의상 패턴 (Pants는 제외 - 남성 골프팬츠와 혼동 방지)
+    const outfitPattern = /([^,]+[\s\+]+[^,]+(?:Mini Skirt|Shorts|Dress|Skirt|Leggings)[^,]*)/i;
+    const match = contentPart.match(outfitPattern);
 
-  if (match && match[1]) {
-    const originalOutfit = match[1].trim();
-    const winterOutfit = convertToTightLongSleeveWithShoulderLine(originalOutfit);
-    contentPart = contentPart.replace(originalOutfit, winterOutfit);
-  } else if (contentPart.includes('wearing')) {
-    const wearingRegex = /wearing\s+([^,.]+)/i;
-    const wMatch = contentPart.match(wearingRegex);
-    if (wMatch && wMatch[1]) {
-      const originalOutfit = wMatch[1];
+    if (match && match[1]) {
+      const originalOutfit = match[1].trim();
       const winterOutfit = convertToTightLongSleeveWithShoulderLine(originalOutfit);
       contentPart = contentPart.replace(originalOutfit, winterOutfit);
+    } else if (contentPart.includes('wearing')) {
+      const wearingRegex = /wearing\s+([^,.]+)/i;
+      const wMatch = contentPart.match(wearingRegex);
+      if (wMatch && wMatch[1]) {
+        const originalOutfit = wMatch[1];
+        // 남성 의상이 아닌지 재확인 (Polo, Golf Pants 등)
+        if (!originalOutfit.toLowerCase().includes('polo') &&
+            !originalOutfit.toLowerCase().includes('golf pants') &&
+            !originalOutfit.toLowerCase().includes('chino pants')) {
+          const winterOutfit = convertToTightLongSleeveWithShoulderLine(originalOutfit);
+          contentPart = contentPart.replace(originalOutfit, winterOutfit);
+        }
+      }
     }
   }
 

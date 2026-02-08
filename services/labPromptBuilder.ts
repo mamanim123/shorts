@@ -411,7 +411,7 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
 
   // 2. 어깨/쇄골 노출 스타일 (Off-shoulder 등)은 유지하되 긴팔로 변환
   const shoulderExposureKeywords = [
-    { key: 'Off-shoulder', replacement: 'Off-shoulder tight-fitting long-sleeve' },
+    { key: 'Off-shoulder', replacement: 'Fold-over off-shoulder tight-fitting long-sleeve' },
     { key: 'One-shoulder', replacement: 'One-shoulder tight-fitting long-sleeve' },
     { key: 'Cold-shoulder', replacement: 'Cold-shoulder tight-fitting long-sleeve' },
     { key: 'Cowl-neck', replacement: 'Elegant cowl-neck tight-fitting long-sleeve' },
@@ -2226,20 +2226,38 @@ unfiltered raw photograph..., [Person 1: A handsome Korean man in his 30s, short
 A stunning Korean woman..., A stunning Korean woman..., A handsome Korean man..., walking together
 \`\`\`
 → 구분자 없이 쉼표로만 연결하면 AI가 캐릭터를 혼동합니다!
-## 📷 카메라 앵글 필수 규칙 (미디움샷만 쓰면 안됨!)
+## 📷 카메라 앵글 필수 규칙 - 쇼츠 영상 최적화 (CRITICAL!)
+
+⚠️ **미디엄샷 사용 제한**: 전체 씬의 **20% 이하**만 사용! (12씬이면 최대 2개, 8씬이면 최대 1개)
+✅ **전신/와이드샷 우선**: 전체 씬의 **40% 이상**을 full body visible, wide shot으로 구성!
+
+**이유**: 쇼츠 영상은 9:16 세로 화면이므로 전신샷이 역동적이고 의상/동작이 잘 보임. 미디엄샷만 많으면 답답하고 단조로워짐.
+
 | 씬 | 권장 앵글 | 프롬프트 키워드 |
 |---|----------|---------------|
-| Scene 1 (Hook) | **클로즈업** | close-up portrait shot, face in focus |
-| Scene 2 (Setup) | **드론/와이드** | drone shot, bird's-eye view, wide establishing shot, full body visible |
-| Scene 3 | **미디엄샷** | medium shot, waist-up framing |
-| Scene 4 | **배경위주** | wide landscape shot, background emphasis, deep focus |
-| Scene 5 (Climax) | **클로즈업** | close-up shot, dramatic expression |
-| Scene 6 | **오버숄더** | over-the-shoulder shot |
-| Scene 7 (Twist) | **로우앵글/와이드** | low-angle wide shot, full body visible, revealing context |
-| Scene 8 (Outro) | **항공/와이드** | aerial view, drone shot, wide shot, final scene |
+| Scene 1 (Hook) | **클로즈업** | close-up portrait shot, face in focus, eye contact |
+| Scene 2 (Setup) | **와이드/전신** | wide establishing shot, full body visible from head to toe, entire outfit visible |
+| Scene 3 | **와이드/전신** | wide shot, full body visible, natural environment, showing complete outfit |
+| Scene 4 | **와이드/전신** | wide landscape shot, full body visible, background emphasis, deep focus |
+| Scene 5 (Climax) | **클로즈업** | close-up shot, dramatic expression, face focus |
+| Scene 6 | **와이드/전신** | wide shot, full body visible, dynamic action, showing movement |
+| Scene 7 (Twist) | **로우앵글/전신** | low-angle wide shot, full body visible head to toe, revealing context |
+| Scene 8 (Outro) | **항공/와이드** | aerial view, drone shot, wide shot, full body visible, final scene |
+| Scene 9 | **전신/액션** | full body shot, entire body visible, dynamic pose, complete outfit visible |
+| Scene 10 | **와이드/전신** | wide shot, full body visible, environment context |
+| Scene 11 | **미디엄샷** | medium shot, waist-up framing (⚠️ 이 씬만 예외적으로 미디엄 허용) |
+| Scene 12 | **항공/와이드** | aerial drone view, bird's-eye perspective, wide shot, final scene |
 
-⚠️ **필수**: longPrompt 맨 앞에 카메라 앵글 키워드를 반드시 넣을 것!
-⚠️ **금지**: 같은 앵글 2연속 사용, 미디움샷만 8개 사용
+⚠️ **절대 금지**:
+- ❌ 미디엄샷을 3개 이상 사용 (최대 2개!)
+- ❌ 같은 앵글 2연속 사용
+- ❌ close-up을 3개 이상 사용
+- ❌ "waist-up"만 계속 반복
+
+✅ **필수 준수**:
+- ✅ longPrompt 맨 앞에 카메라 앵글 키워드 반드시 배치
+- ✅ "full body visible" 키워드를 6개 이상 씬에 사용
+- ✅ "entire outfit visible" 또는 "head to toe" 등 전신 강조 표현 추가
 
 ## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️ 매우 중요!
 
@@ -2365,21 +2383,22 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
 
 **이미지 프롬프트 (필수!):**
 11. ✅ 모든 longPrompt가 카메라 앵글로 시작? (close-up/wide/full-body/aerial/drone/POV)
-12. ✅ 모든 씬에서 같은 앵글 2연속 없음? (미디움샷만 계속 ❌)
-13. ✅ close-up은 최소화, wide/full-body/aerial/drone 샷이 대부분?
-14. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
-15. ✅ 배경 문구가 장면 전환 없을 때 동일?
-16. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
-17. ✅ **투샷/쓰리샷 body 필드 검증**: 모든 캐릭터의 body 필드가 누락 없이 100% 포함?
-18. ✅ **투샷/쓰리샷 identity 검증**: 세부 특징(얼굴 설명, 성격 등) 축약 없이 전체 포함?
-19. ✅ **투샷/쓰리샷 outfit 검증**: 긴 의상 설명도 전체 포함? (일부 축약 금지)
-20. ✅ **다중 인물 씬 일관성**: 4명 등장 씬에서도 각 캐릭터의 모든 필드 100% 포함?
-21. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
-22. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
+12. ✅ **미디엄샷 제한**: medium shot/waist-up이 전체의 20% 이하? (12씬이면 최대 2개, 8씬이면 최대 1개)
+13. ✅ **전신샷 우선**: "full body visible" 또는 "entire outfit visible"이 40% 이상 (12씬이면 5개 이상, 8씬이면 3개 이상)?
+14. ✅ 같은 앵글 2연속 사용 없음? (미디움샷→미디움샷 연속 금지)
+15. ✅ identity/hair/body/outfit 문구가 모든 씬에서 완전 동일?
+16. ✅ 배경 문구가 장면 전환 없을 때 동일?
+17. ✅ 투샷/쓰리샷에서 각 캐릭터 identity+hair+body+wearing+outfit 개별 명시?
+18. ✅ **투샷/쓰리샷 body 필드 검증**: 모든 캐릭터의 body 필드가 누락 없이 100% 포함?
+19. ✅ **투샷/쓰리샷 identity 검증**: 세부 특징(얼굴 설명, 성격 등) 축약 없이 전체 포함?
+20. ✅ **투샷/쓰리샷 outfit 검증**: 긴 의상 설명도 전체 포함? (일부 축약 금지)
+21. ✅ **다중 인물 씬 일관성**: 4명 등장 씬에서도 각 캐릭터의 모든 필드 100% 포함?
+22. ✅ POV 샷에서 화면에 보이는 캐릭터만 포함? (시점 주인공 제외!)
+23. ✅ POV 대상이 "looking at camera (POV target)" 사용? ("looking away" 금지)
 
 **음성:**
-23. ✅ 모든 씬에 voiceType 지정?
-24. ✅ 작은따옴표 대사 있으면 lipSync 생성?
+24. ✅ 모든 씬에 voiceType 지정?
+25. ✅ 작은따옴표 대사 있으면 lipSync 생성?
 `;
 
   return applySlotNameOverrides(rawPrompt, slotNames);

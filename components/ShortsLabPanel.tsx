@@ -1254,7 +1254,7 @@ const postProcessAiScenes = (
                     genre: options.genre,         // v3.6
                     totalScenes: totalScenes,     // v3.6
                     cameraAngle: scene.cameraAngle || scene.camera || '',
-                    forceCameraAngle: true
+                    forceCameraAngle: false  // LLM 카메라 앵글 존중
                 }
             );
 
@@ -1298,7 +1298,7 @@ const postProcessAiScenes = (
                 ? scene.shortPrompt
                 : enhanceScenePrompt(
                     scene.shortPrompt,
-                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes, cameraAngle: scene.cameraAngle || scene.camera || '', forceCameraAngle: true }
+                    { sceneNumber, femaleOutfit: options.femaleOutfit, maleOutfit: options.maleOutfit, targetAgeLabel: options.targetAgeLabel, gender: options.gender, genre: options.genre, totalScenes: totalScenes, cameraAngle: scene.cameraAngle || scene.camera || '', forceCameraAngle: false }  // LLM 카메라 앵글 존중
                 ))
             : processedPrompt;
         if (postProcessConfig?.useSafeGlamour) {

@@ -422,8 +422,13 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
   shoulderExposureKeywords.forEach(({ key, replacement }) => {
     const regex = new RegExp(key, 'gi');
     if (regex.test(newTop)) {
-      newTop = newTop.replace(regex, replacement);
-      isSleeveUpdated = true;
+      // 중복 방지: 이미 replacement가 포함되어 있으면 치환하지 않음
+      if (!newTop.toLowerCase().includes(replacement.toLowerCase())) {
+        newTop = newTop.replace(regex, replacement);
+        isSleeveUpdated = true;
+      } else {
+        isSleeveUpdated = true; // 이미 올바른 형태로 존재
+      }
     }
   });
 
@@ -440,8 +445,13 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
   generalShortSleeveKeywords.forEach((keyword) => {
     const regex = new RegExp(keyword, 'gi');
     if (regex.test(newTop)) {
-      newTop = newTop.replace(regex, 'Tight-fitting long-sleeve');
-      isSleeveUpdated = true;
+      // 중복 방지: 이미 'tight-fitting long-sleeve'가 포함되어 있으면 치환하지 않음
+      if (!newTop.toLowerCase().includes('tight-fitting long-sleeve')) {
+        newTop = newTop.replace(regex, 'Tight-fitting long-sleeve');
+        isSleeveUpdated = true;
+      } else {
+        isSleeveUpdated = true; // 이미 올바른 형태로 존재
+      }
     }
   });
 
@@ -451,9 +461,13 @@ export const convertToTightLongSleeveWithShoulderLine = (outfit: string): string
     isSleeveUpdated = true;
   }
 
-  // 4. 최종 보정: 긴팔 키워드가 없는 경우 추가 (중복 방지)
-  if (!isSleeveUpdated && !newTop.toLowerCase().includes('long-sleeve') && !newTop.toLowerCase().includes('padding') && !newTop.toLowerCase().includes('jacket')) {
-    newTop = `${newTop} (Tight-fitting long-sleeve version)`.replace(/\s+/g, ' ');
+  // 4. 최종 보정: 긴팔 키워드가 없는 경우 추가 (중복 방지 강화)
+  if (!isSleeveUpdated &&
+      !newTop.toLowerCase().includes('long-sleeve') &&
+      !newTop.toLowerCase().includes('tight-fitting') &&
+      !newTop.toLowerCase().includes('padding') &&
+      !newTop.toLowerCase().includes('jacket')) {
+    newTop = `Tight-fitting long-sleeve ${newTop}`.replace(/\s+/g, ' ');
   }
 
   // 5. 체형 강조 유지 보장 (심미성 확보)

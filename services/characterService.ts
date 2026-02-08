@@ -9,6 +9,18 @@ export interface CharacterItem {
   hair: string;
   body: string;
   style: string;
+  bodyTuning?: {
+    overall: number;
+    legLength: number;
+    bustFront: number;
+    bustBack: number;
+    bustUpper: number;
+    bustLower: number;
+    hipsFront: number;
+    hipsBack: number;
+    hipsUpper: number;
+    hipsLower: number;
+  };
   createdAt: string;
 }
 
@@ -22,6 +34,7 @@ const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }):
   hair: character.hair || '',
   body: character.body || '',
   style: character.style || '',
+  bodyTuning: character.bodyTuning,
   createdAt: character.createdAt || new Date().toISOString(),
 });
 

@@ -21,6 +21,7 @@ import { UNIFIED_OUTFIT_LIST } from '../constants';
 import { applyBaseOverrides, fetchOutfitCatalog, fetchOutfitPreviewMap, getOutfitBaseOverrides, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap, setOutfitBaseOverrides } from '../services/outfitService';
 import type { OutfitBaseOverrides, OutfitCategory, OutfitItem } from '../services/outfitService';
 import { fetchCharacters, saveCharacters } from '../services/characterService';
+import { getAppStorageCachedValue, setAppStorageValue } from '../services/appStorageService';
 import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
 import type { ExtractedOutfit, ExtractedFeature } from '../services/extractionCacheService';
 import type { CharacterItem } from '../services/characterService';
@@ -164,6 +165,412 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     body: '',
     style: ''
   });
+
+  type BodyTuning = {
+    overall: number;
+    legLength: number;
+    bustFront: number;
+    bustBack: number;
+    bustUpper: number;
+    bustLower: number;
+    hipsFront: number;
+    hipsBack: number;
+    hipsUpper: number;
+    hipsLower: number;
+  };
+
+  const DEFAULT_BODY_TUNING: BodyTuning = {
+    overall: 55,
+    legLength: 60,
+    bustFront: 55,
+    bustBack: 45,
+    bustUpper: 55,
+    bustLower: 50,
+    hipsFront: 55,
+    hipsBack: 60,
+    hipsUpper: 55,
+    hipsLower: 55
+  };
+
+  const [bodyTuning, setBodyTuning] = useState<BodyTuning>({ ...DEFAULT_BODY_TUNING });
+  const [bodyTuningPreview, setBodyTuningPreview] = useState('');
+  const [showBodyTuningModal, setShowBodyTuningModal] = useState(false);
+  const [bodyPreviewView, setBodyPreviewView] = useState<'front' | 'side' | 'back'>('side');
+  const [bodyPreviewAngle, setBodyPreviewAngle] = useState(90);
+  const [isBodyPreviewDragging, setIsBodyPreviewDragging] = useState(false);
+  const [bodyPresetName, setBodyPresetName] = useState('');
+  const [bodyTuningPresets, setBodyTuningPresets] = useState<Array<{ id: string; name: string; tuning: BodyTuning }>>([]);
+  const BODY_TUNING_PRESET_KEY = 'character-body-tuning-presets';
+  const bodyPreviewDragRef = useRef<{ x: number; angle: number } | null>(null);
+
+  const toSizeLabel = (value: number, scale: string[]) => {
+    if (value <= 25) return scale[0];
+    if (value <= 50) return scale[1];
+    if (value <= 75) return scale[2];
+    return scale[3];
+  };
+
+  const buildBodyFromTuning = useCallback((tuning: BodyTuning, gender: 'female' | 'male') => {
+    const overall = toSizeLabel(tuning.overall, ['slim', 'balanced', 'curvy', 'voluminous']);
+    const leg = toSizeLabel(tuning.legLength, ['short legs', 'average leg length', 'long legs', 'extra-long legs']);
+    const front = toSizeLabel(tuning.bustFront, ['subtle', 'moderate', 'full', 'very full']);
+    const back = toSizeLabel(tuning.bustBack, ['subtle', 'moderate', 'full', 'very full']);
+    const upper = toSizeLabel(tuning.bustUpper, ['subtle', 'moderate', 'full', 'very full']);
+    const lower = toSizeLabel(tuning.bustLower, ['subtle', 'moderate', 'full', 'very full']);
+    const hipFront = toSizeLabel(tuning.hipsFront, ['subtle', 'moderate', 'full', 'very full']);
+    const hipBack = toSizeLabel(tuning.hipsBack, ['subtle', 'moderate', 'full', 'very full']);
+    const hipUpper = toSizeLabel(tuning.hipsUpper, ['subtle', 'moderate', 'full', 'very full']);
+    const hipLower = toSizeLabel(tuning.hipsLower, ['subtle', 'moderate', 'full', 'very full']);
+
+    const core = gender === 'female'
+      ? `overall ${overall} body proportions, ${leg}, bust volume (front ${front}, back ${back}, upper ${upper}, lower ${lower}), hips volume (front ${hipFront}, back ${hipBack}, upper ${hipUpper}, lower ${hipLower})`
+      : `overall ${overall} body proportions, ${leg}, chest volume (front ${front}, back ${back}, upper ${upper}, lower ${lower}), hips volume (front ${hipFront}, back ${hipBack}, upper ${hipUpper}, lower ${hipLower})`;
+
+    return `${core}, natural anatomy, balanced posture, well-proportioned silhouette`;
+  }, []);
+
+  React.useEffect(() => {
+    const preview = buildBodyFromTuning(bodyTuning, newCharacter.gender);
+    setBodyTuningPreview(preview);
+  }, [bodyTuning, newCharacter.gender, buildBodyFromTuning]);
+
+  React.useEffect(() => {
+    const stored = getAppStorageCachedValue<Array<{ id: string; name: string; tuning: BodyTuning }>>(
+      BODY_TUNING_PRESET_KEY,
+      []
+    );
+    if (Array.isArray(stored) && stored.length > 0) {
+      setBodyTuningPresets(stored);
+    }
+  }, []);
+
+  const saveBodyPresets = useCallback((next: Array<{ id: string; name: string; tuning: BodyTuning }>) => {
+    setBodyTuningPresets(next);
+    setAppStorageValue(BODY_TUNING_PRESET_KEY, next).catch((error) => {
+      console.warn('body tuning preset save failed:', error);
+    });
+  }, []);
+
+  const getBodyPreviewMetrics = (tuning: BodyTuning) => {
+    const scale = (v: number, range = 22) => ((v - 50) / 50) * range;
+    const baseWidth = 88 + scale(tuning.overall, 22);
+    const bustFront = baseWidth + scale(tuning.bustFront, 26);
+    const bustBack = baseWidth + scale(tuning.bustBack, 20);
+    const bustUpper = baseWidth - 12 + scale(tuning.bustUpper, 16);
+    const bustLower = baseWidth - 6 + scale(tuning.bustLower, 16);
+    const hipsFront = baseWidth + scale(tuning.hipsFront, 26);
+    const hipsBack = baseWidth + scale(tuning.hipsBack, 24);
+    const hipsUpper = baseWidth - 8 + scale(tuning.hipsUpper, 14);
+    const hipsLower = baseWidth + scale(tuning.hipsLower, 16);
+    const leg = 110 + scale(tuning.legLength, 40);
+    return {
+      baseWidth,
+      bustFront,
+      bustBack,
+      bustUpper,
+      bustLower,
+      hipsFront,
+      hipsBack,
+      hipsUpper,
+      hipsLower,
+      leg
+    };
+  };
+
+  const renderBodyPreviewSvg = (tuning: BodyTuning, view: 'front' | 'side' | 'back', angle: number) => {
+    const metrics = getBodyPreviewMetrics(tuning);
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+    const cx = 150;
+    const top = 36;
+    const headSize = 30;
+    const neckW = 20;
+    const neckH = 16;
+    const shoulderW = clamp(metrics.baseWidth + 36, 86, 168);
+    const waistW = clamp(metrics.baseWidth - 28, 54, 118);
+    const bustUpperW = clamp(metrics.bustUpper, 65, 160);
+    const bustLowerWBase = view === 'front' ? metrics.bustFront : view === 'back' ? metrics.bustBack : (metrics.bustFront + metrics.bustBack) / 2;
+    const bustLowerW = clamp(bustLowerWBase, 70, 170);
+    const hipsUpperWBase = view === 'front' ? metrics.hipsFront : view === 'back' ? metrics.hipsBack : (metrics.hipsFront + metrics.hipsBack) / 2;
+    const hipsUpperW = clamp(hipsUpperWBase - 6, 70, 180);
+    const hipsLowerW = clamp(metrics.hipsLower, 75, 190);
+    const thighW = clamp((hipsLowerW + waistW) / 2, 64, 158);
+    const kneeW = clamp(thighW - 22, 42, 120);
+    const ankleW = clamp(kneeW - 14, 26, 100);
+    const legHeight = clamp(metrics.leg, 90, 170);
+    const torsoStartY = top + headSize + 12;
+    const segments = [
+      { y: torsoStartY + 6, half: shoulderW / 2 },
+      { y: torsoStartY + 36, half: bustUpperW / 2 },
+      { y: torsoStartY + 72, half: bustLowerW / 2 },
+      { y: torsoStartY + 110, half: waistW / 2 },
+      { y: torsoStartY + 148, half: hipsUpperW / 2 },
+      { y: torsoStartY + 188, half: hipsLowerW / 2 },
+      { y: torsoStartY + 220, half: thighW / 2 },
+      { y: torsoStartY + 220 + legHeight * 0.55, half: kneeW / 2 },
+      { y: torsoStartY + 220 + legHeight, half: ankleW / 2 }
+    ];
+
+    const buildSymmetricPath = () => {
+      let d = `M ${cx - segments[0].half} ${segments[0].y}`;
+      for (let i = 1; i < segments.length; i += 1) {
+        const prev = segments[i - 1];
+        const curr = segments[i];
+        const midY = (prev.y + curr.y) / 2;
+        d += ` Q ${cx - prev.half} ${midY} ${cx - curr.half} ${curr.y}`;
+      }
+      const last = segments[segments.length - 1];
+      d += ` L ${cx + last.half} ${last.y}`;
+      for (let i = segments.length - 2; i >= 0; i -= 1) {
+        const next = segments[i + 1];
+        const curr = segments[i];
+        const midY = (next.y + curr.y) / 2;
+        d += ` Q ${cx + next.half} ${midY} ${cx + curr.half} ${curr.y}`;
+      }
+      d += ' Z';
+      return d;
+    };
+
+    const buildSidePath = () => {
+      const norm = (value: number) => (value - 50) / 50;
+      const baseDepth = clamp(metrics.baseWidth * 0.5, 40, 95);
+      const frontDepth = (value: number) => baseDepth * (0.9 + norm(value) * 0.25);
+      const backDepth = (value: number) => baseDepth * (0.85 + norm(value) * 0.2);
+
+      const sideSegments = [
+        { y: segments[0].y, left: backDepth(metrics.bustBack), right: frontDepth(metrics.bustFront) },
+        { y: segments[1].y, left: backDepth(metrics.bustBack), right: frontDepth(metrics.bustFront) },
+        { y: segments[2].y, left: backDepth(metrics.bustBack), right: frontDepth(metrics.bustFront) },
+        { y: segments[3].y, left: backDepth(metrics.baseWidth), right: frontDepth(metrics.baseWidth) },
+        { y: segments[4].y, left: backDepth(metrics.hipsBack), right: frontDepth(metrics.hipsFront) },
+        { y: segments[5].y, left: backDepth(metrics.hipsBack), right: frontDepth(metrics.hipsFront) },
+        { y: segments[6].y, left: backDepth(metrics.hipsBack * 0.85), right: frontDepth(metrics.hipsFront * 0.85) },
+        { y: segments[7].y, left: backDepth(metrics.hipsBack * 0.7), right: frontDepth(metrics.hipsFront * 0.7) },
+        { y: segments[8].y, left: backDepth(metrics.hipsBack * 0.55), right: frontDepth(metrics.hipsFront * 0.55) }
+      ];
+
+      let d = `M ${cx - sideSegments[0].left} ${sideSegments[0].y}`;
+      for (let i = 1; i < sideSegments.length; i += 1) {
+        const prev = sideSegments[i - 1];
+        const curr = sideSegments[i];
+        const midY = (prev.y + curr.y) / 2;
+        d += ` Q ${cx - prev.left} ${midY} ${cx - curr.left} ${curr.y}`;
+      }
+      const last = sideSegments[sideSegments.length - 1];
+      d += ` L ${cx + last.right} ${last.y}`;
+      for (let i = sideSegments.length - 2; i >= 0; i -= 1) {
+        const next = sideSegments[i + 1];
+        const curr = sideSegments[i];
+        const midY = (next.y + curr.y) / 2;
+        d += ` Q ${cx + next.right} ${midY} ${cx + curr.right} ${curr.y}`;
+      }
+      d += ' Z';
+      return d;
+    };
+
+    const bodyPath = view === 'side' ? buildSidePath() : buildSymmetricPath();
+    const scaleX = 0.75 + (Math.abs(angle - 90) / 90) * 0.25;
+    const viewLabel = view === 'front' ? 'front' : view === 'back' ? 'back' : 'side';
+    const highlightShift = ((angle - 90) / 90) * 18;
+    const shoulderY = segments[0].y;
+    const hipY = segments[5].y - 6;
+    const kneeY = segments[7].y;
+    const ankleY = segments[8].y;
+    const armLength = 90 + (metrics.baseWidth * 0.2);
+    const armWidth = clamp(20 + (metrics.baseWidth - 88) * 0.2, 18, 30);
+    const legWidth = clamp(26 + (metrics.baseWidth - 88) * 0.25, 22, 36);
+    const legGap = view === 'side' ? 6 : 14;
+
+    return (
+      <svg viewBox="0 0 300 520" className="w-full h-full">
+        <defs>
+          <radialGradient id={`bgGlow-${viewLabel}`} cx="50%" cy="35%" r="60%">
+            <stop offset="0%" stopColor="rgba(99,102,241,0.18)" />
+            <stop offset="100%" stopColor="rgba(15,23,42,0.0)" />
+          </radialGradient>
+          <linearGradient id={`bodyGradient-${viewLabel}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f8d8c2" />
+            <stop offset="55%" stopColor="#e0b194" />
+            <stop offset="100%" stopColor="#c58f74" />
+          </linearGradient>
+          <linearGradient id={`bodyShadow-${viewLabel}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(0,0,0,0.24)" />
+            <stop offset="60%" stopColor="rgba(0,0,0,0.05)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
+          </linearGradient>
+          <linearGradient id={`bodyGlow-${viewLabel}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+          <filter id={`softShadow-${viewLabel}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="rgba(0,0,0,0.45)" />
+          </filter>
+        </defs>
+        <rect x="12" y="12" width="276" height="496" rx="26" fill="rgba(10,15,28,0.85)" stroke="rgba(148,163,184,0.2)" />
+        <rect x="12" y="12" width="276" height="496" rx="26" fill={`url(#bgGlow-${viewLabel})`} />
+        <g transform={`translate(${cx} 0) scale(${scaleX} 1) translate(${-cx} 0)`}>
+          <ellipse cx={cx} cy={top + headSize / 2} rx={headSize * 0.55} ry={headSize * 0.7} fill={`url(#bodyGradient-${viewLabel})`} filter={`url(#softShadow-${viewLabel})`} />
+          <rect
+            x={cx - neckW / 2}
+            y={top + headSize - 6}
+            width={neckW}
+            height={neckH}
+            rx={neckW / 2}
+            fill={`url(#bodyGradient-${viewLabel})`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#bodyGradient-${viewLabel})`}
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth="1.2"
+            filter={`url(#softShadow-${viewLabel})`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#bodyGlow-${viewLabel})`}
+            opacity="0.2"
+            transform={`translate(${highlightShift} 0)`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#bodyShadow-${viewLabel})`}
+            opacity="0.35"
+            transform={`translate(${-highlightShift * 0.6} 0)`}
+          />
+          {view !== 'back' && (
+            <circle cx={cx + (view === 'side' ? 16 : 0)} cy={segments[2].y - 8} r={view === 'side' ? 8 : 10} fill="rgba(255,255,255,0.2)" />
+          )}
+          <circle cx={cx + (view === 'side' ? 14 : 0)} cy={segments[5].y - 2} r={view === 'side' ? 10 : 12} fill="rgba(255,255,255,0.16)" />
+          {view !== 'side' && (
+            <>
+              <rect
+                x={cx - shoulderW / 2 - armWidth + 4}
+                y={shoulderY + 6}
+                width={armWidth}
+                height={armLength}
+                rx={armWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+                opacity={0.85}
+              />
+              <rect
+                x={cx + shoulderW / 2 - 4}
+                y={shoulderY + 6}
+                width={armWidth}
+                height={armLength}
+                rx={armWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+                opacity={0.85}
+              />
+            </>
+          )}
+          {view === 'side' && (
+            <rect
+              x={cx + shoulderW / 2 - armWidth - 8}
+              y={shoulderY + 10}
+              width={armWidth}
+              height={armLength * 0.95}
+              rx={armWidth / 2}
+              fill={`url(#bodyGradient-${viewLabel})`}
+              opacity={0.8}
+            />
+          )}
+          {view !== 'side' ? (
+            <>
+              <rect
+                x={cx - legGap - legWidth}
+                y={hipY}
+                width={legWidth}
+                height={ankleY - hipY}
+                rx={legWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+              />
+              <rect
+                x={cx + legGap}
+                y={hipY}
+                width={legWidth}
+                height={ankleY - hipY}
+                rx={legWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+              />
+            </>
+          ) : (
+            <rect
+              x={cx + 2}
+              y={hipY}
+              width={legWidth}
+              height={ankleY - hipY}
+              rx={legWidth / 2}
+              fill={`url(#bodyGradient-${viewLabel})`}
+            />
+          )}
+          <rect
+            x={cx - (view === 'side' ? 12 : 24)}
+            y={ankleY + 6}
+            width={view === 'side' ? 24 : 48}
+            height={8}
+            rx={4}
+            fill="rgba(148,163,184,0.3)"
+          />
+          <circle cx={cx} cy={shoulderY + 8} r={4} fill="rgba(255,255,255,0.22)" />
+          <circle cx={cx} cy={segments[3].y - 8} r={4} fill="rgba(255,255,255,0.22)" />
+          <circle cx={cx} cy={segments[5].y + 2} r={4} fill="rgba(255,255,255,0.22)" />
+          <circle cx={cx} cy={kneeY} r={4} fill="rgba(255,255,255,0.22)" />
+        </g>
+        <ellipse cx={cx} cy={ankleY + 22} rx={60} ry={10} fill="rgba(0,0,0,0.4)" />
+      </svg>
+    );
+  };
+
+  const BODY_TUNING_CONTROLS: Array<{ key: keyof BodyTuning; label: string; hint: string }> = [
+    { key: 'overall', label: '전체 체형', hint: '전체 크기' },
+    { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
+    { key: 'bustFront', label: '가슴 앞', hint: '앞쪽 볼륨' },
+    { key: 'bustBack', label: '가슴 뒤', hint: '뒤쪽 볼륨' },
+    { key: 'bustUpper', label: '가슴 위', hint: '상부 볼륨' },
+    { key: 'bustLower', label: '가슴 아래', hint: '하부 볼륨' },
+    { key: 'hipsFront', label: '엉덩이 앞', hint: '앞쪽 볼륨' },
+    { key: 'hipsBack', label: '엉덩이 뒤', hint: '뒤쪽 볼륨' },
+    { key: 'hipsUpper', label: '엉덩이 위', hint: '상부 볼륨' },
+    { key: 'hipsLower', label: '엉덩이 아래', hint: '하부 볼륨' }
+  ];
+  const BASIC_BODY_KEYS: Array<keyof BodyTuning> = ['overall', 'legLength'];
+
+  const applyBodyTuningToCharacter = useCallback(() => {
+    const prompt = buildBodyFromTuning(bodyTuning, newCharacter.gender);
+    setNewCharacter(prev => ({ ...prev, body: prompt }));
+    setExtractedBody(prev => (prev ? { ...prev, en: prompt } : prev));
+  }, [bodyTuning, buildBodyFromTuning, newCharacter.gender]);
+
+  const clampAngle = (value: number) => Math.max(0, Math.min(180, value));
+
+  const syncViewFromAngle = useCallback((angle: number) => {
+    if (angle < 45) return 'front';
+    if (angle < 135) return 'side';
+    return 'back';
+  }, []);
+
+  useEffect(() => {
+    setBodyPreviewView(syncViewFromAngle(bodyPreviewAngle));
+  }, [bodyPreviewAngle, syncViewFromAngle]);
+
+  useEffect(() => {
+    if (!showBodyTuningModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showBodyTuningModal]);
+
+  useEffect(() => {
+    if (!showBodyTuningModal) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBodyTuningModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showBodyTuningModal]);
 
   // 의상 추출 상태 (서버 캐시에서 복원)
   const [isExtracting, setIsExtracting] = useState(false);
@@ -1572,7 +1979,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       const updatedCharacter: Character = {
         ...target,
         ...newCharacter,
-        style: newCharacter.style || autoStyle
+        style: newCharacter.style || autoStyle,
+        bodyTuning
       };
       const updated = characters.map((char) => (
         char.id === selectedCharacterId ? updatedCharacter : char
@@ -1587,6 +1995,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       id: `char-${Date.now()}`,
       ...newCharacter,
       style: newCharacter.style || autoStyle,
+      bodyTuning,
       createdAt: new Date().toISOString()
     };
 
@@ -1603,9 +2012,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       body: '',
       style: ''
     });
+    setBodyTuning({ ...DEFAULT_BODY_TUNING });
     setActiveTab('select');
     showToast(`${character.name} 캐릭터가 저장되었습니다.`, 'success');
-  }, [newCharacter, characters, generateStyleFromBody, selectedCharacterId]);
+  }, [newCharacter, characters, generateStyleFromBody, selectedCharacterId, bodyTuning]);
 
   const resolveExtractionImageData = useCallback(async (value: string | null) => {
     if (!value) return null;
@@ -1794,6 +2204,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           body: char.body || '',
                           style: char.style || ''
                         });
+                        setBodyTuning(char.bodyTuning ? { ...DEFAULT_BODY_TUNING, ...char.bodyTuning } : { ...DEFAULT_BODY_TUNING });
                         setActiveTab('manage');
                         const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
                         onCharacterSelect?.(char, protagonistSlot);
@@ -2134,6 +2545,18 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           {preset.name}
                         </button>
                       ))}
+                    </div>
+                    <div className="bg-slate-900/60 border border-slate-700 rounded-xl p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[10px] font-bold text-slate-300">체형 커스텀</div>
+                        <button
+                          onClick={() => setShowBodyTuningModal(true)}
+                          className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-purple-500 bg-purple-900/40 text-purple-200 hover:border-purple-400 transition-all"
+                        >
+                          체형 커스텀 열기
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1">모달에서 상세 조절, 미리보기, 프리셋 저장까지 모두 가능합니다.</div>
                     </div>
                     <textarea
                       placeholder="체형/포즈 상세 정보"
@@ -2947,6 +3370,246 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           </div>
         )}
       </div>
+
+      {showBodyTuningModal && (
+        <div
+          className="fixed inset-0 z-[95] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowBodyTuningModal(false)}
+        >
+          <div
+            className="w-full max-w-5xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 md:p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-sm font-bold text-purple-300">체형 커스텀</div>
+                <div className="text-[10px] text-slate-500 mt-1">슬라이더를 움직이면 바로 옆 샘플 이미지가 즉시 변합니다.</div>
+              </div>
+              <button
+                onClick={() => setShowBodyTuningModal(false)}
+                className="text-slate-500 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4">
+              <div className="space-y-4">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-slate-300">슬라이더 (현재 값이 바로 반영됨)</div>
+                  <div className="text-[10px] text-slate-500 mt-1">작음 → 보통 → 큼 → 아주 큼으로 이해하면 됩니다.</div>
+                </div>
+
+                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">기본 체형</div>
+                  {BODY_TUNING_CONTROLS.filter(control => BASIC_BODY_KEYS.includes(control.key)).map(control => {
+                    const value = bodyTuning[control.key];
+                    const sizeLabel = toSizeLabel(value, ['작음', '보통', '큼', '아주 큼']);
+                    return (
+                      <div key={control.key} className="bg-slate-900/60 border border-slate-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-200">{control.label}</div>
+                            <div className="text-[10px] text-slate-500">{control.hint}</div>
+                          </div>
+                          <div className="text-[10px] font-bold text-purple-300">{value} / {sizeLabel}</div>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={value}
+                          onChange={e => setBodyTuning(prev => ({ ...prev, [control.key]: Number(e.target.value) }))}
+                          className="w-full mt-2 accent-purple-500"
+                        />
+                      </div>
+                    );
+                  })}
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-2">세부 부위</div>
+                  {BODY_TUNING_CONTROLS.filter(control => !BASIC_BODY_KEYS.includes(control.key)).map(control => {
+                    const value = bodyTuning[control.key];
+                    const sizeLabel = toSizeLabel(value, ['작음', '보통', '큼', '아주 큼']);
+                    return (
+                      <div key={control.key} className="bg-slate-900/60 border border-slate-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-200">{control.label}</div>
+                            <div className="text-[10px] text-slate-500">{control.hint}</div>
+                          </div>
+                          <div className="text-[10px] font-bold text-purple-300">{value} / {sizeLabel}</div>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={value}
+                          onChange={e => setBodyTuning(prev => ({ ...prev, [control.key]: Number(e.target.value) }))}
+                          className="w-full mt-2 accent-purple-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-200">체형 문구 미리보기</div>
+                  <textarea
+                    value={bodyTuningPreview}
+                    readOnly
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] text-slate-400 outline-none resize-none h-20 font-mono"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={applyBodyTuningToCharacter}
+                      className="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-all"
+                    >
+                      체형 문구로 적용
+                    </button>
+                    <button
+                      onClick={() => setBodyTuning({ ...DEFAULT_BODY_TUNING })}
+                      className="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                    >
+                      기본값으로 초기화
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-200">프리셋 저장</div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="프리셋 이름 (예: 긴 다리 글래머)"
+                      value={bodyPresetName}
+                      onChange={e => setBodyPresetName(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] text-slate-200 outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!bodyPresetName.trim()) {
+                          showToast('프리셋 이름을 입력해주세요.', 'warning');
+                          return;
+                        }
+                        const next = [
+                          ...bodyTuningPresets,
+                          { id: `body-${Date.now()}`, name: bodyPresetName.trim(), tuning: { ...bodyTuning } }
+                        ];
+                        saveBodyPresets(next);
+                        setBodyPresetName('');
+                        showToast('체형 프리셋이 저장되었습니다.', 'success');
+                      }}
+                      className="px-3 py-2 text-[10px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                    >
+                      저장
+                    </button>
+                  </div>
+                  {bodyTuningPresets.length > 0 && (
+                    <div className="space-y-2">
+                      {bodyTuningPresets.map(preset => (
+                        <div key={preset.id} className="flex items-center justify-between gap-2 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-200">{preset.name}</div>
+                            <div className="text-[9px] text-slate-500">저장된 체형 세팅</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setBodyTuning({ ...DEFAULT_BODY_TUNING, ...preset.tuning })}
+                              className="px-2 py-1 text-[10px] font-bold rounded-md bg-purple-600/80 hover:bg-purple-500 text-white transition-all"
+                            >
+                              적용
+                            </button>
+                            <button
+                              onClick={() => {
+                                const next = bodyTuningPresets.filter(item => item.id !== preset.id);
+                                saveBodyPresets(next);
+                              }}
+                              className="px-2 py-1 text-[10px] font-bold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-slate-200 mb-2">샘플 이미지 (회전 가능)</div>
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    {[
+                      { id: 'front', label: '정면' },
+                      { id: 'side', label: '측면' },
+                      { id: 'back', label: '후면' }
+                    ].map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          const nextAngle = option.id === 'front' ? 0 : option.id === 'back' ? 180 : 90;
+                          setBodyPreviewAngle(nextAngle);
+                          setBodyPreviewView(option.id as 'front' | 'side' | 'back');
+                        }}
+                        className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
+                          bodyPreviewView === option.id
+                            ? 'border-purple-400 bg-purple-600/20 text-purple-200'
+                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    className={`relative w-full aspect-[3/5] rounded-xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-950/80 via-slate-900/90 to-slate-950 ${isBodyPreviewDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    onPointerDown={(event) => {
+                      setIsBodyPreviewDragging(true);
+                      bodyPreviewDragRef.current = { x: event.clientX, angle: bodyPreviewAngle };
+                      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                    }}
+                    onPointerMove={(event) => {
+                      if (!isBodyPreviewDragging || !bodyPreviewDragRef.current) return;
+                      const delta = event.clientX - bodyPreviewDragRef.current.x;
+                      const next = clampAngle(bodyPreviewDragRef.current.angle + delta * 0.6);
+                      setBodyPreviewAngle(next);
+                    }}
+                    onPointerUp={(event) => {
+                      setIsBodyPreviewDragging(false);
+                      bodyPreviewDragRef.current = null;
+                      (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+                    }}
+                    onPointerLeave={(event) => {
+                      if (!isBodyPreviewDragging) return;
+                      setIsBodyPreviewDragging(false);
+                      bodyPreviewDragRef.current = null;
+                      (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+                    }}
+                  >
+                    <div className="absolute top-3 left-3 text-[10px] text-slate-300 bg-slate-950/70 px-2 py-1 rounded-md border border-slate-800 pointer-events-none">
+                      드래그해서 회전
+                    </div>
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute left-[50%] top-[26%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                      <div className="absolute left-[50%] top-[39%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                      <div className="absolute left-[50%] top-[52%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                      <div className="absolute left-[50%] top-[67%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                    </div>
+                    {renderBodyPreviewSvg(bodyTuning, bodyPreviewView, bodyPreviewAngle)}
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-2">드래그해서 회전하세요. 현재 각도: {Math.round(bodyPreviewAngle)}°</div>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-slate-200 mb-1">이렇게 이해하세요</div>
+                  <div className="text-[10px] text-slate-500">
+                    숫자가 커질수록 해당 부위가 커지고 길어집니다. 정면은 앞쪽 볼륨, 후면은 뒤쪽 볼륨, 측면은 앞·뒤 균형이 보입니다.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxImage && (

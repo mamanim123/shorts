@@ -1,0 +1,106 @@
+{
+  "id": "character-rules-backup-1770515281071",
+  "name": "백업 2026. 02. 08. 오전 10:48",
+  "createdAt": "2026-02-08T01:48:01.072Z",
+  "rules": {
+    "females": [
+      {
+        "id": "Woman_01",
+        "name": "혜진",
+        "identity": "A stunning Korean woman",
+        "hair": "long soft-wave hairstyle",
+        "body": "high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette,  athletic lower body proportions, smooth feminine curves",
+        "style": "perfectly managed sophisticated look, confident presence",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": false
+      },
+      {
+        "id": "Woman_02",
+        "name": "수아",
+        "identity": "A stunning Korean woman",
+        "hair": "short chic bob cut",
+        "body": "high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette,  athletic lower body proportions, smooth feminine curves",
+        "style": "charming presence, expressive and lively reactions",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": false
+      },
+      {
+        "id": "Woman_03",
+        "name": "혜숙",
+        "identity": "A stunning Korean woman",
+        "hair": "elegant high ponytail",
+        "body": "high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette,  athletic lower body proportions, smooth feminine curves",
+        "style": "composed and calm observer demeanor, elegant presence",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": false
+      },
+      {
+        "id": "Woman_04",
+        "name": "지아",
+        "identity": "A stunning Korean woman",
+        "hair": "high-bun hairstyle",
+        "body": "high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette,  athletic lower body proportions, smooth feminine curves",
+        "style": "bright cheerful professional presence, sophisticated and beautiful caddy look",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": true,
+        "fixedAge": "in her early 20s"
+      },
+      {
+        "id": "WomanE",
+        "name": "옥자",
+        "identity": "A stunning Korean woman in her 40대",
+        "hair": "elegant hairstyle",
+        "body": "high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette,  athletic lower body proportions, smooth feminine curves",
+        "style": "perfectly managed sophisticated look",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": false
+      },
+      {
+        "id": "WomanF",
+        "name": "옥자1",
+        "identity": "A stunning Korean woman in her 40대",
+        "hair": "elegant hairstyle",
+        "body": "high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette,  athletic lower body proportions, smooth feminine curves,",
+        "style": "confident athletic presence, energetic and vibrant aura",
+        "outfitFit": "tight-fitting, form-hugging, accentuating curves naturally",
+        "isFixedAge": false
+      }
+    ],
+    "males": [
+      {
+        "id": "Man_01",
+        "name": "준호",
+        "identity": "A handsome Korean man",
+        "hair": "short neat hairstyle",
+        "body": "fit athletic build with broad shoulders",
+        "style": "dandy and refined presence, well-groomed and polished appearance",
+        "outfitFit": "tailored slim-fit, clean and sharp lines",
+        "isFixedAge": false
+      },
+      {
+        "id": "Man_02",
+        "name": "명식",
+        "identity": "A handsome Korean man",
+        "hair": "clean short cut hair",
+        "body": "fit athletic build with broad shoulders",
+        "style": "casual and approachable demeanor, friendly presence",
+        "outfitFit": "tailored slim-fit, clean and sharp lines",
+        "isFixedAge": false
+      },
+      {
+        "id": "Man_03",
+        "name": "",
+        "identity": "A handsome Korean man",
+        "hair": "stylish side-part hair",
+        "body": "well-built physique with strong shoulders",
+        "style": "professional and confident presence, business casual elegance",
+        "outfitFit": "tailored slim-fit, clean and sharp lines",
+        "isFixedAge": false
+      }
+    ],
+    "common": {
+      "negativePrompt": "NOT cartoon, NOT anime, NOT illustration, NOT painting, NOT drawing, NOT CG, NOT 3D render, deformed, ugly, low quality, blurry, watermark, text, logo",
+      "qualityTags": "photorealistic, 8k resolution, cinematic lighting, masterpiece, professional photography, depth of field, volumetric lighting, rim light, detailed skin texture, high fashion photography"
+    }
+  }
+}

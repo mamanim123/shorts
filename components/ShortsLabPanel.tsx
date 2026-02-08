@@ -423,6 +423,14 @@ const buildAccessoryMap = (
                 .filter(Boolean)
             : [];
         ids.forEach((id) => {
+            const current = map.get(id) || [];
+
+            // 원본 악세서리가 이미 있으면 겨울 악세서리를 추가하지 않고 원본 유지
+            if (current.length > 0) {
+                return; // LLM이 생성한 원본 악세서리 보존
+            }
+
+            // 원본 악세서리가 없을 때만 겨울 악세서리 추가
             const gender = getCharacterGender(id);
             let accessories: string[] = [];
             let attempts = 0;
@@ -435,11 +443,9 @@ const buildAccessoryMap = (
             accessories.forEach((item) => usedAccessories.add(item));
             if (gender === 'male') {
                 map.set(id, accessories.slice(0, 1));
-                return;
+            } else {
+                map.set(id, accessories);
             }
-            const current = map.get(id) || [];
-            const merged = Array.from(new Set([...current, ...accessories]));
-            map.set(id, merged);
         });
     }
 
@@ -453,6 +459,39 @@ const applyAccessoriesToPrompt = (
 ) => {
     let updated = prompt;
     const hasPersonMarkers = /\[Person\s+\d+:/i.test(updated);
+
+    // 의미적 중복 체크 함수 (키워드 기반)
+    const isSemanticDuplicate = (newItem: string, existingList: string[]): boolean => {
+        const newLower = newItem.toLowerCase();
+        return existingList.some((item) => {
+            const itemLower = item.toLowerCase();
+            // 완전 포함 관계 체크 (예: "scarf"와 "cashmere scarf")
+            if (itemLower.includes(newLower) || newLower.includes(itemLower)) {
+                return true;
+            }
+            // 유사 아이템 체크 (같은 카테고리)
+            const categories = [
+                ['scarf', 'muffler', 'shawl'],
+                ['beanie', 'hat', 'cap'],
+                ['earmuffs', 'headband', 'ear warmer'],
+                ['gloves', 'mittens'],
+                ['necklace', 'pendant', 'choker'],
+                ['earrings', 'studs'],
+                ['bracelet', 'bangle', 'wristband'],
+                ['boots', 'shoes', 'footwear'],
+                ['bag', 'purse', 'handbag'],
+                ['sunglasses', 'glasses', 'shades']
+            ];
+            for (const category of categories) {
+                const newInCategory = category.some((keyword) => newLower.includes(keyword));
+                const existingInCategory = category.some((keyword) => itemLower.includes(keyword));
+                if (newInCategory && existingInCategory) {
+                    return true; // 같은 카테고리의 아이템은 중복으로 간주
+                }
+            }
+            return false;
+        });
+    };
 
     characterIds.forEach((id, index) => {
         const accessories = accessoryMap.get(id) || [];
@@ -468,7 +507,13 @@ const applyAccessoriesToPrompt = (
                             .split(',')
                             .map((item: string) => item.trim())
                             .filter(Boolean);
-                        const merged = Array.from(new Set([...existingItems, ...accessories]));
+
+                        // 의미적 중복 제거: 이미 존재하는 유사 아이템이 있으면 추가하지 않음
+                        const uniqueNew = accessories.filter(
+                            (acc) => !isSemanticDuplicate(acc, existingItems)
+                        );
+
+                        const merged = Array.from(new Set([...existingItems, ...uniqueNew]));
                         return `accessorized with ${merged.join(', ')}`;
                     });
                 }
@@ -482,6 +527,87 @@ const applyAccessoriesToPrompt = (
     });
 
     return updated;
+};
+
+const inferCharacterIdsFromPrompt = (
+    prompt: string,
+    characterInfoMap: Map<string, CharacterInfo>
+): string[] => {
+    if (!prompt) return [];
+    const blocks = prompt.match(/\[Person\s+\d+:[^\]]+\]/gi) || [];
+    if (blocks.length === 0) return [];
+
+    const entries = Array.from(characterInfoMap.entries());
+    const used = new Set<string>();
+    const ordered: string[] = [];
+
+    blocks.forEach((block) => {
+        let bestId = '';
+        let bestScore = 0;
+        entries.forEach(([id, info]) => {
+            if (used.has(id)) return;
+            let score = 0;
+            if (info.outfit && block.includes(info.outfit)) score += 4;
+            if (info.hair && block.includes(info.hair)) score += 3;
+            if (info.identity && block.includes(info.identity)) score += 2;
+            if (score > bestScore) {
+                bestScore = score;
+                bestId = id;
+            }
+        });
+        if (bestId && bestScore > 0) {
+            used.add(bestId);
+            ordered.push(bestId);
+        }
+    });
+
+    return ordered;
+};
+
+const buildPromptDiffReport = (
+    originalScenes: any[],
+    processedScenes: any[],
+    meta: { title: string; folderName?: string; service?: string; }
+): string => {
+    const lines: string[] = [];
+    lines.push('=== PROMPT DIFF REPORT ===');
+    lines.push(`title: ${meta.title || 'Untitled'}`);
+    if (meta.folderName) lines.push(`folderName: ${meta.folderName}`);
+    if (meta.service) lines.push(`service: ${meta.service}`);
+    lines.push(`sceneCount: ${Math.max(originalScenes.length, processedScenes.length)}`);
+    lines.push('');
+
+    const maxScenes = Math.max(originalScenes.length, processedScenes.length);
+    for (let i = 0; i < maxScenes; i += 1) {
+        const raw = originalScenes[i] || {};
+        const fixed = processedScenes[i] || {};
+        const sceneNumber = fixed.sceneNumber || raw.sceneNumber || i + 1;
+        lines.push(`--- Scene ${sceneNumber} ---`);
+        const meta = (fixed as any).__postProcessMeta;
+        if (raw.shortPrompt || fixed.shortPrompt) {
+            lines.push('[LLM shortPrompt]');
+            lines.push(String(raw.shortPrompt || '').trim());
+            lines.push('[POST shortPrompt]');
+            lines.push(String(fixed.shortPrompt || '').trim());
+            lines.push('');
+        }
+        lines.push('[Character Mapping]');
+        lines.push(`raw.characterIds: ${JSON.stringify(raw.characterIds || [])}`);
+        lines.push(`raw.characterSlot: ${JSON.stringify(raw.characterSlot || '')}`);
+        lines.push(`post.enabled: ${meta?.enabled === true ? 'true' : 'false'}`);
+        lines.push(`post.inferredCharacterIds: ${meta?.inferredCharacterIds === true ? 'true' : 'false'}`);
+        lines.push(`post.characterIds: ${JSON.stringify(meta?.characterIds || [])}`);
+        lines.push('');
+        if (raw.longPrompt || fixed.longPrompt) {
+            lines.push('[LLM longPrompt]');
+            lines.push(String(raw.longPrompt || '').trim());
+            lines.push('[POST longPrompt]');
+            lines.push(String(fixed.longPrompt || '').trim());
+            lines.push('');
+        }
+    }
+
+    return lines.join('\n');
 };
 
 type ManualCharacterPrompt = {
@@ -1043,7 +1169,7 @@ const postProcessAiScenes = (
     let characterInfoMap = buildCharacterInfoMap(options.characters, options.targetAgeLabel);
     let accessoryMap = buildAccessoryMap(options.characters, options.enableWinterAccessories);
     const postProcessConfig = options.postProcessConfig;
-    const postProcessEnabled = true;
+    const postProcessEnabled = postProcessConfig?.enabled === true;
     const skipIdentityInjection = postProcessConfig?.skipIdentityInjection === true;
 
     if (options.enableWinterAccessories) {
@@ -1063,7 +1189,7 @@ const postProcessAiScenes = (
 
     return scenes.map((scene: any, idx: number) => {
         const sceneNumber = scene.sceneNumber || idx + 1;
-        const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
+        let characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
         const shotType = normalizeShotType(scene.shotType, characterIds);
         const basePrompt = scene.longPrompt || scene.shortPrompt || scene.prompt || '';
 
@@ -1072,8 +1198,21 @@ const postProcessAiScenes = (
             return {
                 ...scene,
                 longPrompt: rawPrompt,
-                shortPrompt: scene.shortPrompt || rawPrompt
+                shortPrompt: scene.shortPrompt || rawPrompt,
+                __postProcessMeta: {
+                    enabled: false,
+                    characterIds: characterIds
+                }
             };
+        }
+
+        let inferredCharacterIds = false;
+        if (characterIds.length === 0 && basePrompt) {
+            const inferred = inferCharacterIdsFromPrompt(basePrompt, characterInfoMap);
+            if (inferred.length > 0) {
+                characterIds = inferred;
+                inferredCharacterIds = true;
+            }
         }
 
         // 1. 기존 방식의 강화 (identity, outfit 등 삽입) + v3.6 표정/카메라 앵글
@@ -1172,7 +1311,12 @@ const postProcessAiScenes = (
             ...scene,
             longPrompt: processedPrompt,
             negativePrompt: negativePrompt, // [NEW] 필드 추가
-            shortPrompt: shortPrompt
+            shortPrompt: shortPrompt,
+            __postProcessMeta: {
+                enabled: true,
+                inferredCharacterIds,
+                characterIds: characterIds
+            }
         };
     });
 };
@@ -3424,6 +3568,34 @@ ${scriptInput}
                         postProcessConfig: selectedGenreData?.postProcessConfig
                     });
 
+                    processedScenes.forEach((scene: any, idx: number) => {
+                        const rawScene = scenesSource[idx] || {};
+                        const sceneNo = scene.sceneNumber || idx + 1;
+                        console.log(`[ShortsLab] PostProcess Scene ${sceneNo}`);
+                        console.log('LLM longPrompt:', rawScene.longPrompt || rawScene.shortPrompt || rawScene.prompt || '');
+                        console.log('POST longPrompt:', scene.longPrompt || scene.shortPrompt || scene.prompt || '');
+                    });
+
+                    try {
+                        const diffReport = buildPromptDiffReport(scenesSource, processedScenes, {
+                            title: aiTopic?.trim() || 'ShortsLab',
+                            folderName: data._folderName,
+                            service: selectedService
+                        });
+                        await fetch('http://localhost:3002/api/save-story', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: `${aiTopic?.trim() || 'ShortsLab'}_prompt_diff`,
+                                content: diffReport,
+                                service: 'ShortsLab',
+                                folderName: data._folderName
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('[ShortsLab] Failed to save prompt diff report:', e);
+                    }
+
                     extractedScenes = processedScenes.map((scene: any, idx: number) => {
                         const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
                         const narrationText = typeof scene.narration === 'string'
@@ -5667,6 +5839,7 @@ ${scriptInput}
             {showGenreModal && (
                 <GenreManagementModal
                     genres={labGenres}
+                    selectedGenreId={aiGenre}
                     backups={labGenreBackups}
                     outfitCategories={outfitCatalog.categories || []}
                     promptRules={labPromptRules}
@@ -5885,6 +6058,7 @@ const ToggleItem: React.FC<ToggleItemProps> = ({ checked, onChange, label, descr
 
 interface GenreManagementModalProps {
     genres: LabGenreGuidelineEntry[];
+    selectedGenreId?: string;
     backups: {
         id: string;
         name: string;
@@ -5947,6 +6121,7 @@ interface GenreManagementModalProps {
 
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     genres,
+    selectedGenreId,
     backups,
     outfitCategories,
     promptRules,
@@ -6226,6 +6401,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         handleSelectPostProcessGenre(genres[0].id);
     }, [genres, postProcessDirty, postProcessGenreId]);
 
+    React.useEffect(() => {
+        if (postProcessDirty) return;
+        if (!selectedGenreId) return;
+        if (selectedGenreId === postProcessGenreId) return;
+        const exists = genres.some((genre) => genre.id === selectedGenreId);
+        if (exists) {
+            handleSelectPostProcessGenre(selectedGenreId);
+        }
+    }, [selectedGenreId, genres, postProcessDirty, postProcessGenreId]);
+
     const handlePostProcessSave = async () => {
         if (!postProcessGenreId) {
             alert('후처리 설정을 적용할 장르를 선택해주세요.');
@@ -6255,6 +6440,21 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const handlePostProcessReset = () => {
         if (!postProcessGenreId) return;
         handleSelectPostProcessGenre(postProcessGenreId);
+    };
+
+    const getPostProcessPreview = () => {
+        const base = 'A sample prompt, smiling at camera, wearing red dress, cinematic lighting';
+        const cleanupPatterns = postProcessCleanupText
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean);
+        const cleaned = applyCleanupPatterns(base, cleanupPatterns);
+        const prefix = postProcessConfig?.customPrefix?.trim();
+        const suffix = postProcessConfig?.customSuffix?.trim();
+        let withAffixes = cleaned;
+        if (prefix) withAffixes = `${prefix}, ${withAffixes}`.replace(/,\s*,/g, ', ').trim();
+        if (suffix) withAffixes = `${withAffixes}, ${suffix}`.replace(/,\s*,/g, ', ').trim();
+        return { base, cleaned, withAffixes };
     };
 
     const handlePostProcessBackupCreate = async () => {
@@ -6959,8 +7159,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         >
                             2단계규칙
                         </button>
-                        {/* 후처리 탭 버튼 - 사용하지 않으므로 숨김 */}
-                        {/* <button
+                        <button
                             onClick={() => {
                                 setActiveTab('post_process');
                                 setMode('list');
@@ -6972,7 +7171,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 }`}
                         >
                             후처리
-                        </button> */}
+                        </button>
                         <button
                             onClick={() => {
                                 setActiveTab('character_rules');
@@ -7371,8 +7570,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         </div>
                     )}
 
-                    {/* 후처리 탭 내용 - 사용하지 않으므로 숨김 */}
-                    {false && activeTab === 'post_process' && (
+                    {activeTab === 'post_process' && (
                         <div className="space-y-5">
                             <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -7398,10 +7596,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 
                                 <div className="bg-slate-900/60 border border-slate-700 rounded-xl p-3 text-xs text-slate-300 space-y-2">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="text-[10px] text-slate-500">적용 장르</span>
-                                        <span className="px-2 py-0.5 rounded-full bg-slate-700/70 text-slate-200">
-                                            {postProcessSelectedGenre?.name || '미선택'}
-                                        </span>
                                         <span className={`px-2 py-0.5 rounded-full ${postProcessConfig?.enabled !== false ? 'bg-emerald-600/80 text-white' : 'bg-slate-700 text-slate-300'}`}>
                                             후처리 {postProcessConfig?.enabled !== false ? 'ON' : 'OFF'}
                                         </span>
@@ -7423,21 +7617,13 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col md:flex-row gap-3">
-                                    <select
-                                        value={postProcessGenreId}
-                                        onChange={(e) => handleSelectPostProcessGenre(e.target.value)}
-                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                    >
-                                        <option value="">장르를 선택해주세요</option>
-                                        {genres.map((genre) => (
-                                            <option key={genre.id} value={genre.id}>
-                                                {genre.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="text-[11px] text-slate-500 flex items-center">
-                                        장르 백업에 함께 저장됩니다. 복구는 '장르 관리' 탭에서 가능합니다.
+                                <div className="bg-slate-900/40 border border-slate-700 rounded-xl p-3 text-xs text-slate-300 space-y-2">
+                                    <div className="text-[11px] text-slate-400">
+                                        지금 이 화면은 “선택된 장르의 후처리 설정”을 보여줍니다.
+                                        대본 생성 화면에서 고른 장르가 자동으로 적용됩니다.
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">
+                                        현재 장르: <span className="text-slate-200">{postProcessSelectedGenre?.name || '미선택'}</span>
                                     </div>
                                 </div>
 
@@ -7475,9 +7661,15 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 
                                 <details className={`bg-slate-900/50 border border-slate-700 rounded-xl p-4 ${postProcessDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
                                     <summary className="text-sm font-medium text-slate-300 cursor-pointer hover:text-white">
-                                        고급 옵션 (필요할 때만 사용)
+                                        쉬운 설명 + 고급 옵션 (수정하면 바로 적용됨)
                                     </summary>
                                     <div className="mt-4 space-y-4">
+                                        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 space-y-2">
+                                            <div className="font-semibold text-slate-100">초등학생 버전 설명</div>
+                                            <div>1. <span className="text-emerald-300">클린업</span>: “이 단어는 지워!”를 적는 곳이에요.</div>
+                                            <div>2. <span className="text-amber-300">Prefix</span>: 문장 <span className="underline">앞</span>에 항상 붙는 말이에요.</div>
+                                            <div>3. <span className="text-amber-300">Suffix</span>: 문장 <span className="underline">끝</span>에 항상 붙는 말이에요.</div>
+                                        </div>
                                         <ToggleItem
                                             checked={Boolean(postProcessConfig?.useSafeGlamour)}
                                             onChange={(checked) => {
@@ -7489,11 +7681,11 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                 setPostProcessDirty(true);
                                             }}
                                             label="Safe Glamour 적용"
-                                            description="화보 느낌의 품질 태그를 자동으로 추가합니다."
+                                            description="화보 느낌의 품질 태그를 자동으로 추가합니다. (예: high-fashion, cinematic 등)"
                                         />
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Prefix</label>
+                                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Prefix (앞에 붙는 말)</label>
                                                 <textarea
                                                     value={postProcessConfig?.customPrefix || ''}
                                                     onChange={(e) => {
@@ -7506,11 +7698,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     }}
                                                     rows={3}
                                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                                                    placeholder="프롬프트 앞에 항상 붙일 문구"
+                                                    placeholder="예: ultra cinematic, premium studio lighting"
                                                 />
+                                                <div className="text-[11px] text-slate-500 mt-1">문장 <span className="text-slate-200">앞</span>에 항상 붙습니다.</div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-1.5">커스텀 Suffix</label>
+                                                <label className="block text-sm font-medium text-slate-300 mb-1.5">Suffix (끝에 붙는 말)</label>
                                                 <textarea
                                                     value={postProcessConfig?.customSuffix || ''}
                                                     onChange={(e) => {
@@ -7523,13 +7716,14 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     }}
                                                     rows={3}
                                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
-                                                    placeholder="프롬프트 끝에 항상 붙일 문구"
+                                                    placeholder="예: --ar 9:16, no text, no logos"
                                                 />
+                                                <div className="text-[11px] text-slate-500 mt-1">문장 <span className="text-slate-200">끝</span>에 항상 붙습니다.</div>
                                             </div>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                                                클린업 패턴 <span className="text-slate-500">(한 줄에 하나)</span>
+                                                클린업 패턴 (지울 말) <span className="text-slate-500">(한 줄에 하나)</span>
                                             </label>
                                             <textarea
                                                 value={postProcessCleanupText}
@@ -7539,11 +7733,27 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                 }}
                                                 rows={6}
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none font-mono"
-                                                placeholder="예: wearing\nmini skirt\nphotorealistic"
+                                                placeholder="예: wearing\nphotorealistic\nlow quality"
                                             />
                                             <div className="text-[11px] text-slate-500 mt-1">
-                                                입력한 문구가 포함된 부분을 제거합니다. 정규식이 아닌 단순 문자열 기준입니다.
+                                                입력한 문구가 포함된 부분을 제거합니다. (정규식 아님, 그냥 글자 그대로)
                                             </div>
+                                        </div>
+                                        <div className="bg-slate-900/70 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 space-y-2">
+                                            <div className="font-semibold text-slate-100">미리보기 (지금 설정 기준)</div>
+                                            {(() => {
+                                                const preview = getPostProcessPreview();
+                                                return (
+                                                    <>
+                                                        <div className="text-[11px] text-slate-400">원본</div>
+                                                        <div className="font-mono text-[11px] text-slate-200 break-words">{preview.base}</div>
+                                                        <div className="text-[11px] text-slate-400 mt-2">클린업 적용 후</div>
+                                                        <div className="font-mono text-[11px] text-slate-200 break-words">{preview.cleaned}</div>
+                                                        <div className="text-[11px] text-slate-400 mt-2">Prefix/Suffix 적용 후</div>
+                                                        <div className="font-mono text-[11px] text-slate-200 break-words">{preview.withAffixes}</div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </details>
@@ -7576,6 +7786,61 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         백업 생성
                                     </button>
                                 </div>
+                                {backups.length === 0 ? (
+                                    <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {backups.map((backup) => (
+                                            <div
+                                                key={backup.id}
+                                                className="flex flex-col md:flex-row md:items-center gap-2 bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2"
+                                            >
+                                                <div className="flex-1 flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={backupEdits[backup.id] ?? backup.name}
+                                                            onChange={(e) =>
+                                                                setBackupEdits((prev) => ({ ...prev, [backup.id]: e.target.value }))
+                                                            }
+                                                            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                                        />
+                                                        <button
+                                                            onClick={() => handleBackupRename(backup.id)}
+                                                            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-md text-[11px] font-medium"
+                                                        >
+                                                            이름 저장
+                                                        </button>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500">
+                                                        {new Date(backup.createdAt).toLocaleString()}
+                                                        <span className="ml-2 text-slate-600">({backup.genres.length}개 장르)</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleOpenBackupEditor(backup.id)}
+                                                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-medium"
+                                                    >
+                                                        보기/편집
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBackupRestore(backup.id)}
+                                                        className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium"
+                                                    >
+                                                        복구
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBackupDelete(backup.id)}
+                                                        className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg text-xs font-medium"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -8732,7 +8997,10 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         else handleCloseCharacterRulesBackupEditor();
                     }}
                 >
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col animate-in zoom-in-95 duration-200">
+                    <div
+                        className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
                             <div>
                                 <h3 className="text-lg font-bold text-white">

@@ -43,6 +43,52 @@
       "body": "",
       "style": "perfectly managed sophisticated look",
       "createdAt": "2026-02-05T06:40:11.376Z"
+    },
+    {
+      "id": "char-1770513778122",
+      "name": "옥자",
+      "age": "40대",
+      "gender": "female",
+      "face": "",
+      "hair": "",
+      "body": "",
+      "style": "perfectly managed sophisticated look",
+      "bodyTuning": {
+        "overall": 55,
+        "legLength": 60,
+        "bustFront": 55,
+        "bustBack": 45,
+        "bustUpper": 55,
+        "bustLower": 50,
+        "hipsFront": 55,
+        "hipsBack": 60,
+        "hipsUpper": 55,
+        "hipsLower": 55
+      },
+      "createdAt": "2026-02-08T01:22:58.122Z"
+    },
+    {
+      "id": "char-1770514299792",
+      "name": "옥자1",
+      "age": "40대",
+      "gender": "female",
+      "face": "",
+      "hair": "",
+      "body": "Full body shot of a Korean woman, hourglass figure, high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette, tight-fitting long-sleeve top, high-waisted leggings, athletic lower body proportions, smooth feminine curves, natural upright standing posture, arms relaxed at sides, subtle three-quarter view, 3D body contour, realistic body proportions, dimensional silhouette.",
+      "style": "confident athletic presence, energetic and vibrant aura",
+      "bodyTuning": {
+        "overall": 55,
+        "legLength": 60,
+        "bustFront": 55,
+        "bustBack": 45,
+        "bustUpper": 55,
+        "bustLower": 50,
+        "hipsFront": 55,
+        "hipsBack": 60,
+        "hipsUpper": 55,
+        "hipsLower": 55
+      },
+      "createdAt": "2026-02-08T01:31:39.792Z"
     }
   ]
 }

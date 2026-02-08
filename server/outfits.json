@@ -350,6 +350,14 @@
       "category": "ROYAL",
       "createdAt": "2026-02-07T12:10:23.656Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770466223656_2026-02-07T12-11-32-505Z.png"
+    },
+    {
+      "id": "outfit-1770519301688",
+      "name": "스카이 블루 골지 탱크탑 + 베이지 하이웨이스트 레깅스",
+      "prompt": "sky blue ribbed knit cropped tank top, ultra-short length ending just below the bust, vertical ribbing texture,\n  sleeveless, scoop neckline, thick shoulder straps, fitted silhouette, high-waisted beige performance leggings,\n  seamless construction, functional stretch spandex fabric, bodycon fit, thin delicate gold chain necklace,\n  minimalist athleisure style, matte fabric finish, opaque material",
+      "category": "YOGA",
+      "createdAt": "2026-02-08T02:55:01.688Z",
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770519301688_2026-02-08T03-02-42-328Z.png"
     }
   ],
   "categories": [

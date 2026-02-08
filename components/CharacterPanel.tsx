@@ -1223,6 +1223,73 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     return savedUrl || null;
   }, []);
 
+  // Gemini API 직접 호출로 의상 미리보기 생성 (브라우저 자동화 아님)
+  const handleGenerateOutfitPreviewWithGeminiAPI = useCallback(async (outfit: Outfit) => {
+    if (isGeneratingOutfitPreview) return;
+    setIsGeneratingOutfitPreview(true);
+    try {
+      const finalPrompt = outfit.prompt.trim();
+      if (!finalPrompt) throw new Error('프롬프트가 비어있습니다.');
+
+      const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+      ];
+
+      const result = await generateImageWithImagen(
+        finalPrompt,
+        "",
+        { aspectRatio: "9:16", model: 'imagen-4.0-generate-001' },
+        safetySettings
+      );
+
+      let base64Image: string | null = null;
+      if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+        const generatedImage = result.generatedImages[0];
+        if (generatedImage?.image?.imageBytes) {
+          base64Image = generatedImage.image.imageBytes;
+        } else if (generatedImage?.imageBytes) {
+          base64Image = generatedImage.imageBytes;
+        }
+      } else if (result && result.images && result.images.length > 0) {
+        base64Image = result.images[0];
+      }
+
+      if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
+
+      const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: `data:image/png;base64,${base64Image}`,
+          prompt: finalPrompt,
+          type: 'outfit'
+        })
+      });
+
+      const saveResult = await saveResponse.json();
+      if (saveResult.success) {
+        const imageUrl = `http://localhost:3002${saveResult.url}`;
+        const updated = outfits.map(item => (
+          item.id === outfit.id ? { ...item, imageUrl } : item
+        ));
+        setOutfits(updated);
+        saveOutfitsToBE(updated, outfitCategories);
+        showToast('의상 미리보기가 생성되었습니다.', 'success');
+      } else {
+        throw new Error(saveResult.error || '이미지 저장 실패');
+      }
+
+    } catch (error: any) {
+      console.error('의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingOutfitPreview(false);
+    }
+  }, [isGeneratingOutfitPreview, outfitCategories, outfits, saveOutfitsToBE]);
+
   const handleGenerateOutfitPreview = useCallback(async (outfit: Outfit) => {
     if (isGeneratingOutfitPreview) return;
     setIsGeneratingOutfitPreview(true);
@@ -1253,6 +1320,74 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       showToast('의상 썸네일 새로고침에 실패했습니다.', 'error');
     }
   }, []);
+
+  // Gemini API 직접 호출로 기본 의상 미리보기 생성 (브라우저 자동화 아님)
+  const handleGenerateBaseOutfitPreviewWithGeminiAPI = useCallback(async (item: BaseOutfitItem) => {
+    if (isGeneratingBaseOutfitPreview) return;
+    setIsGeneratingBaseOutfitPreview(true);
+    try {
+      const finalPrompt = (editingBaseOutfitPrompt.trim() || item.prompt || item.name).trim();
+      if (!finalPrompt) throw new Error('프롬프트가 비어있습니다.');
+
+      const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+      ];
+
+      const result = await generateImageWithImagen(
+        finalPrompt,
+        "",
+        { aspectRatio: "9:16", model: 'imagen-4.0-generate-001' },
+        safetySettings
+      );
+
+      let base64Image: string | null = null;
+      if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+        const generatedImage = result.generatedImages[0];
+        if (generatedImage?.image?.imageBytes) {
+          base64Image = generatedImage.image.imageBytes;
+        } else if (generatedImage?.imageBytes) {
+          base64Image = generatedImage.imageBytes;
+        }
+      } else if (result && result.images && result.images.length > 0) {
+        base64Image = result.images[0];
+      }
+
+      if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
+
+      const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: `data:image/png;base64,${base64Image}`,
+          prompt: finalPrompt,
+          type: 'outfit'
+        })
+      });
+
+      const saveResult = await saveResponse.json();
+      if (saveResult.success) {
+        const imageUrl = `http://localhost:3002${saveResult.url}`;
+        const updatedMap = {
+          ...baseOutfitPreviewMap,
+          [item.id]: imageUrl
+        };
+        setBaseOutfitPreviewMap(updatedMap);
+        saveOutfitPreviewMap(updatedMap);
+        showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
+      } else {
+        throw new Error(saveResult.error || '이미지 저장 실패');
+      }
+
+    } catch (error: any) {
+      console.error('기본 의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingBaseOutfitPreview(false);
+    }
+  }, [baseOutfitPreviewMap, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, saveOutfitPreviewMap]);
 
   const handleGenerateBaseOutfitPreview = useCallback(async (item: BaseOutfitItem) => {
     if (isGeneratingBaseOutfitPreview) return;
@@ -3018,11 +3153,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             저장
                           </button>
                           <button
-                            onClick={() => handleGenerateOutfitPreview(selectedOutfit)}
+                            onClick={() => handleGenerateOutfitPreviewWithGeminiAPI(selectedOutfit)}
                             disabled={isGeneratingOutfitPreview}
                             className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
                           >
-                            {isGeneratingOutfitPreview ? '생성 중...' : '재생성'}
+                            {isGeneratingOutfitPreview ? '생성 중...' : '이미지생성'}
                           </button>
                           <button
                             onClick={() => handleGenerateOutfitPreviewWithAI(editingOutfitPrompt.trim() || selectedOutfit.prompt, selectedOutfit.id, 'user')}
@@ -3084,11 +3219,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             카테고리 변경
                           </button>
                           <button
-                            onClick={() => handleGenerateBaseOutfitPreview(selectedBaseOutfit)}
+                            onClick={() => handleGenerateBaseOutfitPreviewWithGeminiAPI(selectedBaseOutfit)}
                             disabled={isGeneratingBaseOutfitPreview}
                             className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
                           >
-                            {isGeneratingBaseOutfitPreview ? '생성 중...' : '재생성'}
+                            {isGeneratingBaseOutfitPreview ? '생성 중...' : '이미지생성'}
                           </button>
                           <button
                             onClick={() => handleGenerateOutfitPreviewWithAI(editingBaseOutfitPrompt.trim() || selectedBaseOutfit.prompt || selectedBaseOutfit.name, selectedBaseOutfit.id, 'base')}

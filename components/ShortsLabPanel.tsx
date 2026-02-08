@@ -3446,6 +3446,23 @@ ${scriptInput}
         setGenerationError(null);
 
         try {
+            // 선택된 AI 서비스 (기본값: GEMINI)
+            const selectedService = targetService || 'GEMINI';
+
+            // [신규] AI 대본 생성 시 브라우저 닫기 → 새 창 열기
+            try {
+                await fetch('http://localhost:3002/api/browser/close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                console.log('[ShortsLab] Browser closed for fresh start');
+                // 브라우저 종료 후 약간의 대기 시간
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (closeError) {
+                console.warn('[ShortsLab] Failed to close browser:', closeError);
+                // 브라우저 닫기 실패해도 계속 진행
+            }
+
             // Find selected genre guideline from dynamic genres
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
             const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
@@ -3478,9 +3495,6 @@ ${scriptInput}
                 allowedOutfitCategories,
                 characterSlotMode: scriptCharacterMode
             });
-
-            // 선택된 AI 서비스 (기본값: GEMINI)
-            const selectedService = targetService || 'GEMINI';
 
             // 사용자 피드백: 생성 시작
             showToast(`${selectedService} AI로 대본을 생성하고 있습니다...`, 'info');

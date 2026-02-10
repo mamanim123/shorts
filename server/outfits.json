@@ -1,20 +1,12 @@
 {
   "outfits": [
     {
-      "id": "outfit-1769055244556",
-      "name": "추출된 의상",
-      "prompt": "Light Grey Mock-neck with Black Crest Embroidery + Black Ruched Micro Mini Skirt",
-      "category": "ROYAL",
-      "createdAt": "2026-01-22T04:14:04.556Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769055244556_2026-01-25T02-24-57-527Z.png"
-    },
-    {
       "id": "outfit-1769060852068",
       "name": "라이트그레이 터틀넥 + 블랙 셔링 펜슬스커트",
       "prompt": "light gray shorts-sleeved turtleneck top with embroidery on left chest, tight fitted, paired with high-waisted black mini pencil skirt with horizontal ruching and shirring details",
       "category": "ROYAL",
       "createdAt": "2026-01-22T05:47:32.068Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-01-31T23-41-17-147Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769060852068_2026-02-03T01-29-21-195Z.png"
     },
     {
       "id": "outfit-1769063025448",
@@ -22,7 +14,7 @@
       "prompt": "light grey cotton sports bra with scoop neckline and thin spaghetti straps, paired with matching light grey high-waisted flared yoga pants, soft jersey fabric, solid pattern, tight fit",
       "category": "YOGA",
       "createdAt": "2026-01-22T06:23:45.448Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063025448_2026-01-30T12-22-58-735Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063025448_2026-02-03T04-39-21-756Z.png"
     },
     {
       "id": "outfit-1769063625325",
@@ -30,7 +22,7 @@
       "prompt": "gray one-shoulder sports top with asymmetric cutout detail and double straps, matching gray high-waisted compression leggings, a gray sweatshirt tied around the waist, large gold hoop earrings",
       "category": "YOGA",
       "createdAt": "2026-01-22T06:33:45.325Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063625325_2026-01-30T12-23-34-309Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063625325_2026-02-03T04-39-59-414Z.png"
     },
     {
       "id": "outfit-1769063925853",
@@ -38,7 +30,7 @@
       "prompt": "vibrant pink technical zip-up athletic jacket with high neck, long sleeves, and thumbholes, paired with matching high-waisted vibrant pink compression leggings, seamless design, performance stretch fabric",
       "category": "YOGA",
       "createdAt": "2026-01-22T06:38:45.853Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063925853_2026-01-30T12-24-04-848Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769063925853_2026-02-03T04-40-22-297Z.png"
     },
     {
       "id": "outfit-1769064384737",
@@ -46,7 +38,7 @@
       "prompt": "light sky blue long sleeve crop top with round neckline and thumbholes, matching high-waisted seamless athletic micro mini shorts, white crew socks with logo, white athletic sneakers",
       "category": "YOGA",
       "createdAt": "2026-01-22T06:46:24.737Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769064384737_2026-01-30T12-24-50-363Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769064384737_2026-02-03T04-41-03-573Z.png"
     },
     {
       "id": "outfit-1769079711361",
@@ -54,7 +46,7 @@
       "prompt": "Beige Oatmeal Ribbed Deep Scoop Long-Sleeve Knit Top + whit hot pant",
       "category": "ROYAL",
       "createdAt": "2026-01-22T11:01:51.361Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769079711361_2026-01-31T23-41-41-607Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769079711361_2026-02-03T06-44-18-316Z.png"
     },
     {
       "id": "outfit-1769304349951",
@@ -62,7 +54,7 @@
       "prompt": "Athleisure outfit featuring a vibrant coral pink sleeveless halter neck crop top made of medium-weight ribbed cotton-spandex blend. The top has a high circular neckline with thick binding and vertical ribbed texture throughout, providing a snug fitted silhouette. The bottom consists of charcoal grey high-performance yoga leggings with a high-waisted wide waistband for compression and support. The leggings are made from an opaque, matte-finish technical fabric with invisible flat-lock seams and a seamless hem. The ensemble is designed for high-mobility fitness activities, showcasing a minimalist aesthetic with clean lines and no visible hardware or closures, creating a sleek pull-on athletic look.",
       "category": "YOGA",
       "createdAt": "2026-01-25T01:25:49.951Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769304349951_2026-01-30T12-25-13-356Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769304349951_2026-02-03T04-41-26-093Z.png"
     },
     {
       "id": "outfit-1769304534205",
@@ -70,7 +62,7 @@
       "prompt": "sophisticated taupe beige athleisure set, minimalist halter neck crop top, high-neck racerback silhouette, thick ribbed binding at neckline, matching high-waisted bike shorts, compression fit, opaque matte technical spandex blend, buttery smooth texture, skin-tight bodycon silhouette, stylized silver-grey cursive logo on lower left thigh, flatlock reinforced seams, double-stitched finished hems, monochromatic coordinated activewear, performance-grade fabric.",
       "category": "YOGA",
       "createdAt": "2026-01-25T01:28:54.205Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769304534205_2026-01-30T12-25-43-361Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769304534205_2026-02-03T04-41-51-772Z.png"
     },
     {
       "id": "outfit-1769305533937",
@@ -78,7 +70,7 @@
       "prompt": "minimalist optic white strapless tube top bodycon mini dress, featuring a prominent vertical ribbed knit texture throughout the entire garment, form-fitting silhouette hugging the frame precisely, straight across bandeau neckline with a clean finished edge, sleeveless and backless construction, mid-thigh length straight hemline, medium-weight opaque stretch fabric providing a structured yet flexible fit, seamless appearance with no visible closures or hardware, monochromatic pure white shade with a matte finish and subtle tactile depth from the fine ribbing",
       "category": "GOLF LUXURY",
       "createdAt": "2026-01-25T01:45:33.937Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305533937_2026-01-30T12-26-35-239Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305533937_2026-02-03T04-44-09-302Z.png"
     },
     {
       "id": "outfit-1769305951401",
@@ -86,7 +78,7 @@
       "prompt": "Athleisure ensemble featuring a strapless white ribbed bandeau top with a horizontal fine-knit texture and elasticized opaque finish, fitted snugly to the torso. The lower garment is a vibrant candy pink high-waisted tennis skirt with structured knife pleats starting from the mid-hip to create a flared A-line silhouette. The skirt features a wide smooth waistband with visible horizontal stitching for support and a mini length. The fabrics appear to be a high-performance synthetic blend, likely a moisture-wicking polyester-spandex mix with a matte finish, designed for athletic movement and breathability.",
       "category": "GOLF LUXURY",
       "createdAt": "2026-01-25T01:52:31.401Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305951401_2026-01-31T22-51-00-001Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769305951401_2026-02-03T04-44-30-391Z.png"
     },
     {
       "id": "outfit-1769309250240",
@@ -94,7 +86,7 @@
       "prompt": "minimalist summer outfit featuring a crisp white sleeveless ribbed knit tank top with a deep scoop neckline and wide straps, form-fitting silhouette highlighting the upper body, fine vertical ribbing texture throughout the fabric, paired with a soft pastel candy pink A-line mini skirt made of smooth structured cotton-twill material, high-waisted fit with visible topstitching along the waistline and vertical seams for structure, clean finished hemline, accessorized with a delicate thin gold chain necklace with a small circular pendant and subtle gold stud earrings, simple and clean aesthetic with a focus on contrasting textures between the knit top and smooth skirt",
       "category": "ROYAL",
       "createdAt": "2026-01-25T02:47:30.240Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769309250240_2026-01-31T23-43-27-900Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769309250240_2026-02-03T01-55-58-199Z.png"
     },
     {
       "id": "outfit-1769571484377",
@@ -102,7 +94,7 @@
       "prompt": "elegant snow white mini bodycon dress featuring a sophisticated halter neckline with a wraparound neck strap, sleeveless design revealing shoulders, fitted bodice with subtle horizontal ruching and gathered detailing along the side seams for a textured effect, lightweight stretch jersey fabric with a clean matte-to-semi-glossy finish, opaque material, mini length hitting upper thigh, sleek straight hemline, open back construction with decorative fabric panels or ribbons cascading from the neck fastening, minimalist aesthetic without visible hardware or patterns, paired with small silver drop earrings and a delicate silver chain bracelet on the left wrist",
       "category": "ROYAL",
       "createdAt": "2026-01-28T03:38:04.377Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769571484377_2026-01-31T23-44-49-707Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769571484377_2026-02-03T01-58-00-385Z.png"
     },
     {
       "id": "outfit-1769572260350",
@@ -110,7 +102,7 @@
       "prompt": "jet black bodycon mini dress, asymmetrical one-shoulder neckline, three slender metallic silver chain straps on the left shoulder, rectangular silver hardware connector embellished with inset micro-crystals, stretch matte jersey fabric, opaque textile, skin-tight fit, natural horizontal ruching and draping across the bodice, clean finished hemline, sophisticated minimalist silhouette.",
       "category": "ROYAL",
       "createdAt": "2026-01-28T03:51:00.350Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572260350_2026-01-31T23-45-35-924Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572260350_2026-02-03T01-58-30-271Z.png"
     },
     {
       "id": "outfit-1769572341387",
@@ -118,7 +110,7 @@
       "prompt": "vibrant electric royal blue bodycon mini dress crafted from heavy ribbed knit fabric, vertical texture creating a structured and fitted silhouette, short sleeves with finished hems, subtle mock neck or high crew neckline, opaque and medium weight material with a matte finish, side panel features a contrasting dark navy or black vertical stripe for a color-blocking effect, mini length hitting mid-thigh, seamless construction on the main body with invisible stitching, accessorized with a delicate thin silver or white gold ring on the ring finger featuring a minimalist band design",
       "category": "GOLF LUXURY",
       "createdAt": "2026-01-28T03:52:21.387Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572341387_2026-01-31T22-51-24-673Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572341387_2026-02-03T04-44-59-430Z.png"
     },
     {
       "id": "outfit-1769572489161",
@@ -126,7 +118,7 @@
       "prompt": "vibrant magenta pink sleeveless bodycon mini dress made from medium-weight stretch fabric with a subtle matte finish, featuring a clean square neckline and medium-width shoulder straps, the dress is constructed with distinctive horizontal ruching and side gathers that create a textured draped effect across the torso, tight-fitting silhouette that follows the body contours precisely, short mini length hemline with a clean finished edge, side seam zipper closure for a seamless look, opaque solid color without patterns or embellishments, minimalist and modern aesthetic focusing on construction through gathering techniques",
       "category": "GOLF LUXURY",
       "createdAt": "2026-01-28T03:54:49.161Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572489161_2026-01-31T22-51-56-782Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572489161_2026-02-03T04-45-24-273Z.png"
     },
     {
       "id": "outfit-1769572625847",
@@ -134,7 +126,7 @@
       "prompt": "stunning silver metallic bodycon mini dress featuring an all-over sequin embellishment with a subtle shimmery texture, deep V-neckline with a sleeveless tank-style construction, tight-fitted silhouette accentuating the frame, mini length with a straight finished hemline, fabric composed of lightweight mesh base with dense reflective silver sequins creating a liquid-metal effect, subtle ruching and gathering along the side seams for added texture, delicate gold-toned tiered geometric drop earrings with a matte finish, minimalist thin gold chain necklace with a small circular pendant, sophisticated party-ready evening ensemble with high-gloss finish",
       "category": "SEXY",
       "createdAt": "2026-01-28T03:57:05.847Z",
-      "imageUrl": "/generated_scripts/outfit_previews/outfit-1769572625847_2026-01-28T03-57-38-692Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769572625847_2026-01-28T03-57-38-692Z.png"
     },
     {
       "id": "outfit-1769573473597",
@@ -142,7 +134,7 @@
       "prompt": "ultra-short matte black long-sleeved bodycon micro mini dress, vertical ribbed knit pattern, lightweight stretch ribbed fabric, skin-tight fitted silhouette, classic round crew neckline, snug full-length sleeves extending to wrists, seamless minimalist construction, opaque matte texture, non-reflective finish, micro mini length hemline, high-density knit material, streamlined profile, no closures or hardware, form-fitting architectural seams.",
       "category": "ROYAL",
       "createdAt": "2026-01-28T04:11:13.597Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769573473597_2026-01-31T23-46-28-194Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769573473597_2026-02-03T02-00-11-517Z.png"
     },
     {
       "id": "outfit-1769581394751",
@@ -150,7 +142,7 @@
       "prompt": "oatmeal beige long-sleeve bodycon micro mini dress, sophisticated vertical ribbed knit pattern, mock neck design, high neckline, tight form-fitting silhouette, heavy-weight matte knit fabric, soft texture, seamless ribbed construction, sleek contemporary fit",
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:23:14.751Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769581394751_2026-01-31T23-48-27-343Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769581394751_2026-02-03T04-18-55-205Z.png"
     },
     {
       "id": "outfit-1769582187294",
@@ -158,7 +150,7 @@
       "prompt": "tight long-sleeve bodycon mini dress in a heather gray shade, crafted from a medium-weight ribbed knit fabric with a visible vertical corded texture. The garment features a classic pointed shirt collar transitioning into a V-neckline without visible buttons, creating a polo-style aesthetic. The silhouette is skin-tight and fitted throughout the bodice and skirt, showcasing gathered ruching details along the side seams of the skirt section. The sleeves are full-length and slim-fit, ending in simple finished cuffs. The hemline is short, ending at the mid-thigh with a straight, finished edge. The material appears opaque with a matte finish, providing a casual yet structured minimalist look.",
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:36:27.294Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582187294_2026-01-30T12-22-14-467Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582187294_2026-02-03T04-19-20-492Z.png"
     },
     {
       "id": "outfit-1769582437544",
@@ -166,7 +158,7 @@
       "prompt": "A sky blue ribbed knit bodycon mini dress featuring an off-shoulder neckline with a subtle V-dip center. The garment is constructed from a medium-weight stretch ribbed fabric with a distinct vertical texture and a matte finish. It includes a functional or decorative front placket with three small, tonal sky blue buttons positioned at the center of the chest. The sleeves are short cap sleeves with delicate lettuce-edge ruffled hems. The silhouette is skin-tight and form-fitting, accentuating the through the waist and hips, ending at a mini length with a matching lettuce-edge finished hemline. The overall style is a minimalist casual-chic aesthetic with high elasticity and opaque fabric density.",
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:40:37.544Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582437544_2026-01-30T12-21-43-960Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582437544_2026-02-03T04-19-56-527Z.png"
     },
     {
       "id": "outfit-1769582506761",
@@ -174,7 +166,7 @@
       "prompt": "sophisticated all-black two-piece ensemble featuring a long-sleeved ribbed knit top and matching mini skirt, deep obsidian black shade, vertical wide-ribbed texture throughout the bodice, elegant boat neckline showing collarbones, unique dolman sleeves tapering into extra-long tight ribbed cuffs, fitted bodycon silhouette, high-waisted mini length skirt in matching knit material, accessorized with a wide black satin ribbon belt tied into a large decorative bow at the waist, long satin tails hanging down, delicate silver thin chain necklace with a small singular pendant, opaque medium-weight fabric with a matte finish, seamless construction providing a sleek monochromatic look",
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:41:46.761Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582506761_2026-01-30T12-21-01-831Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582506761_2026-02-04T02-24-05-225Z.png"
     },
     {
       "id": "outfit-1769582650556",
@@ -182,7 +174,7 @@
       "prompt": "minimalist sage green bodycon mini dress made from medium-weight ribbed cotton jersey fabric, featuring a distinctive vertical linear texture and matte finish, opaque material providing a structured skin-tight fit, straight square neckline with a bandeau-style upper edge, ultra-thin elasticated spaghetti straps in a matching pale green tone, mini length ending at mid-thigh, clean finished hemline, simple pull-on construction without visible closures or hardware, paired with a delicate silver fine-link chain necklace featuring a small circular or heart-shaped silver pendant resting at the center of the collarbone, creating a clean and contemporary summer aesthetic",
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:44:10.556Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582650556_2026-01-30T12-17-52-079Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582650556_2026-02-03T04-20-50-807Z.png"
     },
     {
       "id": "outfit-1769582723555",
@@ -190,7 +182,7 @@
       "prompt": "Sultry and sophisticated black bodycon mini dress featuring a unique dual-material construction. The upper bodice and long sleeves are crafted from a sheer black mesh fabric, creating a transparent yoke that extends into a high mock neck collar. Below the sweetheart-shaped bust line, the garment transitions into an opaque, matte black stretch fabric. The lower half of the dress showcases intricate lateral ruching and horizontal gathers throughout the skirt, creating a textured and draped effect. The sleeves are extra long, extending slightly over the hands with a lightweight, see-through finish. The silhouette is skin-tight and form-fitting, ending at a mid-thigh mini length with a clean, finished hem. Minimalist silver-tone drop earrings with a shimmering finish are visible as the sole accessory.",
       "category": "ROYAL",
       "createdAt": "2026-01-28T06:45:23.555Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582723555_2026-01-30T12-17-08-905Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769582723555_2026-02-03T04-21-26-860Z.png"
     },
     {
       "id": "outfit-1769661992994",
@@ -198,7 +190,7 @@
       "prompt": "minimalist jet black bodycon mini dress featuring a strapless bandeau neckline with a sleek horizontal cut, tight-fitting silhouette with dense horizontal ruching and gathered fabric details along the sides and torso, crafted from a smooth matte stretch jersey or spandex blend with an opaque finish, mid-thigh length straight hemline, paired with a matching wide black fabric choker necklace in the same material and color, creating a seamless and coordinated monochromatic look, pull-on construction with no visible hardware or closures, clean finished edges for a contemporary streetwear aesthetic",
       "category": "ROYAL",
       "createdAt": "2026-01-29T04:46:32.994Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769661992994_2026-01-30T12-16-39-521Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769661992994_2026-02-03T04-21-46-341Z.png"
     },
     {
       "id": "outfit-1769662176163",
@@ -206,7 +198,7 @@
       "prompt": "minimalist off-white strapless tube top bodycon mini dress, form-fitting silhouette with vertical ruching and gathered fabric details along the side seams, clean horizontal bandeau neckline without straps, opaque medium-weight stretch fabric with a smooth matte finish, short mini length hitting mid-thigh, structured bodice construction, paired with a delicate thin double-layered silver chain necklace, minimalist white pointed-toe stiletto pumps with ankle straps and polished finish, monochromatic clean aesthetic",
       "category": "ROYAL",
       "createdAt": "2026-01-29T04:49:36.163Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662176163_2026-01-30T12-16-05-556Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662176163_2026-02-03T04-22-09-370Z.png"
     },
     {
       "id": "outfit-1769662612888",
@@ -214,7 +206,7 @@
       "prompt": "sophisticated oatmeal beige monochrome ensemble featuring a form-fitting long-sleeved micro mini bodycon dress, crafted from a fine-gauge ribbed knit material with a soft matte texture, high crew neckline with a clean finished edge, seamless shoulder construction leading into full-length sleeves, the skirt portion features a dense vertical ribbing pattern for structural contrast, mid-thigh length hemline with a neat straight finish,",
       "category": "ROYAL",
       "createdAt": "2026-01-29T04:56:52.888Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662612888_2026-01-30T12-15-36-238Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662612888_2026-02-03T04-22-35-426Z.png"
     },
     {
       "id": "outfit-1769662745091",
@@ -222,7 +214,7 @@
       "prompt": "sleek minimalist all-black ensemble featuring a fitted long-sleeve crew neck top and matching high-waisted leggings, crafted from a smooth matte-finish technical fabric with moderate opacity and a slight stretch, opaque medium-weight material, top has a seamless-looking construction with fine ribbed texture at the cuffs and hem, slim-fit silhouette accentuating the waistline, paired with coordinating black athletic tights, accessorized with a delicate silver chain necklace with a small circular pendant, a gold-toned watch with a black leather strap on the left wrist, small silver hoop earrings, and a black leather clutch bag with a structured rectangular shape, clean-cut aesthetic with emphasis on monochromatic layering and precise tailoring",
       "category": "YOGA",
       "createdAt": "2026-01-29T04:59:05.091Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662745091_2026-01-30T12-26-06-695Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769662745091_2026-02-03T04-42-13-569Z.png"
     },
     {
       "id": "outfit-1769663341703",
@@ -230,7 +222,7 @@
       "prompt": "minimalist casual summer outfit featuring a long-sleeve crop top in a warm beige sand color, constructed from a medium-weight ribbed knit fabric with a visible vertical cord texture and matte finish, featuring a wide scoop neckline and fitted silhouette that ends above the navel. paired with high-waisted denim hot pants in a medium indigo wash with vintage fading and distressed details including frayed raw-cut hems and subtle whiskering, secured by a metallic brass button and zip fly closure. accessories include a delicate gold chain bracelet on the right wrist and a classic gold watch with a dark leather strap on the left wrist, creating a clean urban aesthetic through balanced textures of knit and denim.",
       "category": "ROYAL",
       "createdAt": "2026-01-29T05:09:01.703Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769663341703_2026-01-30T12-14-19-776Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769663341703_2026-02-03T04-38-50-589Z.png"
     },
     {
       "id": "outfit-1769904463865",
@@ -238,7 +230,7 @@
       "prompt": "Black Sleeveless Turtleneck + White Micro Pleated Skirt",
       "category": "GOLF LUXURY",
       "createdAt": "2026-02-01T00:07:43.865Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769904463865_2026-02-01T00-08-11-743Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769904463865_2026-02-03T04-45-51-951Z.png"
     },
     {
       "id": "outfit-1769905304406",
@@ -246,7 +238,7 @@
       "prompt": "Charcoal Sleeveless Mock-neck + Black Micro Skirt",
       "category": "GOLF LUXURY",
       "createdAt": "2026-02-01T00:21:44.406Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769905304406_2026-02-01T00-22-04-137Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1769905304406_2026-02-03T04-46-17-981Z.png"
     },
     {
       "id": "outfit-1770081617228",
@@ -254,7 +246,7 @@
       "prompt": "vibrant hot pink sleeveless tube top bodycon mini dress, stretchable synthetic blend fabric, subtle sheen, intricate horizontal ruching, gathered seam details along side panels, textured draped effect across torso, tight-fitting silhouette, body-conforming fit, short mini-length hemline, mid-thigh length, seamless front panel construction, hidden side stitching, opaque medium-weight material, structured flexible fit, minimalist aesthetic, no visible closures or hardware",
       "category": "ROYAL",
       "createdAt": "2026-02-03T01:20:17.228Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770081617228_2026-02-07T10-46-37-967Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770081617228_2026-02-03T01-22-38-441Z.png"
     },
     {
       "id": "outfit-1770098003013",
@@ -301,7 +293,7 @@
       "prompt": "bodycon mini dress, deep burgundy wine red color, premium ribbed knit fabric, vertical ribbed texture, integrated halter neck with off-shoulder cold-shoulder cut-out long sleeves, contrasting ivory white lapel collar, white vertical center panel, seven polished gold decorative buttons on front placket, symmetrical faux hip pockets with white flaps and gold button hardware, tight fitted silhouette, elasticized ribbed cuffs, mini length hem, opaque medium-weight knit material",
       "category": "ROYAL",
       "createdAt": "2026-02-05T01:37:49.132Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770255469132_2026-02-07T12-03-53-343Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770255469132_2026-02-05T01-38-36-967Z.png"
     },
     {
       "id": "outfit-1770268761467",
@@ -309,7 +301,7 @@
       "prompt": "A sophisticated long-sleeved bodycon mini dress featuring an all-over classic grey and black glen plaid check pattern. The garment is constructed from a medium-weight, textured woven fabric with a matte finish. It features a high mock neckline that transitions into a plunging front opening secured by a functional black full-length zipper running down the center. The silhouette is precision-fitted with princess seams for a structured look. The long sleeves are regular fit with finished cuffs. A small decorative red and white embroidered patch logo is positioned on the left chest. The hem is a clean, straight-cut mini length, creating a sleek and athletic yet formal aesthetic suitable for high-end sportswear or casual luxury.",
       "category": "ROYAL",
       "createdAt": "2026-02-05T05:19:21.467Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770268761467_2026-02-07T12-06-02-826Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770268761467_2026-02-05T05-35-57-124Z.png"
     },
     {
       "id": "outfit-1770268954256",
@@ -317,7 +309,7 @@
       "prompt": "minimalist chic ensemble featuring a matte black sleeveless turtleneck top with a mock neck collar and slim-fit silhouette, crafted from fine-knit ribbed fabric with an opaque finish. The top is tucked into a high-waisted beige sand-colored mini skirt characterized by sharp accordion sunray pleats and a wide structured waistband with horizontal topstitching details. The skirt features a flare-out A-line silhouette with a clean finished hemline. The overall look emphasizes a sharp contrast between the dark upper and neutral light lower garment, showcasing a sophisticated textural play between the smooth knit of the top and the architectural folding of the pleated skirt.",
       "category": "ROYAL",
       "createdAt": "2026-02-05T05:22:34.256Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770268954256_2026-02-07T12-06-27-525Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770268954256_2026-02-05T05-35-14-746Z.png"
     },
     {
       "id": "outfit-1770269059033",
@@ -325,7 +317,7 @@
       "prompt": "sophisticated two-piece outfit featuring a sleeveless black knit top with a high mock neck or turtleneck collar, constructed from a distinct vertically ribbed material that is opaque and form-fitting, creating a sleek and minimalist upper silhouette. The top is tucked into a high-waisted white mini skirt made of a structured bandage-style fabric with horizontal paneling and visible tiered seams, providing a firm and sculpted fit. The skirt hits at the upper thigh with a straight, finished hemline. The contrast between the matte black textured top and the crisp solid white skirt creates a sharp monochromatic color-blocking effect with a focus on clean lines and athletic elegance.",
       "category": "ROYAL",
       "createdAt": "2026-02-05T05:24:19.033Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770269059033_2026-02-07T12-06-50-564Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770269059033_2026-02-05T05-34-24-551Z.png"
     },
     {
       "id": "outfit-1770269216735",
@@ -333,7 +325,7 @@
       "prompt": "Sleeveless navy blue polo shirt with a slim-fit athletic silhouette, featuring a classic ribbed collar and a three-button placket with white buttons, a small white circular logo embroidered on the left chest, made of breathable matte pique cotton or functional polyester fabric. It is paired with a high-waisted white tennis skirt with sharp, wide knife pleats creating a flared A-line volume, mini length hitting mid-thigh, featuring a flat waistband for a clean finish. Minimalist accessories include small silver hoop earrings with clear baguette-cut crystals and a simple thin silver band ring on the ring finger, creating a polished and functional athleisure golf aesthetic.",
       "category": "ROYAL",
       "createdAt": "2026-02-05T05:26:56.735Z",
-      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770269216735_2026-02-07T12-07-25-675Z.png"
+      "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770269216735_2026-02-05T05-29-26-767Z.png"
     },
     {
       "id": "outfit-1770460050841",
@@ -358,6 +350,34 @@
       "category": "YOGA",
       "createdAt": "2026-02-08T02:55:01.688Z",
       "imageUrl": "http://localhost:3002/generated_scripts/outfit_previews/outfit-1770519301688_2026-02-08T03-02-42-328Z.png"
+    },
+    {
+      "id": "outfit-1770707533183",
+      "name": "토프 브라운 원숄더 레이어드 크롭탑 + 하이웨이스트 바이커 쇼츠",
+      "prompt": "Matching two-piece athleisure set in a sophisticated taupe brown shade with a matte finish. The upper consists of a unique layered design featuring a sleeveless scoop-neck sports bra layered under a coordinated long-sleeve bolero-style shrug, creating a chic cut-out shoulder effect on one side. The long sleeves include functional thumbhole cuffs. The fabric is a high-stretch, medium-weight technical compression material with a smooth, opaque texture. The bottom is a tight-fitting, high-waisted mini biker shorts silhouette with a supportive wide waistband and a small white cursive logo printed on the lower left hem. A chunky, beige-colored rib-knit neck warmer or snood with a thick, textured wool-like weave is styled around the neck as a heavy winter accessory.",
+      "category": "YOGA",
+      "createdAt": "2026-02-10T07:12:13.183Z"
+    },
+    {
+      "id": "outfit-1770707577426",
+      "name": "스칼렛 레드 리브드 모크넥 롱슬리브 바디콘 미니 드레스",
+      "prompt": "vibrant scarlet red bodycon mini dress crafted from heavy ribbed knit fabric, featuring a sophisticated mock neck collar and full-length fitted sleeves with subtle gathered shoulder detailing. The dress showcases vertical ribbed textures throughout for a structured yet elastic fit, with delicate horizontal ruching and draping across the skirt section creating a textured wrap-like effect at the hem. The silhouette is skin-tight and form-fitting, ending at mid-thigh length. Accessorized with a layered metallic necklace set consisting of three delicate silver-tone chains with a small circular pendant, a matching red leather shoulder bag with a curved hilt-style handle, and small gold hoop earrings.",
+      "category": "ROYAL",
+      "createdAt": "2026-02-10T07:12:57.426Z"
+    },
+    {
+      "id": "outfit-1770707621761",
+      "name": "오프화이트 모크넥 롱슬리브 탑 + 다크 네이비 하이웨이스트 레깅스",
+      "prompt": "minimalist athleisure outfit featuring an off-white long-sleeve performance top with a sophisticated mock neck collar, tight-fitting bodycon silhouette, lightweight opaque jersey fabric with a smooth matte finish, regular shoulders and long sleeves ending in simple finished cuffs, paired with dark navy blue high-waisted compression leggings in a matte technical stretch material, ankle-length hemline, seamless side construction, styled with classic black canvas low-top sneakers featuring contrasting white rubber toe caps, white laces, and a thick white vulcanized rubber platform sole with a black stripe detail",
+      "category": "YOGA",
+      "createdAt": "2026-02-10T07:13:41.761Z"
+    },
+    {
+      "id": "outfit-1770707722229",
+      "name": "베이지 슬림핏 롱슬리브 폴로 셔츠 + 블랙 테니스 플리츠 미니스커트",
+      "prompt": "Minimalist golf wear ensemble featuring a beige sand-colored long-sleeve polo shirt with a slim-fit silhouette. The top has a classic pointed collar, a partial button-up placket, and a soft matte stretch-knit fabric texture with finished cuffs. Paired with a high-waisted black pleated tennis skirt or skort, featuring sharp structured accordion pleats and a smooth flat waistband. The look is accessorized with a single white textured golf glove on the left hand, white crew-length socks with a subtle logo, and sleek white athletic golf shoes with a low-profile sole and tonal lace-up closure.",
+      "category": "GOLF LUXURY",
+      "createdAt": "2026-02-10T07:15:22.229Z"
     }
   ],
   "categories": [

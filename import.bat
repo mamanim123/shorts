@@ -1,4 +1,9 @@
 @echo off
+if not "%~1"=="__RUN__" (
+    cmd /k "%~f0" __RUN__
+    exit /b
+)
+
 title Import - Git Pull
 
 echo.
@@ -20,15 +25,20 @@ echo Fetching latest code...
 git pull --ff-only origin master
 if errorlevel 1 (
   echo.
-  echo [ERROR] Pull failed. Please check authentication or local changes/conflicts.
+  echo [ERROR] Pull failed. Check auth or local conflicts.
   echo   - Auth: git config --global credential.helper store
   echo   - Stash local: git stash push -u -m "home-local-backup"
   goto :end
 )
 
 echo.
-echo Done! Ready to work.
+echo ========================================
+echo   [SUCCESS] Pull complete!
+echo ========================================
 echo.
 
 :end
-pause
+echo.
+echo ========================================
+echo   Done. You can close this window.
+echo ========================================

@@ -2676,7 +2676,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const selectedService = targetService || 'GEMINI';
             const finalScript = scriptInput.trim();
             const selectedGenreData = labGenres.find(g => g.id === aiGenre);
-            const postProcessConfig = selectedGenreData?.postProcessConfig;
+            // postProcessConfig는 컴포넌트 state를 직접 사용 (토글 즉시 반영)
             const postProcessEnabled = true;
             const skipIdentityInjection = postProcessConfig?.skipIdentityInjection === true;
 
@@ -3585,7 +3585,7 @@ ${scriptInput}
                         totalScenes: scenesSource.length,   // v3.6: 전체 장면 수 전달
                         enableWinterAccessories,
                         useGenderGuard: settings.useGenderGuard, // 성별 가드 전달
-                        postProcessConfig: selectedGenreData?.postProcessConfig
+                        postProcessConfig  // 토글 즉시 반영 (저장 불필요)
                     });
 
                     processedScenes.forEach((scene: any, idx: number) => {
@@ -3979,10 +3979,10 @@ ${scriptInput}
                         const fixed = validateAndFixPrompt(normalizedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
                         let mergedPrompt = fixed.fixedPrompt;
 
-                        if (selectedGenreData?.postProcessConfig?.useSafeGlamour) {
+                        if (postProcessConfig?.useSafeGlamour) {
                             mergedPrompt = enhancePromptWithSafeGlamour(mergedPrompt);
                         }
-                        const cleanupPatterns = selectedGenreData?.postProcessConfig?.cleanupPatterns || [];
+                        const cleanupPatterns = postProcessConfig?.cleanupPatterns || [];
                         mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
 
                         const narrationText = typeof scene.narration === 'string'

@@ -57,7 +57,9 @@
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_press_key",
-      "mcp__playwright__browser_wait_for"
+      "mcp__playwright__browser_wait_for",
+      "Bash(F:)",
+      "Bash(ls \"F:\\\\test\\\\쇼츠대본생성기-v3.5.3\\\\generated_scripts\\\\대본폴더\"\" | grep \"260210_1248 \")"
     ]
   }
 }

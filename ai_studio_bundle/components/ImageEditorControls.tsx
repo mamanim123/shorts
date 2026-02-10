@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Spinner from './Spinner';
 
-type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details' | 'object-remove' | 'aspect' | 'image-clean';
+type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details' | 'object-remove' | 'aspect' | 'image-clean' | 'chest-cover';
 
 interface ImageEditorControlsProps {
     sourceImages: { id: string; file: File | null; name: string }[];
@@ -13,7 +13,7 @@ interface ImageEditorControlsProps {
     setEditPrompt: (val: string) => void;
     editingState: EditingState;
     onEditImage: (mask?: { data: string; mimeType: string }) => void;
-    onSpecialEdit: (action: 'text' | 'background' | 'restoration' | 'painting') => void;
+    onSpecialEdit: (action: 'text' | 'background' | 'restoration' | 'painting' | 'chest-cover') => void;
     onUpscale: (scale: 2 | 4) => void;
     onGeneratePrompt: () => void;
     onGeneratePersonDetails: () => void;
@@ -255,6 +255,9 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
                     </button>
                     <button onClick={() => onSpecialEdit('painting')} disabled={editingState !== 'idle'} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 rounded-md transition disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-xs min-w-[70px]">
                         {editingState === 'painting' ? <Spinner size="sm" /> : '그림 변환'}
+                    </button>
+                    <button onClick={() => onSpecialEdit('chest-cover')} disabled={editingState !== 'idle'} className="px-2 py-1 bg-pink-600 hover:bg-pink-700 rounded-md transition disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-xs min-w-[90px]">
+                        {editingState === 'chest-cover' ? <Spinner size="sm" /> : '가슴골 제거'}
                     </button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">

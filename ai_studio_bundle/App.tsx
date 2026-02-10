@@ -35,7 +35,7 @@ declare global {
 
 const MAX_PROMPTS = 4;
 type Mode = 'fusion' | 'text' | 'video' | 'camera-control' | 'frame-generator' | 'scene-creator' | 'image-analyzer' | 'voice-studio' | 'style-transfer' | 'color-changer' | 'pose-transfer' | 'face-correction' | 'skin-tone' | 'hair-makeup' | 'object-remover' | 'aspect-ratio' | 'image-cleaner';
-type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details' | 'object-remove' | 'aspect' | 'image-clean';
+type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details' | 'object-remove' | 'aspect' | 'image-clean' | 'chest-cover';
 
 type ModeGroupKey = 'creations' | 'scene-builder' | 'enhance' | 'polish' | 'audio-tools' | 'utility';
 
@@ -377,7 +377,7 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
     }
   };
 
-  const handleSpecialEdit = async (action: 'text' | 'background' | 'restoration' | 'painting') => {
+  const handleSpecialEdit = async (action: 'text' | 'background' | 'restoration' | 'painting' | 'chest-cover') => {
     const activeImage = sourceImages.find(img => img.id === activeEditingImageId);
     const currentFile = activeImage?.file;
 
@@ -392,7 +392,8 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
       text: "Remove all text from this image. Fill the space naturally to match the surrounding background.",
       background: "Remove the background from this image. Leave only the main subject on a transparent background.",
       restoration: "Upscale and improve the quality of this image. Fix blurriness and artifacts while maintaining original details.",
-      'painting': "Convert this image into a high-quality realistic oil painting with visible brush strokes."
+      'painting': "Convert this image into a high-quality realistic oil painting with visible brush strokes.",
+      'chest-cover': "Add a high-neck sweater covering the chest. Keep face, hair, and background unchanged."
     };
 
     try {
@@ -403,7 +404,8 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
         text: '텍스트 제거',
         background: '배경 제거',
         restoration: '사진 복원',
-        'painting': '그림 변환'
+        'painting': '그림 변환',
+        'chest-cover': '가슴골 제거'
       }[action];
       console.error(`이미지 ${actionText} 실패:`, error);
       handleError(error);

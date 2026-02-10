@@ -1,4 +1,1 @@
-✨ ShortsLab 영상 생성 버튼을 Grok 엔진으로 전환
-
-- handleGenerateSceneVideo: generate-smart(Veo) → generate-grok 엔드포인트로 변경
-- 버튼 텍스트 '영상 생성' → 'Grok 생성' 변경
+🐛 postProcessConfig 스코프 버그 수정 - promptdiff 파일 생성 복원

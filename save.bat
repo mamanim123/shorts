@@ -1,4 +1,9 @@
 @echo off
+if not "%~1"=="__RUN__" (
+    cmd /k "%~f0" __RUN__
+    exit /b
+)
+
 title Save - Git Push
 
 echo.
@@ -93,6 +98,5 @@ echo.
 :end
 echo.
 echo ========================================
-echo   Press any key to close...
+echo   Done. You can close this window.
 echo ========================================
-pause

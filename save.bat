@@ -81,7 +81,7 @@ if errorlevel 1 (
   echo.
   echo ========================================
   echo   [FAIL] Push failed!
-  echo   - Check auth (PAT) or network.
+  echo   - Check auth or network.
   echo   - Fix: git config --global credential.helper store
   echo ========================================
   goto :end

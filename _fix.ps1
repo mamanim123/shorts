@@ -4,4 +4,4 @@ $text = [Text.Encoding]::UTF8.GetString($bytes)
 $text = $text.Replace("`r`n", "`n").Replace("`n", "`r`n")
 $enc = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllBytes(".\save.bat", $enc.GetBytes($text))
-Write-Host "CRLF OK"
+Write-Host "save.bat CRLF OK"

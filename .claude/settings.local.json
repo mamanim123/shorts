@@ -61,7 +61,9 @@
       "Bash(F:)",
       "Bash(ls \"F:\\\\test\\\\쇼츠대본생성기-v3.5.3\\\\generated_scripts\\\\대본폴더\"\" | grep \"260210_1248 \")",
       "Bash(cmd /c \"del _fix.ps1 _fix_encoding.ps1 2>nul\")",
-      "Bash(cmd /c \"del _fix.ps1 2>nul\")"
+      "Bash(cmd /c \"del _fix.ps1 2>nul\")",
+      "Bash(cmd /c \"echo test | _test_pause.bat\")",
+      "Bash(cmd /c \"_test_pause.bat < nul\")"
     ]
   }
 }

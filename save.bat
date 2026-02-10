@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul 2>&1
 title Save - Git Push
 
 echo.
@@ -17,7 +16,7 @@ if /i not "%confirm%"=="Y" (
 )
 
 echo.
-echo [Checking changes]
+echo [Uncommitted changes]
 git status --short
 
 set HAS_CHANGES=
@@ -28,11 +27,11 @@ for /f %%A in ('git log origin/master..HEAD --oneline 2^>nul') do set HAS_UNPUSH
 
 echo.
 echo ----------------------------------------
-echo   [Push 대기중인 커밋]
+echo   [Unpushed commits]
 echo ----------------------------------------
 git log origin/master..HEAD --oneline 2>nul
 if not defined HAS_UNPUSHED (
-  echo   (없음)
+  echo   (none)
 )
 echo ----------------------------------------
 echo.

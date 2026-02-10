@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul 2>&1
 title Save - Git Push
 
 echo.
@@ -25,18 +26,26 @@ for /f %%A in ('git status --short') do set HAS_CHANGES=1
 set HAS_UNPUSHED=
 for /f %%A in ('git log origin/master..HEAD --oneline 2^>nul') do set HAS_UNPUSHED=1
 
+echo.
+echo ----------------------------------------
+echo   [Push 대기중인 커밋]
+echo ----------------------------------------
+git log origin/master..HEAD --oneline 2>nul
+if not defined HAS_UNPUSHED (
+  echo   (없음)
+)
+echo ----------------------------------------
+echo.
+
 if not defined HAS_CHANGES (
   if not defined HAS_UNPUSHED (
-    echo.
     echo No changes to save and no commits to push.
     goto :end
   )
-  echo.
   echo No new changes, but found unpushed commits. Pushing...
   goto :push
 )
 
-echo.
 set /p msg="Enter commit message (default: 'save'): "
 if "%msg%"=="" set msg=save
 
@@ -45,32 +54,44 @@ echo [Uploading...]
 git add .
 if errorlevel 1 (
   echo.
-  echo [ERROR] git add failed. Check files/path.
+  echo ========================================
+  echo   [ERROR] git add failed.
+  echo ========================================
   goto :end
 )
 
 git commit -m "%msg%"
 if errorlevel 1 (
   echo.
-  echo [ERROR] Commit failed. Check message/files/status.
+  echo ========================================
+  echo   [ERROR] Commit failed.
+  echo ========================================
   goto :end
 )
 
 :push
+echo.
+echo [Pushing to origin/master...]
 git push origin master
 if errorlevel 1 (
   echo.
-  echo [ERROR] Push failed. Check auth (PAT) or network.
+  echo ========================================
+  echo   [FAIL] Push failed!
+  echo   - Check auth (PAT) or network.
   echo   - Fix: git config --global credential.helper store
-  echo   - Enter token on next run
+  echo ========================================
   goto :end
 )
 
 echo.
 echo ========================================
-echo   PUSH SUCCESS!
+echo   [SUCCESS] Push complete!
 echo ========================================
+echo.
+git log origin/master --oneline -5
 echo.
 
 :end
-pause
+echo.
+echo Press any key to close...
+pause >nul

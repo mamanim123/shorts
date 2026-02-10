@@ -1,1 +1,1 @@
-🔧 save.bat 인코딩 수정 - 한글 제거하여 cmd.exe 호환성 복원
+🔧 save.bat 줄바꿈 LF→CRLF 변환 - cmd.exe 호환성 복원

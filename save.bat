@@ -92,5 +92,8 @@ echo.
 
 :end
 echo.
-echo Press any key to close...
-pause >nul
+echo ========================================
+echo   Press any key to close...
+echo ========================================
+pause
+exit /b

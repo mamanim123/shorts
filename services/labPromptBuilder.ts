@@ -2655,9 +2655,462 @@ export const convertAgeToEnglish = (koreanAge: string): string => {
   return `${age}s`;
 };
 
+// =============================================
+// 2-Pass Master Generation Types & Functions
+// =============================================
+
+export interface MasterPass1Options {
+  topic: string;
+  genre: string;
+  targetAge: string;
+  gender: 'female' | 'male';
+  additionalContext?: string;
+  genreGuideOverride?: LabGenreGuideline;
+  enableWinterAccessories?: boolean;
+  useRandomOutfits?: boolean;
+  allowedOutfitCategories?: string[];
+  characterSlotMode?: 'slot-only' | 'slot+name';
+}
+
+export interface MasterLockedCharacter {
+  slotId: string;
+  identity: string;
+  hair: string;
+  body: string;
+  outfit: string;
+  role?: string;
+}
+
+export interface MasterLockedLocation {
+  id: string;
+  name: string;
+  englishDescription: string;
+}
+
+export interface MasterVisualStyleDNA {
+  lighting: string;
+  colorPalette: string;
+  atmosphere: string;
+  timeOfDay: string;
+}
+
+export interface MasterPass1Result {
+  scriptBody: string;
+  lockedCharacters: MasterLockedCharacter[];
+  lockedLocations: MasterLockedLocation[];
+  visualStyleDNA: MasterVisualStyleDNA;
+  title?: string;
+  titleOptions?: string[];
+  punchline?: string;
+  hook?: string;
+  twist?: string;
+  foreshadowing?: string;
+  narrator?: { slot: string; name: string };
+  emotionFlow?: string;
+}
+
+export interface MasterPass2Options {
+  scriptBody: string;
+  lockedCharacters: MasterLockedCharacter[];
+  lockedLocations: MasterLockedLocation[];
+  visualStyleDNA: MasterVisualStyleDNA;
+  genre: string;
+  topic: string;
+  gender: 'female' | 'male';
+  targetAge: string;
+  genreGuideOverride?: LabGenreGuideline;
+  characterSlotMode?: 'slot-only' | 'slot+name';
+}
+
+export interface ProfileConsistencyResult {
+  isConsistent: boolean;
+  issues: string[];
+  fixes: Array<{ sceneIndex: number; field: string; original: string; fixed: string }>;
+}
+
+/**
+ * Pass 1: 대본 + 캐릭터 프로필 + 배경 + 스타일 DNA 생성 프롬프트
+ * 기존 buildLabScriptPrompt의 장르/캐릭터/의상 규칙을 재사용하되,
+ * scenes[] 없이 프로필 확정에 집중
+ */
+export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
+  const { topic, genre, targetAge, gender, additionalContext } = options;
+  const genreGuide = options.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
+  const seed = generateRandomSeed();
+  const useRandomOutfits = options.useRandomOutfits ?? true;
+  const allowedOutfitCategories = options.allowedOutfitCategories;
+
+  let womanAOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [], allowedOutfitCategories) : 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
+  let womanBOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit], allowedOutfitCategories) : 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
+  let womanDOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit], allowedOutfitCategories) : 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
+  const manAOutfit = useRandomOutfits ? pickMaleOutfit(topic, [], allowedOutfitCategories) : 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
+  const manBOutfit = useRandomOutfits ? pickMaleOutfit(topic, [manAOutfit], allowedOutfitCategories) : 'CHOOSE_FROM_UNIFIED_OUTFIT_LIST';
+
+  if (useRandomOutfits) {
+    [womanAOutfit, womanBOutfit, womanDOutfit, manAOutfit, manBOutfit].forEach((outfit, i) => {
+      if (!validateOutfit(outfit)) {
+        console.warn(`Invalid outfit detected (${['WomanA','WomanB','WomanD','ManA','ManB'][i]}): ${outfit.substring(0, 50)}...`);
+      }
+    });
+  }
+
+  const ageValue = targetAge.replace('s', '');
+  const ageLabel = `${ageValue}대`;
+  const slotNames = getSlotNameMap();
+  const narratorSlotId = gender === 'female' ? 'WomanA' : 'ManA';
+  const narratorName = slotNames[narratorSlotId] || (gender === 'female' ? '지영' : '준호');
+  const narratorSlotLabel = formatSlotDisplay(narratorSlotId, slotNames);
+  const promptConstants = getPromptConstants();
+  const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
+
+  const defaultCharacterSection = `## 👥 캐릭터 설정
+- **${formatSlotDisplay('WomanA', slotNames)}**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성
+- **${formatSlotDisplay('WomanB', slotNames)}**: ${ageLabel} 친구, 활발하고 장난기 있는 성격
+- **${formatSlotDisplay('WomanD', slotNames)}**: 20대 초반 골프 캐디, 밝고 프로페셔널한 여성
+- **${formatSlotDisplay('ManA', slotNames)}**: ${ageLabel} 남성, 댄디하고 세련된 신사
+- **${formatSlotDisplay('ManB', slotNames)}**: ${ageLabel} 남성 친구, 솔직하고 유머러스함`;
+
+  const promptRules = getActivePromptRules();
+  const promptSections = promptRules.promptSections || {};
+  const rawCharacterSection = promptSections.characterSection?.trim() || defaultCharacterSection;
+  const characterSection = applySlotNameOverrides(rawCharacterSection, slotNames);
+
+  const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
+  const golfCaddyNote = isGolfTopic ? '\n- WomanD(캐디)는 골프 관련 장면에 자연스럽게 포함시킬 것.' : '';
+
+  const rawPrompt = `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 **쇼츠 바이럴 마스터**입니다. 아래 주제로 **대본 + 캐릭터 프로필 + 배경 + 비주얼 스타일**을 확정하세요.
+⚠️ 이 단계에서는 씬별 이미지 프롬프트를 생성하지 마세요. 대본과 캐릭터 프로필 확정에만 집중하세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 주제: "${topic}"
+📌 장르: ${genreGuide?.name || '일반'}
+📌 타겟: ${ageLabel}
+📌 화자: ${narratorSlotLabel} (${narratorName})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${slotInstruction ? `${slotInstruction}\n\n` : ''}## 🎯 장르 핵심
+**${applySlotNameOverrides(genreGuide?.description || '', slotNames)}**
+
+## 📈 감정 곡선
+${applySlotNameOverrides(genreGuide?.emotionCurve || '', slotNames)}
+
+## 🎲 창작 힌트
+- 장소: ${seed.location}, 소품: ${seed.object}, 반전: ${seed.twistType}
+
+## 🎭 스토리 구조
+${applySlotNameOverrides(genreGuide?.structure || '', slotNames)}
+
+## 💬 킬러 대사
+${genreGuide?.killerPhrases.map(p => `"${applySlotNameOverrides(p, slotNames)}"`).join(', ') || ''}
+
+${characterSection}
+
+## 👗 사전 선택 의상 (반드시 이 명칭 그대로 사용)
+- WomanA: ${womanAOutfit}
+- WomanB: ${womanBOutfit}
+- WomanD: ${womanDOutfit}
+- ManA: ${manAOutfit}
+- ManB: ${manBOutfit}
+
+## 💇 헤어스타일 (고정값 - 변경 금지)
+- WomanA: long soft-wave hairstyle
+- WomanB: short chic bob cut
+- WomanD: high-bun hairstyle
+- ManA: short neat hairstyle
+- ManB: clean short cut
+
+## 🧍 체형 (고정값 - 변경 금지)
+- WomanA body: ${promptConstants.FEMALE_BODY_A}
+- WomanB body: ${promptConstants.FEMALE_BODY_B}
+- WomanD body: ${promptConstants.FEMALE_BODY_D}
+- ManA body: ${promptConstants.MALE_BODY_A}
+- ManB body: ${promptConstants.MALE_BODY_B}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 핵심 규칙
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 화자 1인칭, 본인 이름 3인칭 금지
+2. 인물 첫 등장 시 관계 자연스럽게 드러내기
+3. 반전이 있으면 SETUP에 힌트 1개
+4. 감정 직접 서술 금지 → 행동/신체반응으로 표현
+5. 문체: ~했어, ~했지, ~더라고, ~잖아 (친구한테 수다)
+6. 분량: 8~12문장
+${additionalContext ? `7. 추가 요청: ${additionalContext}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ⚠️ 출력 형식 (JSON)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "title": "제목",
+  "titleOptions": ["옵션1", "옵션2", "옵션3"],
+  "scriptBody": "8~12문장 대본 (줄바꿈으로 구분)",
+  "punchline": "펀치라인",
+  "hook": "HOOK",
+  "twist": "TWIST",
+  "foreshadowing": "복선",
+  "narrator": { "slot": "${narratorSlotId}", "name": "${narratorName}" },
+  "emotionFlow": "${genreGuide?.emotionCurve || ''}",
+  "lockedCharacters": [
+    {
+      "slotId": "WomanA",
+      "identity": "A stunning Korean woman in her ${targetAge}, sophisticated intellectual face with a sharp jawline and elegant features",
+      "hair": "long soft-wave hairstyle",
+      "body": "${promptConstants.FEMALE_BODY_A}",
+      "outfit": "${womanAOutfit}",
+      "role": "주인공 (화자)"
+    },
+    {
+      "slotId": "WomanB",
+      "identity": "A stunning Korean woman in her ${targetAge}, bright cheerful face with cute smile and energetic expression",
+      "hair": "short chic bob cut",
+      "body": "${promptConstants.FEMALE_BODY_B}",
+      "outfit": "${womanBOutfit}",
+      "role": "친구"
+    },
+    {
+      "slotId": "WomanD",
+      "identity": "A stunning Korean woman in her early 20s, innocent and professional appearance",
+      "hair": "high-bun hairstyle",
+      "body": "${promptConstants.FEMALE_BODY_D}",
+      "outfit": "${womanDOutfit}",
+      "role": "캐디"
+    },
+    {
+      "slotId": "ManA",
+      "identity": "A handsome Korean man in his ${targetAge}, intellectual face with gentle features and refined demeanor",
+      "hair": "short neat hairstyle",
+      "body": "${promptConstants.MALE_BODY_A}",
+      "outfit": "${manAOutfit}",
+      "role": "남성 주인공"
+    },
+    {
+      "slotId": "ManB",
+      "identity": "A handsome Korean man in his ${targetAge}, masculine face with strong jawline and vibrant expression",
+      "hair": "clean short cut",
+      "body": "${promptConstants.MALE_BODY_B}",
+      "outfit": "${manBOutfit}",
+      "role": "남성 친구"
+    }
+  ],
+  "lockedLocations": [
+    {
+      "id": "LOC_1",
+      "name": "메인 배경",
+      "englishDescription": "주제에 맞는 구체적인 영문 배경 묘사 (예: luxurious golf course clubhouse with panoramic mountain views)"
+    }
+  ],
+  "visualStyleDNA": {
+    "lighting": "natural daylight / soft warm lighting / dramatic side lighting 등",
+    "colorPalette": "warm earth tones / cool blue-grey / vibrant pastels 등",
+    "atmosphere": "upscale elegant / casual relaxed / mysterious tension 등",
+    "timeOfDay": "morning / afternoon / evening / golden hour 등"
+  }
+}
+
+## ✅ 체크리스트
+1. scriptBody 8~12문장?
+2. lockedCharacters에서 hair/body는 위의 고정값 100% 복사?
+3. outfit은 사전 선택 의상 명칭 100% 그대로?
+4. lockedLocations 2~4개 (주제에 맞는 다양한 배경)?
+5. visualStyleDNA 모든 필드 채움?
+6. identity에 얼굴 특징(face, jawline, features 등) 포함?${golfCaddyNote}
+`;
+
+  return applySlotNameOverrides(rawPrompt, slotNames);
+};
+
+/**
+ * Pass 2: 잠긴 프로필을 참조하여 씬 분해 프롬프트 생성
+ * LLM은 캐릭터 묘사를 직접 작성하지 않음 → 참조 시트의 값만 사용
+ * shortPrompt/longPrompt는 생성하지 않음 (로컬에서 composeManualPrompt로 조립)
+ */
+export const buildMasterPass2Prompt = (options: MasterPass2Options): string => {
+  const {
+    scriptBody, lockedCharacters, lockedLocations, visualStyleDNA,
+    genre, topic, gender, targetAge, genreGuideOverride, characterSlotMode
+  } = options;
+  const genreGuide = genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
+  const slotNames = getSlotNameMap();
+  const slotInstruction = buildCharacterSlotInstruction(characterSlotMode);
+  const narratorSlotId = gender === 'female' ? 'WomanA' : 'ManA';
+
+  const characterRefSheet = lockedCharacters.map(ch => {
+    return `  - ${ch.slotId}: identity="${ch.identity}", hair="${ch.hair}", body="${ch.body}", outfit="${ch.outfit}", role="${ch.role || ''}"`;
+  }).join('\n');
+
+  const locationRefSheet = lockedLocations.map(loc => {
+    return `  - ${loc.id} (${loc.name}): ${loc.englishDescription}`;
+  }).join('\n');
+
+  const scriptLines = scriptBody.split('\n').filter(line => line.trim());
+  const lineCount = scriptLines.length;
+
+  const rawPrompt = `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 **쇼츠 씬 분해 전문가**입니다. 아래 대본을 장면별로 분해하세요.
+
+⚠️ **핵심 규칙**: 캐릭터 묘사를 직접 작성하지 마세요! 참조 시트의 값만 사용합니다.
+이미지 프롬프트(shortPrompt/longPrompt)는 생성하지 마세요. 행동/표정/카메라/배경만 지정합니다.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 주제: "${topic}"
+📌 장르: ${genreGuide?.name || '일반'}
+📌 화자: ${narratorSlotId}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${slotInstruction ? `${slotInstruction}\n\n` : ''}## 📋 대본 (${lineCount}문장)
+${scriptLines.map((line, i) => `${i + 1}. ${line.trim()}`).join('\n')}
+
+## 🔒 캐릭터 참조 시트 (절대 변경 금지)
+${characterRefSheet}
+
+## 🏞️ 배경 참조 시트
+${locationRefSheet}
+
+## 🎨 비주얼 스타일 DNA
+- 조명: ${visualStyleDNA.lighting}
+- 색감: ${visualStyleDNA.colorPalette}
+- 분위기: ${visualStyleDNA.atmosphere}
+- 시간대: ${visualStyleDNA.timeOfDay}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## 씬 분해 규칙
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 대본 문장 수와 씬 수는 1:1 매칭 (${lineCount}개 씬)
+2. 각 씬에 등장하는 캐릭터는 참조 시트의 slotId로만 지정
+3. shotType: 1명=원샷, 2명=투샷, 3명+=쓰리샷
+4. cameraAngle: 위 카메라 앵글 표 참조 (미디엄샷 20% 이하, 전신샷 40% 이상)
+5. action: 캐릭터의 구체적 행동을 영어로 (카메라를 보지 않는 캔디드 스타일)
+6. expression: 캐릭터 표정을 영어로
+7. locationId: 참조 시트의 배경 ID 사용
+8. Scene 1(Hook)만 카메라 응시, Scene 2~끝은 looking away from camera
+
+## 📷 카메라 앵글 가이드
+| 씬 | 권장 앵글 |
+|---|----------|
+| Scene 1 (Hook) | close-up portrait shot |
+| Scene 2~3 (Setup) | wide shot, full body visible |
+| Scene 4~5 | wide/low-angle shot |
+| Scene 6 (Climax) | close-up dramatic shot |
+| Scene 7~8 (Twist) | low-angle/wide shot |
+| Scene 9+ (Resolution) | wide/aerial shot |
+
+## 🎥 POV 샷 규칙
+- POV 샷: 시점 주인공은 characterIds에서 제외
+- POV 대상만 characterIds에 포함
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ⚠️ 출력 형식 (JSON)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "scriptLine": "대본 1번째 문장 그대로",
+      "characterIds": ["WomanA"],
+      "locationId": "LOC_1",
+      "shotType": "원샷",
+      "cameraAngle": "close-up portrait shot, face in focus, eye contact with camera",
+      "action": "looking directly at camera with a knowing smile",
+      "actionKo": "카메라를 바라보며 의미심장하게 미소 짓는",
+      "expression": "confident smirk, raised eyebrow, eye contact with camera",
+      "background": "참조 시트의 LOC_1 배경 영문 묘사 그대로 복사",
+      "voiceType": "narration",
+      "narration": {
+        "text": "TTS용 텍스트",
+        "emotion": "감정",
+        "speed": "normal"
+      },
+      "lipSync": null
+    }
+  ]
+}
+
+## ✅ 체크리스트
+1. scenes 개수 = 대본 문장 수 (${lineCount}개)?
+2. characterIds는 참조 시트의 slotId만 사용?
+3. locationId는 참조 시트의 ID만 사용?
+4. 미디엄샷 20% 이하?
+5. 전신/와이드샷 40% 이상?
+6. 같은 앵글 2연속 없음?
+7. Scene 1만 eye contact, 나머지는 looking away?
+8. action/expression이 영어로 구체적?
+9. POV 샷에서 시점 주인공 characterIds에서 제외?
+`;
+
+  return applySlotNameOverrides(rawPrompt, slotNames);
+};
+
+/**
+ * 생성된 씬 프롬프트의 캐릭터 프로필 일관성 검증 및 자동 수정
+ */
+export const validateProfileConsistency = (
+  scenePrompts: string[],
+  lockedCharacters: MasterLockedCharacter[]
+): ProfileConsistencyResult => {
+  const issues: string[] = [];
+  const fixes: ProfileConsistencyResult['fixes'] = [];
+
+  const charMap = new Map<string, MasterLockedCharacter>();
+  lockedCharacters.forEach(ch => charMap.set(ch.slotId, ch));
+
+  scenePrompts.forEach((prompt, sceneIndex) => {
+    // [Person N (SlotId): ...] 블록 추출
+    const personBlocks = prompt.match(/\[Person\s+\d+\s*\([^)]+\):[^\]]+\]/gi) || [];
+
+    personBlocks.forEach(block => {
+      // slotId 추출
+      const slotMatch = block.match(/\((\w+)\)/);
+      if (!slotMatch) return;
+      const slotId = slotMatch[1];
+      const locked = charMap.get(slotId);
+      if (!locked) return;
+
+      // identity 검증: 잠긴 identity가 블록에 포함되어 있는지
+      if (!block.includes(locked.identity)) {
+        issues.push(`Scene ${sceneIndex + 1}: ${slotId} identity mismatch`);
+      }
+
+      // outfit 축약 감지: outfit의 전체 문자열이 블록에 있는지
+      const outfitNormalized = locked.outfit.replace(/^wearing\s+/i, '').trim();
+      if (outfitNormalized && !block.includes(outfitNormalized)) {
+        // outfit의 첫 단어라도 있으면 축약 가능성
+        const firstWord = outfitNormalized.split(/\s+/)[0];
+        if (firstWord && block.toLowerCase().includes(firstWord.toLowerCase())) {
+          issues.push(`Scene ${sceneIndex + 1}: ${slotId} outfit possibly abbreviated`);
+          fixes.push({
+            sceneIndex,
+            field: 'outfit',
+            original: block,
+            fixed: block // composeManualPrompt가 이미 강제 삽입하므로 여기서는 경고만
+          });
+        }
+      }
+
+      // body 필드 누락 감지
+      if (locked.body && !block.includes(locked.body.substring(0, 30))) {
+        issues.push(`Scene ${sceneIndex + 1}: ${slotId} body field may be missing`);
+      }
+    });
+  });
+
+  return {
+    isConsistent: issues.length === 0,
+    issues,
+    fixes
+  };
+};
+
 export default {
   buildLabScriptPrompt,
   buildLabImagePrompt,
+  buildMasterPass1Prompt,
+  buildMasterPass2Prompt,
+  validateProfileConsistency,
   pickRandomOutfit,
   pickFemaleOutfit,
   pickMaleOutfit,

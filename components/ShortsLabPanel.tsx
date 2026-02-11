@@ -14,8 +14,8 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText, Zap } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory } from '../services/labPromptBuilder';
-import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory, buildMasterPass1Prompt, buildMasterPass2Prompt, validateProfileConsistency } from '../services/labPromptBuilder';
+import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo, MasterPass1Result, MasterLockedCharacter, MasterLockedLocation, MasterVisualStyleDNA } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { useShortsLabStep2PromptRulesManager } from '../hooks/useShortsLabStep2PromptRulesManager';
@@ -3705,347 +3705,598 @@ ${scriptInput}
         setIsMasterGenerating(true);
         setGenerationError(null);
 
-        try {
-            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
-            const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
-            const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
-                ? {
-                    name: selectedGenreData.name,
-                    description: selectedGenreData.description,
-                    emotionCurve: selectedGenreData.emotionCurve,
-                    structure: selectedGenreData.structure,
-                    killerPhrases: selectedGenreData.killerPhrases,
-                    supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
-                    bodyReactions: selectedGenreData.bodyReactions,
-                    forbiddenPatterns: selectedGenreData.forbiddenPatterns,
-                    goodTwistExamples: selectedGenreData.goodTwistExamples,
-                    supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
-                    badTwistExamples: selectedGenreData.badTwistExamples,
-                    allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
-                }
-                : undefined;
+        const selectedService = targetService || 'GEMINI';
+        const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+        const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
+        const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
+            ? {
+                name: selectedGenreData.name,
+                description: selectedGenreData.description,
+                emotionCurve: selectedGenreData.emotionCurve,
+                structure: selectedGenreData.structure,
+                killerPhrases: selectedGenreData.killerPhrases,
+                supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                bodyReactions: selectedGenreData.bodyReactions,
+                forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                goodTwistExamples: selectedGenreData.goodTwistExamples,
+                supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                badTwistExamples: selectedGenreData.badTwistExamples,
+                allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
+            }
+            : undefined;
 
-            const prompt = buildLabScriptPrompt({
+        // 공통 JSON 파싱 헬퍼
+        const cleanAndParseJson = (text: string, fields: string[]) => {
+            let jsonClean = text.trim();
+            jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
+            if (jsonClean.startsWith('```')) {
+                jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+            }
+            return parseJsonFromText<any>(jsonClean, fields);
+        };
+
+        // 씬 데이터에서 characterIds 수집 헬퍼
+        const collectSceneIds = (scene: any) => {
+            const ids: string[] = [];
+            if (Array.isArray(scene.characterIds)) {
+                ids.push(...scene.characterIds.map((value: any) => String(value || '').trim()).filter(Boolean));
+            }
+            if (typeof scene.characterSlot === 'string') {
+                ids.push(...scene.characterSlot.split(/[|,]/).map((value: string) => value.trim()).filter(Boolean));
+            }
+            return ids;
+        };
+
+        // 씬 배열 → Scene[] 변환 로직 (Pass 2 결과와 폴백 모두에서 사용)
+        const buildScenesFromData = (
+            scenesSource: any[],
+            masterMap: Map<string, ManualCharacterPrompt>,
+            slotMap: Map<string, string>,
+            hasCaddy: boolean,
+            accessoryMapInput: Map<string, string[]>
+        ): Scene[] => {
+            resetAngleHistory();
+            const totalScenes = scenesSource.length || 8;
+            let lastExpressionKeyword = '';
+            let lastCameraKeyword = '';
+            let lastActionFlavor = '';
+            let lastGroupActionFlavor = '';
+
+            return scenesSource.map((scene: any, idx: number) => {
+                const sceneNumber = scene.sceneNumber || idx + 1;
+                const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
+                const rawSceneIds = collectSceneIds(scene);
+                const sceneCharacterIds = normalizeSceneCharacterIds(
+                    rawSceneIds,
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                let shotType = normalizeShotType(scene.shotType, sceneCharacterIds);
+                shotType = enforceShotTypeMix(shotType, sceneCharacterIds, idx, totalScenes);
+                const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
+                const expressionCandidates = getExpressionCandidates(aiGenre, storyStage);
+                let expression = pickRotatingCandidate(expressionCandidates, idx, lastExpressionKeyword);
+                if (!expression) {
+                    expression = 'candid, off-guard';
+                } else if (lastExpressionKeyword && expression.toLowerCase() === lastExpressionKeyword.toLowerCase()) {
+                    if (!expression.toLowerCase().includes('candid')) {
+                        expression = `${expression}, candid, off-guard`;
+                    }
+                }
+                // Pass 2에서 LLM이 제공한 action/expression/cameraAngle/background 우선 사용
+                const llmExpression = scene.expression || '';
+                const finalExpression = llmExpression || expression;
+
+                const baseCameraPrompt = scene.cameraAngle || getCameraPromptForScene(storyStage);
+                const cameraPrompt = pickCameraPrompt(baseCameraPrompt, idx, lastCameraKeyword);
+                lastExpressionKeyword = finalExpression;
+                const cameraKeyword = detectCameraKeyword(cameraPrompt);
+                if (cameraKeyword) {
+                    lastCameraKeyword = cameraKeyword;
+                }
+                const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
+                lastActionFlavor = actionFlavor;
+                const isGroupShot = sceneCharacterIds.length >= 2;
+                const groupActionFlavor = isGroupShot
+                    ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
+                    : '';
+                if (groupActionFlavor) {
+                    lastGroupActionFlavor = groupActionFlavor;
+                }
+
+                // LLM이 제공한 action(영어)과 background 우선, 없으면 기존 방식
+                const llmAction = scene.action || scene.actionKo || '';
+                const llmBackground = scene.background || '';
+                const narrativeParts = mergeNarrativeParts([
+                    llmBackground,
+                    scene.summary,
+                    llmAction,
+                    actionFlavor,
+                    groupActionFlavor
+                ]);
+
+                const normalizedPrompt = composeManualPrompt(
+                    narrativeParts || sceneText,
+                    sceneNumber,
+                    sceneCharacterIds,
+                    masterMap,
+                    { expression: finalExpression, camera: cameraPrompt, action: llmAction, background: llmBackground }
+                );
+                const characterInfos = sceneCharacterIds
+                    .map((id) => masterMap.get(id))
+                    .filter(Boolean)
+                    .map((item) => ({
+                        id: item!.id,
+                        name: item!.name || '',
+                        gender: item!.gender,
+                        identity: item!.identity,
+                        hair: item!.hair,
+                        body: item!.body,
+                        outfit: item!.outfit
+                    })) as CharacterInfo[];
+                const fallbackCharacters = characterInfos.length > 0
+                    ? characterInfos
+                    : Array.from(masterMap.values())
+                        .slice(0, 3)
+                        .map((item) => ({
+                            id: item.id,
+                            name: item.name || '',
+                            gender: item.gender,
+                            identity: item.identity,
+                            hair: item.hair,
+                            body: item.body,
+                            outfit: item.outfit
+                        }));
+                const fixed = validateAndFixPrompt(normalizedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
+                let mergedPrompt = fixed.fixedPrompt;
+
+                // 악세서리 적용
+                if (accessoryMapInput.size > 0) {
+                    mergedPrompt = applyAccessoriesToPrompt(mergedPrompt, sceneCharacterIds, accessoryMapInput);
+                }
+
+                if (selectedGenreData?.postProcessConfig?.useSafeGlamour) {
+                    mergedPrompt = enhancePromptWithSafeGlamour(mergedPrompt);
+                }
+                const cleanupPatterns = selectedGenreData?.postProcessConfig?.cleanupPatterns || [];
+                mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
+
+                const narrationText = typeof scene.narration === 'string'
+                    ? scene.narration
+                    : scene.narration?.text || '';
+                const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
+                const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
+
+                return {
+                    number: sceneNumber,
+                    text: sceneText,
+                    prompt: mergedPrompt,
+                    imageUrl: undefined,
+                    shortPromptKo: scene.shortPromptKo || '',
+                    longPromptKo: scene.longPromptKo || '',
+                    summary: scene.summary || sceneText,
+                    camera: scene.camera || '',
+                    shotType,
+                    age: scene.age || '',
+                    outfit: scene.outfit || '',
+                    isSelected: true,
+                    videoPrompt: scene.videoPrompt || '',
+                    dialogue: scene.dialogue || lipSyncLine || '',
+                    voiceType,
+                    narrationText: narrationText || sceneText,
+                    narrationEmotion: scene.narration?.emotion || '',
+                    narrationSpeed: scene.narration?.speed || 'normal',
+                    lipSyncSpeaker: scene.lipSync?.speaker || '',
+                    lipSyncSpeakerName: scene.lipSync?.speakerName || '',
+                    lipSyncLine: lipSyncLine || '',
+                    lipSyncEmotion: scene.lipSync?.emotion || '',
+                    lipSyncTiming: scene.lipSync?.timing || undefined
+                } as Scene;
+            });
+        };
+
+        try {
+            // ============================================
+            // [Pass 1] 대본 + 캐릭터 프로필 + 배경 + 스타일 DNA 생성
+            // ============================================
+            const pass1Prompt = buildMasterPass1Prompt({
                 topic: aiTopic,
                 genre: aiGenre,
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
-                enableWinterAccessories: enableWinterAccessories,
+                enableWinterAccessories,
                 useRandomOutfits,
                 allowedOutfitCategories,
                 characterSlotMode: scriptCharacterMode
             });
 
-            const selectedService = targetService || 'GEMINI';
-            showToast(`${selectedService} AI로 마스터 대본을 생성하고 있습니다...`, 'info');
+            showToast(`[1/2] ${selectedService} AI로 캐릭터 프로필을 생성하고 있습니다...`, 'info');
 
-            const response = await fetch('http://localhost:3002/api/generate/raw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    service: selectedService,
-                    prompt,
-                    maxTokens: 2000,
-                    temperature: 0.9
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`API 오류: ${response.status}`);
-            }
-
-            const data = await response.json();
-            const generatedText = data.rawResponse || data.text || data.result || '';
-
-            if (data._folderName) {
-                setCurrentFolderName(data._folderName);
-                console.log(`[ShortsLab] Story folder assigned: ${data._folderName}`);
-            }
-
-            let finalScript = '';
-            let extractedScenes: Scene[] = [];
+            let pass1Result: MasterPass1Result | null = null;
+            let pass1FolderName = '';
 
             try {
-                let jsonClean = generatedText.trim();
-                jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
-                if (jsonClean.startsWith('```')) {
-                    jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+                const pass1Response = await fetch('http://localhost:3002/api/generate/raw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        service: selectedService,
+                        prompt: pass1Prompt,
+                        maxTokens: 2000,
+                        temperature: 0.9
+                    })
+                });
+
+                if (!pass1Response.ok) {
+                    throw new Error(`Pass 1 API error: ${pass1Response.status}`);
                 }
 
-                const parsed = parseJsonFromText<any>(jsonClean, [
-                    'script',
-                    'scriptBody',
-                    'scriptLine',
-                    'shortPrompt',
-                    'shortPromptKo',
-                    'longPrompt',
-                    'longPromptKo',
-                    'hook',
-                    'punchline',
-                    'twist',
-                    'title'
+                const pass1Data = await pass1Response.json();
+                const pass1Text = pass1Data.rawResponse || pass1Data.text || pass1Data.result || '';
+                if (pass1Data._folderName) {
+                    pass1FolderName = pass1Data._folderName;
+                    setCurrentFolderName(pass1Data._folderName);
+                }
+
+                const pass1Parsed = cleanAndParseJson(pass1Text, [
+                    'scriptBody', 'lockedCharacters', 'lockedLocations', 'visualStyleDNA',
+                    'title', 'hook', 'twist', 'punchline'
                 ]);
-                if (!parsed) {
-                    throw new Error('JSON parse failed');
+
+                if (!pass1Parsed || !pass1Parsed.scriptBody || !Array.isArray(pass1Parsed.lockedCharacters)) {
+                    throw new Error('Pass 1 JSON parsing failed or missing required fields');
                 }
 
-                const scriptData = parsed.scripts?.[0] || parsed;
-                const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || '';
-                if (rawScript) {
-                    const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
-                    finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
-                }
+                // body/hair 시스템 값 강제 오버라이드
+                const promptConstants = PROMPT_CONSTANTS;
+                const bodyMap: Record<string, string> = {
+                    WomanA: promptConstants.FEMALE_BODY_A,
+                    WomanB: promptConstants.FEMALE_BODY_B,
+                    WomanD: promptConstants.FEMALE_BODY_D,
+                    ManA: promptConstants.MALE_BODY_A,
+                    ManB: promptConstants.MALE_BODY_B
+                };
+                const hairMap: Record<string, string> = {
+                    WomanA: 'long soft-wave hairstyle',
+                    WomanB: 'short chic bob cut',
+                    WomanD: 'high-bun hairstyle',
+                    ManA: 'short neat hairstyle',
+                    ManB: 'clean short cut'
+                };
 
-                const scenesSource = scriptData.scenes || parsed.scenes;
-                if (scenesSource && Array.isArray(scenesSource)) {
-                    const rawCharacters = Array.isArray(scriptData.characters)
-                        ? scriptData.characters
-                        : (Array.isArray(parsed.characters) ? parsed.characters : []);
-                    const normalizedCharacters = rawCharacters.map((character: any) => {
-                        const id = normalizeSlotId(String(character?.id || character?.slot || character?.slotId || character?.characterSlot || '').trim());
-                        if (!id) return character;
-                        if (id.toLowerCase().startsWith('man') && typeof character.identity === 'string') {
-                            const fixedIdentity = character.identity.replace(/\bin her\b/gi, 'in his');
-                            return { ...character, id, identity: fixedIdentity };
-                        }
-                        return { ...character, id };
-                    });
-
-                    const lockedOutfits = scriptData.lockedOutfits || parsed.lockedOutfits || {};
-                    const hasCaddy = normalizedCharacters.some((char: any) => {
-                        const name = (char.name || '').trim();
-                        const role = (char.role || '').trim();
-                        return /캐디|caddy/i.test(name) || /캐디|caddy/i.test(role) || /WomanD/i.test(String(char.id || ''));
-                    });
-
-                    const collectSceneIds = (scene: any) => {
-                        const ids: string[] = [];
-                        if (Array.isArray(scene.characterIds)) {
-                            ids.push(...scene.characterIds.map((value: any) => String(value || '').trim()).filter(Boolean));
-                        }
-                        if (typeof scene.characterSlot === 'string') {
-                            ids.push(...scene.characterSlot.split(/[|,]/).map((value: string) => value.trim()).filter(Boolean));
-                        }
-                        return ids;
+                const lockedCharacters: MasterLockedCharacter[] = (pass1Parsed.lockedCharacters || []).map((ch: any) => {
+                    const slotId = normalizeSlotId(String(ch.slotId || ch.id || '').trim()) || ch.slotId;
+                    return {
+                        slotId,
+                        identity: ch.identity || '',
+                        hair: hairMap[slotId] || ch.hair || '',
+                        body: bodyMap[slotId] || ch.body || '',
+                        outfit: ch.outfit || '',
+                        role: ch.role || ''
                     };
+                });
 
-                    const rawSlotIds = [
-                        ...normalizedCharacters.map((char: any) => String(char.id || '').trim()).filter(Boolean),
-                        ...scenesSource.flatMap((scene: any) => collectSceneIds(scene))
-                    ];
+                const lockedLocations: MasterLockedLocation[] = (pass1Parsed.lockedLocations || []).map((loc: any) => ({
+                    id: loc.id || 'LOC_1',
+                    name: loc.name || '',
+                    englishDescription: loc.englishDescription || loc.description || ''
+                }));
 
-                    const allSlotIds = normalizeSlotList(rawSlotIds, settings.koreanGender, hasCaddy);
-                    const slotMap = new Map<string, string>();
-                    allSlotIds.forEach((id) => slotMap.set(id, id));
-                    normalizedCharacters.forEach((char: any) => {
-                        const id = normalizeSlotId(String(char.id || '').trim());
-                        if (!id) return;
-                        if (char.name) {
-                            slotMap.set(String(char.name).trim(), id);
-                        }
-                    });
+                const visualStyleDNA: MasterVisualStyleDNA = {
+                    lighting: pass1Parsed.visualStyleDNA?.lighting || 'natural daylight',
+                    colorPalette: pass1Parsed.visualStyleDNA?.colorPalette || 'warm earth tones',
+                    atmosphere: pass1Parsed.visualStyleDNA?.atmosphere || 'casual relaxed',
+                    timeOfDay: pass1Parsed.visualStyleDNA?.timeOfDay || 'afternoon'
+                };
 
-                    let accessoryMap = buildAccessoryMap(normalizedCharacters, enableWinterAccessories);
-                    if (enableWinterAccessories && accessoryMap.size === 0 && allSlotIds.length > 0) {
-                        accessoryMap = buildWinterAccessoryMap(allSlotIds);
+                pass1Result = {
+                    scriptBody: pass1Parsed.scriptBody,
+                    lockedCharacters,
+                    lockedLocations,
+                    visualStyleDNA,
+                    title: pass1Parsed.title,
+                    titleOptions: pass1Parsed.titleOptions,
+                    punchline: pass1Parsed.punchline,
+                    hook: pass1Parsed.hook,
+                    twist: pass1Parsed.twist,
+                    foreshadowing: pass1Parsed.foreshadowing,
+                    narrator: pass1Parsed.narrator,
+                    emotionFlow: pass1Parsed.emotionFlow
+                };
+
+                console.log('[ShortsLab] Pass 1 completed:', {
+                    scriptLines: pass1Result.scriptBody.split('\n').length,
+                    characters: pass1Result.lockedCharacters.length,
+                    locations: pass1Result.lockedLocations.length
+                });
+
+            } catch (pass1Error) {
+                // ============================================
+                // Pass 1 실패 → 기존 단일 Pass 방식으로 폴백
+                // ============================================
+                console.warn('[ShortsLab] Pass 1 failed, falling back to single-pass mode:', pass1Error);
+                showToast('2-Pass 생성 실패, 기존 방식으로 전환합니다...', 'info');
+
+                const fallbackPrompt = buildLabScriptPrompt({
+                    topic: aiTopic,
+                    genre: aiGenre,
+                    targetAge: aiTargetAge,
+                    gender: settings.koreanGender,
+                    genreGuideOverride,
+                    enableWinterAccessories,
+                    useRandomOutfits,
+                    allowedOutfitCategories,
+                    characterSlotMode: scriptCharacterMode
+                });
+
+                const fallbackResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        service: selectedService,
+                        prompt: fallbackPrompt,
+                        maxTokens: 2000,
+                        temperature: 0.9
+                    })
+                });
+
+                if (!fallbackResponse.ok) {
+                    throw new Error(`API 오류: ${fallbackResponse.status}`);
+                }
+
+                const fallbackData = await fallbackResponse.json();
+                const fallbackText = fallbackData.rawResponse || fallbackData.text || fallbackData.result || '';
+                if (fallbackData._folderName) {
+                    setCurrentFolderName(fallbackData._folderName);
+                }
+
+                // 기존 단일 Pass 파싱 로직
+                const fbParsed = cleanAndParseJson(fallbackText, [
+                    'script', 'scriptBody', 'scriptLine', 'shortPrompt', 'longPrompt', 'hook', 'punchline', 'twist', 'title'
+                ]);
+
+                if (fbParsed) {
+                    const scriptData = fbParsed.scripts?.[0] || fbParsed;
+                    const rawScript = scriptData.scriptBody || scriptData.script || fbParsed.scriptBody || '';
+                    if (rawScript) {
+                        const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
+                        const finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
+                        if (finalScript) setScriptInput(finalScript);
                     }
-
-                    const resolveLockedOutfit = (slotId: string): string => {
-                        if (!lockedOutfits) return '';
-                        const compact = slotId.replace(/\s+/g, '');
-                        const lower = compact.toLowerCase();
-                        const variants = [
-                            slotId,
-                            compact,
-                            lower,
-                            `${lower.charAt(0)}${lower.slice(1)}`
-                        ];
-                        for (const key of variants) {
-                            if (lockedOutfits[key]) return lockedOutfits[key];
-                        }
-                        return '';
-                    };
-
-                    const applyWinterOnce = (outfit: string, gender: 'female' | 'male'): string => {
-                        if (!outfit) return outfit;
-                        if (!enableWinterAccessories || gender !== 'female') return outfit;
-                        return convertToTightLongSleeveWithShoulderLine(outfit);
-                    };
-
-                    const masterMap = buildAutoCharacterMap(allSlotIds, aiTargetAge, false);
-                    masterMap.forEach((meta, id) => {
-                        const charOverride = normalizedCharacters.find((char: any) => normalizeSlotId(String(char.id || '').trim()) === id);
-                        const gender = meta.gender;
-                        const lockedOutfit = resolveLockedOutfit(id);
-                        const candidateOutfit = lockedOutfit || charOverride?.outfit || meta.outfit;
-                        const updatedOutfit = candidateOutfit ? applyWinterOnce(candidateOutfit, gender) : candidateOutfit;
-                        const accessories = accessoryMap.get(id) || [];
-                        masterMap.set(id, {
-                            ...meta,
-                            identity: charOverride?.identity || meta.identity,
-                            hair: charOverride?.hair || meta.hair,
-                            body: charOverride?.body || meta.body,
-                            outfit: updatedOutfit || meta.outfit,
-                            accessories
-                        });
-                    });
-
-                    resetAngleHistory();
-                    const totalScenes = scenesSource.length || 8;
-                    let lastExpressionKeyword = '';
-                    let lastCameraKeyword = '';
-                    let lastActionFlavor = '';
-                    let lastGroupActionFlavor = '';
-
-                    extractedScenes = scenesSource.map((scene: any, idx: number) => {
-                        const sceneNumber = scene.sceneNumber || idx + 1;
-                        const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
-                        const rawSceneIds = collectSceneIds(scene);
-                        const sceneCharacterIds = normalizeSceneCharacterIds(
-                            rawSceneIds,
-                            slotMap,
-                            settings.koreanGender,
-                            hasCaddy
-                        );
-                        let shotType = normalizeShotType(scene.shotType, sceneCharacterIds);
-                        shotType = enforceShotTypeMix(shotType, sceneCharacterIds, idx, totalScenes);
-                        const storyStage = getStoryStageBySceneNumber(sceneNumber, totalScenes);
-                        const expressionCandidates = getExpressionCandidates(aiGenre, storyStage);
-                        let expression = pickRotatingCandidate(expressionCandidates, idx, lastExpressionKeyword);
-                        if (!expression) {
-                            expression = 'candid, off-guard';
-                        } else if (lastExpressionKeyword && expression.toLowerCase() === lastExpressionKeyword.toLowerCase()) {
-                            if (!expression.toLowerCase().includes('candid')) {
-                                expression = `${expression}, candid, off-guard`;
+                    const scenesSource = scriptData.scenes || fbParsed.scenes;
+                    if (scenesSource && Array.isArray(scenesSource)) {
+                        const rawCharacters = Array.isArray(scriptData.characters) ? scriptData.characters : (Array.isArray(fbParsed.characters) ? fbParsed.characters : []);
+                        const normalizedCharacters = rawCharacters.map((character: any) => {
+                            const id = normalizeSlotId(String(character?.id || character?.slot || character?.slotId || character?.characterSlot || '').trim());
+                            if (!id) return character;
+                            if (id.toLowerCase().startsWith('man') && typeof character.identity === 'string') {
+                                return { ...character, id, identity: character.identity.replace(/\bin her\b/gi, 'in his') };
                             }
-                        }
-                        const baseCameraPrompt = scene.cameraAngle || getCameraPromptForScene(storyStage);
-                        const cameraPrompt = pickCameraPrompt(baseCameraPrompt, idx, lastCameraKeyword);
-                        lastExpressionKeyword = expression;
-                        const cameraKeyword = detectCameraKeyword(cameraPrompt);
-                        if (cameraKeyword) {
-                            lastCameraKeyword = cameraKeyword;
-                        }
-                        const actionFlavor = pickRotatingCandidate(CANDID_ACTION_FLAVORS, idx, lastActionFlavor) || CANDID_ACTION_FLAVORS[0];
-                        lastActionFlavor = actionFlavor;
-                        const isGroupShot = sceneCharacterIds.length >= 2;
-                        const groupActionFlavor = isGroupShot
-                            ? pickRotatingCandidate(GROUP_ACTION_FLAVORS, idx, lastGroupActionFlavor) || GROUP_ACTION_FLAVORS[0]
-                            : '';
-                        if (groupActionFlavor) {
-                            lastGroupActionFlavor = groupActionFlavor;
-                        }
-                        const narrativeParts = mergeNarrativeParts([
-                            scene.background,
-                            scene.summary,
-                            scene.action,
-                            actionFlavor,
-                            groupActionFlavor
-                        ]);
+                            return { ...character, id };
+                        });
+                        const lockedOutfits = scriptData.lockedOutfits || fbParsed.lockedOutfits || {};
+                        const hasCaddy = normalizedCharacters.some((char: any) => /캐디|caddy/i.test(char.name || '') || /WomanD/i.test(String(char.id || '')));
+                        const rawSlotIds = [
+                            ...normalizedCharacters.map((char: any) => String(char.id || '').trim()).filter(Boolean),
+                            ...scenesSource.flatMap((scene: any) => collectSceneIds(scene))
+                        ];
+                        const allSlotIds = normalizeSlotList(rawSlotIds, settings.koreanGender, hasCaddy);
+                        const slotMap = new Map<string, string>();
+                        allSlotIds.forEach((id) => slotMap.set(id, id));
+                        normalizedCharacters.forEach((char: any) => {
+                            const id = normalizeSlotId(String(char.id || '').trim());
+                            if (id && char.name) slotMap.set(String(char.name).trim(), id);
+                        });
 
-                        const normalizedPrompt = composeManualPrompt(
-                            narrativeParts || sceneText,
-                            sceneNumber,
-                            sceneCharacterIds,
-                            masterMap,
-                            { expression, camera: cameraPrompt, action: scene.action, background: scene.background }
-                        );
-                        const characterInfos = sceneCharacterIds
-                            .map((id) => masterMap.get(id))
-                            .filter(Boolean)
-                            .map((item) => ({
-                                id: item!.id,
-                                name: item!.name || '',
-                                gender: item!.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
-                                identity: item!.identity,
-                                hair: item!.hair,
-                                body: item!.body,
-                                outfit: item!.outfit
-                            })) as CharacterInfo[];
-                        const fallbackCharacters = characterInfos.length > 0
-                            ? characterInfos
-                            : Array.from(masterMap.values())
-                                .slice(0, 3)
-                                .map((item) => ({
-                                    id: item.id,
-                                    name: item.name || '',
-                                    gender: item.gender,  // ← 추가: 성별 정보 보존 (버그 수정)
-                                    identity: item.identity,
-                                    hair: item.hair,
-                                    body: item.body,
-                                    outfit: item.outfit
-                                }));
-                        const fixed = validateAndFixPrompt(normalizedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
-                        let mergedPrompt = fixed.fixedPrompt;
-
-                        if (selectedGenreData?.postProcessConfig?.useSafeGlamour) {
-                            mergedPrompt = enhancePromptWithSafeGlamour(mergedPrompt);
+                        const resolveLockedOutfit = (slotId: string): string => {
+                            if (!lockedOutfits) return '';
+                            const compact = slotId.replace(/\s+/g, '');
+                            const lower = compact.toLowerCase();
+                            for (const key of [slotId, compact, lower, `${lower.charAt(0)}${lower.slice(1)}`]) {
+                                if (lockedOutfits[key]) return lockedOutfits[key];
+                            }
+                            return '';
+                        };
+                        const masterMap = buildAutoCharacterMap(allSlotIds, aiTargetAge, false);
+                        masterMap.forEach((meta, id) => {
+                            const charOverride = normalizedCharacters.find((char: any) => normalizeSlotId(String(char.id || '').trim()) === id);
+                            const gender = meta.gender;
+                            const lockedOutfit = resolveLockedOutfit(id);
+                            const candidateOutfit = lockedOutfit || charOverride?.outfit || meta.outfit;
+                            const updatedOutfit = (candidateOutfit && enableWinterAccessories && gender === 'female') ? convertToTightLongSleeveWithShoulderLine(candidateOutfit) : candidateOutfit;
+                            masterMap.set(id, {
+                                ...meta,
+                                identity: charOverride?.identity || meta.identity,
+                                hair: charOverride?.hair || meta.hair,
+                                body: charOverride?.body || meta.body,
+                                outfit: updatedOutfit || meta.outfit,
+                                accessories: []
+                            });
+                        });
+                        let accessoryMap = buildAccessoryMap(normalizedCharacters, enableWinterAccessories);
+                        if (enableWinterAccessories && accessoryMap.size === 0 && allSlotIds.length > 0) {
+                            accessoryMap = buildWinterAccessoryMap(allSlotIds);
                         }
-                        const cleanupPatterns = selectedGenreData?.postProcessConfig?.cleanupPatterns || [];
-                        mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
-
-                        const narrationText = typeof scene.narration === 'string'
-                            ? scene.narration
-                            : scene.narration?.text || '';
-                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
-                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
-
-                        return {
-                            number: sceneNumber,
-                            text: sceneText,
-                            prompt: mergedPrompt,
-                            imageUrl: undefined,
-                            shortPromptKo: scene.shortPromptKo || '',
-                            longPromptKo: scene.longPromptKo || '',
-                            summary: scene.summary || sceneText,
-                            camera: scene.camera || '',
-                            shotType,
-                            age: scene.age || '',
-                            outfit: scene.outfit || '',
-                            isSelected: true,
-                            videoPrompt: scene.videoPrompt || '',
-                            dialogue: scene.dialogue || lipSyncLine || '',
-                            voiceType,
-                            narrationText: narrationText || sceneText,
-                            narrationEmotion: scene.narration?.emotion || '',
-                            narrationSpeed: scene.narration?.speed || 'normal',
-                            lipSyncSpeaker: scene.lipSync?.speaker || '',
-                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
-                            lipSyncLine: lipSyncLine || '',
-                            lipSyncEmotion: scene.lipSync?.emotion || '',
-                            lipSyncTiming: scene.lipSync?.timing || undefined
-                        } as Scene;
-                    });
-                }
-            } catch (e) {
-                console.warn('[ShortsLab] JSON parsing failed in master generate:', e);
-                const scriptMatch = generatedText.match(/---\s*([\s\S]*?)\s*---/);
-                if (scriptMatch) {
-                    finalScript = scriptMatch[1].trim();
-                }
-                if (!finalScript) {
-                    const scriptBodyMatch = generatedText.match(/"scriptBody"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-                    if (scriptBodyMatch && scriptBodyMatch[1]) {
-                        try {
-                            finalScript = JSON.parse(`"${scriptBodyMatch[1]}"`);
-                        } catch {
-                            finalScript = scriptBodyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                        const extractedScenes = buildScenesFromData(scenesSource, masterMap, slotMap, hasCaddy, accessoryMap);
+                        if (extractedScenes.length > 0) {
+                            setScenes(extractedScenes);
+                            setActiveTab('preview');
+                            showToast(`${selectedService} AI로 마스터 대본이 생성되었습니다! (폴백 모드, ${extractedScenes.length}개 씬)`, 'success');
                         }
                     }
                 }
+                return; // 폴백 완료, 여기서 종료
             }
 
-            if (!finalScript && extractedScenes.length === 0) {
-                throw new Error('대본을 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
+            // ============================================
+            // [Pass 2] 잠긴 프로필 기반 씬 분해
+            // ============================================
+            if (!pass1Result) {
+                throw new Error('Pass 1 result is empty');
             }
 
-            if (finalScript) setScriptInput(finalScript.trim());
+            const pass2Prompt = buildMasterPass2Prompt({
+                scriptBody: pass1Result.scriptBody,
+                lockedCharacters: pass1Result.lockedCharacters,
+                lockedLocations: pass1Result.lockedLocations,
+                visualStyleDNA: pass1Result.visualStyleDNA,
+                genre: aiGenre,
+                topic: aiTopic,
+                gender: settings.koreanGender,
+                targetAge: aiTargetAge,
+                genreGuideOverride,
+                characterSlotMode: scriptCharacterMode
+            });
+
+            showToast(`[2/2] ${selectedService} AI로 씬을 분해하고 있습니다...`, 'info');
+
+            let pass2Scenes: any[] = [];
+            let pass2RetryCount = 0;
+
+            const executePass2 = async (temperature: number): Promise<any[]> => {
+                const pass2Response = await fetch('http://localhost:3002/api/generate/raw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        service: selectedService,
+                        prompt: pass2Prompt,
+                        maxTokens: 2000,
+                        temperature
+                    })
+                });
+
+                if (!pass2Response.ok) {
+                    throw new Error(`Pass 2 API error: ${pass2Response.status}`);
+                }
+
+                const pass2Data = await pass2Response.json();
+                const pass2Text = pass2Data.rawResponse || pass2Data.text || pass2Data.result || '';
+
+                const pass2Parsed = cleanAndParseJson(pass2Text, [
+                    'scenes', 'sceneNumber', 'scriptLine', 'characterIds', 'locationId',
+                    'cameraAngle', 'action', 'expression'
+                ]);
+
+                if (!pass2Parsed || !Array.isArray(pass2Parsed.scenes)) {
+                    throw new Error('Pass 2 JSON parsing failed');
+                }
+
+                return pass2Parsed.scenes;
+            };
+
+            try {
+                pass2Scenes = await executePass2(0.7);
+            } catch (pass2Error) {
+                console.warn('[ShortsLab] Pass 2 first attempt failed, retrying with lower temperature:', pass2Error);
+                pass2RetryCount++;
+                try {
+                    pass2Scenes = await executePass2(0.4);
+                } catch (pass2RetryError) {
+                    // Pass 2 완전 실패 → 대본만 설정하고 수동 안내
+                    console.error('[ShortsLab] Pass 2 failed after retry:', pass2RetryError);
+                    const rawScript = pass1Result.scriptBody;
+                    const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
+                    const finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
+                    if (finalScript) setScriptInput(finalScript);
+                    showToast('씬 분해에 실패했습니다. 대본이 설정되었으니 수동으로 씬을 구성해주세요.', 'info');
+                    return;
+                }
+            }
+
+            // ============================================
+            // [로컬 후처리] 잠긴 프로필 → masterMap/locationMap 변환
+            // ============================================
+
+            // lockedCharacters → masterMap 변환
+            const allSlotIds = pass1Result.lockedCharacters.map(ch => ch.slotId);
+            const hasCaddy = pass1Result.lockedCharacters.some(ch => ch.slotId === 'WomanD');
+            const masterMap = buildAutoCharacterMap(allSlotIds, aiTargetAge, false);
+
+            // lockedCharacters로 masterMap 오버라이드
+            pass1Result.lockedCharacters.forEach(ch => {
+                const existing = masterMap.get(ch.slotId);
+                if (!existing) return;
+                const gender = existing.gender;
+                let outfit = ch.outfit || existing.outfit;
+                // 겨울 의상 변환 적용
+                if (enableWinterAccessories && gender === 'female' && outfit) {
+                    outfit = convertToTightLongSleeveWithShoulderLine(outfit);
+                }
+                masterMap.set(ch.slotId, {
+                    ...existing,
+                    identity: ch.identity || existing.identity,
+                    hair: ch.hair || existing.hair,
+                    body: ch.body || existing.body,
+                    outfit: outfit || existing.outfit,
+                    accessories: existing.accessories || []
+                });
+            });
+
+            // 악세서리 맵 구축
+            let accessoryMap = buildAccessoryMap(undefined, enableWinterAccessories);
+            if (enableWinterAccessories && allSlotIds.length > 0) {
+                accessoryMap = buildWinterAccessoryMap(allSlotIds);
+            }
+            // masterMap에 악세서리 반영
+            masterMap.forEach((meta, id) => {
+                const acc = accessoryMap.get(id) || [];
+                if (acc.length > 0) {
+                    masterMap.set(id, { ...meta, accessories: acc });
+                }
+            });
+
+            // lockedLocations → locationMap (Pass 2 씬의 background 기본값으로 사용)
+            const locationMap = new Map<string, string>();
+            pass1Result.lockedLocations.forEach(loc => {
+                locationMap.set(loc.id, loc.englishDescription);
+            });
+
+            // Pass 2 씬에 background 보강 (locationId → 실제 배경 묘사)
+            pass2Scenes = pass2Scenes.map((scene: any) => {
+                if (!scene.background && scene.locationId) {
+                    const locDesc = locationMap.get(scene.locationId);
+                    if (locDesc) {
+                        return { ...scene, background: locDesc };
+                    }
+                }
+                return scene;
+            });
+
+            // slotMap 구성
+            const slotMap = new Map<string, string>();
+            allSlotIds.forEach((id) => slotMap.set(id, id));
+            pass1Result.lockedCharacters.forEach(ch => {
+                slotMap.set(ch.slotId, ch.slotId);
+            });
+
+            // 씬 빌드
+            const extractedScenes = buildScenesFromData(pass2Scenes, masterMap, slotMap, hasCaddy, accessoryMap);
+
+            // ============================================
+            // [검증] validateProfileConsistency
+            // ============================================
+            const scenePrompts = extractedScenes.map(s => s.prompt);
+            const consistency = validateProfileConsistency(scenePrompts, pass1Result.lockedCharacters);
+            if (!consistency.isConsistent) {
+                console.warn('[ShortsLab] Profile consistency issues detected:', consistency.issues);
+                // composeManualPrompt가 이미 masterMap에서 강제 삽입하므로, 여기서는 경고 로그만
+            }
+
+            // ============================================
+            // [결과 적용]
+            // ============================================
+            const rawScript = pass1Result.scriptBody;
+            const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
+            const finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
+            if (finalScript) setScriptInput(finalScript);
 
             if (extractedScenes.length > 0) {
                 setScenes(extractedScenes);
                 setActiveTab('preview');
-                showToast(`✅ ${selectedService} AI로 마스터 대본이 생성되었습니다! (${extractedScenes.length}개 씬)`, 'success');
+                const retryNote = pass2RetryCount > 0 ? ` (재시도 ${pass2RetryCount}회)` : '';
+                showToast(`${selectedService} AI로 마스터 대본이 생성되었습니다! (2-Pass, ${extractedScenes.length}개 씬${retryNote})`, 'success');
             }
         } catch (error) {
             console.error('AI 마스터 생성 실패:', error);

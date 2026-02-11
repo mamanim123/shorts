@@ -1,1 +1,6 @@
-🔧 save.bat 줄바꿈 LF→CRLF 변환 - cmd.exe 호환성 복원
+﻿✨ AI 마스터 생성 2-Pass 재설계 구현
+
+- Pass 1: 대본 + 캐릭터 프로필/배경/스타일 DNA 잠금
+- Pass 2: 잠긴 프로필 기반 씬 분해 (일관성 극대화)
+- validateProfileConsistency 안전망 추가
+- Pass 1 실패 시 기존 단일 Pass 폴백 지원

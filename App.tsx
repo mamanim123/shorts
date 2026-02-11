@@ -20,6 +20,7 @@ import ShortsScriptGenerator from './youtube-shorts-script-generator';
 import AiStudioHost from './components/AiStudioHost';
 import { CineboardPanel } from './components/CineboardPanel';
 import { ShortsLabPanel } from './components/ShortsLabPanel';
+import { NewChapterPanel } from './components/NewChapterPanel';
 import { YoutubeSearchPanel } from './components/YoutubeSearchPanel';
 import { ToastContainer } from './components/Toast';
 
@@ -180,7 +181,7 @@ const App: React.FC = () => {
   const [showTemplateResult, setShowTemplateResult] = useState(false);
 
   // Right panel tab state
-  const [rightTab, setRightTab] = useState<'analysis' | 'shortform' | 'longform' | 'youtube-search' | 'shorts-generator' | 'ai-studio' | 'cineboard' | 'shorts-lab'>('shorts-lab');
+  const [rightTab, setRightTab] = useState<'analysis' | 'shortform' | 'longform' | 'youtube-search' | 'shorts-generator' | 'ai-studio' | 'cineboard' | 'shorts-lab' | 'new-chapter'>('shorts-lab');
   const analysisTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   // Duplicate historySubTab removed
   const [templateSearch, setTemplateSearch] = useState('');
@@ -1078,6 +1079,8 @@ Follow this guidance carefully while keeping mandatory rules above.
       .join('\n\n')
     : '';
 
+  const labTargetService = input.targetService === 'HYBRID' ? 'GEMINI' : input.targetService;
+
   const handleCopyLongformScript = () => {
     if (!longformFinalScript) return;
     navigator.clipboard?.writeText(longformFinalScript)
@@ -1611,6 +1614,7 @@ Long: ${s.longPrompt || ''}
             <button className={`px-4 py-2 text-sm ${rightTab === 'ai-studio' ? 'bg-slate-100 dark:bg-slate-800 text-purple-300' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200'}`} onClick={() => setRightTab('ai-studio')}>AI Studio</button>
             <button className={`px-4 py-2 text-sm ${rightTab === 'cineboard' ? 'bg-slate-100 dark:bg-slate-800 text-purple-300' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200'}`} onClick={() => setRightTab('cineboard')}>씨네보드</button>
             <button className={`px-4 py-2 text-sm ${rightTab === 'shorts-lab' ? 'bg-slate-100 dark:bg-slate-800 text-emerald-300' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200'}`} onClick={() => setRightTab('shorts-lab')}>쇼츠랩</button>
+            <button className={`px-4 py-2 text-sm ${rightTab === 'new-chapter' ? 'bg-slate-100 dark:bg-slate-800 text-cyan-300' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200'}`} onClick={() => setRightTab('new-chapter')}>뉴챕터</button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1820,7 +1824,14 @@ Long: ${s.longPrompt || ''}
           {rightTab === 'shorts-lab' && (
             <div className="h-full flex bg-white dark:bg-slate-950">
               <div className="flex-1 bg-slate-950 text-white overflow-hidden flex">
-                <ShortsLabPanel targetService={input.targetService} />
+                <ShortsLabPanel targetService={labTargetService} />
+              </div>
+            </div>
+          )}
+          {rightTab === 'new-chapter' && (
+            <div className="h-full flex bg-white dark:bg-slate-950">
+              <div className="flex-1 bg-slate-950 text-white overflow-hidden flex">
+                <NewChapterPanel targetService={labTargetService} />
               </div>
             </div>
           )}

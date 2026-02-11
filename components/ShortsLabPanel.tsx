@@ -36,7 +36,7 @@ import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/
 import { UNIFIED_OUTFIT_LIST } from '../constants';
 import { fetchCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
-import { shortsLabCharacterRulesManager } from '../services/shortsLabCharacterRulesManager';
+import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
 import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, ElementAnalysis, getProblemExplanation } from '../utils/promptHighlightSystem';
 import { usePromptEditModal } from '../hooks/usePromptEditModal';
 import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
@@ -268,7 +268,6 @@ const normalizeSlotList = (slotIds: string[], defaultGender: 'female' | 'male', 
     const normalized = slotIds
         .map((id) => normalizeSlotId(id))
         .filter(Boolean);
-    if (hasCaddy) normalized.push('WomanD');
     const unique = new Set(normalized);
     const ordered = SLOT_ORDER.filter((id) => unique.has(id));
     if (ordered.length === 0) {
@@ -298,9 +297,6 @@ const normalizeSceneCharacterIds = (
             resolved.push(slot);
         }
     });
-    if (hasCaddy && !seen.has('WomanD')) {
-        resolved.push('WomanD');
-    }
     if (resolved.length === 0) {
         resolved.push(defaultGender === 'male' ? 'ManA' : 'WomanA');
     }
@@ -1429,6 +1425,18 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [isGenerating, setIsGenerating] = useState(false);
     const [isMasterGenerating, setIsMasterGenerating] = useState(false);
 
+    // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
+    const [masterCharacterProfiles, setMasterCharacterProfiles] = useState<Array<{
+        slotId: string;
+        name: string;
+        identity: string;
+        hair: string;
+        body: string;
+        outfit: string;
+        outfitPrompt: string;
+    }>>([]);
+    const [masterOutfitMap, setMasterOutfitMap] = useState<Map<string, { name: string; prompt: string }>>(new Map());
+
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
@@ -2510,27 +2518,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         sceneNumber: number,
         characterIds: string[],
         characterMap: Map<string, ManualCharacterPrompt>,
-        guidance?: { expression?: string; camera?: string; action?: string; background?: string }
+        guidance?: { expression?: string; camera?: string; action?: string; background?: string; styleDNA?: string }
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
-        let remainder = (rawPrompt || '').trim();
-        const hadPersonMarkers = /\[Person\s+\d+:/i.test(remainder);
 
-        // Clean up common AI prefixes
-        remainder = remainder.replace(/^Scene\s+\d+[.,]?\s*/i, '').trim();
-        if (remainder.includes(PROMPT_CONSTANTS.START)) {
-            remainder = remainder.replace(PROMPT_CONSTANTS.START, '').trim();
-        }
-        if (remainder.includes(PROMPT_CONSTANTS.END)) {
-            remainder = remainder.replace(PROMPT_CONSTANTS.END, '').trim();
-        }
-        remainder = remainder.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
-
-        // [v3.5.3] De-duplication Logic: 
-        // If AI already wrote a long prompt, we want to replace its generic character descriptions
-        // with our specific [Person X] markers to ensure consistency while avoiding "A stunning Korean woman" appearing twice.
-
-        const actionChunks = (guidance?.action || '').split(/\s*,\s*/).filter(Boolean);
+        const normalizedAction = guidance?.action ? translateActionToEnglish(guidance.action) : '';
+        const actionChunks = normalizedAction.split(/\s*,\s*/).filter(Boolean);
         const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
 
         // [v3.5.3] Action Distribution: If AI provides a single "together" action, distribute it to individuals
@@ -2554,9 +2547,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const outfitPhrase = meta.outfit
                     ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
                     : '';
-                const accessoryPhrase = meta.accessories.length > 0
-                    ? `accessorized with ${meta.accessories.join(', ')}`
-                    : '';
 
                 let personAction = actionChunks[index] || actionChunks[0] || '';
                 personAction = distributeAction(personAction, characterIds.length);
@@ -2568,7 +2558,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     fallbackHair,
                     fallbackBody,
                     outfitPhrase,
-                    accessoryPhrase,
                     personAction ? `action: ${personAction}` : '',
                     personExpression ? `expression: ${personExpression}` : ''
                 ].filter(Boolean).join(', ');
@@ -2579,10 +2568,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             .filter(Boolean)
             .join(', ');
 
-        // Try to find where the AI described characters and replace or suppress
-        // For now, let's keep it simple: Start with our identity markers, then add the rest.
         const parts = [PROMPT_CONSTANTS.START];
-        const actionPrompt = guidance?.action ? translateActionToEnglish(guidance.action) : '';
         const cameraPrompt = guidance?.camera || '';
         const isWideShot = /\bwide\b|establishing|panoramic|bird\'s-eye|overhead/i.test(cameraPrompt);
         const backgroundPrompt = guidance?.background ? guidance.background.trim() : '';
@@ -2594,51 +2580,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             .join(', ');
 
         if (cameraPrompt) parts.push(cameraPrompt);
-
-        // 🔹 [V3.9.2] 마마님 요청: 동작(Action)과 표정을 최우선 배치하여 역동성 강화
-        if (guidance?.expression) parts.push(`[${guidance.expression}]`);
-        if (actionPrompt) parts.push(actionPrompt);
-
         if (environmentPrompt) parts.push(environmentPrompt);
         if (identityBlock) parts.push(identityBlock);
-
-        // Suppress AI's attempt to REDESCRIBE characters if we already have the block
-
-        // We look for patterns like "A stunning Korean woman" or "Slot Woman A" and remove them from the remainder
-        let cleanedRemainder = remainder;
-        if (hadPersonMarkers) {
-            cleanedRemainder = cleanedRemainder.replace(/\[Person\s+\d+:[^\]]*\]/gi, '').trim();
-        }
-        characterIds.forEach((id) => {
-            const meta = characterMap.get(id);
-            if (!meta) return;
-            // Remove things like "A stunning Korean woman", "Woman A", "Slot Woman A"
-            const namePattern = new RegExp(`(A\\s+stunning\\s+Korean\\s+woman|A\\s+handsome\\s+Korean\\s+man|Slot\\s+${meta.slotLabel}|${meta.slotLabel}|Korean\\s+woman|Korean\\s+man|beautiful\\s+woman|handsome\\s+man)`, 'gi');
-            cleanedRemainder = cleanedRemainder.replace(namePattern, '').trim();
-        });
-        if (actionPrompt && guidance?.action) {
-            cleanedRemainder = cleanedRemainder.replace(guidance.action, '').trim();
-        }
-        cleanedRemainder = cleanedRemainder
-            .replace(/\bwearing\s+[^,]+/gi, '')
-            .replace(/\boutfit:\s*[^,]+/gi, '')
-            .replace(/\bin\s+a\s+[^,]+\s+(knit|coat|jacket|puffer|vest|turtleneck|sweater|hoodie|suit|dress|skirt)\b/gi, '')
-            .replace(/\bwearing\s+(a\s+)?(mini\s+)?(dress|skirt|micro|bodycon|outfit)\b/gi, '')
-            .trim();
-        if (isWideShot) {
-            cleanedRemainder = cleanedRemainder
-                .replace(/shallow depth of field/gi, '')
-                .replace(/studio (backdrop|lighting)/gi, '')
-                .replace(/portrait (lighting|background|shot)/gi, '')
-                .trim();
-        }
-        const adjectivePattern = /\b(stunning|beautiful|attractive|gorgeous|sexy|elegant|handsome)\b\s+(korean\s+)?(woman|man|female|male|lady|gentleman|caddy)\b/gi;
-        cleanedRemainder = cleanedRemainder.replace(adjectivePattern, '').trim();
-
-        // Clean up messy commas from replacement
-        cleanedRemainder = cleanedRemainder.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
-
-        if (cleanedRemainder) parts.push(cleanedRemainder);
+        if (guidance?.styleDNA) parts.push(guidance.styleDNA.trim());
 
         // [v3.10] 멀티캐릭터 장면에서 쌍둥이 현상 방지 키워드 추가
         if (characterIds.length >= 2) {
@@ -3695,7 +3639,232 @@ ${scriptInput}
         }
     };
 
+    // ============================================
+    // [신규] 단순화된 AI 마스터 생성 (캐릭터 일관성 보장)
+    // ============================================
     const handleMasterGenerate = async () => {
+        if (!aiTopic.trim()) {
+            setGenerationError('주제를 입력해주세요.');
+            return;
+        }
+        if (isGenerating || isMasterGenerating) return;
+
+        setIsMasterGenerating(true);
+        setGenerationError(null);
+
+        try {
+            const selectedService = targetService || 'GEMINI';
+
+            // 1. outfits.json 로드
+            const outfitsResponse = await fetch('http://localhost:3002/api/outfits');
+            const outfitsData = await outfitsResponse.json();
+            const allOutfits = outfitsData.outfits || [];
+
+            // 2. 캐릭터 규칙 로드
+            const characterRules = getCharacterRules();
+
+            // 3. 단순화된 LLM 프롬프트 생성
+            const { buildSimplifiedMasterPrompt } = await import('../services/labPromptBuilder');
+            const simplifiedPrompt = buildSimplifiedMasterPrompt({
+                topic: aiTopic,
+                genre: aiGenre,
+                targetAge: aiTargetAge,
+                gender: settings.koreanGender
+            });
+
+            showToast(`${selectedService} AI로 대본과 씬 구조를 생성하고 있습니다...`, 'info');
+
+            // 4. LLM 호출 (단일 Pass)
+            const llmResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: simplifiedPrompt,
+                    maxTokens: 2000,
+                    temperature: 0.9
+                })
+            });
+
+            if (!llmResponse.ok) {
+                throw new Error(`LLM API error: ${llmResponse.status}`);
+            }
+
+            const llmData = await llmResponse.json();
+            const llmText = llmData.rawResponse || llmData.text || llmData.result || '';
+
+            // JSON 파싱
+            let jsonClean = llmText.trim();
+            jsonClean = jsonClean.replace(/^(JSON|json)\s+/, '').trim();
+            if (jsonClean.startsWith('```')) {
+                jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+            }
+
+            const parsed = parseJsonFromText<{ scriptBody: string; scenes: any[] }>(
+                jsonClean,
+                ['scriptBody', 'scenes']
+            );
+
+            if (!parsed || !parsed.scriptBody || !Array.isArray(parsed.scenes)) {
+                throw new Error('LLM 응답 JSON 파싱 실패');
+            }
+
+            // 5. 사용된 모든 캐릭터 ID 수집
+            const allCharacterIds = new Set<string>();
+            parsed.scenes.forEach((scene: any) => {
+                (scene.characterIds || []).forEach((id: string) => allCharacterIds.add(id));
+            });
+
+            // 6. 의상 중복 없이 랜덤 선택
+            console.log('[AI Master] All character IDs:', Array.from(allCharacterIds));
+            console.log('[AI Master] Genre:', aiGenre);
+            console.log('[AI Master] Available outfits:', allOutfits.length);
+
+            const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
+            const outfitMap = assignOutfitsToCharacters({
+                characterIds: Array.from(allCharacterIds),
+                genre: aiGenre,
+                outfitsData: allOutfits
+            });
+
+            console.log('[AI Master] Outfit map created:', outfitMap);
+
+            // 7. 캐릭터 정보 및 의상 정보 저장 (미리보기용)
+            const profiles = Array.from(allCharacterIds).map(slotId => {
+                const outfit = outfitMap.get(slotId);
+                let characterInfo: any = {};
+
+                if (slotId.startsWith('Woman')) {
+                    const femaleChar = characterRules.females.find((f: any) => f.id === slotId);
+                    characterInfo = femaleChar || {};
+                    console.log(`[AI Master] WomanChar ${slotId}:`, characterInfo);
+                } else if (slotId.startsWith('Man')) {
+                    const maleChar = characterRules.males.find((m: any) => m.id === slotId);
+                    characterInfo = maleChar || {};
+                    console.log(`[AI Master] ManChar ${slotId}:`, characterInfo);
+                }
+
+                const profile = {
+                    slotId,
+                    name: characterInfo.name || slotId,
+                    identity: characterInfo.identity || '',
+                    hair: characterInfo.hair || '',
+                    body: characterInfo.body || '',
+                    outfit: outfit?.name || '의상 미선택',
+                    outfitPrompt: outfit?.prompt || ''
+                };
+
+                console.log(`[AI Master] Profile ${slotId}:`, profile);
+                return profile;
+            });
+
+            console.log('[AI Master] All profiles:', profiles);
+            console.log('[AI Master] Outfit map:', outfitMap);
+
+            setMasterCharacterProfiles(profiles);
+            setMasterOutfitMap(outfitMap);
+
+            // 8. 대본 설정
+            setScriptInput(parsed.scriptBody);
+
+            // 9. 씬 데이터 저장 (프롬프트는 아직 생성하지 않음 - 버튼 클릭 시 생성)
+            const extractedScenes = parsed.scenes.map((scene: any, index: number) => ({
+                number: index + 1,
+                text: scene.scriptLine || '',
+                characterIds: scene.characterIds || [],
+                cameraAngle: scene.cameraAngle || 'medium shot',
+                background: scene.background || '',
+                action: scene.action || 'standing naturally',
+                prompt: '',  // 빈 상태 (버튼 클릭 전)
+                characterProfilesApplied: false,
+                imageUrl: undefined,
+                isSelected: true,
+                shotType: '원샷',
+                age: aiTargetAge,
+                outfit: '',
+                summary: scene.scriptLine || '',
+                camera: scene.cameraAngle || '',
+                videoPrompt: '',
+                dialogue: scene.scriptLine || '',
+                voiceType: 'narration' as const,
+                narrationText: scene.scriptLine || '',
+                narrationEmotion: '',
+                narrationSpeed: 'normal' as const,
+                lipSyncSpeaker: '',
+                lipSyncSpeakerName: '',
+                lipSyncLine: '',
+                lipSyncEmotion: '',
+                lipSyncTiming: undefined,
+                shortPromptKo: '',
+                longPromptKo: ''
+            }));
+
+            console.log('[AI Master] Scenes created:', extractedScenes.length);
+            console.log('[AI Master] Character profiles:', masterCharacterProfiles.length);
+
+            setScenes(extractedScenes);  // ✅ FIX: setExtractedScenes → setScenes
+            setActiveTab('preview');
+
+            showToast(
+                `✓ ${selectedService} AI로 대본과 씬 구조가 생성되었습니다! (${extractedScenes.length}개 씬)\n"캐릭터 정보 적용" 버튼을 클릭하여 프롬프트를 생성하세요.`,
+                'success'
+            );
+
+        } catch (error) {
+            console.error('AI 마스터 생성 실패:', error);
+            setGenerationError(error instanceof Error ? error.message : '마스터 생성에 실패했습니다.');
+        } finally {
+            setIsMasterGenerating(false);
+        }
+    };
+
+    // ============================================
+    // [신규] 캐릭터 정보 적용 버튼 핸들러
+    // ============================================
+    const handleApplyCharacterInfo = async () => {
+        try {
+            console.log('[Apply Character] Start');
+            console.log('[Apply Character] Scenes count:', scenes.length);
+            console.log('[Apply Character] Character profiles count:', masterCharacterProfiles.length);
+            console.log('[Apply Character] Outfit map size:', masterOutfitMap.size);
+
+            if (scenes.length === 0) {
+                showToast('적용할 씬이 없습니다.', 'warning');
+                return;
+            }
+
+            if (masterOutfitMap.size === 0) {
+                showToast('캐릭터 의상 정보가 없습니다. AI 마스터 생성을 먼저 실행하세요.', 'warning');
+                return;
+            }
+
+            const { applyCharacterInfoToScenes } = await import('../services/labPromptBuilder');
+            const characterRules = getCharacterRules();
+
+            console.log('[Apply Character] Character rules loaded:', characterRules);
+
+            const updatedScenes = applyCharacterInfoToScenes({
+                scenes,
+                characterRules,
+                outfitMap: masterOutfitMap,
+                targetAge: aiTargetAge
+            });
+
+            console.log('[Apply Character] Updated scenes:', updatedScenes.length);
+            console.log('[Apply Character] First scene prompt:', updatedScenes[0]?.prompt);
+
+            setScenes(updatedScenes);
+            showToast(`✓ 모든 씬에 캐릭터 정보가 적용되었습니다! (${updatedScenes.length}개 씬)`, 'success');
+        } catch (error) {
+            console.error('[Apply Character] 실패:', error);
+            showToast('캐릭터 정보 적용에 실패했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'), 'error');
+        }
+    };
+
+    // ============================================
+    // [기존] 2-Pass AI 마스터 생성 (백업용)
+    // ============================================
+    const handleMasterGenerate_OLD = async () => {
         if (!aiTopic.trim()) {
             setGenerationError('주제를 입력해주세요.');
             return;
@@ -3735,6 +3904,50 @@ ${scriptInput}
             return parseJsonFromText<any>(jsonClean, fields);
         };
 
+        // Prompt diff 저장 헬퍼 (마스터 생성도 promptdiff 생성)
+        const savePromptDiffReport = async (
+            originalScenes: any[],
+            processedScenes: any[],
+            folderName?: string
+        ) => {
+            try {
+                const normalizedProcessed = processedScenes.map((scene: any) => ({
+                    ...scene,
+                    longPrompt: scene.longPrompt || scene.prompt || scene.shortPrompt || ''
+                }));
+                const diffReport = buildPromptDiffReport(originalScenes, normalizedProcessed, {
+                    title: aiTopic?.trim() || 'ShortsLab',
+                    folderName,
+                    service: selectedService
+                });
+                await fetch('http://localhost:3002/api/save-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: `${aiTopic?.trim() || 'ShortsLab'}_prompt_diff`,
+                        content: diffReport,
+                        service: 'ShortsLab',
+                        folderName
+                    })
+                });
+            } catch (e) {
+                console.warn('[ShortsLab] Failed to save prompt diff report:', e);
+            }
+        };
+
+        const buildStyleDNAString = (dna?: MasterVisualStyleDNA) => {
+            if (!dna) return '';
+            return [
+                dna.lighting,
+                dna.colorPalette,
+                dna.atmosphere,
+                dna.timeOfDay
+            ]
+                .map((item) => String(item || '').trim())
+                .filter(Boolean)
+                .join(', ');
+        };
+
         // 씬 데이터에서 characterIds 수집 헬퍼
         const collectSceneIds = (scene: any) => {
             const ids: string[] = [];
@@ -3753,7 +3966,8 @@ ${scriptInput}
             masterMap: Map<string, ManualCharacterPrompt>,
             slotMap: Map<string, string>,
             hasCaddy: boolean,
-            accessoryMapInput: Map<string, string[]>
+            accessoryMapInput: Map<string, string[]>,
+            styleDNA?: string
         ): Scene[] => {
             resetAngleHistory();
             const totalScenes = scenesSource.length || 8;
@@ -3808,20 +4022,18 @@ ${scriptInput}
                 // LLM이 제공한 action(영어)과 background 우선, 없으면 기존 방식
                 const llmAction = scene.action || scene.actionKo || '';
                 const llmBackground = scene.background || '';
-                const narrativeParts = mergeNarrativeParts([
-                    llmBackground,
-                    scene.summary,
+                const mergedAction = mergeNarrativeParts([
                     llmAction,
                     actionFlavor,
                     groupActionFlavor
                 ]);
 
                 const normalizedPrompt = composeManualPrompt(
-                    narrativeParts || sceneText,
+                    (scene.summary || sceneText || '').trim(),
                     sceneNumber,
                     sceneCharacterIds,
                     masterMap,
-                    { expression: finalExpression, camera: cameraPrompt, action: llmAction, background: llmBackground }
+                    { expression: finalExpression, camera: cameraPrompt, action: mergedAction, background: llmBackground, styleDNA }
                 );
                 const characterInfos = sceneCharacterIds
                     .map((id) => masterMap.get(id))
@@ -4120,6 +4332,7 @@ ${scriptInput}
                             accessoryMap = buildWinterAccessoryMap(allSlotIds);
                         }
                         const extractedScenes = buildScenesFromData(scenesSource, masterMap, slotMap, hasCaddy, accessoryMap);
+                        await savePromptDiffReport(scenesSource, extractedScenes, fallbackData._folderName);
                         if (extractedScenes.length > 0) {
                             setScenes(extractedScenes);
                             setActiveTab('preview');
@@ -4272,7 +4485,8 @@ ${scriptInput}
             });
 
             // 씬 빌드
-            const extractedScenes = buildScenesFromData(pass2Scenes, masterMap, slotMap, hasCaddy, accessoryMap);
+            const styleDNA = buildStyleDNAString(pass1Result.visualStyleDNA);
+            const extractedScenes = buildScenesFromData(pass2Scenes, masterMap, slotMap, hasCaddy, accessoryMap, styleDNA);
 
             // ============================================
             // [검증] validateProfileConsistency
@@ -4293,6 +4507,7 @@ ${scriptInput}
             if (finalScript) setScriptInput(finalScript);
 
             if (extractedScenes.length > 0) {
+                await savePromptDiffReport(pass2Scenes, extractedScenes, pass1FolderName);
                 setScenes(extractedScenes);
                 setActiveTab('preview');
                 const retryNote = pass2RetryCount > 0 ? ` (재시도 ${pass2RetryCount}회)` : '';
@@ -5224,6 +5439,44 @@ ${scriptInput}
                 {/* 미리보기 탭 */}
                 {activeTab === 'preview' && (
                     <div className="space-y-4">
+                        {/* [신규] 캐릭터 프로필 섹션 (AI 마스터 생성 후 표시) */}
+                        {masterCharacterProfiles.length > 0 && (
+                            <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 border border-indigo-700/50 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-indigo-400" />
+                                        <h3 className="font-semibold text-indigo-300">캐릭터 프로필</h3>
+                                        <span className="text-xs bg-indigo-600/50 text-indigo-200 px-2 py-0.5 rounded-full">AI 마스터 생성</span>
+                                    </div>
+                                    <button
+                                        onClick={handleApplyCharacterInfo}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-semibold transition-all"
+                                    >
+                                        <Zap className="w-4 h-4" />
+                                        캐릭터 정보 적용
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {masterCharacterProfiles.map(profile => (
+                                        <div key={profile.slotId} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-sm font-bold text-emerald-400">{profile.slotId}</span>
+                                                <span className="text-xs text-slate-400">({profile.name})</span>
+                                            </div>
+                                            <ul className="space-y-1 text-xs text-slate-300">
+                                                <li>• <span className="text-slate-500">의상:</span> {profile.outfit}</li>
+                                                <li>• <span className="text-slate-500">헤어:</span> {profile.hair}</li>
+                                                <li>• <span className="text-slate-500">체형:</span> {profile.body.slice(0, 50)}{profile.body.length > 50 ? '...' : ''}</li>
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-indigo-300 mt-3">
+                                    💡 <strong>"캐릭터 정보 적용"</strong> 버튼을 클릭하면 모든 씬에 캐릭터 정보가 자동으로 치환됩니다. (100% 일관성 보장)
+                                </p>
+                            </div>
+                        )}
+
                         {scenes.length === 0 ? (
                             <div className="text-center py-12 text-slate-400">
                                 <Eye className="w-12 h-12 mx-auto mb-4 opacity-50" />

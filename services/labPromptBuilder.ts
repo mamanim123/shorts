@@ -3105,6 +3105,320 @@ export const validateProfileConsistency = (
   };
 };
 
+// ============================================
+// [신규] 단순화된 AI 마스터 생성 프롬프트 (캐릭터 일관성 보장)
+// ============================================
+
+/**
+ * buildSimplifiedMasterPrompt
+ *
+ * AI 마스터 생성 버튼 전용 - 단일 Pass LLM 프롬프트
+ * - LLM은 대본 + 씬 구조만 생성 (캐릭터 슬롯 ID만 할당)
+ * - 캐릭터 특징, 의상, 헤어 등은 LLM이 생성하지 않음 (코드가 자동 처리)
+ * - 100% 일관성 보장
+ */
+export const buildSimplifiedMasterPrompt = (params: {
+  topic: string;
+  genre: string;
+  targetAge: string;
+  gender?: string;
+}): string => {
+  const { topic, genre, targetAge, gender = '여성' } = params;
+
+  const characterSlots = gender === '남성'
+    ? 'ManA (준호), ManB (민수), ManC (남성 조연)'
+    : 'WomanA (지영), WomanB (혜경), WomanC (미숙), WomanD (캐디), ManA (준호), ManB (민수)';
+
+  return `당신은 YouTube 쇼츠용 ${genre} 장르의 ${targetAge} 타겟 대본 작가입니다.
+
+**주제**: ${topic}
+
+다음 JSON 형식으로 응답하세요:
+
+\`\`\`json
+{
+  "scriptBody": "전체 대본 (8~12문장, 각 문장은 한 씬에 대응)",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "scriptLine": "첫 번째 대사 (scriptBody의 첫 번째 문장과 정확히 일치)",
+      "characterIds": ["WomanA", "WomanB"],
+      "cameraAngle": "drone shot",
+      "background": "vast snow-covered golf course stretching to horizon under golden morning light",
+      "action": "walking side by side leaving footprints in pristine snow, laughing joyfully"
+    },
+    {
+      "sceneNumber": 2,
+      "scriptLine": "두 번째 대사",
+      "characterIds": ["WomanA"],
+      "cameraAngle": "full body wide shot",
+      "background": "elegant clubhouse entrance with modern glass architecture reflecting winter sky",
+      "action": "twirling gracefully with golf club in hand, snow gently falling around her"
+    },
+    {
+      "sceneNumber": 3,
+      "scriptLine": "세 번째 대사",
+      "characterIds": ["ManA", "ManB"],
+      "cameraAngle": "low angle wide",
+      "background": "dramatic golf course fairway with towering pine trees covered in snow",
+      "action": "striding confidently forward toward camera, snow crunching beneath their feet"
+    }
+    // ... 8~12개 씬 (scriptBody의 문장 수와 정확히 일치)
+    // 반드시 drone shot, full body wide, low angle wide, establishing wide 위주로!
+  ]
+}
+\`\`\`
+
+**중요 규칙:**
+
+1. **캐릭터 슬롯 ID만 사용** (절대 캐릭터 특징 언급 금지):
+   - 사용 가능한 슬롯: ${characterSlots}
+   - 각 씬의 \`characterIds\`에 슬롯 ID만 배열로 기입
+   - **절대 금지**: 캐릭터 외모, 헤어스타일, 의상, 체형 등 특징 언급 (코드가 자동 처리)
+
+2. **씬 구조 필수 항목**:
+   - \`sceneNumber\`: 씬 번호 (1부터 시작)
+   - \`scriptLine\`: 대사 (scriptBody의 문장과 1:1 대응)
+   - \`characterIds\`: 슬롯 ID 배열 (예: ["WomanA"], ["WomanA", "ManA"])
+   - \`cameraAngle\`: 카메라 앵글 (아래 규칙 참고)
+   - \`background\`: 배경 (영어로 창의적이고 구체적으로)
+   - \`action\`: 동작 (영어로 생생하고 역동적으로)
+
+3. **씬 개수**:
+   - 반드시 8~12개 씬 생성
+   - scriptBody의 각 문장마다 1개 씬 할당 (1:1 매칭)
+
+4. **카메라 앵글 규칙 (매우 중요!)**:
+   - **대박나는 쇼츠는 역동적이고 시네마틱한 와이드샷이 핵심입니다!**
+   - **필수 비율**:
+     - drone shot / aerial wide (드론/항공 와이드): 25%
+     - full body wide shot (전신 와이드샷): 25%
+     - low angle wide (로우앵글 와이드): 20%
+     - establishing wide shot (배경 위주 와이드): 15%
+     - close-up (클로즈업): 최대 10% (감정 중요한 순간만)
+     - POV (시점샷): 5%
+   - **medium shot과 extreme close-up은 절대 사용 금지!**
+   - **앵글 작성 예시** (정확히 이렇게 작성하세요):
+     - "drone shot" 또는 "aerial wide shot"
+     - "full body wide shot" 또는 "wide shot showing full body"
+     - "low angle wide shot" 또는 "low angle wide"
+     - "establishing wide shot" 또는 "wide establishing shot"
+     - "close-up" (10개 씬 중 최대 1개만!)
+     - "POV shot" 또는 "POV"
+   - **앵글 설명**:
+     - drone shot / aerial wide: 하늘에서 내려다본 광활한 구도, 공간의 스케일 극대화
+     - full body wide shot: 전신이 모두 보이는 구도, 배경과 캐릭터 조화
+     - low angle wide: 아래에서 위로 올려다보는 구도, 역동적이고 웅장함
+     - establishing wide shot: 배경이 주인공, 캐릭터는 풍경의 일부
+     - close-up: 얼굴 중심, 감정 표현이 매우 중요한 순간에만 사용
+     - POV: 캐릭터 시점, 몰입감 극대화
+   - **절대 금지**: "medium shot", "medium close-up", "extreme close-up", "mid shot"
+   - POV 샷 사용 시 카메라 역할 캐릭터는 characterIds에서 제외
+
+5. **배경(background) 작성 규칙**:
+   - **창의적이고 구체적으로** 작성
+   - 나쁜 예: "golf course" (너무 간단함)
+   - 좋은 예: "sunlit golf course green with morning dew sparkling on grass"
+   - 좋은 예: "elegant clubhouse lounge with floor-to-ceiling windows overlooking snow-covered fairway"
+   - 좋은 예: "pristine white sand bunker with dramatic shadows"
+   - **시각적 요소 포함**: 조명, 분위기, 시간대, 날씨, 특징적 오브젝트
+   - **감정 전달**: 배경으로 감정과 분위기를 강화
+
+6. **동작(action) 작성 규칙**:
+   - **역동적이고 생생하게** 작성
+   - 나쁜 예: "sitting and smiling" (너무 평범함)
+   - 좋은 예: "laughing joyfully while tossing her hair back in the golden sunlight"
+   - 좋은 예: "confidently walking toward camera with a mysterious smile"
+   - 좋은 예: "dramatically spinning around with arms wide open, snow falling around her"
+   - **감정과 뉘앙스 포함**: 단순 동작이 아닌 감정이 담긴 행동
+   - **세부 묘사**: 손동작, 시선, 표정 변화 등 구체적으로
+
+**체크리스트**:
+- [ ] scriptBody는 8~12개 문장인가?
+- [ ] scenes 배열은 scriptBody 문장 수와 정확히 일치하는가?
+- [ ] 모든 씬의 characterIds는 슬롯 ID만 포함하는가?
+- [ ] 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않았는가?
+- [ ] 카메라 앵글 비율을 준수했는가? (drone shot 25%, full body wide 25%, low angle wide 20%, establishing wide 15%, close-up 최대 10%, POV 5%)
+- [ ] **medium shot과 extreme close-up을 사용하지 않았는가?** (절대 금지!)
+- [ ] 와이드샷이 전체의 85% 이상인가? (drone + full body + low angle + establishing)
+- [ ] background는 창의적이고 구체적인가? (시각적 요소 포함)
+- [ ] action은 역동적이고 생생한가? (감정과 세부 묘사 포함)
+
+**⚠️ 필수 확인사항 (매우 중요!):**
+1. **카메라 앵글**: 10개 씬 기준 - drone shot 2~3개, full body wide 2~3개, low angle wide 2개, establishing wide 1~2개, close-up 최대 1개, POV 0~1개
+2. **절대 사용 금지**: medium shot, medium close-up, extreme close-up
+3. **와이드샷 위주**: 전체의 85% 이상이 와이드샷이어야 합니다!
+4. **배경과 동작**: 구체적이고 시각적으로 생생하게!
+
+이제 주제 "${topic}"에 대한 ${genre} 장르 대본과 씬 구조를 생성하세요.
+
+**기억하세요**: 대박나는 쇼츠는 **시네마틱한 와이드샷**이 핵심입니다! 드론샷, 전신샷, 로우앵글 와이드를 충분히 활용하세요!`;
+};
+
+/**
+ * assignOutfitsToCharacters
+ *
+ * 캐릭터 슬롯별로 의상을 중복 없이 랜덤 선택
+ * - outfits.json에서 장르에 맞는 카테고리 필터링
+ * - 중복 방지 로직
+ */
+export const assignOutfitsToCharacters = (params: {
+  characterIds: string[];
+  genre: string;
+  outfitsData: any[];
+}): Map<string, { name: string; prompt: string }> => {
+  const { characterIds, genre, outfitsData } = params;
+
+  console.log('[assignOutfits] Input genre:', genre);
+  console.log('[assignOutfits] Character IDs:', characterIds);
+  console.log('[assignOutfits] Total outfits:', outfitsData.length);
+
+  // 1. 장르 → 의상 카테고리 매핑
+  const categoryMap: Record<string, string> = {
+    'romance-dating': 'ROYAL',
+    'comedy-humor': 'ROYAL',
+    'daily-life': 'ROYAL',
+    'golf-luxury': 'GOLF LUXURY',
+    'sports-fitness': 'YOGA',
+    'sexy-glamour': 'SEXY'
+  };
+
+  const category = categoryMap[genre] || 'ROYAL';
+  console.log('[assignOutfits] Mapped category:', category);
+
+  // 2. 카테고리별 필터링
+  const availableOutfits = outfitsData.filter(o => o.category === category);
+  console.log('[assignOutfits] Available outfits for category:', availableOutfits.length);
+
+  if (availableOutfits.length === 0) {
+    console.warn(`[assignOutfits] No outfits found for category: ${category}`);
+    console.warn('[assignOutfits] Available categories:', [...new Set(outfitsData.map(o => o.category))]);
+    return new Map();
+  }
+
+  // 3. 중복 없이 랜덤 선택
+  const selectedOutfits = new Map<string, { name: string; prompt: string }>();
+  const usedIndices = new Set<number>();
+
+  characterIds.forEach(slotId => {
+    // 여성 캐릭터만 의상 할당 (남성은 기본 의상)
+    if (slotId.startsWith('Woman')) {
+      let randomIndex: number;
+      let attempts = 0;
+      const maxAttempts = availableOutfits.length * 2;
+
+      do {
+        randomIndex = Math.floor(Math.random() * availableOutfits.length);
+        attempts++;
+      } while (usedIndices.has(randomIndex) && attempts < maxAttempts);
+
+      if (attempts < maxAttempts) {
+        usedIndices.add(randomIndex);
+        const outfit = availableOutfits[randomIndex];
+        selectedOutfits.set(slotId, {
+          name: outfit.name,
+          prompt: outfit.prompt
+        });
+        console.log(`[assignOutfits] Assigned to ${slotId}:`, outfit.name);
+      } else {
+        console.warn(`[assignOutfits] Could not assign outfit to ${slotId} (max attempts reached)`);
+      }
+    }
+  });
+
+  console.log('[assignOutfits] Final outfit map:', selectedOutfits);
+  return selectedOutfits;
+};
+
+/**
+ * applyCharacterInfoToScenes
+ *
+ * 씬별 캐릭터 슬롯 ID를 실제 캐릭터 정보로 치환하여 최종 프롬프트 생성
+ * - 캐릭터 정보: shortsLabCharacterRulesDefaults.ts에서 조회
+ * - 의상 정보: assignOutfitsToCharacters에서 받은 Map 사용
+ * - 100% 일관성 보장
+ */
+export const applyCharacterInfoToScenes = (params: {
+  scenes: any[];
+  characterRules: any;
+  outfitMap: Map<string, { name: string; prompt: string }>;
+  targetAge: string;
+}): any[] => {
+  const { scenes, characterRules, outfitMap, targetAge } = params;
+
+  return scenes.map(scene => {
+    const { characterIds = [], action = '', cameraAngle = '', background = '' } = scene;
+
+    // 1. 캐릭터 블록 생성
+    const characterBlocks: string[] = [];
+
+    characterIds.forEach((slotId: string) => {
+      // 여성 캐릭터
+      if (slotId.startsWith('Woman')) {
+        const femaleChar = characterRules.females.find((f: any) => f.id === slotId);
+        if (!femaleChar) return;
+
+        // 나이 적용 (WomanD는 고정 20대, 나머지는 targetAge)
+        const ageText = femaleChar.isFixedAge
+          ? femaleChar.fixedAge
+          : targetAge === '40대' ? 'in her 40s' : targetAge === '30대' ? 'in her 30s' : 'in her 20s';
+
+        const identity = `A stunning Korean woman ${ageText}`;
+        const hair = femaleChar.hair;
+        const body = femaleChar.body;
+
+        // 의상 정보
+        const outfit = outfitMap.get(slotId);
+        const outfitText = outfit ? outfit.prompt : 'elegant casual outfit';
+
+        characterBlocks.push(
+          `${identity}, ${hair}, ${body}, wearing ${outfitText}`
+        );
+      }
+      // 남성 캐릭터
+      else if (slotId.startsWith('Man')) {
+        const maleChar = characterRules.males.find((m: any) => m.id === slotId);
+        if (!maleChar) return;
+
+        const ageText = targetAge === '40대' ? 'in his 40s' : targetAge === '30대' ? 'in his 30s' : 'in his 20s';
+        const identity = `A handsome Korean man ${ageText}`;
+        const hair = maleChar.hair;
+        const body = maleChar.body;
+
+        // 남성 기본 의상
+        const outfitText = 'tailored casual outfit';
+
+        characterBlocks.push(
+          `${identity}, ${hair}, ${body}, wearing ${outfitText}`
+        );
+      }
+    });
+
+    // 2. 최종 프롬프트 조립
+    const identityBlock = characterBlocks.join(' and ');
+    const actionBlock = action || 'standing naturally';
+    const cameraBlock = cameraAngle ? `${cameraAngle} camera angle` : 'medium shot';
+    const backgroundBlock = background ? `in a ${background}` : '';
+
+    const promptParts = [
+      identityBlock,
+      actionBlock,
+      cameraBlock,
+      backgroundBlock,
+      'no text, no letters, no typography',
+      'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16'
+    ].filter(Boolean);
+
+    const finalPrompt = promptParts.join(', ');
+
+    return {
+      ...scene,
+      prompt: finalPrompt,
+      characterProfilesApplied: true  // 플래그 추가
+    };
+  });
+};
+
 export default {
   buildLabScriptPrompt,
   buildLabImagePrompt,
@@ -3121,5 +3435,8 @@ export default {
   getMAMACharacterPresets,
   PROMPT_CONSTANTS,
   getPromptConstants,
-  RANDOM_SEED_POOLS
+  RANDOM_SEED_POOLS,
+  buildSimplifiedMasterPrompt,
+  assignOutfitsToCharacters,
+  applyCharacterInfoToScenes
 };

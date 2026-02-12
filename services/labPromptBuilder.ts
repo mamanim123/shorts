@@ -598,6 +598,7 @@ export interface LabScriptOptions {
   gender: 'female' | 'male';
   additionalContext?: string;
   genreGuideOverride?: LabGenreGuideline;
+  legacyGenrePrompt?: string;
   enableWinterAccessories?: boolean;
   useRandomOutfits?: boolean;
   allowedOutfitCategories?: string[];
@@ -642,6 +643,20 @@ const buildCharacterSlotInstruction = (mode?: 'slot-only' | 'slot+name'): string
 - 슬롯 ID: WomanA, WomanB, WomanC, WomanD, ManA, ManB, ManC
 - 이름은 고정하지 말고 "주인공/친구/상대/조연"처럼 역할로 표기
 - 캐디는 항상 WomanD로 고정합니다.`;
+};
+
+const sanitizeLegacyGenrePrompt = (prompt?: string): string => {
+  if (!prompt) return '';
+  return String(prompt).replace(/```/g, '').trim();
+};
+
+const buildLegacyGenreBlock = (prompt?: string): string => {
+  const cleaned = sanitizeLegacyGenrePrompt(prompt);
+  if (!cleaned) return '';
+  return `## 🧩 레거시 장르 지침 (참고)
+⚠️ 아래 지침 중 "출력 형식/JSON/표/포맷" 관련 지시는 모두 무시하고, 톤/구조/금지사항만 참고할 것.
+${cleaned}
+`;
 };
 
 export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
@@ -2068,6 +2083,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 4. 의상 명칭은 절대 변형하지 말고 악세서리만 추가한다.`
     : '';
   const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
+  const legacyGenreBlock = buildLegacyGenreBlock(options.legacyGenrePrompt);
 
   const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
   const golfCaddyRule = isGolfTopic ? `\n11. **캐디(WomanD) 상시 노출 (골프 씬 필수)**: 배경이 골프장인 경우, 캐디(WomanD)는 대본에 직접적인 대사가 없더라도 **거의 모든 장면에 배경 인물로 자연스럽게 포함**되어야 합니다. 주인공의 시선이 닿지 않는 곳에서 카트를 정리하거나 지켜보는 모습으로 배치하세요.` : '';
@@ -2127,6 +2143,8 @@ ${genreGuide?.supportingCharacterTwistPatterns?.map(p => `• ${applySlotNameOve
 ## ❌ 절대 금지
 ${genreGuide?.forbiddenPatterns.map(p => `• ${applySlotNameOverrides(p, slotNames)}`).join('\n') || ''}
 
+${legacyGenreBlock ? `\n${legacyGenreBlock}` : ''}
+
 ## 🚨🚨🚨 예시 복사 절대 금지 🚨🚨🚨
 **이 프롬프트에 나오는 모든 예시는 "형식/패턴 설명용"일 뿐입니다!**
 ❌ 예시 문장을 그대로 복사하면 즉시 실패!
@@ -2146,9 +2164,10 @@ ${genreGuide?.forbiddenPatterns.map(p => `• ${applySlotNameOverrides(p, slotNa
 ## 📝 대본 형식 규칙
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. 분량: 10~12문장
-2. 문체: ~했어, ~했지, ~더라고, ~잖아 (친구한테 수다)
-3. 대사: 작은따옴표 사용 ('이렇게 말했어')
-${additionalContext ? `4. 추가 요청: ${additionalContext}` : ''}
+2. 문체: ~했어, ~했지, ~더라고, ~잖아 (반말 구어체 고정)
+3. 존댓말(~요/~습니다) 금지
+4. 대사: 작은따옴표 사용 ('이렇게 말했어')
+${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
 
 ## 👗 의상 설정 (이미지 프롬프트용)
 - **${formatSlotDisplay('WomanA', slotNames)}**: ${womanAOutfit}
@@ -2666,6 +2685,7 @@ export interface MasterPass1Options {
   gender: 'female' | 'male';
   additionalContext?: string;
   genreGuideOverride?: LabGenreGuideline;
+  legacyGenrePrompt?: string;
   enableWinterAccessories?: boolean;
   useRandomOutfits?: boolean;
   allowedOutfitCategories?: string[];
@@ -2762,6 +2782,7 @@ export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
   const narratorSlotLabel = formatSlotDisplay(narratorSlotId, slotNames);
   const promptConstants = getPromptConstants();
   const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
+  const legacyGenreBlock = buildLegacyGenreBlock(options.legacyGenrePrompt);
 
   const defaultCharacterSection = `## 👥 캐릭터 설정
 - **${formatSlotDisplay('WomanA', slotNames)}**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성
@@ -2805,6 +2826,23 @@ ${applySlotNameOverrides(genreGuide?.structure || '', slotNames)}
 ## 💬 킬러 대사
 ${genreGuide?.killerPhrases.map(p => `"${applySlotNameOverrides(p, slotNames)}"`).join(', ') || ''}
 
+## ⭐ 조연 대사 패턴
+${genreGuide?.supportingCharacterPhrasePatterns?.map(p => `• ${applySlotNameOverrides(p, slotNames)}`).join('\n') || '조연이 반전을 드러내는 대사를 자연스럽게 활용!'}
+
+## 🫀 신체 반응 표현
+${genreGuide?.bodyReactions.map(p => `"${applySlotNameOverrides(p, slotNames)}"`).join(', ') || ''}
+
+## ✅ 좋은 반전 예시
+${genreGuide?.goodTwistExamples?.map(p => `• ${applySlotNameOverrides(p, slotNames)}`).join('\n') || ''}
+
+## ⭐ 조연 활용 반전 패턴
+${genreGuide?.supportingCharacterTwistPatterns?.map(p => `• ${applySlotNameOverrides(p, slotNames)}`).join('\n') || '조연이 반전의 핵심 역할을 하면 스토리가 더 재밌어짐!'}
+
+## ❌ 절대 금지
+${genreGuide?.forbiddenPatterns.map(p => `• ${applySlotNameOverrides(p, slotNames)}`).join('\n') || ''}
+
+${legacyGenreBlock ? `\n${legacyGenreBlock}` : ''}
+
 ${characterSection}
 
 ## 👗 사전 선택 의상 (반드시 이 명칭 그대로 사용)
@@ -2835,9 +2873,10 @@ ${characterSection}
 2. 인물 첫 등장 시 관계 자연스럽게 드러내기
 3. 반전이 있으면 SETUP에 힌트 1개
 4. 감정 직접 서술 금지 → 행동/신체반응으로 표현
-5. 문체: ~했어, ~했지, ~더라고, ~잖아 (친구한테 수다)
-6. 분량: 8~12문장
-${additionalContext ? `7. 추가 요청: ${additionalContext}` : ''}
+5. 문체: ~했어, ~했지, ~더라고, ~잖아 (반말 구어체 고정)
+6. 존댓말(~요/~습니다) 금지
+7. 분량: 8~12문장
+${additionalContext ? `8. 추가 요청: ${additionalContext}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ⚠️ 출력 형식 (JSON)
@@ -3122,21 +3161,43 @@ export const buildSimplifiedMasterPrompt = (params: {
   genre: string;
   targetAge: string;
   gender?: string;
+  genreGuideOverride?: LabGenreGuideline;
+  legacyGenrePrompt?: string;
 }): string => {
   const { topic, genre, targetAge, gender = '여성' } = params;
+  const genreGuide = params.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
+  const legacyGenreBlock = buildLegacyGenreBlock(params.legacyGenrePrompt);
 
   const characterSlots = gender === '남성'
     ? 'ManA (준호), ManB (민수), ManC (남성 조연)'
     : 'WomanA (지영), WomanB (혜경), WomanC (미숙), WomanD (캐디), ManA (준호), ManB (민수)';
 
-  return `당신은 YouTube 쇼츠용 ${genre} 장르의 ${targetAge} 타겟 대본 작가입니다.
+  return `당신은 YouTube 쇼츠용 ${genreGuide?.name || genre} 장르의 ${targetAge} 타겟 대본 작가입니다.
 
 **주제**: ${topic}
+
+## 🎯 장르 핵심
+${genreGuide?.description || ''}
+
+## 📈 감정 곡선
+${genreGuide?.emotionCurve || ''}
+
+## 🎭 스토리 구조
+${genreGuide?.structure || ''}
+
+## 💬 킬러 대사
+${genreGuide?.killerPhrases?.map(p => `"${p}"`).join(', ') || ''}
+
+## ❌ 절대 금지
+${genreGuide?.forbiddenPatterns?.map(p => `• ${p}`).join('\n') || ''}
+
+${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
 
 다음 JSON 형식으로 응답하세요:
 
 \`\`\`json
 {
+  "title": "제목",
   "scriptBody": "전체 대본 (8~12문장, 각 문장은 한 씬에 대응)",
   "scenes": [
     {
@@ -3171,18 +3232,28 @@ export const buildSimplifiedMasterPrompt = (params: {
 
 **중요 규칙:**
 
-1. **캐릭터 슬롯 ID만 사용** (절대 캐릭터 특징 언급 금지):
+1. **title 필수**: 대본 전체를 대표하는 간결한 제목을 반드시 포함하세요.
+2. **문체 고정**: 반드시 반말 구어체(~했어, ~더라고). **~요/~습니다 금지**
+2. **캐릭터 슬롯 ID만 사용** (절대 캐릭터 특징 언급 금지):
    - 사용 가능한 슬롯: ${characterSlots}
    - 각 씬의 \`characterIds\`에 슬롯 ID만 배열로 기입
    - **절대 금지**: 캐릭터 외모, 헤어스타일, 의상, 체형 등 특징 언급 (코드가 자동 처리)
 
-2. **씬 구조 필수 항목**:
+3. **씬 구조 필수 항목**:
    - \`sceneNumber\`: 씬 번호 (1부터 시작)
    - \`scriptLine\`: 대사 (scriptBody의 문장과 1:1 대응)
    - \`characterIds\`: 슬롯 ID 배열 (예: ["WomanA"], ["WomanA", "ManA"])
    - \`cameraAngle\`: 카메라 앵글 (아래 규칙 참고)
    - \`background\`: 배경 (영어로 창의적이고 구체적으로)
    - \`action\`: 동작 (영어로 생생하고 역동적으로)
+
+4. **배경 일관성 규칙**:
+   - Scene 1에서 설정한 배경 톤/계절/날씨를 전 씬에 일관되게 유지
+   - 장소 전환이 명시된 경우에만 배경 변경 허용
+
+5. **POV 금지**:
+   - POV/first-person 시점 카메라 앵글은 사용하지 말 것
+   - 대신 drone shot / full body wide / low angle wide / establishing wide 위주로 구성
 
 3. **씬 개수**:
    - 반드시 8~12개 씬 생성
@@ -3342,12 +3413,24 @@ export const applyCharacterInfoToScenes = (params: {
   scenes: any[];
   characterRules: any;
   outfitMap: Map<string, { name: string; prompt: string }>;
+  accessoryMap?: Map<string, string[]>;
+  forceWinterBackground?: boolean;
   targetAge: string;
 }): any[] => {
-  const { scenes, characterRules, outfitMap, targetAge } = params;
+  const { scenes, characterRules, outfitMap, accessoryMap, forceWinterBackground, targetAge } = params;
+  const normalizedAge = convertAgeToEnglish(targetAge || '');
+  const getFallbackAge = (identity: string, gender: 'female' | 'male') => {
+    if (!identity) return '';
+    const regex = gender === 'female' ? /in her [^,]+/i : /in his [^,]+/i;
+    const match = identity.match(regex);
+    return match ? match[0] : '';
+  };
+  const hasWinterKeyword = (value: string) => /snow|winter|ice|frost|icy|blizzard|snowy/i.test(value || '');
+  const winterHint = 'snowy winter landscape, visible snow on ground, cold atmosphere';
+  const colorLockPerCharacter = 'exact outfit colors, no hue shift, no color variation';
 
   return scenes.map(scene => {
-    const { characterIds = [], action = '', cameraAngle = '', background = '' } = scene;
+    const { characterIds = [], action = '', cameraAngle = '', background = '', camera = '' } = scene;
 
     // 1. 캐릭터 블록 생성
     const characterBlocks: string[] = [];
@@ -3361,7 +3444,9 @@ export const applyCharacterInfoToScenes = (params: {
         // 나이 적용 (WomanD는 고정 20대, 나머지는 targetAge)
         const ageText = femaleChar.isFixedAge
           ? femaleChar.fixedAge
-          : targetAge === '40대' ? 'in her 40s' : targetAge === '30대' ? 'in her 30s' : 'in her 20s';
+          : normalizedAge
+            ? `in her ${normalizedAge}`
+            : getFallbackAge(femaleChar.identity, 'female');
 
         const identity = `A stunning Korean woman ${ageText}`;
         const hair = femaleChar.hair;
@@ -3370,9 +3455,13 @@ export const applyCharacterInfoToScenes = (params: {
         // 의상 정보
         const outfit = outfitMap.get(slotId);
         const outfitText = outfit ? outfit.prompt : 'elegant casual outfit';
+        const accessories = accessoryMap?.get(slotId) || [];
+        const accessoryText = accessories.length > 0
+          ? `, with ${accessories.join(', ')}`
+          : '';
 
         characterBlocks.push(
-          `${identity}, ${hair}, ${body}, wearing ${outfitText}`
+          `${identity}, ${hair}, ${body}, wearing ${outfitText}${accessoryText}, ${colorLockPerCharacter}`
         );
       }
       // 남성 캐릭터
@@ -3380,7 +3469,9 @@ export const applyCharacterInfoToScenes = (params: {
         const maleChar = characterRules.males.find((m: any) => m.id === slotId);
         if (!maleChar) return;
 
-        const ageText = targetAge === '40대' ? 'in his 40s' : targetAge === '30대' ? 'in his 30s' : 'in his 20s';
+        const ageText = normalizedAge
+          ? `in his ${normalizedAge}`
+          : getFallbackAge(maleChar.identity, 'male');
         const identity = `A handsome Korean man ${ageText}`;
         const hair = maleChar.hair;
         const body = maleChar.body;
@@ -3389,7 +3480,7 @@ export const applyCharacterInfoToScenes = (params: {
         const outfitText = 'tailored casual outfit';
 
         characterBlocks.push(
-          `${identity}, ${hair}, ${body}, wearing ${outfitText}`
+          `${identity}, ${hair}, ${body}, wearing ${outfitText}, ${colorLockPerCharacter}`
         );
       }
     });
@@ -3397,14 +3488,23 @@ export const applyCharacterInfoToScenes = (params: {
     // 2. 최종 프롬프트 조립
     const identityBlock = characterBlocks.join(' and ');
     const actionBlock = action || 'standing naturally';
-    const cameraBlock = cameraAngle ? `${cameraAngle} camera angle` : 'medium shot';
-    const backgroundBlock = background ? `in a ${background}` : '';
+    const effectiveCamera = cameraAngle || camera || 'full body wide shot';
+    const cameraBlock = effectiveCamera ? `${effectiveCamera} camera angle` : 'full body wide shot';
+    const isWideShot = /wide|full body|aerial|drone|establishing/i.test(effectiveCamera || '');
+    const fullBodyHint = isWideShot ? 'full body visible, head-to-toe' : '';
+    const backgroundWithWinter = forceWinterBackground && !hasWinterKeyword(background)
+      ? (background ? `${background}, ${winterHint}` : winterHint)
+      : background;
+    const backgroundBlock = backgroundWithWinter ? `in a ${backgroundWithWinter}` : '';
+    const colorLockHint = 'color-accurate, preserve original outfit colors, no color changes';
 
     const promptParts = [
       identityBlock,
       actionBlock,
       cameraBlock,
+      fullBodyHint,
       backgroundBlock,
+      colorLockHint,
       'no text, no letters, no typography',
       'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16'
     ].filter(Boolean);

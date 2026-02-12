@@ -1,4 +1,4 @@
-당신은 YouTube 쇼츠용 romance-flutter 장르의 40s 타겟 대본 작가입니다.
+당신은 YouTube 쇼츠용 comedy-humor 장르의 40s 타겟 대본 작가입니다.
 
 
 
@@ -24,13 +24,13 @@
 
 "scriptLine": "첫 번째 대사 (scriptBody의 첫 번째 문장과 정확히 일치)",
 
-"characterIds": ["WomanA"],
+"characterIds": ["WomanA", "WomanB"],
 
-"cameraAngle": "close-up",
+"cameraAngle": "drone shot",
 
-"background": "living room",
+"background": "vast snow-covered golf course stretching to horizon under golden morning light",
 
-"action": "sitting and smiling"
+"action": "walking side by side leaving footprints in pristine snow, laughing joyfully"
 
 },
 
@@ -40,17 +40,35 @@
 
 "scriptLine": "두 번째 대사",
 
-"characterIds": ["WomanA", "ManA"],
+"characterIds": ["WomanA"],
 
-"cameraAngle": "medium shot",
+"cameraAngle": "full body wide shot",
 
-"background": "golf course",
+"background": "elegant clubhouse entrance with modern glass architecture reflecting winter sky",
 
-"action": "talking and laughing"
+"action": "twirling gracefully with golf club in hand, snow gently falling around her"
+
+},
+
+{
+
+"sceneNumber": 3,
+
+"scriptLine": "세 번째 대사",
+
+"characterIds": ["ManA", "ManB"],
+
+"cameraAngle": "low angle wide",
+
+"background": "dramatic golf course fairway with towering pine trees covered in snow",
+
+"action": "striding confidently forward toward camera, snow crunching beneath their feet"
 
 }
 
 // ... 8~12개 씬 (scriptBody의 문장 수와 정확히 일치)
+
+// 반드시 drone shot, full body wide, low angle wide, establishing wide 위주로!
 
 ]
 
@@ -82,11 +100,11 @@
 
 - `characterIds`: 슬롯 ID 배열 (예: ["WomanA"], ["WomanA", "ManA"])
 
-- `cameraAngle`: close-up, medium shot, wide shot, POV 중 선택
+- `cameraAngle`: 카메라 앵글 (아래 규칙 참고)
 
-- `background`: 배경 (영어로 간략히, 예: "golf course", "living room")
+- `background`: 배경 (영어로 창의적이고 구체적으로)
 
-- `action`: 동작 (영어로, 예: "sitting and smiling", "walking toward camera")
+- `action`: 동작 (영어로 생생하고 역동적으로)
 
 
 
@@ -98,19 +116,93 @@
 
 
 
-4. **카메라 앵글 다양성**:
+4. **카메라 앵글 규칙 (매우 중요!)**:
 
-- 다양한 앵글 사용 (close-up, medium shot, wide shot 골고루)
+- **대박나는 쇼츠는 역동적이고 시네마틱한 와이드샷이 핵심입니다!**
+
+- **필수 비율**:
+
+- drone shot / aerial wide (드론/항공 와이드): 25%
+
+- full body wide shot (전신 와이드샷): 25%
+
+- low angle wide (로우앵글 와이드): 20%
+
+- establishing wide shot (배경 위주 와이드): 15%
+
+- close-up (클로즈업): 최대 10% (감정 중요한 순간만)
+
+- POV (시점샷): 5%
+
+- **medium shot과 extreme close-up은 절대 사용 금지!**
+
+- **앵글 작성 예시** (정확히 이렇게 작성하세요):
+
+- "drone shot" 또는 "aerial wide shot"
+
+- "full body wide shot" 또는 "wide shot showing full body"
+
+- "low angle wide shot" 또는 "low angle wide"
+
+- "establishing wide shot" 또는 "wide establishing shot"
+
+- "close-up" (10개 씬 중 최대 1개만!)
+
+- "POV shot" 또는 "POV"
+
+- **앵글 설명**:
+
+- drone shot / aerial wide: 하늘에서 내려다본 광활한 구도, 공간의 스케일 극대화
+
+- full body wide shot: 전신이 모두 보이는 구도, 배경과 캐릭터 조화
+
+- low angle wide: 아래에서 위로 올려다보는 구도, 역동적이고 웅장함
+
+- establishing wide shot: 배경이 주인공, 캐릭터는 풍경의 일부
+
+- close-up: 얼굴 중심, 감정 표현이 매우 중요한 순간에만 사용
+
+- POV: 캐릭터 시점, 몰입감 극대화
+
+- **절대 금지**: "medium shot", "medium close-up", "extreme close-up", "mid shot"
 
 - POV 샷 사용 시 카메라 역할 캐릭터는 characterIds에서 제외
 
 
 
-5. **배경 일관성**:
+5. **배경(background) 작성 규칙**:
 
-- 스토리 흐름에 맞는 자연스러운 배경 전환
+- **창의적이고 구체적으로** 작성
 
-- 영어로 간결하게 (예: "golf course green", "club house interior")
+- 나쁜 예: "golf course" (너무 간단함)
+
+- 좋은 예: "sunlit golf course green with morning dew sparkling on grass"
+
+- 좋은 예: "elegant clubhouse lounge with floor-to-ceiling windows overlooking snow-covered fairway"
+
+- 좋은 예: "pristine white sand bunker with dramatic shadows"
+
+- **시각적 요소 포함**: 조명, 분위기, 시간대, 날씨, 특징적 오브젝트
+
+- **감정 전달**: 배경으로 감정과 분위기를 강화
+
+
+
+6. **동작(action) 작성 규칙**:
+
+- **역동적이고 생생하게** 작성
+
+- 나쁜 예: "sitting and smiling" (너무 평범함)
+
+- 좋은 예: "laughing joyfully while tossing her hair back in the golden sunlight"
+
+- 좋은 예: "confidently walking toward camera with a mysterious smile"
+
+- 좋은 예: "dramatically spinning around with arms wide open, snow falling around her"
+
+- **감정과 뉘앙스 포함**: 단순 동작이 아닌 감정이 담긴 행동
+
+- **세부 묘사**: 손동작, 시선, 표정 변화 등 구체적으로
 
 
 
@@ -124,96 +216,120 @@
 
 - [ ] 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않았는가?
 
-- [ ] 모든 씬에 cameraAngle, background, action이 포함되어 있는가?
+- [ ] 카메라 앵글 비율을 준수했는가? (drone shot 25%, full body wide 25%, low angle wide 20%, establishing wide 15%, close-up 최대 10%, POV 5%)
+
+- [ ] **medium shot과 extreme close-up을 사용하지 않았는가?** (절대 금지!)
+
+- [ ] 와이드샷이 전체의 85% 이상인가? (drone + full body + low angle + establishing)
+
+- [ ] background는 창의적이고 구체적인가? (시각적 요소 포함)
+
+- [ ] action은 역동적이고 생생한가? (감정과 세부 묘사 포함)
 
 
 
-이제 주제 "눈오는 골프장에 아름다운 여성들"에 대한 romance-flutter 장르 대본과 씬 구조를 생성하세요.
+**⚠️ 필수 확인사항 (매우 중요!):**
+
+1. **카메라 앵글**: 10개 씬 기준 - drone shot 2~3개, full body wide 2~3개, low angle wide 2개, establishing wide 1~2개, close-up 최대 1개, POV 0~1개
+
+2. **절대 사용 금지**: medium shot, medium close-up, extreme close-up
+
+3. **와이드샷 위주**: 전체의 85% 이상이 와이드샷이어야 합니다!
+
+4. **배경과 동작**: 구체적이고 시각적으로 생생하게!
+
+
+
+이제 주제 "눈오는 골프장에 아름다운 여성들"에 대한 comedy-humor 장르 대본과 씬 구조를 생성하세요.
+
+
+
+**기억하세요**: 대박나는 쇼츠는 **시네마틱한 와이드샷**이 핵심입니다! 드론샷, 전신샷, 로우앵글 와이드를 충분히 활용하세요!
 
 Gemini said
 JSON
 {
-  "scriptBody": "하얗게 내려앉은 필드 위로 우리만의 첫 겨울 라운딩이 시작됐어요. 뽀드득 소리가 나는 눈 위를 걷는 기분이 정말 로맨틱하지 않나요? 차가운 공기마저 따뜻하게 녹여주는 지영의 미소가 오늘따라 더 빛나요. 혜경이 던진 눈싸움 장난에 필드는 금세 웃음소리로 가득 차버렸죠. 미숙은 이 아름다운 설경을 놓칠세라 연신 카메라 셔터를 누르기 바빠요. 멀리서 우리를 지켜보던 준호와 민수의 시선에서 설렘이 가득 느껴지네요. 장갑을 벗고 맞잡은 손끝에서 전해지는 온기가 온몸을 간질여요. 눈부신 설원보다 더 반짝이는 우리들의 이야기는 이제부터 시작이에요. 따뜻한 코코아 한 잔에 담긴 진심이 눈꽃처럼 예쁘게 피어오릅니다. 꿈결 같은 이 순간이 영원히 멈추지 않았으면 좋겠다고 생각했어요.",
+  "scriptBody": "오늘 설원 라운딩 온 거 실화야? 우리 멤버들 비주얼이 그냥 엘사 급인데? 야 지영아, 거기서 폼 잡지 말고 공이나 좀 찾아봐! 눈밭에서 흰 공 치는 사람이 어디 있어? 골프공이 아니라 눈덩이를 날리고 있네. 얘들아, 샷이 문제가 아니라 지금 우리 인생샷이 문제야. 와, 이 정도면 골프장이 아니라 거의 화보 촬영장 아니니? 근데 우리 추워서 스윙은 할 수 있는 거야? 아니, 입만 살아서 스코어는 이미 싱글이네! 야, 공 찾다가 봄 오겠다, 빨리 다음 홀로 가자!",
   "scenes": [
     {
       "sceneNumber": 1,
-      "scriptLine": "하얗게 내려앉은 필드 위로 우리만의 첫 겨울 라운딩이 시작됐어요.",
+      "scriptLine": "오늘 설원 라운딩 온 거 실화야?",
       "characterIds": ["WomanA", "WomanB", "WomanC"],
-      "cameraAngle": "wide shot",
-      "background": "snowy golf course",
-      "action": "walking on the snow-covered field"
+      "cameraAngle": "drone shot",
+      "background": "breathtaking panoramic view of a golf course blanketed in thick, powdery white snow with golden sunlight piercing through frozen trees",
+      "action": "standing in a triangle formation on the tee box, looking around in awe at the winter wonderland"
     },
     {
       "sceneNumber": 2,
-      "scriptLine": "뽀드득 소리가 나는 눈 위를 걷는 기분이 정말 로맨틱하지 않나요?",
-      "characterIds": ["WomanA"],
-      "cameraAngle": "close-up",
-      "background": "snowy golf course",
-      "action": "looking at the camera and smiling"
+      "scriptLine": "우리 멤버들 비주얼이 그냥 엘사 급인데?",
+      "characterIds": ["WomanB", "WomanC"],
+      "cameraAngle": "full body wide shot",
+      "background": "sparkling snow-covered fairway with crystal-like frost hanging from the branches of surrounding pines",
+      "action": "posing confidently like fashion models, flipping their hair and laughing while holding golf clubs like scepters"
     },
     {
       "sceneNumber": 3,
-      "scriptLine": "차가운 공기마저 따뜻하게 녹여주는 지영의 미소가 오늘따라 더 빛나요.",
-      "characterIds": ["WomanA"],
-      "cameraAngle": "medium shot",
-      "background": "golf course green",
-      "action": "blowing a kiss to the air"
+      "scriptLine": "야 지영아, 거기서 폼 잡지 말고 공이나 좀 찾아봐!",
+      "characterIds": ["WomanA", "WomanB"],
+      "cameraAngle": "low angle wide",
+      "background": "a deep snowdrift near a sand bunker where the white sand and white snow blend seamlessly",
+      "action": "WomanB pointing mockingly at WomanA who is dramatically squinting at the ground with a driver in hand"
     },
     {
       "sceneNumber": 4,
-      "scriptLine": "혜경이 던진 눈싸움 장난에 필드는 금세 웃음소리로 가득 차버렸죠.",
-      "characterIds": ["WomanB", "WomanA"],
-      "cameraAngle": "medium shot",
-      "background": "golf course",
-      "action": "playfully throwing snow at each other"
+      "scriptLine": "눈밭에서 흰 공 치는 사람이 어디 있어?",
+      "characterIds": ["WomanA"],
+      "cameraAngle": "POV shot",
+      "background": "first-person view looking down at a vast expanse of pure white snow with dozens of small circular indentations",
+      "action": "poking a golf club head into the snow repeatedly, trying to distinguish a ball from the snow"
     },
     {
       "sceneNumber": 5,
-      "scriptLine": "미숙은 이 아름다운 설경을 놓칠세라 연신 카메라 셔터를 누르기 바빠요.",
+      "scriptLine": "골프공이 아니라 눈덩이를 날리고 있네.",
       "characterIds": ["WomanC"],
-      "cameraAngle": "medium shot",
-      "background": "golf course with snowy trees",
-      "action": "taking photos with a smartphone"
+      "cameraAngle": "full body wide shot",
+      "background": "the teeing area with a clear blue sky background, contrasting sharply with the white ground",
+      "action": "swinging hard and hitting the snow instead of the ball, creating a massive explosion of white powder into the air"
     },
     {
       "sceneNumber": 6,
-      "scriptLine": "멀리서 우리를 지켜보던 준호와 민수의 시선에서 설렘이 가득 느껴지네요.",
-      "characterIds": ["ManA", "ManB"],
-      "cameraAngle": "wide shot",
-      "background": "golf course pathway",
-      "action": "watching the women and smiling warmly"
+      "scriptLine": "얘들아, 샷이 문제가 아니라 지금 우리 인생샷이 문제야.",
+      "characterIds": ["WomanA", "WomanB", "WomanC"],
+      "cameraAngle": "establishing wide shot",
+      "background": "an iconic arched stone bridge on the golf course covered in ice and snow, looking like a fairytale scene",
+      "action": "ignoring the game entirely and gathering together to take a group selfie with a phone on a tripod"
     },
     {
       "sceneNumber": 7,
-      "scriptLine": "장갑을 벗고 맞잡은 손끝에서 전해지는 온기가 온몸을 간질여요.",
-      "characterIds": ["WomanA", "ManA"],
-      "cameraAngle": "close-up",
-      "background": "snowy field",
-      "action": "holding hands together"
+      "scriptLine": "와, 이 정도면 골프장이 아니라 거의 화보 촬영장 아니니?",
+      "characterIds": ["WomanB"],
+      "cameraAngle": "drone shot",
+      "background": "the entire green surrounded by frozen water hazards, creating a dramatic circular white stage",
+      "action": "spinning around slowly with arms wide open, embracing the falling snowflakes and the vast scenery"
     },
     {
       "sceneNumber": 8,
-      "scriptLine": "눈부신 설원보다 더 반짝이는 우리들의 이야기는 이제부터 시작이에요.",
-      "characterIds": ["WomanA", "WomanB", "WomanC", "ManA", "ManB"],
-      "cameraAngle": "wide shot",
-      "background": "golf course horizon",
-      "action": "walking together toward the distance"
+      "scriptLine": "근데 우리 추워서 스윙은 할 수 있는 거야?",
+      "characterIds": ["WomanC"],
+      "cameraAngle": "close-up",
+      "background": "the soft blurred background of a snowy fairway with warm orange sunset hues starting to appear",
+      "action": "teeth chattering visibly while trying to give a thumbs up, her eyes wide with cold but humorous determination"
     },
     {
       "sceneNumber": 9,
-      "scriptLine": "따뜻한 코코아 한 잔에 담긴 진심이 눈꽃처럼 예쁘게 피어오릅니다.",
-      "characterIds": ["WomanA", "ManA"],
-      "cameraAngle": "POV",
-      "background": "clubhouse terrace",
-      "action": "holding a steaming cup of cocoa"
+      "scriptLine": "아니, 입만 살아서 스코어는 이미 싱글이네!",
+      "characterIds": ["WomanA", "WomanB", "WomanC"],
+      "cameraAngle": "low angle wide",
+      "background": "near the putting green where a red flag stands out vividly against the monochromatic white landscape",
+      "action": "all three leaning on their putters and gesturing grandly with their hands as if debating professional golf tactics"
     },
     {
       "sceneNumber": 10,
-      "scriptLine": "꿈결 같은 이 순간이 영원히 멈추지 않았으면 좋겠다고 생각했어요.",
-      "characterIds": ["WomanA"],
-      "cameraAngle": "close-up",
-      "background": "clubhouse window side",
-      "action": "looking out at the falling snow dreamily"
+      "scriptLine": "야, 공 찾다가 봄 오겠다, 빨리 다음 홀로 가자!",
+      "characterIds": ["WomanA", "WomanB", "WomanC", "WomanD"],
+      "cameraAngle": "establishing wide shot",
+      "background": "a winding path through a snowy forest leading to the next hole, with the golf cart lights glowing in the distance",
+      "action": "WomanD the caddy waving them forward while the three women jog clumsily through the deep snow, laughing hysterically"
     }
   ]
 }

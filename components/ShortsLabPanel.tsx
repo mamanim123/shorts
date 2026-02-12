@@ -21,6 +21,7 @@ import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRules
 import { useShortsLabStep2PromptRulesManager } from '../hooks/useShortsLabStep2PromptRulesManager';
 import { useShortsLabCharacterRulesManager } from '../hooks/useShortsLabCharacterRulesManager';
 import { shortsLabStep2PromptRulesManager } from '../services/shortsLabStep2PromptRulesManager';
+import { genreManager as legacyGenreManager, getGenreGuideline as getLegacyGenreGuideline } from '../services/genreGuidelines';
 
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
@@ -258,6 +259,19 @@ const buildWinterAccessoryMap = (characterIds: string[]) => {
             map.set(id, picks);
             return;
         }
+        const picks = pickUniqueItems(pool, used, 2);
+        map.set(id, picks);
+    });
+    return map;
+};
+
+const buildUniqueFemaleAccessoryMap = (characterIds: string[]) => {
+    const pool = getWinterAccessoryPool();
+    const used = new Set<string>();
+    const map = new Map<string, string[]>();
+    characterIds.forEach((id) => {
+        const gender = getCharacterGender(id);
+        if (gender !== 'female') return;
         const picks = pickUniqueItems(pool, used, 2);
         map.set(id, picks);
     });
@@ -1043,6 +1057,10 @@ interface Scene {
     text: string;
     prompt: string;
     imageUrl?: string;
+    characterIds?: string[];
+    cameraAngle?: string;
+    background?: string;
+    action?: string;
     // 씨네보드 호환 필드
     shortPromptKo?: string;
     longPromptKo?: string;
@@ -1424,6 +1442,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isMasterGenerating, setIsMasterGenerating] = useState(false);
+    const aiGenerateLockRef = useRef(false);
+    const masterGenerateLockRef = useRef(false);
 
     // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
     const [masterCharacterProfiles, setMasterCharacterProfiles] = useState<Array<{
@@ -1504,6 +1524,45 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         detailedAnalysis: DetailedAnalysis | null;
         analysisBase: string;
     }>>({});
+
+    const getMasterProfilesStorageKey = useCallback((folderName: string) => `shorts-lab-master-profiles:${folderName}`, []);
+    const getMasterOutfitsStorageKey = useCallback((folderName: string) => `shorts-lab-master-outfits:${folderName}`, []);
+
+    const serializeMasterOutfitMap = useCallback((map: Map<string, { name: string; prompt: string }>) => {
+        return Array.from(map.entries()).map(([slotId, outfit]) => ([
+            slotId,
+            { name: outfit?.name || '', prompt: outfit?.prompt || '' }
+        ]));
+    }, []);
+
+    const loadMasterDataForFolder = useCallback(async (folderName: string | null) => {
+        if (!folderName) {
+            setMasterCharacterProfiles([]);
+            setMasterOutfitMap(new Map());
+            return;
+        }
+        try {
+            const storedProfiles = await getAppStorageValue<Array<{
+                slotId: string;
+                name: string;
+                identity: string;
+                hair: string;
+                body: string;
+                outfit: string;
+                outfitPrompt: string;
+            }> | null>(getMasterProfilesStorageKey(folderName), null);
+            const storedOutfits = await getAppStorageValue<Array<[string, { name: string; prompt: string }]> | null>(
+                getMasterOutfitsStorageKey(folderName),
+                null
+            );
+            setMasterCharacterProfiles(Array.isArray(storedProfiles) ? storedProfiles : []);
+            setMasterOutfitMap(Array.isArray(storedOutfits) ? new Map(storedOutfits) : new Map());
+        } catch (error) {
+            console.warn('[ShortsLab] Failed to load master data from storage:', error);
+            setMasterCharacterProfiles([]);
+            setMasterOutfitMap(new Map());
+        }
+    }, [getMasterOutfitsStorageKey, getMasterProfilesStorageKey]);
 
     /**
      * 프롬프트 설정 업데이트 헬퍼
@@ -1891,10 +1950,20 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const savedTopic = await getAppStorageValue<string | null>('shorts-lab-topic', null);
                 const savedManualIdentities = await getAppStorageValue<any[] | null>('shorts-generator-identities', null);
                 const savedManualCandidates = await getAppStorageValue<string | null>('shorts-lab-manual-candidates', null);
+                const savedTargetAge = await getAppStorageValue<string | null>('shorts-lab-target-age', null);
+                const savedWinterAccessories = await getAppStorageValue<boolean | null>('shorts-lab-winter-accessories', null);
 
                 if (savedFolder) setCurrentFolderName(savedFolder);
                 if (savedTopic) setAiTopic(savedTopic);
                 if (savedManualCandidates) setManualCandidateText(savedManualCandidates);
+                if (savedTargetAge) setAiTargetAge(savedTargetAge);
+                if (typeof savedWinterAccessories === 'boolean') setEnableWinterAccessories(savedWinterAccessories);
+                if (savedFolder) {
+                    await loadMasterDataForFolder(savedFolder);
+                } else {
+                    setMasterCharacterProfiles([]);
+                    setMasterOutfitMap(new Map());
+                }
 
                 if (savedScenes && Array.isArray(savedScenes)) {
                     const normalized = (savedScenes as Scene[]).map(scene => {
@@ -1924,7 +1993,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             }
         };
         loadState();
-    }, []);
+    }, [loadMasterDataForFolder]);
 
     React.useEffect(() => {
         const loadFavorites = async () => {
@@ -1952,12 +2021,40 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, [currentFolderName]);
 
     React.useEffect(() => {
+        if (!currentFolderName) return;
+        if (masterCharacterProfiles.length === 0 && masterOutfitMap.size === 0) return;
+        const profilesKey = getMasterProfilesStorageKey(currentFolderName);
+        const outfitsKey = getMasterOutfitsStorageKey(currentFolderName);
+        setAppStorageValue(profilesKey, masterCharacterProfiles);
+        setAppStorageValue(outfitsKey, serializeMasterOutfitMap(masterOutfitMap));
+    }, [
+        currentFolderName,
+        masterCharacterProfiles,
+        masterOutfitMap,
+        getMasterProfilesStorageKey,
+        getMasterOutfitsStorageKey,
+        serializeMasterOutfitMap
+    ]);
+
+    React.useEffect(() => {
         if (aiTopic) {
             setAppStorageValue('shorts-lab-topic', aiTopic);
         } else {
             removeAppStorageValue('shorts-lab-topic');
         }
     }, [aiTopic]);
+
+    React.useEffect(() => {
+        if (aiTargetAge) {
+            setAppStorageValue('shorts-lab-target-age', aiTargetAge);
+        } else {
+            removeAppStorageValue('shorts-lab-target-age');
+        }
+    }, [aiTargetAge]);
+
+    React.useEffect(() => {
+        setAppStorageValue('shorts-lab-winter-accessories', enableWinterAccessories);
+    }, [enableWinterAccessories]);
 
     React.useEffect(() => {
         if (scenes.length > 0) {
@@ -3386,9 +3483,24 @@ ${scriptInput}
         return Array.isArray(allowed) && allowed.length > 0 ? allowed : undefined;
     }, [labGenres]);
 
+    const fetchLegacyGenrePrompt = useCallback(async (genreId: string): Promise<string> => {
+        if (!genreId || genreId === 'none') return '';
+        try {
+            await legacyGenreManager.loadGenres();
+            const legacyGuide = getLegacyGenreGuideline(genreId);
+            return legacyGuide?.prompt?.trim() || '';
+        } catch (error) {
+            console.warn('[ShortsLab] Failed to load legacy genre guidelines:', error);
+            return '';
+        }
+    }, []);
+
     const handleAiGenerate = async () => {
+        if (aiGenerateLockRef.current) return;
+        aiGenerateLockRef.current = true;
         if (!aiTopic.trim()) {
             setGenerationError('주제를 입력해주세요.');
+            aiGenerateLockRef.current = false;
             return;
         }
 
@@ -3432,6 +3544,7 @@ ${scriptInput}
                     allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
                 }
                 : undefined;
+            const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
 
             // ShortsLab lightweight prompt generation with genre guide override
             const prompt = buildLabScriptPrompt({
@@ -3440,6 +3553,7 @@ ${scriptInput}
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
+                legacyGenrePrompt,
                 enableWinterAccessories: enableWinterAccessories,
                 useRandomOutfits,
                 allowedOutfitCategories,
@@ -3636,6 +3750,7 @@ ${scriptInput}
             setGenerationError(error instanceof Error ? error.message : '대본 생성에 실패했습니다.');
         } finally {
             setIsGenerating(false);
+            aiGenerateLockRef.current = false;
         }
     };
 
@@ -3643,11 +3758,17 @@ ${scriptInput}
     // [신규] 단순화된 AI 마스터 생성 (캐릭터 일관성 보장)
     // ============================================
     const handleMasterGenerate = async () => {
+        if (masterGenerateLockRef.current) return;
+        masterGenerateLockRef.current = true;
         if (!aiTopic.trim()) {
             setGenerationError('주제를 입력해주세요.');
+            masterGenerateLockRef.current = false;
             return;
         }
-        if (isGenerating || isMasterGenerating) return;
+        if (isGenerating || isMasterGenerating) {
+            masterGenerateLockRef.current = false;
+            return;
+        }
 
         setIsMasterGenerating(true);
         setGenerationError(null);
@@ -3664,12 +3785,32 @@ ${scriptInput}
             const characterRules = getCharacterRules();
 
             // 3. 단순화된 LLM 프롬프트 생성
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const genreGuideOverride: LabGenreGuideline | undefined = selectedGenreData
+                ? {
+                    name: selectedGenreData.name,
+                    description: selectedGenreData.description,
+                    emotionCurve: selectedGenreData.emotionCurve,
+                    structure: selectedGenreData.structure,
+                    killerPhrases: selectedGenreData.killerPhrases,
+                    supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                    bodyReactions: selectedGenreData.bodyReactions,
+                    forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                    goodTwistExamples: selectedGenreData.goodTwistExamples,
+                    supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                    badTwistExamples: selectedGenreData.badTwistExamples,
+                    allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
+                }
+                : undefined;
+            const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
             const { buildSimplifiedMasterPrompt } = await import('../services/labPromptBuilder');
             const simplifiedPrompt = buildSimplifiedMasterPrompt({
                 topic: aiTopic,
                 genre: aiGenre,
                 targetAge: aiTargetAge,
-                gender: settings.koreanGender
+                gender: settings.koreanGender,
+                genreGuideOverride,
+                legacyGenrePrompt
             });
 
             showToast(`${selectedService} AI로 대본과 씬 구조를 생성하고 있습니다...`, 'info');
@@ -3692,6 +3833,10 @@ ${scriptInput}
 
             const llmData = await llmResponse.json();
             const llmText = llmData.rawResponse || llmData.text || llmData.result || '';
+            if (llmData._folderName) {
+                setCurrentFolderName(llmData._folderName);
+                console.log(`[ShortsLab] Story folder assigned (master): ${llmData._folderName}`);
+            }
 
             // JSON 파싱
             let jsonClean = llmText.trim();
@@ -3763,6 +3908,10 @@ ${scriptInput}
 
             setMasterCharacterProfiles(profiles);
             setMasterOutfitMap(outfitMap);
+            if (llmData._folderName) {
+                setAppStorageValue(getMasterProfilesStorageKey(llmData._folderName), profiles);
+                setAppStorageValue(getMasterOutfitsStorageKey(llmData._folderName), serializeMasterOutfitMap(outfitMap));
+            }
 
             // 8. 대본 설정
             setScriptInput(parsed.scriptBody);
@@ -3772,7 +3921,7 @@ ${scriptInput}
                 number: index + 1,
                 text: scene.scriptLine || '',
                 characterIds: scene.characterIds || [],
-                cameraAngle: scene.cameraAngle || 'medium shot',
+                cameraAngle: scene.cameraAngle || 'full body wide shot',
                 background: scene.background || '',
                 action: scene.action || 'standing naturally',
                 prompt: '',  // 빈 상태 (버튼 클릭 전)
@@ -3815,6 +3964,7 @@ ${scriptInput}
             setGenerationError(error instanceof Error ? error.message : '마스터 생성에 실패했습니다.');
         } finally {
             setIsMasterGenerating(false);
+            masterGenerateLockRef.current = false;
         }
     };
 
@@ -3843,10 +3993,38 @@ ${scriptInput}
 
             console.log('[Apply Character] Character rules loaded:', characterRules);
 
+            const shouldLockBackground = enableWinterAccessories || isWinterTopic(aiTopic || scriptInput || '');
+            const baseBackground = scenes.find((scene) => (scene.background || '').trim())?.background || '';
+            const lockedBackground = shouldLockBackground && baseBackground ? baseBackground : '';
+            const sanitizeCameraAngle = (value: string) => {
+                const raw = String(value || '').trim();
+                if (!raw) return 'full body wide shot';
+                if (/pov/i.test(raw)) return 'full body wide shot';
+                return raw;
+            };
+
+            const normalizedScenes = scenes.map((scene) => ({
+                ...scene,
+                cameraAngle: sanitizeCameraAngle(scene.cameraAngle || scene.camera || ''),
+                background: lockedBackground || scene.background || '',
+                action: scene.action || 'standing naturally'
+            }));
+
+            const uniqueIds = new Set<string>();
+            normalizedScenes.forEach((scene) => {
+                (scene.characterIds || []).forEach((id) => {
+                    if (id) uniqueIds.add(id);
+                });
+            });
+            const femaleIds = Array.from(uniqueIds).filter((id) => getCharacterGender(id) === 'female');
+            const accessoryMap = enableWinterAccessories ? buildUniqueFemaleAccessoryMap(femaleIds) : new Map<string, string[]>();
+
             const updatedScenes = applyCharacterInfoToScenes({
-                scenes,
+                scenes: normalizedScenes,
                 characterRules,
                 outfitMap: masterOutfitMap,
+                accessoryMap,
+                forceWinterBackground: shouldLockBackground,
                 targetAge: aiTargetAge
             });
 
@@ -3854,6 +4032,51 @@ ${scriptInput}
             console.log('[Apply Character] First scene prompt:', updatedScenes[0]?.prompt);
 
             setScenes(updatedScenes);
+            try {
+                const storyId = getEffectiveStoryId();
+                const titleBase = aiTopic?.trim() || 'ShortsLab';
+                const promptReportLines = [
+                    '[AI MASTER PROMPTS]',
+                    `GeneratedAt: ${new Date().toISOString()}`,
+                    `StoryId: ${storyId}`,
+                    `Title: ${titleBase}`,
+                    `TotalScenes: ${updatedScenes.length}`,
+                    ''
+                ];
+
+                updatedScenes.forEach((scene: any) => {
+                    promptReportLines.push(`--- Scene ${scene.number} ---`);
+                    promptReportLines.push(`scriptLine: ${scene.text || scene.summary || ''}`);
+                    promptReportLines.push(`characterIds: ${(scene.characterIds || []).join(', ')}`);
+                    promptReportLines.push(`cameraAngle: ${scene.cameraAngle || scene.camera || ''}`);
+                    promptReportLines.push(`background: ${scene.background || ''}`);
+                    promptReportLines.push(`action: ${scene.action || ''}`);
+                    promptReportLines.push('prompt:');
+                    promptReportLines.push(scene.prompt || '');
+                    promptReportLines.push('');
+                });
+
+                const reportContent = promptReportLines.join('\n').trim();
+                const saveResponse = await fetch('http://localhost:3002/api/save-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: `${titleBase}_ai_master_prompts`,
+                        content: reportContent,
+                        service: targetService || 'ShortsLab',
+                        folderName: storyId
+                    })
+                });
+                if (!saveResponse.ok) {
+                    const data = await saveResponse.json().catch(() => ({}));
+                    console.warn('[Apply Character] Prompt report save failed:', data);
+                    showToast('프롬프트 저장에 실패했습니다.', 'warning');
+                }
+            } catch (saveError) {
+                console.warn('[Apply Character] Prompt report save error:', saveError);
+                showToast('프롬프트 저장에 실패했습니다.', 'warning');
+            }
+
             showToast(`✓ 모든 씬에 캐릭터 정보가 적용되었습니다! (${updatedScenes.length}개 씬)`, 'success');
         } catch (error) {
             console.error('[Apply Character] 실패:', error);
@@ -3893,6 +4116,7 @@ ${scriptInput}
                 allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
             }
             : undefined;
+        const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
 
         // 공통 JSON 파싱 헬퍼
         const cleanAndParseJson = (text: string, fields: string[]) => {
@@ -4118,6 +4342,7 @@ ${scriptInput}
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
+                legacyGenrePrompt,
                 enableWinterAccessories,
                 useRandomOutfits,
                 allowedOutfitCategories,
@@ -4237,6 +4462,7 @@ ${scriptInput}
                     targetAge: aiTargetAge,
                     gender: settings.koreanGender,
                     genreGuideOverride,
+                    legacyGenrePrompt,
                     enableWinterAccessories,
                     useRandomOutfits,
                     allowedOutfitCategories,
@@ -4616,6 +4842,24 @@ ${scriptInput}
         setIsLoadingFolder(true);
         try {
             let loadedScenes: Scene[] = [];
+            const normalizeLoadedSceneCharacterIds = (scene: any): string[] => {
+                const rawIds = Array.isArray(scene?.characterIds)
+                    ? scene.characterIds
+                    : typeof scene?.characterSlot === 'string'
+                        ? scene.characterSlot.split(/[|,]/)
+                        : Array.isArray(scene?.characterSlot)
+                            ? scene.characterSlot
+                            : [];
+                const cleaned = rawIds
+                    .map((value: any) => String(value || '').trim())
+                    .filter(Boolean);
+                const mapped = cleaned
+                    .map((value: string) => normalizeSlotId(value) || mapAliasToSlot(value, settings.koreanGender))
+                    .filter(Boolean);
+                const hasCaddy = mapped.some((id: string) => id === 'WomanD');
+                const base = mapped.length > 0 ? mapped : [settings.koreanGender === 'male' ? 'ManA' : 'WomanA'];
+                return normalizeSlotList(base, settings.koreanGender, hasCaddy);
+            };
 
             // 1. 대본 로드 및 scenes 추출
             const scriptResponse = await fetch(`http://localhost:3002/api/scripts/by-folder/${encodeURIComponent(folderName)}`);
@@ -4634,12 +4878,16 @@ ${scriptInput}
                         shortPromptKo: scene.shortPromptKo || '',
                         longPromptKo: scene.longPromptKo || '',
                         summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
-                        camera: scene.camera || '',
+                        camera: scene.camera || scene.cameraAngle || '',
                         shotType: scene.shotType || '',
                         age: scene.age || '',
                         outfit: scene.outfit || '',
                         videoPrompt: scene.videoPrompt || '',
-                        isSelected: true
+                        isSelected: true,
+                        characterIds: normalizeLoadedSceneCharacterIds(scene),
+                        cameraAngle: scene.cameraAngle || scene.camera || '',
+                        background: scene.background || scene.location || scene.setting || '',
+                        action: scene.action || scene.behavior || scene.motion || ''
                     }));
                 } else {
                     // 서버 파싱 실패 시 클라이언트 폴백 (기존 로직 유지하되 안전하게)
@@ -4667,9 +4915,13 @@ ${scriptInput}
                                 shortPromptKo: scene.shortPromptKo || '',
                                 longPromptKo: scene.longPromptKo || '',
                                 summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
-                                camera: scene.camera || '',
+                                camera: scene.camera || scene.cameraAngle || '',
                                 shotType: scene.shotType || '',
-                                isSelected: true
+                                isSelected: true,
+                                characterIds: normalizeLoadedSceneCharacterIds(scene),
+                                cameraAngle: scene.cameraAngle || scene.camera || '',
+                                background: scene.background || scene.location || scene.setting || '',
+                                action: scene.action || scene.behavior || scene.motion || ''
                             }));
                         }
                     } catch (e) {
@@ -4703,6 +4955,8 @@ ${scriptInput}
                     setScriptInput(content);
                 }
             }
+
+            await loadMasterDataForFolder(folderName);
 
             // 2. 이미지 로드
             const imagesResponse = await fetch(`http://localhost:3002/api/images/by-story/${encodeURIComponent(folderName)}`);

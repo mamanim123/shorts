@@ -57,6 +57,7 @@ import { buildOutfitPool } from './outfitService';
 import type { OutfitPoolItem } from './outfitService';
 import { DEFAULT_PROMPT_RULES } from './shortsLabPromptRulesDefaults';
 import { getShortsLabPromptRules } from './shortsLabPromptRulesManager';
+import { getShortsLabScriptRules } from './shortsLabScriptRulesManager';
 import {
   fillStep2PromptTemplate,
   getShortsLabStep2PromptRules
@@ -2084,6 +2085,15 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
     : '';
   const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
   const legacyGenreBlock = buildLegacyGenreBlock(options.legacyGenrePrompt);
+  const scriptRules = getShortsLabScriptRules();
+  const buildNumberedRules = (rules: string[]) =>
+    rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n');
+  const coreRulesText = buildNumberedRules(scriptRules.coreRules);
+  const formatRulesLines = [...scriptRules.formatRules];
+  if (additionalContext?.trim()) {
+    formatRulesLines.push(`추가 요청: ${additionalContext.trim()}`);
+  }
+  const formatRulesText = buildNumberedRules(formatRulesLines);
 
   const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
   const golfCaddyRule = isGolfTopic ? `\n11. **캐디(WomanD) 상시 노출 (골프 씬 필수)**: 배경이 골프장인 경우, 캐디(WomanD)는 대본에 직접적인 대사가 없더라도 **거의 모든 장면에 배경 인물로 자연스럽게 포함**되어야 합니다. 주인공의 시선이 닿지 않는 곳에서 카트를 정리하거나 지켜보는 모습으로 배치하세요.` : '';
@@ -2153,21 +2163,13 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ✅ 핵심 규칙
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. 화자는 1인칭. **본인 이름 3인칭 금지**.
-2. 인물 첫 등장 시 관계가 **자연스럽게 드러나게**.
-3. 반전이 있으면 SETUP(2~3문장)에 **힌트 1개**.
-4. 감정 직접 서술 금지. **행동/신체반응으로 표현**.
-5. 제목은 구체적 상황으로 ("충격/반전" 같은 추상어 금지).
-6. **항상 새로운 소재/상황/소품 조합**으로 창작 (기존 예시·전개 복제 금지).${maleNarratorInstruction}
+${coreRulesText}
+${maleNarratorInstruction}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 📝 대본 형식 규칙
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. 분량: 10~12문장
-2. 문체: ~했어, ~했지, ~더라고, ~잖아 (반말 구어체 고정)
-3. 존댓말(~요/~습니다) 금지
-4. 대사: 작은따옴표 사용 ('이렇게 말했어')
-${additionalContext ? `5. 추가 요청: ${additionalContext}` : ''}
+${formatRulesText}
 
 ## 👗 의상 설정 (이미지 프롬프트용)
 - **${formatSlotDisplay('WomanA', slotNames)}**: ${womanAOutfit}
@@ -3167,6 +3169,18 @@ export const buildSimplifiedMasterPrompt = (params: {
   const { topic, genre, targetAge, gender = '여성' } = params;
   const genreGuide = params.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const legacyGenreBlock = buildLegacyGenreBlock(params.legacyGenrePrompt);
+  const scriptRules = getShortsLabScriptRules();
+  const buildNumberedRules = (rules: string[]) =>
+    rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n');
+  const coreRulesText = buildNumberedRules(scriptRules.coreRules);
+  const formatRulesText = buildNumberedRules(scriptRules.formatRules);
+  const sentenceRange = scriptRules.formatRules
+    .map((line) => {
+      const match = String(line || '').match(/(\d+)\s*~\s*(\d+)\s*문장/);
+      if (!match) return null;
+      return { min: Number(match[1]), max: Number(match[2]) };
+    })
+    .find(Boolean) || { min: 8, max: 12 };
 
   const characterSlots = gender === '남성'
     ? 'ManA (준호), ManB (민수), ManC (남성 조연)'
@@ -3198,7 +3212,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
 \`\`\`json
 {
   "title": "제목",
-  "scriptBody": "전체 대본 (8~12문장, 각 문장은 한 씬에 대응)",
+  "scriptBody": "전체 대본 (${sentenceRange.min}~${sentenceRange.max}문장, 각 문장은 한 씬에 대응)",
   "scenes": [
     {
       "sceneNumber": 1,
@@ -3224,11 +3238,17 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
       "background": "dramatic golf course fairway with towering pine trees covered in snow",
       "action": "striding confidently forward toward camera, snow crunching beneath their feet"
     }
-    // ... 8~12개 씬 (scriptBody의 문장 수와 정확히 일치)
+    // ... ${sentenceRange.min}~${sentenceRange.max}개 씬 (scriptBody의 문장 수와 정확히 일치)
     // 반드시 drone shot, full body wide, low angle wide, establishing wide 위주로!
   ]
 }
 \`\`\`
+
+## ✅ 핵심 규칙
+${coreRulesText}
+
+## 📝 대본 형식 규칙
+${formatRulesText}
 
 **중요 규칙:**
 
@@ -3256,7 +3276,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
    - 대신 drone shot / full body wide / low angle wide / establishing wide 위주로 구성
 
 3. **씬 개수**:
-   - 반드시 8~12개 씬 생성
+   - 반드시 ${sentenceRange.min}~${sentenceRange.max}개 씬 생성
    - scriptBody의 각 문장마다 1개 씬 할당 (1:1 매칭)
 
 4. **카메라 앵글 규칙 (매우 중요!)**:
@@ -3305,7 +3325,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
    - **세부 묘사**: 손동작, 시선, 표정 변화 등 구체적으로
 
 **체크리스트**:
-- [ ] scriptBody는 8~12개 문장인가?
+- [ ] scriptBody는 ${sentenceRange.min}~${sentenceRange.max}개 문장인가?
 - [ ] scenes 배열은 scriptBody 문장 수와 정확히 일치하는가?
 - [ ] 모든 씬의 characterIds는 슬롯 ID만 포함하는가?
 - [ ] 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않았는가?

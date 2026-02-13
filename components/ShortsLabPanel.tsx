@@ -19,6 +19,7 @@ import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo, MasterPa
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
 import { useShortsLabStep2PromptRulesManager } from '../hooks/useShortsLabStep2PromptRulesManager';
+import { useShortsLabScriptRulesManager } from '../hooks/useShortsLabScriptRulesManager';
 import { useShortsLabCharacterRulesManager } from '../hooks/useShortsLabCharacterRulesManager';
 import { shortsLabStep2PromptRulesManager } from '../services/shortsLabStep2PromptRulesManager';
 import { genreManager as legacyGenreManager, getGenreGuideline as getLegacyGenreGuideline } from '../services/genreGuidelines';
@@ -1387,6 +1388,18 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         renameBackup: renameStep2Backup,
         updateBackupContent: updateStep2BackupContent
     } = useShortsLabStep2PromptRulesManager();
+    const {
+        rules: labScriptRules,
+        backups: labScriptRuleBackups,
+        refresh: refreshScriptRules,
+        updateRules: updateScriptRules,
+        resetRules: resetScriptRules,
+        createBackup: createScriptRulesBackup,
+        restoreBackup: restoreScriptRulesBackup,
+        deleteBackup: deleteScriptRulesBackup,
+        renameBackup: renameScriptRulesBackup,
+        updateBackupContent: updateScriptRulesBackupContent
+    } = useShortsLabScriptRulesManager();
     const {
         rules: characterRules,
         backups: characterRulesBackups, // 원본 변수명 유지
@@ -6186,6 +6199,8 @@ ${scriptInput}
                     outfitCategories={outfitCatalog.categories || []}
                     promptRules={labPromptRules}
                     promptRuleBackups={labPromptRuleBackups}
+                    scriptRules={labScriptRules}
+                    scriptRuleBackups={labScriptRuleBackups}
                     onClose={() => {
                         setShowGenreModal(false);
                     }}
@@ -6281,6 +6296,34 @@ ${scriptInput}
                     }}
                     onStep2BackupEdit={async (id, rulesInput) => {
                         await updateStep2BackupContent(id, rulesInput);
+                        showToast('백업 내용이 저장되었습니다.', 'success');
+                    }}
+                    onScriptRulesSave={async (rulesInput) => {
+                        await updateScriptRules(rulesInput);
+                        showToast('대본 규칙이 저장되었습니다.', 'success');
+                    }}
+                    onScriptRulesReset={async () => {
+                        await resetScriptRules();
+                        showToast('대본 규칙이 기본값으로 초기화되었습니다.', 'success');
+                    }}
+                    onScriptRulesBackupCreate={async (name) => {
+                        await createScriptRulesBackup(name);
+                        showToast('대본 규칙 백업이 저장되었습니다.', 'success');
+                    }}
+                    onScriptRulesBackupRestore={async (id) => {
+                        await restoreScriptRulesBackup(id);
+                        showToast('대본 규칙을 백업에서 복구했습니다.', 'success');
+                    }}
+                    onScriptRulesBackupDelete={async (id) => {
+                        await deleteScriptRulesBackup(id);
+                        showToast('대본 규칙 백업이 삭제되었습니다.', 'success');
+                    }}
+                    onScriptRulesBackupRename={async (id, name) => {
+                        await renameScriptRulesBackup(id, name);
+                        showToast('백업 이름이 변경되었습니다.', 'success');
+                    }}
+                    onScriptRulesBackupEdit={async (id, rulesInput) => {
+                        await updateScriptRulesBackupContent(id, rulesInput);
                         showToast('백업 내용이 저장되었습니다.', 'success');
                     }}
                     characterRules={characterRules}
@@ -6415,6 +6458,16 @@ interface GenreManagementModalProps {
         createdAt: string;
         rules: unknown;
     }[];
+    scriptRules?: {
+        coreRules?: string[];
+        formatRules?: string[];
+    };
+    scriptRuleBackups?: {
+        id: string;
+        name: string;
+        createdAt: string;
+        rules: unknown;
+    }[];
     step2Rules?: unknown;
     step2Backups?: {
         id: string;
@@ -6446,6 +6499,13 @@ interface GenreManagementModalProps {
     onStep2BackupDelete?: (id: string) => Promise<void>;
     onStep2BackupRename?: (id: string, name: string) => Promise<void>;
     onStep2BackupEdit?: (id: string, rulesInput: unknown) => Promise<void>;
+    onScriptRulesSave?: (rulesInput: unknown) => Promise<void>;
+    onScriptRulesReset?: () => Promise<void>;
+    onScriptRulesBackupCreate?: (name?: string) => Promise<void>;
+    onScriptRulesBackupRestore?: (id: string) => Promise<void>;
+    onScriptRulesBackupDelete?: (id: string) => Promise<void>;
+    onScriptRulesBackupRename?: (id: string, name: string) => Promise<void>;
+    onScriptRulesBackupEdit?: (id: string, rulesInput: unknown) => Promise<void>;
     characterRules?: any;
     characterRulesBackups?: any[];
     onCharacterRulesSave?: (rulesInput: unknown) => Promise<void>;
@@ -6468,6 +6528,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     outfitCategories,
     promptRules,
     promptRuleBackups,
+    scriptRules,
+    scriptRuleBackups,
     step2Rules,
     step2Backups,
     onClose,
@@ -6494,6 +6556,13 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onStep2BackupDelete,
     onStep2BackupRename,
     onStep2BackupEdit,
+    onScriptRulesSave,
+    onScriptRulesReset,
+    onScriptRulesBackupCreate,
+    onScriptRulesBackupRestore,
+    onScriptRulesBackupDelete,
+    onScriptRulesBackupRename,
+    onScriptRulesBackupEdit,
     characterRules,
     characterRulesBackups,
     onCharacterRulesSave,
@@ -6508,7 +6577,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onDeleteFemaleCharacter,
     onDeleteMaleCharacter
 }) => {
-    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'step2_rules' | 'post_process' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
+    const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'script_rules' | 'step2_rules' | 'post_process' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
 
@@ -6595,6 +6664,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [editingStep2BackupId, setEditingStep2BackupId] = useState<string | null>(null);
     const [step2BackupEditText, setStep2BackupEditText] = useState('');
     const [step2BackupEditError, setStep2BackupEditError] = useState<string | null>(null);
+    const [scriptCoreRulesText, setScriptCoreRulesText] = useState('');
+    const [scriptFormatRulesText, setScriptFormatRulesText] = useState('');
+    const [scriptRulesEditError, setScriptRulesEditError] = useState<string | null>(null);
+    const [scriptRulesDirty, setScriptRulesDirty] = useState(false);
+    const [selectedScriptBackupId, setSelectedScriptBackupId] = useState<string | null>(null);
+    const [scriptBackupName, setScriptBackupName] = useState('');
+    const [scriptBackupEdits, setScriptBackupEdits] = useState<Record<string, string>>({});
+    const [editingScriptRulesBackupId, setEditingScriptRulesBackupId] = useState<string | null>(null);
+    const [scriptBackupEditText, setScriptBackupEditText] = useState('');
+    const [scriptBackupEditError, setScriptBackupEditError] = useState<string | null>(null);
 
     // Character Rules State (v2.0: 동적 배열 구조)
     const [characterRulesState, setCharacterRulesState] = useState<{
@@ -6667,6 +6746,16 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         setStep2CharacterPrompt(rulesValue.characterPrompt || '');
         setStep2FinalPrompt(rulesValue.finalPrompt || '');
     }, [step2Rules, step2RulesDirty]);
+
+    React.useEffect(() => {
+        if (scriptRulesDirty) return;
+        const rulesValue = (scriptRules || {}) as {
+            coreRules?: string[];
+            formatRules?: string[];
+        };
+        setScriptCoreRulesText((rulesValue.coreRules || []).join('\n'));
+        setScriptFormatRulesText((rulesValue.formatRules || []).join('\n'));
+    }, [scriptRules, scriptRulesDirty]);
 
     React.useEffect(() => {
         if (rulesDirty) return;
@@ -7158,6 +7247,128 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
+    const handleScriptRulesSave = async () => {
+        if (!onScriptRulesSave) return;
+        const coreRules = scriptCoreRulesText
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+        const formatRules = scriptFormatRulesText
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+        try {
+            await onScriptRulesSave({
+                coreRules,
+                formatRules
+            });
+            setScriptRulesDirty(false);
+            setScriptRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to save script rules:', err);
+            setScriptRulesEditError('대본 규칙 저장에 실패했습니다.');
+        }
+    };
+
+    const handleScriptRulesReset = async () => {
+        if (!onScriptRulesReset) return;
+        if (!window.confirm('대본 규칙을 기본값으로 초기화하시겠습니까?')) return;
+        try {
+            await onScriptRulesReset();
+            setScriptRulesDirty(false);
+            setScriptRulesEditError(null);
+        } catch (err) {
+            console.error('Failed to reset script rules:', err);
+            alert('대본 규칙 초기화에 실패했습니다.');
+        }
+    };
+
+    const handleScriptBackupCreate = async () => {
+        if (!onScriptRulesBackupCreate) return;
+        try {
+            await onScriptRulesBackupCreate(scriptBackupName);
+            setScriptBackupName('');
+        } catch (err) {
+            console.error('Failed to create script rules backup:', err);
+            alert('대본 규칙 백업 생성에 실패했습니다.');
+        }
+    };
+
+    const handleScriptBackupRestore = async (id: string) => {
+        if (!onScriptRulesBackupRestore) return;
+        if (!window.confirm('이 백업으로 대본 규칙을 복구하시겠습니까?')) return;
+        try {
+            await onScriptRulesBackupRestore(id);
+            setScriptRulesDirty(false);
+            setScriptRulesEditError(null);
+            setSelectedScriptBackupId(id);
+        } catch (err) {
+            console.error('Failed to restore script rules backup:', err);
+            alert('대본 규칙 백업 복구에 실패했습니다.');
+        }
+    };
+
+    const handleScriptBackupRestoreSelected = async () => {
+        if (!selectedScriptBackupId) {
+            alert('복구할 백업을 선택해주세요.');
+            return;
+        }
+        await handleScriptBackupRestore(selectedScriptBackupId);
+    };
+
+    const handleScriptBackupDelete = async (id: string) => {
+        if (!onScriptRulesBackupDelete) return;
+        if (!window.confirm('이 백업을 삭제하시겠습니까?')) return;
+        try {
+            await onScriptRulesBackupDelete(id);
+        } catch (err) {
+            console.error('Failed to delete script rules backup:', err);
+            alert('대본 규칙 백업 삭제에 실패했습니다.');
+        }
+    };
+
+    const handleScriptBackupRename = async (id: string) => {
+        if (!onScriptRulesBackupRename) return;
+        const name = (scriptBackupEdits[id] || '').trim();
+        if (!name) {
+            alert('백업 이름을 입력해주세요.');
+            return;
+        }
+        try {
+            await onScriptRulesBackupRename(id, name);
+            setScriptBackupEdits((prev) => ({ ...prev, [id]: name }));
+        } catch (err) {
+            console.error('Failed to rename script rules backup:', err);
+            alert('백업 이름 변경에 실패했습니다.');
+        }
+    };
+
+    const handleOpenScriptRulesBackupEditor = (backupId: string) => {
+        const backup = scriptRuleBackups?.find((item) => item.id === backupId);
+        if (!backup) return;
+        setEditingScriptRulesBackupId(backupId);
+        setScriptBackupEditText(JSON.stringify(backup.rules, null, 2));
+        setScriptBackupEditError(null);
+    };
+
+    const handleCloseScriptRulesBackupEditor = () => {
+        setEditingScriptRulesBackupId(null);
+        setScriptBackupEditText('');
+        setScriptBackupEditError(null);
+    };
+
+    const handleSaveScriptRulesBackupContent = async () => {
+        if (!editingScriptRulesBackupId || !onScriptRulesBackupEdit) return;
+        try {
+            const parsed = JSON.parse(scriptBackupEditText);
+            await onScriptRulesBackupEdit(editingScriptRulesBackupId, parsed);
+            handleCloseScriptRulesBackupEditor();
+        } catch (err) {
+            console.error('Failed to save script rules backup content:', err);
+            setScriptBackupEditError('JSON 형식이 올바르지 않습니다.');
+        }
+    };
+
     const handleOpenCharacterRulesBackupEditor = (backupId: string) => {
         const backup = characterRulesBackups?.find(item => item.id === backupId);
         if (!backup) return;
@@ -7500,6 +7711,19 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 }`}
                         >
                             2단계규칙
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('script_rules');
+                                setMode('list');
+                                setSelectedGenre(null);
+                            }}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'script_rules'
+                                ? 'bg-cyan-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            대본규칙
                         </button>
                         <button
                             onClick={() => {
@@ -8456,6 +8680,142 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         </div>
                     )}
 
+                    {activeTab === 'script_rules' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+                            <div className="space-y-6">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">핵심 규칙 (1줄 = 1규칙)</div>
+                                    <textarea
+                                        value={scriptCoreRulesText}
+                                        onChange={(e) => {
+                                            setScriptCoreRulesText(e.target.value);
+                                            setScriptRulesDirty(true);
+                                            setScriptRulesEditError(null);
+                                        }}
+                                        rows={10}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                                    />
+                                </div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
+                                    <div className="text-sm font-semibold text-slate-200">대본 형식 규칙 (1줄 = 1규칙)</div>
+                                    <textarea
+                                        value={scriptFormatRulesText}
+                                        onChange={(e) => {
+                                            setScriptFormatRulesText(e.target.value);
+                                            setScriptRulesDirty(true);
+                                            setScriptRulesEditError(null);
+                                        }}
+                                        rows={8}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={handleScriptBackupCreate}
+                                            className="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs font-semibold"
+                                        >
+                                            백업
+                                        </button>
+                                        <button
+                                            onClick={handleScriptBackupRestoreSelected}
+                                            className="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            복원
+                                        </button>
+                                        <button
+                                            onClick={handleScriptRulesSave}
+                                            className="px-2 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold"
+                                        >
+                                            저장
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={scriptBackupName}
+                                        onChange={(e) => setScriptBackupName(e.target.value)}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        placeholder="백업 이름 (비워두면 자동 생성)"
+                                    />
+                                    <button
+                                        onClick={handleScriptRulesReset}
+                                        className="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-semibold"
+                                    >
+                                        기본값으로 초기화
+                                    </button>
+                                    <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
+                                    {scriptRulesEditError && (
+                                        <div className="text-xs text-rose-400">{scriptRulesEditError}</div>
+                                    )}
+                                </div>
+                                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-2">
+                                    <div className="text-xs font-semibold text-slate-300">백업 선택 (최대 5개)</div>
+                                    {(!scriptRuleBackups || scriptRuleBackups.length === 0) ? (
+                                        <div className="text-xs text-slate-500">저장된 백업이 없습니다.</div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {scriptRuleBackups.map((backup) => (
+                                                <div
+                                                    key={backup.id}
+                                                    className={`rounded-lg border transition-colors ${selectedScriptBackupId === backup.id
+                                                        ? 'border-cyan-500 bg-cyan-600/20'
+                                                        : 'border-slate-800 bg-slate-900'
+                                                        }`}
+                                                >
+                                                    <div className="p-3 space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={scriptBackupEdits[backup.id] ?? backup.name}
+                                                                onChange={(e) =>
+                                                                    setScriptBackupEdits((prev) => ({ ...prev, [backup.id]: e.target.value }))
+                                                                }
+                                                                className="flex-1 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                                            />
+                                                            <button
+                                                                onClick={() => handleScriptBackupRename(backup.id)}
+                                                                className="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[9px]"
+                                                            >
+                                                                저장
+                                                            </button>
+                                                        </div>
+                                                        <div
+                                                            className="cursor-pointer"
+                                                            onClick={() => setSelectedScriptBackupId(backup.id)}
+                                                        >
+                                                            <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).toLocaleString()}</div>
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => handleOpenScriptRulesBackupEditor(backup.id)}
+                                                                className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-semibold"
+                                                            >
+                                                                보기/편집
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (selectedScriptBackupId === backup.id) {
+                                                                        setSelectedScriptBackupId(null);
+                                                                    }
+                                                                    handleScriptBackupDelete(backup.id);
+                                                                }}
+                                                                className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[10px] font-semibold"
+                                                            >
+                                                                삭제
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'character_rules' && (
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
                             <div className="space-y-6">
@@ -9328,7 +9688,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
             </div>
 
             {/* 🔹 통합 백업 편집기 모달 (v3.9.5 - 부모 모달 닫힘 방지 조치) */}
-            {(editingBackupId || editingRulesBackupId || editingStep2BackupId || editingCharacterRulesBackupId) && (
+            {(editingBackupId || editingRulesBackupId || editingStep2BackupId || editingScriptRulesBackupId || editingCharacterRulesBackupId) && (
                 <div 
                     className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
                     onClick={(e) => {
@@ -9336,6 +9696,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         if (editingBackupId) handleCloseBackupEditor();
                         else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
                         else if (editingStep2BackupId) handleCloseStep2BackupEditor();
+                        else if (editingScriptRulesBackupId) handleCloseScriptRulesBackupEditor();
                         else handleCloseCharacterRulesBackupEditor();
                     }}
                 >
@@ -9349,6 +9710,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     {editingBackupId && '장르 가이드라인 백업 편집'}
                                     {editingRulesBackupId && '프롬프트 규칙 백업 편집'}
                                     {editingStep2BackupId && '2단계 규칙 백업 편집'}
+                                    {editingScriptRulesBackupId && '대본 규칙 백업 편집'}
                                     {editingCharacterRulesBackupId && '의상 규칙 백업 편집'}
                                 </h3>
                                 <p className="text-[11px] text-slate-400 mt-0.5">JSON 데이터를 수정한 뒤 저장하세요.</p>
@@ -9358,6 +9720,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     if (editingBackupId) handleCloseBackupEditor();
                                     else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
                                     else if (editingStep2BackupId) handleCloseStep2BackupEditor();
+                                    else if (editingScriptRulesBackupId) handleCloseScriptRulesBackupEditor();
                                     else handleCloseCharacterRulesBackupEditor();
                                 }}
                                 className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
@@ -9370,7 +9733,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 value={
                                     editingBackupId ? backupEditText : 
                                     (editingRulesBackupId ? rulesBackupEditText : 
-                                    (editingStep2BackupId ? step2BackupEditText : characterRulesBackupEditText))
+                                    (editingStep2BackupId ? step2BackupEditText :
+                                    (editingScriptRulesBackupId ? scriptBackupEditText : characterRulesBackupEditText)))
                                 }
                                 onChange={(e) => {
                                     if (editingBackupId) {
@@ -9382,6 +9746,9 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     } else if (editingStep2BackupId) {
                                         setStep2BackupEditText(e.target.value);
                                         setStep2BackupEditError(null);
+                                    } else if (editingScriptRulesBackupId) {
+                                        setScriptBackupEditText(e.target.value);
+                                        setScriptBackupEditError(null);
                                     } else {
                                         setCharacterRulesBackupEditText(e.target.value);
                                         setCharacterRulesBackupEditError(null);
@@ -9390,9 +9757,9 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 className="flex-1 w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                                 placeholder="JSON 데이터를 입력하세요..."
                             />
-                            {(backupEditError || rulesBackupEditError || step2BackupEditError || characterRulesBackupEditError) && (
+                            {(backupEditError || rulesBackupEditError || step2BackupEditError || scriptBackupEditError || characterRulesBackupEditError) && (
                                 <div className="mt-2 text-xs text-rose-400">
-                                    {backupEditError || rulesBackupEditError || step2BackupEditError || characterRulesBackupEditError}
+                                    {backupEditError || rulesBackupEditError || step2BackupEditError || scriptBackupEditError || characterRulesBackupEditError}
                                 </div>
                             )}
                         </div>
@@ -9402,6 +9769,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     if (editingBackupId) handleCloseBackupEditor();
                                     else if (editingRulesBackupId) handleClosePromptRulesBackupEditor();
                                     else if (editingStep2BackupId) handleCloseStep2BackupEditor();
+                                    else if (editingScriptRulesBackupId) handleCloseScriptRulesBackupEditor();
                                     else handleCloseCharacterRulesBackupEditor();
                                 }}
                                 className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-sm font-medium transition-colors"
@@ -9413,6 +9781,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     if (editingBackupId) handleBackupSaveContent();
                                     else if (editingRulesBackupId) handleSavePromptRulesBackupContent();
                                     else if (editingStep2BackupId) handleSaveStep2BackupContent();
+                                    else if (editingScriptRulesBackupId) handleSaveScriptRulesBackupContent();
                                     else handleSaveCharacterRulesBackupContent();
                                 }}
                                 className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20"

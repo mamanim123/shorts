@@ -948,6 +948,8 @@ export const UNIFIED_OUTFIT_LIST = [
   // 남성 의상 (기존 MALE_OUTFIT_PRESETS 활용)
   { id: "male-001", name: "Navy Slim-fit Polo + White Tailored Golf Pants", translation: "네이비 슬림핏 폴로 + 화이트 테일러드 골프 팬츠", categories: ["MALE", "GOLF"] },
   { id: "male-002", name: "White Performance Polo + Beige Chino Golf Pants", translation: "화이트 퍼포먼스 폴로 + 베이지 치노 골프 팬츠", categories: ["MALE", "GOLF"] },
+  { id: "male-013", name: "Sky Blue Dry-fit Polo + Charcoal Stretch Golf Pants", translation: "스카이블루 드라이핏 폴로 + 차콜 스트레치 골프 팬츠", categories: ["MALE", "GOLF"] },
+  { id: "male-014", name: "Black Mock-neck Base Layer + White Slim Golf Pants", translation: "블랙 목넥 베이스레이어 + 화이트 슬림 골프 팬츠", categories: ["MALE", "GOLF"] },
   { id: "male-003", name: "Charcoal Mock-neck Knit + Grey Checkered Slacks", translation: "차콜 목넥 니트 + 그레이 체크 슬랙스", categories: ["MALE", "BUSINESS"] },
   { id: "male-004", name: "Burgundy Half-zip Pullover + Cream Pants", translation: "버건디 하프집 풀오버 + 크림 팬츠", categories: ["MALE", "CASUAL"] },
   { id: "male-005", name: "White Shirt + Navy Blazer + Grey Slacks", translation: "화이트 셔츠 + 네이비 블레이저 + 그레이 슬랙스", categories: ["MALE", "BUSINESS"] },

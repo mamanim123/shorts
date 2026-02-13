@@ -3278,6 +3278,14 @@ ${formatRulesText}
 3. **씬 개수**:
    - 반드시 ${sentenceRange.min}~${sentenceRange.max}개 씬 생성
    - scriptBody의 각 문장마다 1개 씬 할당 (1:1 매칭)
+   - 씬마다 characterIds를 반드시 채울 것 (빈 배열 금지)
+
+3-1. **인물 구성 비율 규칙 (매우 중요)**:
+   - 원샷(1명) 비율: 최대 60%
+   - 투샷(2명) 비율: 최소 30%
+   - 쓰리샷(3명 이상) 비율: 최소 10% (등장 가능한 인물이 3명 이상일 때)
+   - 같은 인물 1명만 나오는 장면이 2씬 이상 연속되지 않도록 구성
+   - 대사 흐름상 상호작용 장면은 가능한 한 투샷/쓰리샷으로 배치
 
 4. **카메라 앵글 규칙 (매우 중요!)**:
    - **대박나는 쇼츠는 역동적이고 시네마틱한 와이드샷이 핵심입니다!**
@@ -3328,6 +3336,9 @@ ${formatRulesText}
 - [ ] scriptBody는 ${sentenceRange.min}~${sentenceRange.max}개 문장인가?
 - [ ] scenes 배열은 scriptBody 문장 수와 정확히 일치하는가?
 - [ ] 모든 씬의 characterIds는 슬롯 ID만 포함하는가?
+- [ ] characterIds가 빈 배열인 씬이 없는가?
+- [ ] 원샷 60% 이하, 투샷 30% 이상, 쓰리샷 10% 이상(가능 시)인가?
+- [ ] 동일 인물 원샷이 2씬 이상 연속되지 않는가?
 - [ ] 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않았는가?
 - [ ] 카메라 앵글 비율을 준수했는가? (drone shot 25%, full body wide 25%, low angle wide 20%, establishing wide 15%, close-up 최대 10%, POV 5%)
 - [ ] **medium shot과 extreme close-up을 사용하지 않았는가?** (절대 금지!)
@@ -3357,8 +3368,9 @@ export const assignOutfitsToCharacters = (params: {
   characterIds: string[];
   genre: string;
   outfitsData: any[];
+  topic?: string;
 }): Map<string, { name: string; prompt: string }> => {
-  const { characterIds, genre, outfitsData } = params;
+  const { characterIds, genre, outfitsData, topic = '' } = params;
 
   console.log('[assignOutfits] Input genre:', genre);
   console.log('[assignOutfits] Character IDs:', characterIds);
@@ -3390,9 +3402,16 @@ export const assignOutfitsToCharacters = (params: {
   // 3. 중복 없이 랜덤 선택
   const selectedOutfits = new Map<string, { name: string; prompt: string }>();
   const usedIndices = new Set<number>();
+  const usedMaleNames = new Set<string>();
+  const isGolfTopic = /골프|golf/i.test(String(topic || '')) || String(genre || '').toLowerCase().includes('golf');
+  const malePool = getOutfitPool().filter((item) => {
+    if (!isMaleOutfit(item)) return false;
+    if (isGolfTopic) return item.categories.includes('GOLF');
+    return true;
+  });
+  const fallbackMalePool = getOutfitPool().filter((item) => isMaleOutfit(item));
 
   characterIds.forEach(slotId => {
-    // 여성 캐릭터만 의상 할당 (남성은 기본 의상)
     if (slotId.startsWith('Woman')) {
       let randomIndex: number;
       let attempts = 0;
@@ -3413,6 +3432,19 @@ export const assignOutfitsToCharacters = (params: {
         console.log(`[assignOutfits] Assigned to ${slotId}:`, outfit.name);
       } else {
         console.warn(`[assignOutfits] Could not assign outfit to ${slotId} (max attempts reached)`);
+      }
+    } else if (slotId.startsWith('Man')) {
+      const source = malePool.length > 0 ? malePool : fallbackMalePool;
+      const available = source.filter((item) => !usedMaleNames.has(item.name));
+      const pickSource = available.length > 0 ? available : source;
+      const picked = pickSource[Math.floor(Math.random() * pickSource.length)];
+      if (picked) {
+        selectedOutfits.set(slotId, {
+          name: picked.name,
+          prompt: picked.name
+        });
+        usedMaleNames.add(picked.name);
+        console.log(`[assignOutfits] Assigned to ${slotId}:`, picked.name);
       }
     }
   });
@@ -3438,6 +3470,52 @@ export const applyCharacterInfoToScenes = (params: {
   targetAge: string;
 }): any[] => {
   const { scenes, characterRules, outfitMap, accessoryMap, forceWinterBackground, targetAge } = params;
+  const CANDID_PERSON_ACTIONS = [
+    'half-turning with a spontaneous laugh',
+    'adjusting grip while glancing sideways',
+    'stepping forward with relaxed shoulders',
+    'raising one hand mid-conversation',
+    'briefly pausing with a surprised expression',
+    'looking off-frame as if reacting to someone',
+    'leaning slightly while speaking naturally',
+    'catching breath with a subtle smile'
+  ];
+  const CANDID_GROUP_CONNECTORS = [
+    'in a candid, documentary-style moment',
+    'captured like an off-guard candid frame',
+    'with natural, unscripted interaction energy'
+  ];
+  const buildCandidGroupAction = (baseAction: string, count: number, seed: number) => {
+    const cleanedBase = String(baseAction || '').trim();
+    const personClauses: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const action = CANDID_PERSON_ACTIONS[(seed + i * 2) % CANDID_PERSON_ACTIONS.length];
+      personClauses.push(`Person ${i + 1} ${action}`);
+    }
+    const connector = CANDID_GROUP_CONNECTORS[seed % CANDID_GROUP_CONNECTORS.length];
+    const uniquePoseRule = 'each person with different pose, different hand gesture, different gaze direction, no mirrored or synchronized pose';
+    const merged = [cleanedBase, personClauses.join(', '), connector, uniquePoseRule]
+      .filter(Boolean)
+      .join(', ');
+    return merged;
+  };
+  const getShotTypeByCount = (count: number): '원샷' | '투샷' | '쓰리샷' => {
+    if (count >= 3) return '쓰리샷';
+    if (count === 2) return '투샷';
+    return '원샷';
+  };
+  const normalizeCameraByCount = (cameraValue: string, count: number, isPOV: boolean) => {
+    const raw = String(cameraValue || '').trim();
+    if (isPOV) return 'full body wide shot';
+    if (!raw) {
+      if (count >= 3) return 'group wide shot';
+      if (count === 2) return 'two-shot wide';
+      return 'full body wide shot';
+    }
+    if (count >= 3 && !/group|three|wide/i.test(raw)) return 'group wide shot';
+    if (count === 2 && !/two|pair|wide/i.test(raw)) return 'two-shot wide';
+    return raw;
+  };
   const normalizedAge = convertAgeToEnglish(targetAge || '');
   const getFallbackAge = (identity: string, gender: 'female' | 'male') => {
     if (!identity) return '';
@@ -3448,20 +3526,21 @@ export const applyCharacterInfoToScenes = (params: {
   const hasWinterKeyword = (value: string) => /snow|winter|ice|frost|icy|blizzard|snowy/i.test(value || '');
   const winterHint = 'snowy winter landscape, visible snow on ground, cold atmosphere';
   const colorLockPerCharacter = 'exact outfit colors, no hue shift, no color variation';
+  const scene1Background = scenes[0]?.background || '';
 
-  return scenes.map(scene => {
+  return scenes.map((scene, sceneIndex) => {
     const { characterIds = [], action = '', cameraAngle = '', background = '', camera = '' } = scene;
 
+    // ========================================
     // 1. 캐릭터 블록 생성
+    // ========================================
     const characterBlocks: string[] = [];
 
     characterIds.forEach((slotId: string) => {
-      // 여성 캐릭터
       if (slotId.startsWith('Woman')) {
         const femaleChar = characterRules.females.find((f: any) => f.id === slotId);
         if (!femaleChar) return;
 
-        // 나이 적용 (WomanD는 고정 20대, 나머지는 targetAge)
         const ageText = femaleChar.isFixedAge
           ? femaleChar.fixedAge
           : normalizedAge
@@ -3471,8 +3550,6 @@ export const applyCharacterInfoToScenes = (params: {
         const identity = `A stunning Korean woman ${ageText}`;
         const hair = femaleChar.hair;
         const body = femaleChar.body;
-
-        // 의상 정보
         const outfit = outfitMap.get(slotId);
         const outfitText = outfit ? outfit.prompt : 'elegant casual outfit';
         const accessories = accessoryMap?.get(slotId) || [];
@@ -3484,7 +3561,6 @@ export const applyCharacterInfoToScenes = (params: {
           `${identity}, ${hair}, ${body}, wearing ${outfitText}${accessoryText}, ${colorLockPerCharacter}`
         );
       }
-      // 남성 캐릭터
       else if (slotId.startsWith('Man')) {
         const maleChar = characterRules.males.find((m: any) => m.id === slotId);
         if (!maleChar) return;
@@ -3495,9 +3571,8 @@ export const applyCharacterInfoToScenes = (params: {
         const identity = `A handsome Korean man ${ageText}`;
         const hair = maleChar.hair;
         const body = maleChar.body;
-
-        // 남성 기본 의상
-        const outfitText = 'tailored casual outfit';
+        const outfit = outfitMap.get(slotId);
+        const outfitText = outfit ? outfit.prompt : 'tailored casual outfit';
 
         characterBlocks.push(
           `${identity}, ${hair}, ${body}, wearing ${outfitText}, ${colorLockPerCharacter}`
@@ -3505,26 +3580,108 @@ export const applyCharacterInfoToScenes = (params: {
       }
     });
 
-    // 2. 최종 프롬프트 조립
-    const identityBlock = characterBlocks.join(' and ');
-    const actionBlock = action || 'standing naturally';
+    // ========================================
+    // 2. POV 처리: 화자 캐릭터 제거
+    // ========================================
     const effectiveCamera = cameraAngle || camera || 'full body wide shot';
-    const cameraBlock = effectiveCamera ? `${effectiveCamera} camera angle` : 'full body wide shot';
-    const isWideShot = /wide|full body|aerial|drone|establishing/i.test(effectiveCamera || '');
-    const fullBodyHint = isWideShot ? 'full body visible, head-to-toe' : '';
-    const backgroundWithWinter = forceWinterBackground && !hasWinterKeyword(background)
-      ? (background ? `${background}, ${winterHint}` : winterHint)
-      : background;
-    const backgroundBlock = backgroundWithWinter ? `in a ${backgroundWithWinter}` : '';
-    const colorLockHint = 'color-accurate, preserve original outfit colors, no color changes';
+    const isPOV = /pov/i.test(effectiveCamera);
+    
+    let filteredCharacterBlocks = [...characterBlocks];
+    let filteredCharacterIds = [...characterIds];
 
+    if (isPOV && characterIds.length >= 2) {
+      const narratorSlot = scene.narrator?.slot || characterIds[0];
+      const narratorIndex = characterIds.indexOf(narratorSlot);
+      
+      if (narratorIndex !== -1) {
+        filteredCharacterIds = characterIds.filter((_: string, i: number) => i !== narratorIndex);
+        filteredCharacterBlocks = characterBlocks.filter((_: string, i: number) => i !== narratorIndex);
+      }
+    }
+
+    // ========================================
+    // 3. [Person N] 구분자 적용
+    // ========================================
+    let identityBlock: string;
+    if (filteredCharacterBlocks.length === 1) {
+      identityBlock = filteredCharacterBlocks[0];
+    } else if (filteredCharacterBlocks.length > 1) {
+      identityBlock = filteredCharacterBlocks
+        .map((block, i) => `[Person ${i + 1}: ${block}]`)
+        .join(' ');
+    } else {
+      identityBlock = characterBlocks[0] || '';
+    }
+
+    // ========================================
+    // 4. Action 슬롯명 → Person N 치환
+    // ========================================
+    let processedAction = action || 'standing naturally';
+    
+    // POV일 때 "looking at camera" 추가
+    if (isPOV) {
+      processedAction = `${processedAction}, looking at camera (POV target)`;
+    }
+    
+    // 투샷/쓰리샷일 때 슬롯명을 Person N으로 치환
+    if (characterIds.length >= 2) {
+      characterIds.forEach((slotId: string, index: number) => {
+        const personLabel = `Person ${index + 1}`;
+        const charRule = slotId.startsWith('Woman')
+          ? characterRules.females?.find((f: any) => f.id === slotId)
+          : characterRules.males?.find((m: any) => m.id === slotId);
+        
+        const charName = charRule?.name || '';
+        
+        processedAction = processedAction.replace(
+          new RegExp(slotId, 'g'),
+          personLabel
+        );
+        if (charName) {
+          processedAction = processedAction.replace(
+            new RegExp(charName, 'g'),
+            personLabel
+          );
+        }
+      });
+    }
+    if (filteredCharacterIds.length >= 2) {
+      processedAction = buildCandidGroupAction(processedAction, filteredCharacterIds.length, sceneIndex);
+    }
+
+    // ========================================
+    // 5. 배경 처리 (장소 전환 지원)
+    // ========================================
+    const effectiveBackground = background || scene1Background;
+    const backgroundWithWinter = forceWinterBackground && !hasWinterKeyword(effectiveBackground)
+      ? (effectiveBackground ? `${effectiveBackground}, ${winterHint}` : winterHint)
+      : effectiveBackground;
+    const backgroundBlock = backgroundWithWinter ? `in a ${backgroundWithWinter}` : '';
+
+    // ========================================
+    // 6. 카메라 & 전신 힌트
+    // ========================================
+    const resolvedCamera = normalizeCameraByCount(effectiveCamera, filteredCharacterIds.length, isPOV);
+    const resolvedShotType = getShotTypeByCount(filteredCharacterIds.length);
+    const cameraBlock = `${resolvedCamera} camera angle`;
+    const isWideShot = /wide|full body|aerial|drone|establishing/i.test(resolvedCamera);
+    const fullBodyHint = isWideShot ? 'full body visible, head-to-toe' : '';
+    const colorLockHint = 'color-accurate, preserve original outfit colors, no color changes';
+    const candidGroupHint = filteredCharacterIds.length >= 2
+      ? 'candid multi-person shot, natural asymmetry, no identical pose, no synchronized gesture'
+      : '';
+
+    // ========================================
+    // 7. 최종 프롬프트 조립
+    // ========================================
     const promptParts = [
       identityBlock,
-      actionBlock,
+      processedAction,
       cameraBlock,
       fullBodyHint,
       backgroundBlock,
       colorLockHint,
+      candidGroupHint,
       'no text, no letters, no typography',
       'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16'
     ].filter(Boolean);
@@ -3533,8 +3690,12 @@ export const applyCharacterInfoToScenes = (params: {
 
     return {
       ...scene,
+      cameraAngle: resolvedCamera,
+      camera: resolvedCamera,
+      shotType: resolvedShotType,
+      characterIds: filteredCharacterIds,
       prompt: finalPrompt,
-      characterProfilesApplied: true  // 플래그 추가
+      characterProfilesApplied: true
     };
   });
 };

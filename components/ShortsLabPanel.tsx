@@ -777,6 +777,119 @@ const enforceShotTypeMix = (
     return shotType;
 };
 
+const getShotTypeByCharacterCount = (count: number): '원샷' | '투샷' | '쓰리샷' => {
+    if (count >= 3) return '쓰리샷';
+    if (count === 2) return '투샷';
+    return '원샷';
+};
+
+const normalizeMasterCameraByCharacterCount = (cameraAngle: string, count: number): string => {
+    const raw = String(cameraAngle || '').trim();
+    if (!raw) {
+        if (count >= 3) return 'group wide shot';
+        if (count === 2) return 'two-shot wide';
+        return 'full body wide shot';
+    }
+    if (/pov/i.test(raw)) return 'full body wide shot';
+    if (count >= 3 && !/group|three|wide/i.test(raw)) return 'group wide shot';
+    if (count === 2 && !/two|pair|wide/i.test(raw)) return 'two-shot wide';
+    return raw;
+};
+
+const rebalanceMasterSceneCharacterMix = (
+    scenes: Array<{ characterIds?: string[]; cameraAngle?: string }>,
+    narratorGender: 'female' | 'male'
+) => {
+    const normalized = scenes.map((scene) => {
+        const ids = Array.isArray(scene.characterIds)
+            ? scene.characterIds.map((id) => String(id || '').trim()).filter(Boolean)
+            : [];
+        return { ...scene, characterIds: Array.from(new Set(ids)) };
+    });
+
+    const discoveredIds = Array.from(
+        new Set(
+            normalized.flatMap((scene) => scene.characterIds || [])
+        )
+    ).filter((id) => /^(Woman|Man)[A-Z0-9]+$/.test(id));
+
+    const fallbackPool = narratorGender === 'male'
+        ? ['ManA', 'ManB', 'ManC']
+        : ['WomanA', 'WomanB', 'WomanD', 'ManA', 'ManB'];
+    const characterPool = Array.from(new Set([...(discoveredIds.length > 0 ? discoveredIds : fallbackPool), ...fallbackPool]));
+    if (characterPool.length === 0) return normalized;
+
+    const totalScenes = normalized.length;
+    const minMultiShots = Math.max(2, Math.ceil(totalScenes * 0.4));
+    const minThreeShots = characterPool.length >= 3 ? Math.max(1, Math.ceil(totalScenes * 0.15)) : 0;
+    const pickDifferent = (base: string, offset: number) => {
+        const candidates = characterPool.filter((id) => id !== base);
+        if (candidates.length === 0) return base;
+        return candidates[offset % candidates.length];
+    };
+    const pickTwoOthers = (baseIds: string[], offset: number) => {
+        const candidates = characterPool.filter((id) => !baseIds.includes(id));
+        if (candidates.length >= 2) {
+            return [candidates[offset % candidates.length], candidates[(offset + 1) % candidates.length]];
+        }
+        if (candidates.length === 1) return [candidates[0], baseIds[0] || characterPool[0]];
+        return [characterPool[offset % characterPool.length], characterPool[(offset + 1) % characterPool.length]];
+    };
+
+    normalized.forEach((scene, idx) => {
+        if ((scene.characterIds || []).length === 0) {
+            scene.characterIds = [characterPool[idx % characterPool.length]];
+        }
+    });
+
+    const getCounts = () => {
+        let multi = 0;
+        let three = 0;
+        normalized.forEach((scene) => {
+            const count = scene.characterIds?.length || 0;
+            if (count >= 2) multi += 1;
+            if (count >= 3) three += 1;
+        });
+        return { multi, three };
+    };
+
+    let { multi, three } = getCounts();
+
+    for (let i = 0; i < normalized.length && multi < minMultiShots; i += 1) {
+        const scene = normalized[(i * 2 + 1) % normalized.length];
+        const current = scene.characterIds || [];
+        if (current.length >= 2) continue;
+        const base = current[0] || characterPool[i % characterPool.length];
+        const second = pickDifferent(base, i);
+        scene.characterIds = Array.from(new Set([base, second]));
+        multi += 1;
+    }
+
+    for (let i = 0; i < normalized.length && three < minThreeShots; i += 1) {
+        const scene = normalized[(i * 3 + 2) % normalized.length];
+        const current = Array.from(new Set(scene.characterIds || []));
+        if (current.length >= 3) continue;
+        if (current.length === 0) current.push(characterPool[i % characterPool.length]);
+        if (current.length === 1) {
+            current.push(pickDifferent(current[0], i));
+        }
+        const [extraA, extraB] = pickTwoOthers(current, i);
+        scene.characterIds = Array.from(new Set([...current, extraA, extraB])).slice(0, 3);
+        if ((scene.characterIds || []).length >= 2) multi += 1;
+        if ((scene.characterIds || []).length >= 3) three += 1;
+    }
+
+    return normalized.map((scene) => {
+        const count = scene.characterIds?.length || 0;
+        const cameraAngle = normalizeMasterCameraByCharacterCount(scene.cameraAngle || '', count);
+        return {
+            ...scene,
+            cameraAngle,
+            shotType: getShotTypeByCharacterCount(count)
+        };
+    });
+};
+
 const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: string; role?: string }>) => {
     const mapping = new Map<string, string>();
     const hasCaddy = characters.some((char) => {
@@ -3867,9 +3980,14 @@ ${scriptInput}
                 throw new Error('LLM 응답 JSON 파싱 실패');
             }
 
+            const rebalancedScenes = rebalanceMasterSceneCharacterMix(
+                parsed.scenes || [],
+                settings.koreanGender
+            );
+
             // 5. 사용된 모든 캐릭터 ID 수집
             const allCharacterIds = new Set<string>();
-            parsed.scenes.forEach((scene: any) => {
+            rebalancedScenes.forEach((scene: any) => {
                 (scene.characterIds || []).forEach((id: string) => allCharacterIds.add(id));
             });
 
@@ -3882,7 +4000,8 @@ ${scriptInput}
             const outfitMap = assignOutfitsToCharacters({
                 characterIds: Array.from(allCharacterIds),
                 genre: aiGenre,
-                outfitsData: allOutfits
+                outfitsData: allOutfits,
+                topic: aiTopic
             });
 
             console.log('[AI Master] Outfit map created:', outfitMap);
@@ -3930,7 +4049,7 @@ ${scriptInput}
             setScriptInput(parsed.scriptBody);
 
             // 9. 씬 데이터 저장 (프롬프트는 아직 생성하지 않음 - 버튼 클릭 시 생성)
-            const extractedScenes = parsed.scenes.map((scene: any, index: number) => ({
+            const extractedScenes = rebalancedScenes.map((scene: any, index: number) => ({
                 number: index + 1,
                 text: scene.scriptLine || '',
                 characterIds: scene.characterIds || [],
@@ -3941,7 +4060,7 @@ ${scriptInput}
                 characterProfilesApplied: false,
                 imageUrl: undefined,
                 isSelected: true,
-                shotType: '원샷',
+                shotType: getShotTypeByCharacterCount((scene.characterIds || []).length),
                 age: aiTargetAge,
                 outfit: '',
                 summary: scene.scriptLine || '',
@@ -6577,6 +6696,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onDeleteFemaleCharacter,
     onDeleteMaleCharacter
 }) => {
+    const SHOW_STEP2_RULES_TAB = false;
+    const SHOW_OUTFIT_SELECTION_TAB = false;
     const [activeTab, setActiveTab] = useState<'genres' | 'rules' | 'script_rules' | 'step2_rules' | 'post_process' | 'character_rules' | 'winter_accessories' | 'outfit_selection'>('genres');
     const [mode, setMode] = useState<'list' | 'edit' | 'add'>('list');
     const [selectedGenre, setSelectedGenre] = useState<LabGenreGuidelineEntry | null>(null);
@@ -7699,19 +7820,21 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         >
                             프롬프트 규칙
                         </button>
-                        <button
-                            onClick={() => {
-                                setActiveTab('step2_rules');
-                                setMode('list');
-                                setSelectedGenre(null);
-                            }}
-                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'step2_rules'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-slate-400 hover:text-white'
-                                }`}
-                        >
-                            2단계규칙
-                        </button>
+                        {SHOW_STEP2_RULES_TAB && (
+                            <button
+                                onClick={() => {
+                                    setActiveTab('step2_rules');
+                                    setMode('list');
+                                    setSelectedGenre(null);
+                                }}
+                                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'step2_rules'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
+                            >
+                                2단계규칙
+                            </button>
+                        )}
                         <button
                             onClick={() => {
                                 setActiveTab('script_rules');
@@ -7764,19 +7887,21 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         >
                             겨울악세
                         </button>
-                        <button
-                            onClick={() => {
-                                setActiveTab('outfit_selection');
-                                setMode('list');
-                                setSelectedGenre(null);
-                            }}
-                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'outfit_selection'
-                                ? 'bg-orange-600 text-white'
-                                : 'text-slate-400 hover:text-white'
-                                }`}
-                        >
-                            의상선택
-                        </button>
+                        {SHOW_OUTFIT_SELECTION_TAB && (
+                            <button
+                                onClick={() => {
+                                    setActiveTab('outfit_selection');
+                                    setMode('list');
+                                    setSelectedGenre(null);
+                                }}
+                                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'outfit_selection'
+                                    ? 'bg-orange-600 text-white'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
+                            >
+                                의상선택
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -8530,7 +8655,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                         </div>
                     )}
 
-                    {activeTab === 'step2_rules' && (
+                    {SHOW_STEP2_RULES_TAB && activeTab === 'step2_rules' && (
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
                             <div className="space-y-6">
                                 <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-2">
@@ -9392,7 +9517,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                     )}
 
                     {/* 의상선택 탭 */}
-                    {activeTab === 'outfit_selection' && (
+                    {SHOW_OUTFIT_SELECTION_TAB && activeTab === 'outfit_selection' && (
                         <div className="space-y-6">
                             {/* 랜덤 선택 (ON) 지침 */}
                             <div className="bg-orange-900/20 border border-orange-700/30 rounded-xl p-6">

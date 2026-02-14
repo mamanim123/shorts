@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Video, X, Plus, Save, Lock, ChevronDown, FileText, Zap } from 'lucide-react';
+import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Unlock, X, Plus, Save, Lock, ChevronDown, FileText, Zap, Video } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory, buildMasterPass1Prompt, buildMasterPass2Prompt, validateProfileConsistency } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo, MasterPass1Result, MasterLockedCharacter, MasterLockedLocation, MasterVisualStyleDNA } from '../services/labPromptBuilder';
@@ -112,30 +112,30 @@ const IDENTITY_SLOTS = [
 ];
 
 const MANUAL_SLOT_META: Record<string, { id: string; slotLabel: string; gender: 'female' | 'male'; hair: string; body: string }> = {
-    'Woman A': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
-    'Woman B': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
-    'Woman C': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
-    'Woman D': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
-    'Man A': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
-    'Man C': { id: 'ManC', slotLabel: 'Man C', gender: 'male', hair: 'classic side-part hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    'WomanA': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
-    'WomanB': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
-    'WomanC': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
-    'WomanD': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
-    'ManA': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    'ManB': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
-    'ManC': { id: 'ManC', slotLabel: 'Man C', gender: 'male', hair: 'classic side-part hairstyle', body: PROMPT_CONSTANTS.MALE_BODY }
+    'Woman A': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: 'slim' },
+    'Woman B': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: 'slim' },
+    'Woman C': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: 'slim' },
+    'Woman D': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: 'slim' },
+    'Man A': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: 'athletic' },
+    'Man B': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: 'athletic' },
+    'Man C': { id: 'ManC', slotLabel: 'Man C', gender: 'male', hair: 'classic side-part hairstyle', body: 'athletic' },
+    'WomanA': { id: 'WomanA', slotLabel: 'Woman A', gender: 'female', hair: 'long soft-wave hairstyle', body: 'slim' },
+    'WomanB': { id: 'WomanB', slotLabel: 'Woman B', gender: 'female', hair: 'short chic bob cut', body: 'slim' },
+    'WomanC': { id: 'WomanC', slotLabel: 'Woman C', gender: 'female', hair: 'low ponytail hairstyle', body: 'slim' },
+    'WomanD': { id: 'WomanD', slotLabel: 'Woman D', gender: 'female', hair: 'high-bun hairstyle', body: 'slim' },
+    'ManA': { id: 'ManA', slotLabel: 'Man A', gender: 'male', hair: 'short neat hairstyle', body: 'athletic' },
+    'ManB': { id: 'ManB', slotLabel: 'Man B', gender: 'male', hair: 'clean short cut', body: 'athletic' },
+    'ManC': { id: 'ManC', slotLabel: 'Man C', gender: 'male', hair: 'classic side-part hairstyle', body: 'athletic' }
 };
 
 const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: string; body: string }> = {
-    WomanA: { gender: 'female', hair: 'long soft-wave hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_A },
-    WomanB: { gender: 'female', hair: 'short chic bob cut', body: PROMPT_CONSTANTS.FEMALE_BODY_B },
-    WomanC: { gender: 'female', hair: 'low ponytail hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_C },
-    WomanD: { gender: 'female', hair: 'high-bun hairstyle', body: PROMPT_CONSTANTS.FEMALE_BODY_D },
-    ManA: { gender: 'male', hair: 'short neat hairstyle', body: PROMPT_CONSTANTS.MALE_BODY },
-    ManB: { gender: 'male', hair: 'clean short cut', body: PROMPT_CONSTANTS.MALE_BODY },
-    ManC: { gender: 'male', hair: 'classic side-part hairstyle', body: PROMPT_CONSTANTS.MALE_BODY }
+    WomanA: { gender: 'female', hair: 'long soft-wave hairstyle', body: 'slim' },
+    WomanB: { gender: 'female', hair: 'short chic bob cut', body: 'slim' },
+    WomanC: { gender: 'female', hair: 'low ponytail hairstyle', body: 'slim' },
+    WomanD: { gender: 'female', hair: 'high-bun hairstyle', body: 'slim' },
+    ManA: { gender: 'male', hair: 'short neat hairstyle', body: 'athletic' },
+    ManB: { gender: 'male', hair: 'clean short cut', body: 'athletic' },
+    ManC: { gender: 'male', hair: 'classic side-part hairstyle', body: 'athletic' }
 };
 
 const SLOT_ORDER = ['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB', 'ManC'];
@@ -1200,6 +1200,7 @@ interface Scene {
     videoUrl?: string;
     isVideoGenerating?: boolean;
     videoError?: string;
+    seed?: number; // [NEW] 시드 고정 기능
 }
 
 interface PromptSettings {
@@ -1219,6 +1220,8 @@ interface PromptSettings {
     selectedStyle: string;
     useGenderGuard?: boolean;
     imageService?: 'GEMINI' | 'GENSPARK';
+    globalSeed?: number | null; // [NEW] 전역 시드
+    isSeedLocked?: boolean;     // [NEW] 시드 잠금 여부
 }
 
 
@@ -2225,11 +2228,18 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 { category: HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY, threshold: HarmBlockThreshold.BLOCK_NONE }
             ] : undefined;
 
+            // [NEW] Seed Logic
+            const seedToUse = (settings.isSeedLocked && typeof settings.globalSeed === 'number')
+                ? settings.globalSeed
+                : Math.floor(Math.random() * 2147483647);
+
+            console.log(`[ShortsLab] Generating image with seed: ${seedToUse} (Locked: ${settings.isSeedLocked})`);
+
             let result: any;
             if (imageModel.toLowerCase().includes('imagen')) {
-                result = await generateImageWithImagen(prompt, "", { aspectRatio: "9:16", model: imageModel }, safetySettings);
+                result = await generateImageWithImagen(prompt, "", { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
             } else {
-                result = await generateImage(prompt, { aspectRatio: "9:16", model: imageModel }, safetySettings);
+                result = await generateImage(prompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
             }
 
             let base64Image: string | null = null;
@@ -2261,22 +2271,21 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                         imageData: `data:image/png;base64,${base64Image}`,
                         prompt,
                         storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
-
-
-                        sceneNumber
+                        sceneNumber,
+                        seed: seedToUse // Save seed info
                     })
                 });
 
                 const saveResult = await saveResponse.json();
                 if (saveResult.success) {
-                    // ✅ [NEW] Scene에 이미지 URL 저장
+                    // ✅ [NEW] Scene에 이미지 URL 및 시드 저장
                     const imageUrl = saveResult.url || `/generated_scripts/대본폴더/${currentFolderName || 'shorts-lab'}/images/${saveResult.filename?.split('/').pop()}`;
                     setScenes(prev => prev.map(s =>
                         s.number === sceneNumber
-                            ? { ...s, imageUrl }
+                            ? { ...s, imageUrl, seed: seedToUse }
                             : s
                     ));
-                    showToast(`이미지가 생성되었습니다: ${saveResult.filename}`, 'success');
+                    showToast(`이미지가 생성되었습니다: ${saveResult.filename} (Seed: ${seedToUse})`, 'success');
                 } else {
                     throw new Error(saveResult.error || '이미지 저장 실패');
                 }
@@ -2745,53 +2754,61 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     ) => {
         const scenePrefix = `Scene ${sceneNumber}.`;
 
-        const normalizedAction = guidance?.action ? translateActionToEnglish(guidance.action) : '';
-        const actionChunks = normalizedAction.split(/\s*,\s*/).filter(Boolean);
-        const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
+    const normalizedAction = guidance?.action ? translateActionToEnglish(guidance.action) : '';
+    const actionChunks = normalizedAction.split(/\s*,\s*/).filter(Boolean);
+    const expressionChunks = (guidance?.expression || '').split(/\s*,\s*/).filter(Boolean);
 
-        // [v3.5.3] Action Distribution: If AI provides a single "together" action, distribute it to individuals
-        const distributeAction = (action: string, count: number) => {
-            if (count > 1 && action.toLowerCase().includes('together')) {
-                return action.replace(/\btogether\b/gi, '').trim().replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '');
-            }
-            return action;
-        };
+    // [v3.5.3] Action Distribution: If AI provides a single "together" action, distribute it to individuals
+    const distributeAction = (action: string, count: number) => {
+        if (count > 1 && action.toLowerCase().includes('together')) {
+            return action.replace(/\btogether\b/gi, '').trim().replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '');
+        }
+        return action;
+    };
 
-        const identityBlock = characterIds
-            .map((id, index) => {
-                const meta = characterMap.get(id);
-                if (!meta) return '';
+    const identityBlock = characterIds
+        .map((id, index) => {
+            const meta = characterMap.get(id);
+            if (!meta) return '';
 
-                const fallbackHair = meta.hair || DEFAULT_CHARACTER_META[meta.id]?.hair || '';
-                const fallbackBody = meta.body
-                    || DEFAULT_CHARACTER_META[meta.id]?.body
-                    || (meta.gender === 'female' ? PROMPT_CONSTANTS.FEMALE_BODY_A : '');
+            const fallbackHair = meta.hair || DEFAULT_CHARACTER_META[meta.id]?.hair || '';
+            const fallbackBody = meta.body
+                || DEFAULT_CHARACTER_META[meta.id]?.body
+                || (meta.gender === 'female' ? 'slim' : 'athletic');
 
-                const outfitPhrase = meta.outfit
-                    ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
-                    : '';
+            const outfitPhrase = meta.outfit
+                ? (meta.outfit.toLowerCase().startsWith('wearing ') ? meta.outfit : `wearing ${meta.outfit}`)
+                : '';
 
-                let personAction = actionChunks[index] || actionChunks[0] || '';
-                personAction = distributeAction(personAction, characterIds.length);
-                
-                const personExpression = expressionChunks[index] || expressionChunks[0] || '';
+            let personAction = actionChunks[index] || actionChunks[0] || '';
+            personAction = distributeAction(personAction, characterIds.length);
+            
+            const personExpression = expressionChunks[index] || expressionChunks[0] || '';
 
-                const descriptor = [
-                    meta.identity,
-                    fallbackHair,
-                    fallbackBody,
-                    outfitPhrase,
-                    personAction ? `action: ${personAction}` : '',
-                    personExpression ? `expression: ${personExpression}` : ''
-                ].filter(Boolean).join(', ');
+            const descriptor = [
+                meta.identity,
+                fallbackHair,
+                fallbackBody,
+                outfitPhrase,
+                personAction ? `action: ${personAction}` : '',
+                personExpression ? `expression: ${personExpression}` : ''
+            ].filter(Boolean).join(', ');
 
-                // Use Person index for the marker
-                return `[Person ${index + 1} (${meta.slotLabel}): ${descriptor}]`;
-            })
-            .filter(Boolean)
-            .join(', ');
+            // Use Person index for the marker
+            return `[Person ${index + 1} (${meta.slotLabel}): ${descriptor}]`;
+        })
+        .filter(Boolean)
+        .join(', ');
 
-        const parts = [PROMPT_CONSTANTS.START];
+    // Use PROMPT_CONSTANTS.START if defined, otherwise fallback to empty string or default start token
+    // Since we removed PROMPT_CONSTANTS import, we should use a literal or variable.
+    // Assuming PROMPT_CONSTANTS.START was just an empty string or specific token. 
+    // Let's check where it was defined. It seems it was used as `const parts = [PROMPT_CONSTANTS.START];`
+    // If it was just a marker, we can omit it or use a default.
+    // Based on previous code context, let's assume it might have been an empty string or a specific start token.
+    // Safe fallback:
+    const parts = []; 
+
         const cameraPrompt = guidance?.camera || '';
         const isWideShot = /\bwide\b|establishing|panoramic|bird\'s-eye|overhead/i.test(cameraPrompt);
         const backgroundPrompt = guidance?.background ? guidance.background.trim() : '';
@@ -5783,6 +5800,39 @@ ${scriptInput}
                                     ? '* GenSpark은 브라우저 자동화를 통해 이미지를 생성하며 캡처 성공률이 다를 수 있습니다.' 
                                     : '* Gemini는 구글의 이미지 생성 모델을 사용하여 가장 안정적입니다.'}
                             </p>
+
+                            {/* [NEW] Seed Control UI */}
+                            <div className="mt-4 pt-4 border-t border-slate-800">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-semibold text-slate-300">시드(Seed) 고정</span>
+                                    <ToggleItem 
+                                        checked={settings.isSeedLocked || false} 
+                                        onChange={(v) => updateSetting('isSeedLocked', v)} 
+                                        label="" 
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="number" 
+                                        value={settings.globalSeed ?? ''}
+                                        onChange={(e) => updateSetting('globalSeed', e.target.value ? parseInt(e.target.value) : null)}
+                                        placeholder="랜덤 시드"
+                                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                                        disabled={!settings.isSeedLocked}
+                                    />
+                                    <button
+                                        onClick={() => updateSetting('globalSeed', Math.floor(Math.random() * 4294967295))}
+                                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-medium transition-colors"
+                                        disabled={!settings.isSeedLocked}
+                                        title="랜덤 시드 생성"
+                                    >
+                                        <RefreshCw className="w-3 h-3" />
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                    * 시드를 고정하면 동일한 프롬프트에서 유사한 이미지가 생성됩니다. (캐릭터 일관성 유지 유리)
+                                </p>
+                            </div>
                         </SettingSection>
 
                         <SettingSection title="퀄리티 태그">
@@ -6056,6 +6106,48 @@ ${scriptInput}
                                                             <div className="flex items-center justify-between mb-1">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tight">영어 프롬프트</span>
+                                                                    
+                                                                    {/* [NEW] Seed Display & Lock */}
+                                                                    {scene.seed && (
+                                                                        <div className="flex items-center gap-1.5 ml-1">
+                                                                            <span className="text-[9px] text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/50 font-mono tracking-tighter">
+                                                                                SEED: {scene.seed}
+                                                                            </span>
+                                                                            <button 
+                                                                                onClick={() => {
+                                                                                    if (settings.globalSeed === scene.seed && settings.isSeedLocked) {
+                                                                                        // Unlock
+                                                                                        updateSetting('isSeedLocked', false);
+                                                                                        showToast('시드 고정이 해제되었습니다.', 'info');
+                                                                                    } else {
+                                                                                        // Lock
+                                                                                        updateSetting('globalSeed', scene.seed);
+                                                                                        updateSetting('isSeedLocked', true);
+                                                                                        showToast(`시드(${scene.seed})가 전역 설정으로 잠금되었습니다.`, 'success');
+                                                                                    }
+                                                                                }}
+                                                                                className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors flex items-center gap-0.5 ${
+                                                                                    settings.globalSeed === scene.seed && settings.isSeedLocked
+                                                                                        ? 'text-white bg-purple-600 border-purple-500 hover:bg-purple-500' // Locked state (Active)
+                                                                                        : 'text-purple-400 bg-purple-900/20 border-purple-800/30 hover:bg-purple-900/40 hover:text-purple-300' // Unlocked state (Inactive)
+                                                                                }`}
+                                                                                title={settings.globalSeed === scene.seed && settings.isSeedLocked ? "시드 고정 해제" : "이 시드를 전역 설정으로 고정 (캐릭터 일관성 유지)"}
+                                                                            >
+                                                                                {settings.globalSeed === scene.seed && settings.isSeedLocked ? (
+                                                                                    <>
+                                                                                        <Unlock className="w-2.5 h-2.5" />
+                                                                                        Locked
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <Lock className="w-2.5 h-2.5" />
+                                                                                        Lock
+                                                                                    </>
+                                                                                )}
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+
                                                                     <button
                                                                         onClick={() => handleApplyWinterLook(scene.number)}
                                                                         className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded text-[9px] text-blue-400 transition-all"

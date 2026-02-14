@@ -130,7 +130,7 @@ const withRetry = async <T>(apiCall: () => Promise<T>, usageContext?: string): P
 export const generateImageWithImagen = async (
     prompt: string,
     negativePrompt: string,
-    config: { aspectRatio: string; model?: string },
+    config: { aspectRatio: string; model?: string; seed?: number },
     safetySettings?: any
 ): Promise<any> => {
     const ai = getClient();
@@ -148,7 +148,12 @@ export const generateImageWithImagen = async (
         },
         safetySettings
     };
-    console.log("Generating Image with Imagen:", { finalPrompt, safetySettings, aspectRatio: config.aspectRatio });
+
+    if (config.seed !== undefined) {
+        payload.config.randomSeed = config.seed;
+    }
+
+    console.log("Generating Image with Imagen:", { finalPrompt, safetySettings, aspectRatio: config.aspectRatio, seed: config.seed });
     return withRetry(() => ai.models.generateImages(payload), 'Imagen 이미지 생성');
 };
 

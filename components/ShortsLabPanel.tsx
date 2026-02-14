@@ -35,7 +35,7 @@ import { ShortsIdentityCard, CharacterIdentity } from './ShortsIdentityCard';
 import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
-import { UNIFIED_OUTFIT_LIST } from '../constants';
+import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS } from '../constants';
 import { fetchCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
@@ -545,7 +545,7 @@ const inferCharacterIdsFromPrompt = (
     characterInfoMap: Map<string, CharacterInfo>
 ): string[] => {
     if (!prompt) return [];
-    const blocks = prompt.match(/\[Person\s+\d+:[^\]]+\]/gi) || [];
+    const blocks: string[] = prompt.match(/\[Person\s+\d+:[^\]]+\]/gi) || [];
     if (blocks.length === 0) return [];
 
     const entries = Array.from(characterInfoMap.entries());
@@ -4101,6 +4101,37 @@ ${scriptInput}
     };
 
     // ============================================
+    // [신규] 캐릭터 프로필 업데이트 핸들러
+    // ============================================
+    const handleUpdateMasterProfile = async (slotId: string, field: 'outfit' | 'hair' | 'body', value: string) => {
+        // 1. Update local state (UI immediate feedback)
+        setMasterCharacterProfiles(prev => prev.map(p => {
+            if (p.slotId !== slotId) return p;
+            return { ...p, [field]: value };
+        }));
+
+        // 2. If outfit, update masterOutfitMap
+        if (field === 'outfit') {
+            const selectedOutfit = outfitPool.find(o => o.name === value || o.prompt === value);
+            if (selectedOutfit) {
+                setMasterOutfitMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(slotId, { name: selectedOutfit.name, prompt: selectedOutfit.prompt || selectedOutfit.name });
+                    return newMap;
+                });
+            }
+        }
+
+        // 3. Sync to Global Rules
+        const gender = slotId.startsWith('Woman') ? 'female' : 'male';
+        try {
+            await updateCharacter(gender, slotId, { [field]: value });
+        } catch (e) {
+            console.error('Failed to sync character rule:', e);
+        }
+    };
+
+    // ============================================
     // [신규] 캐릭터 정보 적용 버튼 핸들러
     // ============================================
     const handleApplyCharacterInfo = async () => {
@@ -5849,11 +5880,64 @@ ${scriptInput}
                                                 <span className="text-sm font-bold text-emerald-400">{profile.slotId}</span>
                                                 <span className="text-xs text-slate-400">({profile.name})</span>
                                             </div>
-                                            <ul className="space-y-1 text-xs text-slate-300">
-                                                <li>• <span className="text-slate-500">의상:</span> {profile.outfit}</li>
-                                                <li>• <span className="text-slate-500">헤어:</span> {profile.hair}</li>
-                                                <li>• <span className="text-slate-500">체형:</span> {profile.body.slice(0, 50)}{profile.body.length > 50 ? '...' : ''}</li>
-                                            </ul>
+                                            <div className="flex flex-col gap-2 mt-2">
+                                                {/* 의상 (Costume) */}
+                                                <div>
+                                                    <span className="text-[10px] text-slate-500 block mb-1">의상 (Costume)</span>
+                                                    <select
+                                                        value={profile.outfitPrompt || profile.outfit}
+                                                        onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'outfit', e.target.value)}
+                                                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                    >
+                                                        <option value="">의상 선택</option>
+                                                        {outfitOptions.sortedKeys.map(catId => {
+                                                            // Filter by extraction categories: Royal, Yoga, Golf Luxury, Sexy
+                                                            if (!['ROYAL', 'YOGA', 'GOLF LUXURY', 'SEXY'].includes(catId)) return null;
+                                                            const category = outfitOptions.categoryMap.get(catId);
+                                                            
+                                                            return (
+                                                                <optgroup key={catId} label={category?.name || catId}>
+                                                                    {outfitOptions.grouped[catId].map(item => (
+                                                                        <option key={item.id} value={item.prompt || item.name}>
+                                                                            {item.translation || item.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                </div>
+
+                                                {/* 헤어 (Hair) */}
+                                                <div>
+                                                    <span className="text-[10px] text-slate-500 block mb-1">헤어 (Hair)</span>
+                                                    <select
+                                                        value={profile.hair}
+                                                        onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'hair', e.target.value)}
+                                                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                    >
+                                                        <option value="">헤어 선택</option>
+                                                        {HAIR_PRESETS.map(h => (
+                                                            <option key={h.id} value={h.prompt}>{h.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* 체형 (Body) */}
+                                                <div>
+                                                    <span className="text-[10px] text-slate-500 block mb-1">체형 (Body)</span>
+                                                    <select
+                                                        value={profile.body}
+                                                        onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'body', e.target.value)}
+                                                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                    >
+                                                        <option value="">체형 선택</option>
+                                                        {BODY_PRESETS.map(b => (
+                                                            <option key={b.id} value={b.prompt}>{b.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

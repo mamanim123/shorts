@@ -3101,7 +3101,7 @@ export const validateProfileConsistency = (
 
   scenePrompts.forEach((prompt, sceneIndex) => {
     // [Person N (SlotId): ...] 블록 추출
-    const personBlocks = prompt.match(/\[Person\s+\d+\s*\([^)]+\):[^\]]+\]/gi) || [];
+    const personBlocks: string[] = prompt.match(/\[Person\s+\d+\s*\([^)]+\):[^\]]+\]/gi) || [];
 
     personBlocks.forEach(block => {
       // slotId 추출

@@ -17,7 +17,7 @@ import { generateImageWithImagen } from './master-studio/services/geminiService'
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Lightbox from './master-studio/Lightbox';
-import { UNIFIED_OUTFIT_LIST } from '../constants';
+import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS } from '../constants';
 import { applyBaseOverrides, fetchOutfitCatalog, fetchOutfitPreviewMap, getOutfitBaseOverrides, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap, setOutfitBaseOverrides } from '../services/outfitService';
 import type { OutfitBaseOverrides, OutfitCategory, OutfitItem } from '../services/outfitService';
 import { fetchCharacters, saveCharacters } from '../services/characterService';
@@ -54,21 +54,6 @@ interface CharacterPanelProps {
 // ============================================
 // 프리셋 데이터
 // ============================================
-
-const HAIR_PRESETS = [
-  { id: 'long-wave', name: '롱 웨이브', prompt: 'long soft-wave hairstyle with natural highlights' },
-  { id: 'short-bob', name: '단발 보브', prompt: 'short stylish bob hair with side swept bangs' },
-  { id: 'ponytail', name: '포니테일', prompt: 'elegant high ponytail hairstyle' },
-  { id: 'updo', name: '업스타일', prompt: 'sophisticated updo hairstyle' },
-  { id: 'short-neat', name: '짧은 정돈', prompt: 'short neat hairstyle with clean-shaven face' },
-];
-
-const BODY_PRESETS = [
-  { id: 'slim-hourglass', name: '슬림 모래시계', prompt: 'slim hourglass figure with toned body, elegant posture' },
-  { id: 'petite-glamour', name: '아담 글래머', prompt: 'petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves' },
-  { id: 'athletic', name: '건강미 탄탄', prompt: 'gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust' },
-  { id: 'curvy', name: '볼륨 글래머', prompt: 'high-seated chest line' },
-];
 
 const DEFAULT_OUTFITS: Outfit[] = [];
 

@@ -816,14 +816,27 @@ export const OUTFIT_COLLECTIONS = {
   }
 };
 
-// Helper to flatten a collection
-const flattenCollection = (collection: { tops: string[], bottoms: string[], dresses: string[] }) => {
-  return [
-    ...collection.tops,
-    ...collection.bottoms,
-    ...collection.dresses
-  ];
-};
+// ... (existing exports)
+
+// ============================================
+// CHARACTER PRESETS (Moved from CharacterPanel.tsx)
+// ============================================
+
+export const HAIR_PRESETS = [
+  { id: 'long-wave', name: '롱 웨이브', prompt: 'long soft-wave hairstyle with natural highlights' },
+  { id: 'short-bob', name: '단발 보브', prompt: 'short stylish bob hair with side swept bangs' },
+  { id: 'ponytail', name: '포니테일', prompt: 'elegant high ponytail hairstyle' },
+  { id: 'updo', name: '업스타일', prompt: 'sophisticated updo hairstyle' },
+  { id: 'short-neat', name: '짧은 정돈', prompt: 'short neat hairstyle with clean-shaven face' },
+];
+
+export const BODY_PRESETS = [
+  { id: 'slim-hourglass', name: '슬림 모래시계', prompt: 'slim hourglass figure with toned body, elegant posture' },
+  { id: 'petite-glamour', name: '아담 글래머', prompt: 'petite and slim frame with an extraordinarily voluminous high-projection bust, surprising perky curves' },
+  { id: 'athletic', name: '건강미 탄탄', prompt: 'gracefully toned and slim athletic body, expertly managed sleek silhouette with perky high-seated bust' },
+  { id: 'curvy', name: '볼륨 글래머', prompt: 'high-seated chest line' },
+];
+
 
 // 통합 의상 리스트 (메인 앱 + 쇼츠 생성기 공용)
 export const UNIFIED_OUTFIT_LIST = [

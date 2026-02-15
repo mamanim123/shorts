@@ -2183,12 +2183,30 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const savedManualCandidates = await getAppStorageValue<string | null>('shorts-lab-manual-candidates', null);
                 const savedTargetAge = await getAppStorageValue<string | null>('shorts-lab-target-age', null);
                 const savedWinterAccessories = await getAppStorageValue<boolean | null>('shorts-lab-winter-accessories', null);
+                const savedSettings = await getAppStorageValue<Partial<PromptSettings> | null>('shorts-lab-settings', null);
 
                 if (savedFolder) setCurrentFolderName(savedFolder);
                 if (savedTopic) setAiTopic(savedTopic);
                 if (savedManualCandidates) setManualCandidateText(savedManualCandidates);
                 if (savedTargetAge) setAiTargetAge(savedTargetAge);
                 if (typeof savedWinterAccessories === 'boolean') setEnableWinterAccessories(savedWinterAccessories);
+                
+                // [NEW] 저장된 settings 복원 (시드 고정 설정 포함)
+                if (savedSettings && typeof savedSettings === 'object') {
+                    setSettings(prev => ({
+                        ...prev,
+                        ...savedSettings,
+                        // globalSeed와 isSeedLocked 복원
+                        globalSeed: savedSettings.globalSeed ?? prev.globalSeed,
+                        isSeedLocked: savedSettings.isSeedLocked ?? prev.isSeedLocked,
+                        imageService: savedSettings.imageService ?? prev.imageService,
+                        selectedStyle: savedSettings.selectedStyle ?? prev.selectedStyle,
+                    }));
+                    console.log('[ShortsLab] ✅ Settings 복원 완료:', {
+                        globalSeed: savedSettings.globalSeed,
+                        isSeedLocked: savedSettings.isSeedLocked
+                    });
+                }
                 if (savedFolder) {
                     await loadMasterDataForFolder(savedFolder);
                 } else {
@@ -2286,6 +2304,11 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     React.useEffect(() => {
         setAppStorageValue('shorts-lab-winter-accessories', enableWinterAccessories);
     }, [enableWinterAccessories]);
+
+    // [NEW] Settings 저장 (시드 고정 설정 포함)
+    React.useEffect(() => {
+        setAppStorageValue('shorts-lab-settings', settings);
+    }, [settings]);
 
     React.useEffect(() => {
         if (scenes.length > 0) {
@@ -3729,6 +3752,387 @@ ${scriptInput}
         } finally {
             setIsVideoImporting(null);
         }
+    };
+
+    /**
+     * [NEW] 작업 지침서(Production Report) 생성 및 다운로드
+     */
+    const handleDownloadProductionReport = useCallback(() => {
+        if (scenes.length === 0) {
+            showToast('생성된 씬이 없습니다.', 'warning');
+            return;
+        }
+
+        const reportHTML = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${aiTopic || 'Untitled Project'} - 작업 지침서</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header .meta { opacity: 0.9; font-size: 1.1em; }
+        .content { padding: 40px; }
+        .section { margin-bottom: 40px; }
+        .section h2 { 
+            color: #667eea; 
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .character-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: transform 0.2s;
+        }
+        .character-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .character-card img { 
+            width: 100%; 
+            height: 150px; 
+            object-fit: cover; 
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .scene-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .scene-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .scene-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .scene-image {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .info-row {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #667eea;
+            display: inline-block;
+            width: 100px;
+        }
+        .video-prompt-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 10px 10px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+        .bgm-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+        .bgm-prompt {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-number { font-size: 2.5em; font-weight: bold; }
+        .stat-label { opacity: 0.9; margin-top: 5px; }
+        .timestamp { text-align: center; color: #666; margin-top: 30px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 ${aiTopic || 'Untitled Project'}</h1>
+            <div class="meta">작업 지침서 (Production Report)</div>
+        </div>
+        
+        <div class="content">
+            <!-- 통계 -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number">${scenes.length}</div>
+                    <div class="stat-label">총 씬 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${scenes.filter(s => s.imageUrl).length}</div>
+                    <div class="stat-label">이미지 생성됨</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${scenes.filter(s => s.videoUrl).length}</div>
+                    <div class="stat-label">영상 생성됨</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${Array.from(characterCastings.keys()).length}</div>
+                    <div class="stat-label">캐스팅된 캐릭터</div>
+                </div>
+            </div>
+
+            <!-- 캐릭터 정보 -->
+            <div class="section">
+                <h2>👥 캐릭터 정보</h2>
+                <div class="character-grid">
+                    ${Array.from(characterCastings.entries()).map(([id, casting]) => `
+                        <div class="character-card">
+                            ${casting.referenceImageUrl ? `<img src="${casting.referenceImageUrl}" alt="${id}" />` : ''}
+                            <h3>${id}</h3>
+                            ${casting.name ? `<p>이름: ${casting.name}</p>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ${characterCastings.size === 0 ? '<p style="color: #666; text-align: center;">캐스팅된 캐릭터가 없습니다.</p>' : ''}
+            </div>
+
+            <!-- 신별 정보 -->
+            <div class="section">
+                <h2>🎥 신별 상세 정보</h2>
+                ${scenes.map(scene => `
+                    <div class="scene-card">
+                        <div class="scene-header">
+                            <span class="scene-number">Scene ${scene.number}</span>
+                            ${scene.seed ? `<span style="color: #667eea; font-weight: bold;">Seed: ${scene.seed}</span>` : ''}
+                        </div>
+                        
+                        ${scene.imageUrl ? `<img src="${scene.imageUrl}" alt="Scene ${scene.number}" class="scene-image" />` : ''}
+                        
+                        <div class="info-row">
+                            <span class="info-label">대본:</span>
+                            <span>${scene.text || '내용 없음'}</span>
+                        </div>
+                        
+                        ${scene.background ? `
+                        <div class="info-row">
+                            <span class="info-label">배경:</span>
+                            <span>${scene.background}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${scene.camera ? `
+                        <div class="info-row">
+                            <span class="info-label">카메라:</span>
+                            <span>${scene.camera}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${scene.action ? `
+                        <div class="info-row">
+                            <span class="info-label">동작:</span>
+                            <span>${scene.action}</span>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="info-row">
+                            <span class="info-label">프롬프트:</span>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.9em; margin-top: 10px;">
+                            ${scene.prompt || '프롬프트 없음'}
+                        </div>
+                        
+                        ${scene.videoPrompt ? `
+                        <div style="margin-top: 15px;">
+                            <span class="info-label">영상 프롬프트:</span>
+                            <div class="video-prompt-box">${scene.videoPrompt}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${scene.videoUrl ? `
+                        <div style="margin-top: 15px;">
+                            <span class="info-label">영상 URL:</span>
+                            <a href="${scene.videoUrl}" target="_blank" style="color: #667eea;">${scene.videoUrl}</a>
+                        </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+
+            <!-- BGM 정보 -->
+            <div class="section">
+                <h2>🎵 배경 음악 (BGM)</h2>
+                <div class="bgm-section">
+                    <h3>Suno AI 음악 생성용 프롬프트</h3>
+                    <p style="margin-top: 10px; opacity: 0.9;">아래 프롬프트를 복사하여 Suno AI에 입력하세요.</p>
+                    <div class="bgm-prompt">${generateBGMPrompt()}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="timestamp">
+            생성일: ${new Date().toLocaleString('ko-KR')}
+        </div>
+    </div>
+</body>
+</html>`;
+
+        // HTML 파일 다운로드
+        const blob = new Blob([reportHTML], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(aiTopic || 'project').replace(/[^a-zA-Z0-9가-힣]/g, '_')}_작업지침서.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('작업 지침서가 다운로드되었습니다.', 'success');
+    }, [scenes, characterCastings, aiTopic]);
+
+    /**
+     * [NEW] BGM 프롬프트 생성 헬퍼
+     */
+    const generateBGMPrompt = useCallback(() => {
+        const scriptText = scenes.map(s => s.text).join('\n');
+        const sceneCount = scenes.length;
+        const hasVideo = scenes.some(s => s.videoUrl);
+        
+        return `[영상 분위기 분석]
+총 ${sceneCount}개의 씬으로 구성된 ${aiTopic || '프로젝트'}
+${hasVideo ? '- 일부 씬에 영상 클립이 포함됨' : '- 이미지 기반 콘텐츠'}
+
+[대본 내용]
+${scriptText.substring(0, 500)}...
+
+[BGM 생성 지침]
+1. 장르: ${aiGenre || '드라마'}
+2. 분위기: 감정의 흐름에 따른 배경음악
+3. 악기: 피아노, 스트링, 신디사이저 패드
+4. 템포: 중간 템포 (BPM 80-100)
+5. 길이: 30초-1분 분량의 루프 가능한 음악
+
+[영상의 감정선]
+${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n')}
+
+위 내용을 바탕으로 Suno AI 스타일 프롬프트를 생성해주세요.`;
+    }, [scenes, aiTopic, aiGenre]);
+
+    /**
+     * [NEW] 브루(Vrew) 프로젝트 내보내기
+     */
+    const handleExportVrewProject = useCallback(() => {
+        if (scenes.length === 0) {
+            showToast('생성된 씬이 없습니다.', 'warning');
+            return;
+        }
+
+        const vrewData = {
+            version: "1.0",
+            projectName: aiTopic || 'Untitled Project',
+            createdAt: new Date().toISOString(),
+            totalScenes: scenes.length,
+            scenes: scenes.map(scene => ({
+                sceneNumber: scene.number,
+                text: scene.text || '',
+                imageUrl: scene.imageUrl || null,
+                videoUrl: scene.videoUrl || null,
+                duration: estimateSceneDuration(scene.text),
+                prompt: scene.prompt || '',
+                videoPrompt: scene.videoPrompt || '',
+                camera: scene.camera || '',
+                background: scene.background || '',
+                action: scene.action || '',
+                seed: scene.seed || null
+            })),
+            characters: Array.from(characterCastings.entries()).map(([id, casting]) => ({
+                id,
+                name: casting.name || id,
+                referenceImageUrl: casting.referenceImageUrl || null
+            })),
+            settings: {
+                genre: aiGenre,
+                targetAge: aiTargetAge,
+                aspectRatio: '9:16'
+            }
+        };
+
+        // JSON 파일 다운로드
+        const blob = new Blob([JSON.stringify(vrewData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(aiTopic || 'project').replace(/[^a-zA-Z0-9가-힣]/g, '_')}_브루프로젝트.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('브루 프로젝트 파일이 다운로드되었습니다. 브루에서 "프로젝트 불러오기"로 열어주세요.', 'success');
+    }, [scenes, characterCastings, aiTopic, aiGenre, aiTargetAge]);
+
+    // [NEW] 씬 예상 시간 계산
+    const estimateSceneDuration = (text: string): number => {
+        if (!text) return 5;
+        // 한글 기준: 글자수 / 5 (초)
+        const charCount = text.length;
+        return Math.max(3, Math.ceil(charCount / 5));
     };
 
     // [NEW] 특정 파일 선택해서 가져오기 실행
@@ -5477,6 +5881,28 @@ ${scriptInput}
                         >
                             <ImageIcon className="w-4 h-4" />
                             전체이미지생성
+                        </button>
+
+                        {/* [NEW] 작업 지침서 다운로드 */}
+                        <button
+                            onClick={handleDownloadProductionReport}
+                            disabled={scenes.length === 0}
+                            className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                            title="HTML 형식의 작업 지침서 다운로드"
+                        >
+                            <FileText className="w-4 h-4" />
+                            작업지침서
+                        </button>
+
+                        {/* [NEW] 브루 프로젝트 난바내기 */}
+                        <button
+                            onClick={handleExportVrewProject}
+                            disabled={scenes.length === 0}
+                            className="px-3 py-1.5 bg-pink-600/80 hover:bg-pink-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                            title="브루(Vrew)에서 사용할 수 있는 프로젝트 파일"
+                        >
+                            <Video className="w-4 h-4" />
+                            브루난바내기
                         </button>
                     </div>
 

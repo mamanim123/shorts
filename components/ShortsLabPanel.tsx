@@ -26,7 +26,7 @@ import { genreManager as legacyGenreManager, getGenreGuideline as getLegacyGenre
 
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
-import { generateImage, generateImageWithImagen, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
+import { generateImage, generateImageWithImagen, editImage, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
 import { enhancePromptWithSafeGlamour } from '../services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
@@ -1166,6 +1166,22 @@ const normalizeSceneNumbers = (items: Scene[]): Scene[] =>
 // 타입 정의
 // ============================================
 
+// [NEW] Location Bank 프리셋 타입
+interface LocationPreset {
+    id: string;
+    name: string;
+    description: string;
+    thumbnailUrl?: string;
+    createdAt: number;
+}
+
+// [NEW] Character Casting Reference Image 타입
+interface CharacterCasting {
+    characterId: string;
+    referenceImageUrl?: string;
+    name?: string;
+}
+
 interface Scene {
     number: number;
     text: string;
@@ -1619,6 +1635,16 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         imageService: 'GEMINI'
     });
 
+    // [NEW] Location Bank 상태
+    const [locationPresets, setLocationPresets] = useState<LocationPreset[]>([]);
+    const [showLocationBank, setShowLocationBank] = useState(false);
+    const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+    const [editingLocationName, setEditingLocationName] = useState('');
+
+    // [NEW] Character Casting 상태
+    const [characterCastings, setCharacterCastings] = useState<Map<string, CharacterCasting>>(new Map());
+    const [showCastingPanel, setShowCastingPanel] = useState(false);
+
 
     // Identity Lock (씬 분해 전 캐릭터/의상/악세서리 고정)
     const [identityLockEnabled, setIdentityLockEnabled] = useState(false);
@@ -1698,6 +1724,82 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
      */
     const updateSetting = useCallback(<K extends keyof PromptSettings>(key: K, value: PromptSettings[K]) => {
         setSettings(prev => ({ ...prev, [key]: value }));
+    }, []);
+
+    /**
+     * [NEW] Location Bank 핸들러
+     */
+    const handleSaveLocationPreset = useCallback((scene: Scene) => {
+        if (!scene.background) {
+            showToast('배경 설명이 없는 씬은 저장할 수 없습니다.', 'error');
+            return;
+        }
+        const newPreset: LocationPreset = {
+            id: Date.now().toString(),
+            name: `Location ${locationPresets.length + 1}`,
+            description: scene.background,
+            thumbnailUrl: scene.imageUrl,
+            createdAt: Date.now()
+        };
+        setLocationPresets(prev => [...prev, newPreset]);
+        showToast(`배경 프리셋이 저장되었습니다: ${newPreset.name}`, 'success');
+    }, [locationPresets.length]);
+
+    const handleDeleteLocationPreset = useCallback((presetId: string) => {
+        setLocationPresets(prev => prev.filter(p => p.id !== presetId));
+        showToast('배경 프리셋이 삭제되었습니다.', 'info');
+    }, []);
+
+    const handleRenameLocationPreset = useCallback((presetId: string, newName: string) => {
+        setLocationPresets(prev => prev.map(p => 
+            p.id === presetId ? { ...p, name: newName } : p
+        ));
+        setEditingLocationId(null);
+        showToast('배경 프리셋 이름이 변경되었습니다.', 'success');
+    }, []);
+
+    const handleApplyLocationPreset = useCallback((preset: LocationPreset) => {
+        setScenes(prev => prev.map(scene => ({
+            ...scene,
+            background: preset.description
+        })));
+        showToast(`'${preset.name}' 배경이 모든 씬에 적용되었습니다.`, 'success');
+    }, []);
+
+    /**
+     * [NEW] Character Casting 핸들러
+     */
+    const handleUploadCharacterReference = useCallback(async (characterId: string, file: File) => {
+        try {
+            // 파일을 Base64로 변환
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imageUrl = e.target?.result as string;
+                setCharacterCastings(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(characterId, {
+                        characterId,
+                        referenceImageUrl: imageUrl,
+                        name: file.name.replace(/\.[^/.]+$/, '')
+                    });
+                    return newMap;
+                });
+                showToast(`${characterId} 캐릭터 캐스팅 이미지가 등록되었습니다.`, 'success');
+            };
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Character casting upload failed:', error);
+            showToast('캐릭터 이미지 업로드에 실패했습니다.', 'error');
+        }
+    }, []);
+
+    const handleRemoveCharacterReference = useCallback((characterId: string) => {
+        setCharacterCastings(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(characterId);
+            return newMap;
+        });
+        showToast('캐릭터 캐스팅 이미지가 제거되었습니다.', 'info');
     }, []);
 
     // 프롬프트 수정 모달 hook
@@ -2233,42 +2335,93 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 ? settings.globalSeed
                 : Math.floor(Math.random() * 2147483647);
 
-            console.log(`[ShortsLab] Generating image with seed: ${seedToUse} (Locked: ${settings.isSeedLocked})`);
+            // [NEW] Check for character casting reference images
+            const currentScene = scenes.find(s => s.number === sceneNumber);
+            const referenceImages: string[] = [];
+            if (currentScene?.characterIds) {
+                currentScene.characterIds.forEach(charId => {
+                    const casting = characterCastings.get(charId);
+                    if (casting?.referenceImageUrl) {
+                        referenceImages.push(casting.referenceImageUrl);
+                    }
+                });
+            }
+
+            const hasReferenceImages = referenceImages.length > 0;
+            console.log(`[ShortsLab] Generating image with seed: ${seedToUse} (Locked: ${settings.isSeedLocked}), Reference Images: ${referenceImages.length}`);
 
             let result: any;
+            let finalBase64Image: string | null = null;
+
+            // Step 1: Generate base image
             if (imageModel.toLowerCase().includes('imagen')) {
                 result = await generateImageWithImagen(prompt, "", { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
             } else {
                 result = await generateImage(prompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
             }
 
-            let base64Image: string | null = null;
-
+            // Extract base64 from result
             if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
                 const generatedImage = result.generatedImages[0];
                 if (generatedImage?.image?.imageBytes) {
-                    base64Image = generatedImage.image.imageBytes;
+                    finalBase64Image = generatedImage.image.imageBytes;
                 } else if (generatedImage?.imageBytes) {
-                    base64Image = generatedImage.imageBytes;
+                    finalBase64Image = generatedImage.imageBytes;
                 }
             }
             else if (result && result.images && result.images.length > 0) {
-                base64Image = result.images[0];
+                finalBase64Image = result.images[0];
             }
             else if (result && result.candidates) {
                 const inlineData = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData;
                 if (inlineData?.data) {
-                    base64Image = inlineData.data;
+                    finalBase64Image = inlineData.data;
                 }
             }
 
-            if (base64Image) {
+            // Step 2: Apply reference images using editImage if available
+            if (finalBase64Image && hasReferenceImages) {
+                showToast('캐릭터 캐스팅 이미지를 적용하는 중...', 'info');
+                
+                for (const refImageUrl of referenceImages) {
+                    try {
+                        // Convert reference image URL to base64 if needed
+                        let refImageBase64 = refImageUrl;
+                        if (refImageUrl.startsWith('data:')) {
+                            refImageBase64 = refImageUrl.split(',')[1];
+                        }
+
+                        const editPrompt = `${prompt}. Maintain the exact facial features from the reference image. Same person, consistent face, preserve identity while matching the pose and scene context.`;
+                        
+                        const editResult = await editImage(
+                            editPrompt,
+                            { inlineData: { data: finalBase64Image, mimeType: 'image/png' } },
+                            { aspectRatio: "9:16", model: imageModel },
+                            safetySettings,
+                            { inlineData: { data: refImageBase64, mimeType: 'image/png' } }
+                        );
+
+                        // Extract edited image
+                        if (editResult && editResult.candidates) {
+                            const editedInlineData = editResult.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData;
+                            if (editedInlineData?.data) {
+                                finalBase64Image = editedInlineData.data;
+                            }
+                        }
+                    } catch (editError) {
+                        console.error('[ShortsLab] EditImage failed for reference:', editError);
+                        // Continue with original image if edit fails
+                    }
+                }
+            }
+
+            if (finalBase64Image) {
                 // 이미지 저장 API 호출
                 const saveResponse = await fetch('http://localhost:3002/api/save-image', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        imageData: `data:image/png;base64,${base64Image}`,
+                        imageData: `data:image/png;base64,${finalBase64Image}`,
                         prompt,
                         storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
                         sceneNumber,
@@ -2279,13 +2432,14 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const saveResult = await saveResponse.json();
                 if (saveResult.success) {
                     // ✅ [NEW] Scene에 이미지 URL 및 시드 저장
-                    const imageUrl = saveResult.url || `/generated_scripts/대본폴더/${currentFolderName || 'shorts-lab'}/images/${saveResult.filename?.split('/').pop()}`;
+                    const imageUrl = saveResult.url || `/generated_scripts/대본폰더/${currentFolderName || 'shorts-lab'}/images/${saveResult.filename?.split('/').pop()}`;
                     setScenes(prev => prev.map(s =>
                         s.number === sceneNumber
                             ? { ...s, imageUrl, seed: seedToUse }
                             : s
                     ));
-                    showToast(`이미지가 생성되었습니다: ${saveResult.filename} (Seed: ${seedToUse})`, 'success');
+                    const castingMsg = hasReferenceImages ? ' (캐스팅 적용됨)' : '';
+                    showToast(`이미지가 생성되었습니다: ${saveResult.filename} (Seed: ${seedToUse})${castingMsg}`, 'success');
                 } else {
                     throw new Error(saveResult.error || '이미지 저장 실패');
                 }
@@ -5774,6 +5928,89 @@ ${scriptInput}
                                 />
                             )}
                         </div>
+
+                        {/* [NEW] Character Casting Panel */}
+                        <div className="mt-4 pt-4 border-t border-slate-700">
+                            <button
+                                onClick={() => setShowCastingPanel(!showCastingPanel)}
+                                className="flex items-center justify-between w-full text-left mb-3"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <ImageIcon className="w-4 h-4 text-pink-400" />
+                                    <span className="text-sm font-semibold text-slate-200">캐릭터 캐스팅</span>
+                                    {characterCastings.size > 0 && (
+                                        <span className="text-xs bg-pink-600 text-white px-2 py-0.5 rounded-full">
+                                            {characterCastings.size}
+                                        </span>
+                                    )}
+                                </div>
+                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showCastingPanel ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {showCastingPanel && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] text-slate-400">
+                                        각 캐릭터에 참조 얼굴 이미지를 업로드하면 생성된 이미지에 적용됩니다.
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB', 'ManC'].map((slotId) => {
+                                            const casting = characterCastings.get(slotId);
+                                            return (
+                                                <div key={slotId} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2">
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <span className="text-xs font-medium text-slate-300">{slotId}</span>
+                                                        {casting && (
+                                                            <button
+                                                                onClick={() => handleRemoveCharacterReference(slotId)}
+                                                                className="text-[10px] text-red-400 hover:text-red-300"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {casting?.referenceImageUrl ? (
+                                                        <div className="relative group">
+                                                            <img
+                                                                src={casting.referenceImageUrl}
+                                                                alt={slotId}
+                                                                className="w-full h-16 object-cover rounded border border-slate-600"
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <span className="text-[10px] text-white">변경</span>
+                                                            </div>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) handleUploadCharacterReference(slotId, file);
+                                                                }}
+                                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                                title="이미지 변경"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <label className="flex flex-col items-center justify-center w-full h-16 border-2 border-dashed border-slate-600 rounded cursor-pointer hover:border-pink-500/50 hover:bg-slate-800 transition-all">
+                                                            <Plus className="w-4 h-4 text-slate-500" />
+                                                            <span className="text-[9px] text-slate-500 mt-0.5">이미지 추가</span>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) handleUploadCharacterReference(slotId, file);
+                                                                }}
+                                                                className="hidden"
+                                                            />
+                                                        </label>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -5871,9 +6108,119 @@ ${scriptInput}
                             </div>
                         </SettingSection>
 
+                        {/* [NEW] Location Bank */}
+                        <SettingSection title="로케이션 뱅크">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-slate-400">
+                                        저장된 배경: <span className="text-slate-200 font-semibold">{locationPresets.length}</span>개
+                                    </span>
+                                    <button
+                                        onClick={() => setShowLocationBank(!showLocationBank)}
+                                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                    >
+                                        {showLocationBank ? '접기' : '펼치기'}
+                                        <ChevronDown className={`w-3 h-3 transition-transform ${showLocationBank ? 'rotate-180' : ''}`} />
+                                    </button>
+                                </div>
+
+                                {showLocationBank && (
+                                    <>
+                                        {locationPresets.length > 0 ? (
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {locationPresets.map((preset) => (
+                                                    <div key={preset.id} className="flex items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-lg p-2 group">
+                                                        {preset.thumbnailUrl ? (
+                                                            <img 
+                                                                src={preset.thumbnailUrl} 
+                                                                alt={preset.name}
+                                                                className="w-10 h-10 object-cover rounded border border-slate-600 flex-shrink-0"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 bg-slate-700 rounded border border-slate-600 flex items-center justify-center flex-shrink-0">
+                                                                <Folder className="w-4 h-4 text-slate-500" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                            {editingLocationId === preset.id ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={editingLocationName}
+                                                                    onChange={(e) => setEditingLocationName(e.target.value)}
+                                                                    onBlur={() => handleRenameLocationPreset(preset.id, editingLocationName)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            handleRenameLocationPreset(preset.id, editingLocationName);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+                                                                    autoFocus
+                                                                />
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleApplyLocationPreset(preset)}
+                                                                    className="text-xs font-medium text-slate-200 hover:text-blue-400 text-left w-full truncate"
+                                                                    title={preset.description}
+                                                                >
+                                                                    {preset.name}
+                                                                </button>
+                                                            )}
+                                                            <p className="text-[9px] text-slate-500 truncate">{preset.description}</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingLocationId(preset.id);
+                                                                    setEditingLocationName(preset.name);
+                                                                }}
+                                                                className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-slate-200"
+                                                                title="이름 변경"
+                                                            >
+                                                                <Edit3 className="w-3 h-3" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteLocationPreset(preset.id)}
+                                                                className="p-1 hover:bg-red-900/30 rounded text-slate-400 hover:text-red-400"
+                                                                title="삭제"
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-xs text-slate-500 bg-slate-800/30 rounded-lg">
+                                                저장된 배경이 없습니다.<br />
+                                                씬 카드에서 배경을 저장하세요.
+                                            </div>
+                                        )}
+
+                                        {/* 현재 선택된 씬의 배경 저장 버튼 */}
+                                        {scenes.find(s => s.background) && (
+                                            <button
+                                                onClick={() => {
+                                                    const sceneWithBg = scenes.find(s => s.background);
+                                                    if (sceneWithBg) handleSaveLocationPreset(sceneWithBg);
+                                                }}
+                                                className="w-full py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Save className="w-3.5 h-3.5" />
+                                                현재 배경을 프리셋으로 저장
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+
+                                <p className="text-[10px] text-slate-500">
+                                    * 배경 프리셋을 클릭하면 모든 씬에 일괄 적용됩니다.
+                                </p>
+                            </div>
+                        </SettingSection>
+
                         <SettingSection title="퀄리티 태그">
                             <ToggleItem checked={settings.useQualityTags} onChange={(v) => updateSetting('useQualityTags', v)} label="8K, 시네마틱 라이팅, 마스터피스" description={QUALITY_TAGS} />
-                            <ToggleItem checked={settings.useAspectRatio} onChange={(v) => updateSetting('useAspectRatio', v)} label="세로 화면비 (9:16)" description={ASPECT_RATIO} />
+                            <ToggleItem checked={settings.useAspectRatio} onChange={(v) => updateSetting('useAspectRatio', v)} label="세로 화멻비 (9:16)" description={ASPECT_RATIO} />
                         </SettingSection>
 
                         <SettingSection title="한국인 정체성">
@@ -6217,6 +6564,27 @@ ${scriptInput}
                                                                 {OUTFIT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                                             </select>
                                                         </div>
+
+                                                        {/* [NEW] 배경 정보 및 저장 */}
+                                                        {scene.background && (
+                                                            <div className="mt-2 p-2 bg-slate-800/30 border border-slate-700/30 rounded-lg">
+                                                                <div className="flex items-start gap-2">
+                                                                    <Folder className="w-3 h-3 text-blue-400 mt-0.5 flex-shrink-0" />
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-[10px] text-slate-400 font-medium mb-0.5">배경/장소</p>
+                                                                        <p className="text-[10px] text-slate-300 leading-relaxed line-clamp-2">{scene.background}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => handleSaveLocationPreset(scene)}
+                                                                        className="flex-shrink-0 px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 rounded text-[9px] font-medium transition-all flex items-center gap-1"
+                                                                        title="이 배경을 프리셋으로 저장"
+                                                                    >
+                                                                        <Save className="w-3 h-3" />
+                                                                        저장
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {(sceneTabs[scene.number] || 'IMG') === 'VIDEO' && (

@@ -5811,15 +5811,51 @@ ${scriptInput}
                                         label="" 
                                     />
                                 </div>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="number" 
-                                        value={settings.globalSeed ?? ''}
-                                        onChange={(e) => updateSetting('globalSeed', e.target.value ? parseInt(e.target.value) : null)}
-                                        placeholder="랜덤 시드"
-                                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
-                                        disabled={!settings.isSeedLocked}
-                                    />
+                                {/* Seed 번호 클릭 시 썸네일preview - 시드가 있고 해당 씬의 이미지가 있을 때만 표시 */}
+                                {settings.globalSeed && (
+                                    <div className="mb-2">
+                                        {scenes.find(s => s.seed === settings.globalSeed && s.imageUrl) ? (
+                                            <button
+                                                onClick={() => {
+                                                    const sceneWithSeed = scenes.find(s => s.seed === settings.globalSeed && s.imageUrl);
+                                                    if (sceneWithSeed?.imageUrl) {
+                                                        setSelectedImageForView(sceneWithSeed.imageUrl);
+                                                    }
+                                                }}
+                                                className="flex items-center gap-2 w-full p-2 bg-purple-900/20 border border-purple-500/30 rounded-lg hover:bg-purple-900/40 hover:border-purple-400 transition-all cursor-pointer"
+                                                title={`시드 ${settings.globalSeed} 이미지 미리보기 (클릭하여 크게 보기)`}
+                                            >
+                                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-purple-500/50 flex-shrink-0">
+                                                    <img 
+                                                        src={scenes.find(s => s.seed === settings.globalSeed)?.imageUrl} 
+                                                        alt="Seed preview" 
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                                <div className="flex-1 text-left">
+                                                    <span className="text-[10px] text-purple-400 font-semibold">클릭하여 이미지preview</span>
+                                                    <div className="text-xs text-slate-300 font-mono">Seed: {settings.globalSeed}</div>
+                                                </div>
+                                                <ImageIcon className="w-4 h-4 text-purple-400" />
+                                            </button>
+                                        ) : (
+                                            <div className="text-xs text-slate-500 font-mono bg-slate-800/50 rounded-lg px-3 py-2">
+                                                Seed: {settings.globalSeed} (해당 이미지 없음)
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="flex gap-2 items-center">
+                                    <div className="relative flex-1">
+                                        <input 
+                                            type="number" 
+                                            value={settings.globalSeed ?? ''}
+                                            onChange={(e) => updateSetting('globalSeed', e.target.value ? parseInt(e.target.value) : null)}
+                                            placeholder="랜덤 시드"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                                            disabled={!settings.isSeedLocked}
+                                        />
+                                    </div>
                                     <button
                                         onClick={() => updateSetting('globalSeed', Math.floor(Math.random() * 4294967295))}
                                         className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-medium transition-colors"

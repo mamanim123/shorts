@@ -35,7 +35,7 @@ import { ShortsIdentityCard, CharacterIdentity } from './ShortsIdentityCard';
 import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
-import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS } from '../constants';
+import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS, ACCESSORY_PRESETS } from '../constants';
 import { fetchCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
@@ -1599,6 +1599,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         body: string;
         outfit: string;
         outfitPrompt: string;
+        accessory?: string; // [NEW] 악세서리 추가
     }>>([]);
     const [masterOutfitMap, setMasterOutfitMap] = useState<Map<string, { name: string; prompt: string }>>(new Map());
 
@@ -1611,6 +1612,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [generatingId, setGeneratingId] = useState<string | null>(null);
     const [aiForwardingId, setAiForwardingId] = useState<string | null>(null);
     const [gensparkForwardingId, setGensparkForwardingId] = useState<string | null>(null);
+    const [isBatchImageGenerating, setIsBatchImageGenerating] = useState(false);
+    const [batchImageTotal, setBatchImageTotal] = useState(0);
+    const [batchImageCurrent, setBatchImageCurrent] = useState(0);
+    const [batchImageCurrentScene, setBatchImageCurrentScene] = useState<number | null>(null);
     const aiForwardAbortRef = useRef<AbortController | null>(null);
     const gensparkForwardAbortRef = useRef<AbortController | null>(null);
     const [noGuard] = useState<boolean>(false);
@@ -1652,6 +1657,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [outfitCatalog, setOutfitCatalog] = useState<OutfitCatalog>({ outfits: [], categories: [] });
     const [isLoadingOutfitCatalog, setIsLoadingOutfitCatalog] = useState(false);
     const [outfitPreviewMap, setOutfitPreviewMap] = useState<Record<string, string>>({});
+    const [openMasterOutfitDropdownSlot, setOpenMasterOutfitDropdownSlot] = useState<string | null>(null);
     const [manualIdentities, setManualIdentities] = useState<CharacterIdentity[]>([]);
     const manualIdentitiesLoadedRef = useRef(false);
     const [manualIdentityLockEnabled, setManualIdentityLockEnabled] = useState(true);
@@ -1705,6 +1711,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 body: string;
                 outfit: string;
                 outfitPrompt: string;
+                accessory?: string;
             }> | null>(getMasterProfilesStorageKey(folderName), null);
             const storedOutfits = await getAppStorageValue<Array<[string, { name: string; prompt: string }]> | null>(
                 getMasterOutfitsStorageKey(folderName),
@@ -2041,20 +2048,59 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         return map;
     }, [outfitPool]);
 
+    const resolveOutfitThumbnailUrl = useCallback((url?: string): string => {
+        const raw = (url || '').trim();
+        if (!raw) return '';
+        if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) {
+            return raw;
+        }
+        if (raw.startsWith('/')) {
+            return `http://localhost:3002${raw}`;
+        }
+        return raw;
+    }, []);
+
+    const outfitCatalogImageMap = useMemo(() => {
+        const map = new Map<string, string>();
+        const register = (key?: string, imageUrl?: string) => {
+            const normalizedKey = (key || '').trim();
+            const normalizedUrl = resolveOutfitThumbnailUrl(imageUrl);
+            if (!normalizedKey || !normalizedUrl || map.has(normalizedKey)) return;
+            map.set(normalizedKey, normalizedUrl);
+        };
+
+        (outfitCatalog.outfits || []).forEach((outfit) => {
+            register(outfit.id, outfit.imageUrl);
+            register(outfit.name, outfit.imageUrl);
+            register(outfit.prompt, outfit.imageUrl);
+        });
+        return map;
+    }, [outfitCatalog.outfits, resolveOutfitThumbnailUrl]);
+
+    const getOutfitThumbnailByItem = useCallback((item: OutfitPoolItem): string => {
+        const keys = [item.id, item.name, item.translation, item.prompt];
+        for (const key of keys) {
+            const normalizedKey = (key || '').trim();
+            if (!normalizedKey) continue;
+            const fromCatalog = outfitCatalogImageMap.get(normalizedKey);
+            if (fromCatalog) return fromCatalog;
+
+            const fromPreviewMap = resolveOutfitThumbnailUrl(outfitPreviewMap[normalizedKey]);
+            if (fromPreviewMap) return fromPreviewMap;
+        }
+        return '';
+    }, [outfitCatalogImageMap, outfitPreviewMap, resolveOutfitThumbnailUrl]);
+
     const manualOutfitPresets = useMemo(() => {
         return outfitPool.map((item) => {
-            const imageUrl = outfitPreviewMap[item.id]
-                || outfitPreviewMap[item.name]
-                || outfitPreviewMap[item.translation || '']
-                || '';
             return {
                 id: item.id,
                 name: item.prompt || item.name,
                 translation: item.translation || item.name,
-                imageUrl
+                imageUrl: getOutfitThumbnailByItem(item)
             };
         });
-    }, [outfitPool, outfitPreviewMap]);
+    }, [outfitPool, getOutfitThumbnailByItem]);
 
     const addManualIdentity = useCallback(() => {
         const nextId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -2371,16 +2417,48 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             }
 
             const hasReferenceImages = referenceImages.length > 0;
+            
+            // [NEW] Apply age and outfit settings to prompt
+            let enhancedPrompt = prompt;
+            if (currentScene) {
+                // Apply age
+                if (currentScene.age) {
+                    const ageText = convertAgeToEnglish(currentScene.age);
+                    if (ageText && !prompt.toLowerCase().includes(ageText.toLowerCase())) {
+                        enhancedPrompt = enhancedPrompt.replace(/A stunning Korean woman/, `A stunning Korean woman in her ${ageText}`);
+                        enhancedPrompt = enhancedPrompt.replace(/A stunning Korean man/, `A stunning Korean man in his ${ageText}`);
+                        enhancedPrompt = enhancedPrompt.replace(/A handsome Korean man/, `A handsome Korean man in his ${ageText}`);
+                    }
+                }
+                
+                // Apply outfit
+                if (currentScene.outfit && !prompt.toLowerCase().includes(currentScene.outfit.toLowerCase())) {
+                    enhancedPrompt = `${enhancedPrompt}, ${currentScene.outfit}`;
+                }
+                
+                // [NEW] Apply accessory from master character profile
+                if (currentScene.characterIds && currentScene.characterIds.length > 0) {
+                    const characterId = currentScene.characterIds[0]; // Use first character
+                    const profile = masterCharacterProfiles.find(p => p.slotId === characterId);
+                    if (profile?.accessory && !enhancedPrompt.toLowerCase().includes(profile.accessory.toLowerCase())) {
+                        enhancedPrompt = `${enhancedPrompt}, ${profile.accessory}`;
+                    }
+                }
+            }
+            
             console.log(`[ShortsLab] Generating image with seed: ${seedToUse} (Locked: ${settings.isSeedLocked}), Reference Images: ${referenceImages.length}`);
+            if (enhancedPrompt !== prompt) {
+                console.log(`[ShortsLab] Enhanced prompt with age/outfit:`, enhancedPrompt.substring(0, 100) + '...');
+            }
 
             let result: any;
             let finalBase64Image: string | null = null;
 
             // Step 1: Generate base image
             if (imageModel.toLowerCase().includes('imagen')) {
-                result = await generateImageWithImagen(prompt, "", { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
+                result = await generateImageWithImagen(enhancedPrompt, "", { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
             } else {
-                result = await generateImage(prompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
+                result = await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
             }
 
             // Extract base64 from result
@@ -2456,6 +2534,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 if (saveResult.success) {
                     // ✅ [NEW] Scene에 이미지 URL 및 시드 저장
                     const imageUrl = saveResult.url || `/generated_scripts/대본폰더/${currentFolderName || 'shorts-lab'}/images/${saveResult.filename?.split('/').pop()}`;
+                    if (saveResult.storyId) {
+                        setCurrentFolderName(saveResult.storyId);
+                    }
                     setScenes(prev => prev.map(s =>
                         s.number === sceneNumber
                             ? { ...s, imageUrl, seed: seedToUse }
@@ -2507,16 +2588,30 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             return;
         }
 
+        setIsBatchImageGenerating(true);
+        setBatchImageTotal(scenesWithoutImages.length);
+        setBatchImageCurrent(0);
+        setBatchImageCurrentScene(null);
         showToast(`${scenesWithoutImages.length}개 씬의 이미지를 생성합니다...`, 'info');
 
-        for (const scene of scenesWithoutImages) {
-            try {
-                await handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, settings.imageService);
-                // 각 요청 사이에 잠시 대기 (API 제한 방지)
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } catch (error) {
-                console.error(`Scene ${scene.number} image generation failed:`, error);
+        try {
+            for (let i = 0; i < scenesWithoutImages.length; i += 1) {
+                const scene = scenesWithoutImages[i];
+                const currentIndex = i + 1;
+                setBatchImageCurrent(currentIndex);
+                setBatchImageCurrentScene(scene.number);
+                showToast(`이미지 생성 중 (${currentIndex}/${scenesWithoutImages.length}) - 장면 ${scene.number}`, 'info');
+                try {
+                    await handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, settings.imageService);
+                    // 각 요청 사이에 잠시 대기 (API 제한 방지)
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } catch (error) {
+                    console.error(`Scene ${scene.number} image generation failed:`, error);
+                }
             }
+        } finally {
+            setIsBatchImageGenerating(false);
+            setBatchImageCurrentScene(null);
         }
 
         showToast('전체 이미지 생성 완료!', 'success');
@@ -2623,6 +2718,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             // ✅ [FIX] Scene에 이미지 URL 업데이트 - 미리보기에 이미지 표시
             if (payload?.success && sceneNumber !== undefined) {
                 const resolvedStoryId = payload.storyId || currentFolderName || 'shorts-lab';
+                if (payload.storyId) {
+                    setCurrentFolderName(payload.storyId);
+                }
                 const imageUrl = payload.url
                     ? `http://localhost:3002${payload.url}`
                     : `http://localhost:3002/generated_scripts/대본폴더/${resolvedStoryId}/images/${payload.filename}`;
@@ -3158,15 +3256,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 showToast('대본 저장에 실패했습니다.', 'warning');
             }
 
-            try {
-                await fetch('http://localhost:3002/api/scripts/cleanup-empty-folders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ minAgeMinutes: 5 })
-                });
-            } catch (cleanupError) {
-                console.warn('Empty folder cleanup skipped:', cleanupError);
-            }
+            // 마마님 요청: 이미지/폴더 자동 정리 비활성화 (수동 삭제 전까지 보존)
 
             // 5단계: 캐릭터 맵 생성
             const characterIds = characterList.map(item => item.id);
@@ -4678,10 +4768,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     // ============================================
     // [신규] 캐릭터 프로필 업데이트 핸들러
     // ============================================
-    const handleUpdateMasterProfile = async (slotId: string, field: 'outfit' | 'hair' | 'body', value: string) => {
+    const handleUpdateMasterProfile = async (slotId: string, field: 'outfit' | 'hair' | 'body' | 'accessory', value: string) => {
         // 1. Update local state (UI immediate feedback)
         setMasterCharacterProfiles(prev => prev.map(p => {
             if (p.slotId !== slotId) return p;
+            if (field === 'outfit') {
+                return { ...p, outfit: value, outfitPrompt: value };
+            }
             return { ...p, [field]: value };
         }));
 
@@ -5876,11 +5969,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         {/* 전체 이미지 생성 버튼 */}
                         <button
                             onClick={handleGenerateAllImages}
-                            disabled={scenes.length === 0 || generatingId !== null || aiForwardingId !== null}
+                            disabled={scenes.length === 0 || generatingId !== null || aiForwardingId !== null || isBatchImageGenerating}
                             className="px-3 py-1.5 bg-purple-600/80 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
                         >
                             <ImageIcon className="w-4 h-4" />
-                            전체이미지생성
+                            {isBatchImageGenerating
+                                ? `생성중 ${batchImageCurrent}/${batchImageTotal}${batchImageCurrentScene ? ` (장면 ${batchImageCurrentScene})` : ''}`
+                                : '전체이미지생성'}
                         </button>
 
                         {/* [NEW] 작업 지침서 다운로드 */}
@@ -6741,60 +6836,152 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                             </div>
                                             <div className="flex flex-col gap-2 mt-2">
                                                 {/* 의상 (Costume) */}
-                                                <div>
+                                                <div className="relative">
                                                     <span className="text-[10px] text-slate-500 block mb-1">의상 (Costume)</span>
-                                                    <select
-                                                        value={profile.outfitPrompt || profile.outfit}
-                                                        onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'outfit', e.target.value)}
-                                                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                                                    >
-                                                        <option value="">의상 선택</option>
-                                                        {outfitOptions.sortedKeys.map(catId => {
-                                                            // Filter by extraction categories: Royal, Yoga, Golf Luxury, Sexy
-                                                            if (!['ROYAL', 'YOGA', 'GOLF LUXURY', 'SEXY'].includes(catId)) return null;
-                                                            const category = outfitOptions.categoryMap.get(catId);
-                                                            
-                                                            return (
-                                                                <optgroup key={catId} label={category?.name || catId}>
-                                                                    {outfitOptions.grouped[catId].map(item => (
-                                                                        <option key={item.id} value={item.prompt || item.name}>
-                                                                            {item.translation || item.name}
-                                                                        </option>
-                                                                    ))}
-                                                                </optgroup>
-                                                            );
-                                                        })}
-                                                    </select>
+                                                    {(() => {
+                                                        const selectedOutfitValue = profile.outfitPrompt || profile.outfit;
+                                                        const selectedOutfitItem = outfitPool.find((item) => {
+                                                            const value = item.prompt || item.name;
+                                                            return value === selectedOutfitValue;
+                                                        });
+                                                        const selectedOutfitImageUrl = selectedOutfitItem
+                                                            ? getOutfitThumbnailByItem(selectedOutfitItem)
+                                                            : '';
+
+                                                        return (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setOpenMasterOutfitDropdownSlot((prev) =>
+                                                                            prev === profile.slotId ? null : profile.slotId
+                                                                        );
+                                                                    }}
+                                                                    className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50 flex items-center justify-between gap-2"
+                                                                >
+                                                                    <span className="flex items-center gap-2 min-w-0">
+                                                                        {selectedOutfitImageUrl ? (
+                                                                            <img
+                                                                                src={selectedOutfitImageUrl}
+                                                                                alt={selectedOutfitItem?.translation || selectedOutfitItem?.name || '의상 썸네일'}
+                                                                                className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0"
+                                                                            />
+                                                                        ) : (
+                                                                            <span className="w-7 h-7 rounded border border-dashed border-slate-600 flex items-center justify-center text-slate-500 flex-shrink-0">
+                                                                                <ImageIcon className="w-3.5 h-3.5" />
+                                                                            </span>
+                                                                        )}
+                                                                        <span className="truncate text-left">
+                                                                            {selectedOutfitItem?.translation || selectedOutfitValue || '의상 선택'}
+                                                                        </span>
+                                                                    </span>
+                                                                    <ChevronDown
+                                                                        className={`w-3.5 h-3.5 text-slate-400 transition-transform ${openMasterOutfitDropdownSlot === profile.slotId ? 'rotate-180' : ''}`}
+                                                                    />
+                                                                </button>
+
+                                                                {openMasterOutfitDropdownSlot === profile.slotId && (
+                                                                    <div className="absolute z-30 mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 shadow-xl">
+                                                                        <div className="max-h-72 overflow-y-auto custom-scrollbar p-2 space-y-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    void handleUpdateMasterProfile(profile.slotId, 'outfit', '');
+                                                                                    setOpenMasterOutfitDropdownSlot(null);
+                                                                                }}
+                                                                                className="w-full text-left px-2 py-1.5 rounded border border-slate-700 bg-slate-800/70 text-[11px] text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300"
+                                                                            >
+                                                                                의상 선택 해제
+                                                                            </button>
+                                                                            {outfitOptions.sortedKeys.map((catId) => {
+                                                                                if (!['ROYAL', 'YOGA', 'GOLF LUXURY', 'SEXY'].includes(catId)) return null;
+                                                                                const category = outfitOptions.categoryMap.get(catId);
+                                                                                const categoryItems = outfitOptions.grouped[catId] || [];
+
+                                                                                return (
+                                                                                    <div key={catId} className="rounded border border-slate-800 overflow-hidden">
+                                                                                        <div className="px-2 py-1 bg-slate-800/80 text-[10px] font-semibold text-slate-300">
+                                                                                            {category?.name || catId}
+                                                                                        </div>
+                                                                                        <div className="p-1 space-y-1">
+                                                                                            {categoryItems.map((item) => {
+                                                                                                const value = item.prompt || item.name;
+                                                                                                const imageUrl = getOutfitThumbnailByItem(item);
+                                                                                                const isSelected = selectedOutfitValue === value;
+                                                                                                return (
+                                                                                                    <button
+                                                                                                        key={item.id}
+                                                                                                        type="button"
+                                                                                                        onClick={() => {
+                                                                                                            void handleUpdateMasterProfile(profile.slotId, 'outfit', value);
+                                                                                                            setOpenMasterOutfitDropdownSlot(null);
+                                                                                                        }}
+                                                                                                        className={`w-full text-left px-2 py-1.5 rounded text-[11px] flex items-center gap-2 transition-colors ${isSelected ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-200' : 'border border-transparent bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:text-white'}`}
+                                                                                                    >
+                                                                                                        {imageUrl ? (
+                                                                                                            <img
+                                                                                                                src={imageUrl}
+                                                                                                                alt={item.translation || item.name}
+                                                                                                                className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0"
+                                                                                                            />
+                                                                                                        ) : (
+                                                                                                            <span className="w-7 h-7 rounded border border-dashed border-slate-700 flex items-center justify-center text-slate-500 flex-shrink-0">
+                                                                                                                <ImageIcon className="w-3.5 h-3.5" />
+                                                                                                            </span>
+                                                                                                        )}
+                                                                                                        <span className="truncate">{item.translation || item.name}</span>
+                                                                                                    </button>
+                                                                                                );
+                                                                                            })}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
 
-                                                {/* 헤어 (Hair) */}
-                                                <div>
-                                                    <span className="text-[10px] text-slate-500 block mb-1">헤어 (Hair)</span>
-                                                    <select
-                                                        value={profile.hair}
-                                                        onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'hair', e.target.value)}
-                                                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                                                    >
-                                                        <option value="">헤어 선택</option>
-                                                        {HAIR_PRESETS.map(h => (
-                                                            <option key={h.id} value={h.prompt}>{h.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                                {/* 헤어 (Hair) + 악세서리 (Accessory) */}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <span className="text-[10px] text-slate-500 block mb-1">헤어 (Hair)</span>
+                                                        <select
+                                                            value={profile.hair}
+                                                            onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'hair', e.target.value)}
+                                                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                        >
+                                                            <option value="">헤어 선택</option>
+                                                            {HAIR_PRESETS.map(h => (
+                                                                <option key={h.id} value={h.prompt}>{h.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
 
-                                                {/* 체형 (Body) */}
-                                                <div>
-                                                    <span className="text-[10px] text-slate-500 block mb-1">체형 (Body)</span>
-                                                    <select
-                                                        value={profile.body}
-                                                        onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'body', e.target.value)}
-                                                        className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
-                                                    >
-                                                        <option value="">체형 선택</option>
-                                                        {BODY_PRESETS.map(b => (
-                                                            <option key={b.id} value={b.prompt}>{b.name}</option>
-                                                        ))}
-                                                    </select>
+                                                    {/* [NEW] 악세서리 (Accessory) - 겨울용/그외용 분류 */}
+                                                    <div>
+                                                        <span className="text-[10px] text-slate-500 block mb-1">💎 악세서리</span>
+                                                        <select
+                                                            value={profile.accessory || ''}
+                                                            onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'accessory', e.target.value)}
+                                                            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
+                                                        >
+                                                            <option value="">악세서리 선택</option>
+                                                            <optgroup label="❄️ 겨울용">
+                                                                {ACCESSORY_PRESETS.winter.map(a => (
+                                                                    <option key={a.id} value={a.prompt}>{a.name}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                            <optgroup label="🌸 그외용">
+                                                                {ACCESSORY_PRESETS.other.map(a => (
+                                                                    <option key={a.id} value={a.prompt}>{a.name}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

@@ -104,6 +104,138 @@ const RESOLVED_OUTFIT_PREVIEW_MAP_FILE =
     typeof OUTFIT_PREVIEW_MAP_FILE === 'undefined'
         ? path.join(RESOLVED_OUTFIT_PREVIEW_MAP_DIR, 'outfit_preview_map.json')
         : OUTFIT_PREVIEW_MAP_FILE;
+const UNIFIED_OUTFIT_SOURCE_FILE = path.join(__dirname, '../constants.ts');
+const OUTFIT_PREVIEW_PUBLIC_PREFIX = 'http://localhost:3002/generated_scripts/outfit_previews/';
+
+let cachedUnifiedOutfitIds = null;
+
+const extractUnifiedOutfitIds = () => {
+    if (Array.isArray(cachedUnifiedOutfitIds)) return cachedUnifiedOutfitIds;
+    try {
+        const source = fs.readFileSync(UNIFIED_OUTFIT_SOURCE_FILE, 'utf8');
+        const startToken = 'export const UNIFIED_OUTFIT_LIST = [';
+        const start = source.indexOf(startToken);
+        if (start < 0) {
+            cachedUnifiedOutfitIds = [];
+            return cachedUnifiedOutfitIds;
+        }
+        const end = source.indexOf('\n];', start);
+        const block = end > start ? source.slice(start, end) : source.slice(start);
+        const ids = [];
+        const seen = new Set();
+        const regex = /\bid\s*:\s*["']([^"']+)["']/g;
+        let match;
+        while ((match = regex.exec(block)) !== null) {
+            const id = typeof match[1] === 'string' ? match[1].trim() : '';
+            if (!id || seen.has(id)) continue;
+            seen.add(id);
+            ids.push(id);
+        }
+        cachedUnifiedOutfitIds = ids;
+        return cachedUnifiedOutfitIds;
+    } catch (error) {
+        console.warn('[OutfitPreview] Failed to parse unified outfit ids:', error?.message || error);
+        cachedUnifiedOutfitIds = [];
+        return cachedUnifiedOutfitIds;
+    }
+};
+
+const normalizeOutfitPreviewUrl = (filename) =>
+    `${OUTFIT_PREVIEW_PUBLIC_PREFIX}${filename}`;
+
+const extractOutfitPreviewFilename = (url) => {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith(OUTFIT_PREVIEW_PUBLIC_PREFIX)) {
+        return trimmed.replace(OUTFIT_PREVIEW_PUBLIC_PREFIX, '');
+    }
+    if (trimmed.startsWith('/generated_scripts/outfit_previews/')) {
+        return trimmed.replace('/generated_scripts/outfit_previews/', '');
+    }
+    if (trimmed.includes('/') || trimmed.includes('\\')) return '';
+    return trimmed;
+};
+
+const listOutfitPreviewFiles = () => {
+    if (!fs.existsSync(OUTFIT_PREVIEW_DIR)) return [];
+    return fs.readdirSync(OUTFIT_PREVIEW_DIR).filter((name) => /\.(png|jpg|jpeg|webp)$/i.test(name));
+};
+
+const findNewestOutfitPreviewByPrefix = (prefix, previewFiles) => {
+    const candidates = previewFiles.filter((name) => name.startsWith(prefix));
+    if (candidates.length === 0) return '';
+    return candidates
+        .map((name) => {
+            const filePath = path.join(OUTFIT_PREVIEW_DIR, name);
+            let mtimeMs = 0;
+            try {
+                const stat = fs.statSync(filePath);
+                mtimeMs = stat.mtimeMs || 0;
+            } catch {
+                mtimeMs = 0;
+            }
+            return { name, mtimeMs };
+        })
+        .sort((a, b) => b.mtimeMs - a.mtimeMs)[0]?.name || '';
+};
+
+const buildOutfitIdPrefixes = (outfitId) => {
+    const id = typeof outfitId === 'string' ? outfitId.trim() : '';
+    if (!id) return [];
+    const prefixes = [`${id}_`];
+    const stripped = id.match(/^(.*-\d+)[a-z]$/i);
+    if (stripped?.[1]) {
+        prefixes.push(`${stripped[1]}_`);
+    }
+    return prefixes;
+};
+
+const syncOutfitPreviewMap = (inputPreviews = {}) => {
+    const source = inputPreviews && typeof inputPreviews === 'object' ? inputPreviews : {};
+    const previewFiles = listOutfitPreviewFiles();
+    const synced = {};
+
+    Object.entries(source).forEach(([key, value]) => {
+        const filename = extractOutfitPreviewFilename(value);
+        if (!filename) return;
+        const filePath = path.join(OUTFIT_PREVIEW_DIR, filename);
+        if (!fs.existsSync(filePath)) return;
+        synced[key] = normalizeOutfitPreviewUrl(filename);
+    });
+
+    const unifiedIds = extractUnifiedOutfitIds();
+    let recoveredCount = 0;
+    let missingCount = 0;
+
+    unifiedIds.forEach((outfitId) => {
+        if (synced[outfitId]) return;
+        const prefixes = buildOutfitIdPrefixes(outfitId);
+        let filename = '';
+        for (const prefix of prefixes) {
+            filename = findNewestOutfitPreviewByPrefix(prefix, previewFiles);
+            if (filename) break;
+        }
+        if (filename) {
+            synced[outfitId] = normalizeOutfitPreviewUrl(filename);
+            recoveredCount += 1;
+        } else {
+            missingCount += 1;
+        }
+    });
+
+    const changed = JSON.stringify(source) !== JSON.stringify(synced);
+    return {
+        previews: synced,
+        changed,
+        stats: {
+            sourceCount: Object.keys(source).length,
+            syncedCount: Object.keys(synced).length,
+            recoveredCount,
+            missingCount
+        }
+    };
+};
 
 const IMAGE_CAPTURE_MAX_ATTEMPTS = Number(process.env.IMAGE_CAPTURE_MAX_ATTEMPTS || 2);
 const DEFAULT_OUTFIT_CATEGORIES = [
@@ -1757,12 +1889,20 @@ app.post('/api/save-outfit-preview', async (req, res) => {
 // ---------------------------------------------------------
 app.get('/api/outfit-preview-map', (req, res) => {
     try {
-        if (!fs.existsSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE)) {
-            return res.json({ previews: {} });
+        let parsed = { previews: {} };
+        if (fs.existsSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE)) {
+            const raw = fs.readFileSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE, 'utf8');
+            parsed = JSON.parse(raw) || { previews: {} };
         }
-        const raw = fs.readFileSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE, 'utf8');
-        const parsed = JSON.parse(raw);
-        res.json({ previews: parsed?.previews || {} });
+        const syncResult = syncOutfitPreviewMap(parsed?.previews || {});
+        if (syncResult.changed) {
+            fs.writeFileSync(RESOLVED_OUTFIT_PREVIEW_MAP_FILE, JSON.stringify({
+                previews: syncResult.previews,
+                updatedAt: new Date().toISOString(),
+                syncedBy: 'api/outfit-preview-map'
+            }, null, 2));
+        }
+        res.json({ previews: syncResult.previews });
     } catch (error) {
         console.error('의상 미리보기 맵 로드 실패:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -3181,9 +3321,6 @@ app.post('/api/image/ai-generate', async (req, res) => {
                         const previousFingerprint = lastImageFingerprintsByStory.get(fingerprintKey);
                         if (previousFingerprint && previousFingerprint.hash === captureResult.hash) {
                             console.warn(`[ImageAI] Duplicate fingerprint detected for story ${safeId}.`);
-                            if (fs.existsSync(targetPath)) {
-                                try { fs.unlinkSync(targetPath); } catch (cleanupErr) { }
-                            }
                             if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) {
                                 throw new Error("다운로드된 이미지가 이전 씬과 동일합니다. 다시 시도해주세요.");
                             }
@@ -3199,9 +3336,6 @@ app.post('/api/image/ai-generate', async (req, res) => {
                         break;
                     } catch (err) {
                         captureError = err;
-                        if (fs.existsSync(targetPath)) {
-                            try { fs.unlinkSync(targetPath); } catch (cleanupErr) { }
-                        }
                         if (attempt === IMAGE_CAPTURE_MAX_ATTEMPTS) throw err;
                         console.warn(`[ImageAI] Attempt ${attempt} failed. Retrying...`, err?.message || err);
                     }
@@ -3215,8 +3349,7 @@ app.post('/api/image/ai-generate', async (req, res) => {
 
                 // ✅ Save metadata to PNG file using sharp
                 try {
-                    const tempPath = `${targetPath}.temp.png`;
-                    await sharp(targetPath)
+                    const withMetadata = await sharp(targetPath)
                         .png({
                             compressionLevel: 6,
                             text: {
@@ -3228,10 +3361,8 @@ app.post('/api/image/ai-generate', async (req, res) => {
                                 'Filename': filename || ''
                             }
                         })
-                        .toFile(tempPath);
-
-                    fs.unlinkSync(targetPath);
-                    fs.renameSync(tempPath, targetPath);
+                        .toBuffer();
+                    fs.writeFileSync(targetPath, withMetadata);
                     console.log(`[ImageAI] ✅ PNG metadata embedded: ${filename}`);
                 } catch (metaError) {
                     console.warn(`[ImageAI] ⚠️ Failed to embed PNG metadata for ${filename}:`, metaError);

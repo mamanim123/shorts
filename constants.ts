@@ -837,6 +837,34 @@ export const BODY_PRESETS = [
   { id: 'curvy', name: '볼륨 글래머', prompt: 'high-seated chest line' },
 ];
 
+// [NEW] 악세서리 프리셋 - 겨울용과 그외용으로 분류
+export const ACCESSORY_PRESETS = {
+  // 겨울용 악세서리
+  winter: [
+    { id: 'winter-01', name: '💎 진주 귀걸이 + 화이트 퍼 머플러', prompt: 'elegant pearl drop earrings, luxurious white fur muffler wrapped gracefully around the neck' },
+    { id: 'winter-02', name: '💎 진주 귀걸이 + 캐시미어 장갑', prompt: 'elegant pearl drop earrings, soft cashmere gloves in pastel tones' },
+    { id: 'winter-03', name: '🎀 리본 헤어핀 + 핑크 퍼 스톨', prompt: 'delicate ribbon hairpin, soft pink fur stole draped elegantly' },
+    { id: 'winter-04', name: '👑 골드 이어링 + 화이트 퍼 커프스', prompt: 'golden hoop earrings with tiny diamonds, white fur wrist cuffs' },
+    { id: 'winter-05', name: '💍 실버 체인 + 니트 비니', prompt: 'delicate silver chain necklace, soft knit beanie in cream color' },
+    { id: 'winter-06', name: '🌸 크리스탈 귀걸이 + 울 머플러', prompt: 'sparkling crystal stud earrings, soft wool scarf in soft pastel' },
+    { id: 'winter-07', name: '💎 다이아몬드 귀걸이 + 퍼 트림 장갑', prompt: 'diamond stud earrings, elegant gloves with fur trim' },
+    { id: 'winter-08', name: '🎀 벨벳 리본 + 퍼 헤어밴드', prompt: 'velvet ribbon choker, fluffy fur headband in ivory' },
+  ],
+  // 그외용 (봄/여름/가을) 악세서리
+  other: [
+    { id: 'other-01', name: '💎 진주 귀걸이 + 실버 팔찌', prompt: 'elegant pearl drop earrings, delicate silver bracelet' },
+    { id: 'other-02', name: '🌸 꽃 헤어핀 + 리본 초커', prompt: 'delicate flower hairpin, ribbon choker in soft pastel' },
+    { id: 'other-03', name: '👑 골드 이어링 + 체인 목걸이', prompt: 'golden hoop earrings, simple gold chain necklace' },
+    { id: 'other-04', name: '💍 다이아몬드 귀걸이 + 진주 팔찌', prompt: 'sparkling diamond stud earrings, pearl bracelet' },
+    { id: 'other-05', name: '🎀 리본 헤어밴드 + 하트 귀걸이', prompt: 'cute ribbon headband, heart-shaped earrings' },
+    { id: 'other-06', name: '🌺 크리스탈 헤어핀 + 은반지', prompt: 'crystal hairpin, delicate silver ring' },
+    { id: 'other-07', name: '💎 사파이어 귀걸이 + 가죽 팔찌', prompt: 'sapphire drop earrings, elegant leather bracelet' },
+    { id: 'other-08', name: '👑 로즈골드 이어링 + 진주 목걸이', prompt: 'rose gold hoop earrings, pearl necklace' },
+    { id: 'other-09', name: '🌸 체리 블로섬 핀 + 실버 체인', prompt: 'cherry blossom hair pin, silver chain necklace' },
+    { id: 'other-10', name: '💍 에메랄드 귀걸이 + 골드 팔찌', prompt: 'emerald stud earrings, gold bracelet' },
+  ]
+};
+
 
 // 통합 의상 리스트 (메인 앱 + 쇼츠 생성기 공용)
 export const UNIFIED_OUTFIT_LIST = [

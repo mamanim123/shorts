@@ -1491,7 +1491,6 @@ export const LAB_GENRE_GUIDELINES: Record<string, LabGenreGuideline> = {
       '시간이 멈춘 것 같았어',
     ],
     forbiddenPatterns: [
-      '"20년 만에", "10년 만에" 등 진부한 재회 설정',
       '심장이 쿵쾅쿵쾅 (유치한 표현)',
       '나비가 날아다니는 것 같았다',
       '운명 같은 만남',
@@ -3219,9 +3218,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
       "characterIds": ["WomanA", "WomanB"],
       "cameraAngle": "drone shot",
       "background": "vast snow-covered golf course stretching to horizon under golden morning light",
-      "action": "walking side by side leaving footprints in pristine snow, laughing joyfully",
-      "emotion": "설렘",
-      "summary": "two women enjoying a beautiful winter day at the golf course"
+      "action": "walking side by side leaving footprints in pristine snow, laughing joyfully"
     },
     {
       "sceneNumber": 2,
@@ -3229,9 +3226,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
       "characterIds": ["WomanA"],
       "cameraAngle": "full body wide shot",
       "background": "elegant clubhouse entrance with modern glass architecture reflecting winter sky",
-      "action": "twirling gracefully with golf club in hand, snow gently falling around her",
-      "emotion": "행복",
-      "summary": "woman playfully twirling in the snow outside the clubhouse"
+      "action": "twirling gracefully with golf club in hand, snow gently falling around her"
     },
     {
       "sceneNumber": 3,
@@ -3239,9 +3234,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
       "characterIds": ["ManA", "ManB"],
       "cameraAngle": "low angle wide",
       "background": "dramatic golf course fairway with towering pine trees covered in snow",
-      "action": "striding confidently forward toward camera, snow crunching beneath their feet",
-      "emotion": "비장",
-      "summary": "two men walking confidently on the snowy fairway"
+      "action": "striding confidently forward toward camera, snow crunching beneath their feet"
     }
     // ... ${sentenceRange.min}~${sentenceRange.max}개 씬 (scriptBody의 문장 수와 정확히 일치)
     // 반드시 drone shot, full body wide, low angle wide, establishing wide 위주로!
@@ -3271,8 +3264,6 @@ ${formatRulesText}
    - \`cameraAngle\`: 카메라 앵글 (아래 규칙 참고)
    - \`background\`: 배경 (영어로 창의적이고 구체적으로)
    - \`action\`: 동작 (영어로 생생하고 역동적으로)
-   - \`emotion\`: 인물의 현재 감정을 짧은 한국어 키워드로 (예: 당황, 충격, 설렘, 오해, 황당, 분노, 슬픔, 웃음)
-   - \`summary\`: 해당 씬디의 핵심 상황을 영문으로 짧게 요약 (이미지 프롬프트 구성에 사용됨)
 
 4. **배경 일관성 규칙**:
    - Scene 1에서 설정한 배경 톤/계절/날씨를 전 씬에 일관되게 유지
@@ -3352,7 +3343,6 @@ ${formatRulesText}
 - [ ] 와이드샷이 전체의 85% 이상인가? (drone + full body + low angle + establishing)
 - [ ] background는 창의적이고 구체적인가? (시각적 요소 포함)
 - [ ] action은 역동적이고 생생한가? (감정과 세부 묘사 포함)
-- [ ] emotion, summary 필드를 모두 작성했는가?
 
 **⚠️ 필수 확인사항 (매우 중요!):**
 1. **카메라 앵글**: 10개 씬 기준 - drone shot 2~3개, full body wide 2~3개, low angle wide 2개, establishing wide 1~2개, close-up 최대 1개, POV 0~1개
@@ -3461,69 +3451,6 @@ export const assignOutfitsToCharacters = (params: {
   return selectedOutfits;
 };
 
-const EMOTION_TO_EXPRESSION: Record<string, string> = {
-  // 코미디/유머
-  '당황': 'flustered and embarrassed expression',
-  '충격': 'shocked wide-eyed expression, jaw dropped',
-  '민망': 'cringing embarrassed look, covering face',
-  '자폭': 'self-deprecating laugh, facepalm',
-  '황당': 'bewildered dumbfounded expression',
-  // 로맨스/설렘
-  '두근': 'shy blushing look, eyes darting away',
-  '설렘': 'gentle smile with soft gaze, shy anticipation',
-  '의식': 'self-conscious nervous smile',
-  // 대박/반전
-  '오해': 'suspicious narrowed eyes, leaning forward',
-  '폭로': 'mouth agape, hands raised in shock',
-  '해명': 'frantically explaining with animated hand gestures',
-  // 공통
-  '웃음': 'genuine hearty laugh with crinkled eyes',
-  '분노': 'angry clenched jaw, fierce glare',
-  '슬픔': 'teary-eyed, looking down with sadness',
-  '놀람': 'gasping with wide eyes and raised eyebrows',
-  '평화': 'calm serene expression, relaxed posture',
-  '의심': 'suspicious side-eye, arms crossed',
-  '안도': 'relieved deep exhale, hand on chest',
-  '감동': 'touched emotional tears, hand over heart',
-};
-
-const resolveExpressionFromEmotion = (emotionText: string): string => {
-  if (!emotionText) return '';
-  for (const [key, value] of Object.entries(EMOTION_TO_EXPRESSION)) {
-    if (emotionText.includes(key)) return value;
-  }
-  return '';
-};
-
-const extractActionFromScriptLine = (scriptLine: string): string => {
-  if (!scriptLine) return '';
-  const ACTION_PATTERNS: Array<{ pattern: RegExp; english: string }> = [
-    { pattern: /달려|뛰어|달리/g, english: 'running urgently' },
-    { pattern: /울|눈물/g, english: 'crying with tears' },
-    { pattern: /웃|웃음/g, english: 'laughing heartily' },
-    { pattern: /소리.*지르|외치/g, english: 'shouting loudly' },
-    { pattern: /굳어|멈|멈춰/g, english: 'frozen in place, motionless' },
-    { pattern: /돌아보|돌아서/g, english: 'turning around suddenly' },
-    { pattern: /앉|자리|주저앉/g, english: 'sitting down' },
-    { pattern: /잡|붙잡/g, english: 'grabbing tightly' },
-    { pattern: /밀|밀어/g, english: 'pushing away' },
-    { pattern: /속삭|귓속/g, english: 'whispering closely' },
-    { pattern: /뒤돌아|돌아보/g, english: 'looking back over shoulder' },
-    { pattern: /손.*흔|인사/g, english: 'waving hand greeting' },
-    { pattern: /고개.*숙|숙이/g, english: 'bowing head down' },
-    { pattern: /눈.*마주|시선/g, english: 'making eye contact' },
-    { pattern: /한숨|긴.*숨/g, english: 'sighing deeply' },
-  ];
-  const matched: string[] = [];
-  for (const { pattern, english } of ACTION_PATTERNS) {
-    if (pattern.test(scriptLine)) {
-      matched.push(english);
-      if (matched.length >= 2) break;
-    }
-  }
-  return matched.join(', ');
-};
-
 /**
  * applyCharacterInfoToScenes
  *
@@ -3600,10 +3527,7 @@ export const applyCharacterInfoToScenes = (params: {
   const scene1Background = scenes[0]?.background || '';
 
   return scenes.map((scene, sceneIndex) => {
-    const { 
-        characterIds = [], action = '', cameraAngle = '', background = '', camera = '',
-        emotion = '', emotionBeat = '', summary = '', scriptLine = ''
-    } = scene;
+    const { characterIds = [], action = '', cameraAngle = '', background = '', camera = '' } = scene;
 
     // ========================================
     // 1. 캐릭터 블록 생성
@@ -3748,20 +3672,9 @@ export const applyCharacterInfoToScenes = (params: {
     // ========================================
     // 7. 최종 프롬프트 조립
     // ========================================
-    const emotionText = emotion || emotionBeat || '';
-    const expressionHint = resolveExpressionFromEmotion(emotionText);
-
-    const fallbackAction = (!processedAction || processedAction === 'standing naturally')
-      ? extractActionFromScriptLine(scriptLine)
-      : '';
-
-    const sceneContext = summary ? `scene context: ${summary}` : '';
-
     const promptParts = [
-      expressionHint,
       identityBlock,
-      fallbackAction || processedAction,
-      sceneContext,
+      processedAction,
       cameraBlock,
       fullBodyHint,
       backgroundBlock,

@@ -1572,7 +1572,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
-    const [zoomedOutfitImageUrl, setZoomedOutfitImageUrl] = useState<string | null>(null);
 
     // 대본 입력 상태
     const [scriptInput, setScriptInput] = useState('');
@@ -2986,8 +2985,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const buildManualIdentityPayload = useCallback((inputScript: string): ManualCharacterPrompt[] => {
         if (!manualIdentityLockEnabled) return [];
         const hasLockedSelection = manualIdentities.some(identity => identity.isLocked);
-        // v3.7.7: 겨울 키워드 자동 감지 제거 — 긴팔 변환은 오직 enableWinterAccessories 체크박스로만 제어
-        // const winterMode = isWinterTopic(inputScript);  // 제거됨
+        const winterMode = isWinterTopic(inputScript);
 
         return manualIdentities
             .filter(identity => identity.slotId && (identity.isLocked || !hasLockedSelection))
@@ -3000,7 +2998,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     ? `A stunning Korean woman${ageLabel ? ` in her ${ageLabel}` : ''}`
                     : `A handsome Korean man${ageLabel ? ` in his ${ageLabel}` : ''}`;
                 const rawOutfit = identity.outfit?.trim() || '';
-                const adjustedOutfit = rawOutfit;
+                const adjustedOutfit = slotMeta.gender === 'female' && rawOutfit && winterMode
+                    ? convertToTightLongSleeveWithShoulderLine(rawOutfit)
+                    : rawOutfit;
                 const accessories = identity.accessories
                     ? identity.accessories.split(',').map(item => item.trim()).filter(Boolean)
                     : [];
@@ -4728,7 +4728,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 shotType: getShotTypeByCharacterCount((scene.characterIds || []).length),
                 age: aiTargetAge,
                 outfit: '',
-                summary: scene.summary || '',
+                summary: scene.scriptLine || '',
                 camera: scene.cameraAngle || '',
                 videoPrompt: '',
                 dialogue: scene.scriptLine || '',
@@ -4825,9 +4825,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.log('[Apply Character] Character rules loaded:', characterRules);
 
             const shouldLockBackground = enableWinterAccessories || isWinterTopic(aiTopic || scriptInput || '');
-            
-            // v3.7.8: 장소 일관성을 위해 1번 씬 배경으로 모든 씬 강제 고정 (마마님 승인)
             const baseBackground = scenes.find((scene) => (scene.background || '').trim())?.background || '';
+            const lockedBackground = shouldLockBackground && baseBackground ? baseBackground : '';
             const sanitizeCameraAngle = (value: string) => {
                 const raw = String(value || '').trim();
                 if (!raw) return 'full body wide shot';
@@ -4838,7 +4837,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             const normalizedScenes = scenes.map((scene) => ({
                 ...scene,
                 cameraAngle: sanitizeCameraAngle(scene.cameraAngle || scene.camera || ''),
-                background: baseBackground || scene.background || '',
+                background: lockedBackground || scene.background || '',
                 action: scene.action || 'standing naturally'
             }));
 
@@ -6865,11 +6864,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                             <img
                                                                                 src={selectedOutfitImageUrl}
                                                                                 alt={selectedOutfitItem?.translation || selectedOutfitItem?.name || '의상 썸네일'}
-                                                                                className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setZoomedOutfitImageUrl(selectedOutfitImageUrl);
-                                                                                }}
+                                                                                className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0"
                                                                             />
                                                                         ) : (
                                                                             <span className="w-7 h-7 rounded border border-dashed border-slate-600 flex items-center justify-center text-slate-500 flex-shrink-0">
@@ -6927,11 +6922,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                                                             <img
                                                                                                                 src={imageUrl}
                                                                                                                 alt={item.translation || item.name}
-                                                                                                                className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
-                                                                                                                onClick={(e) => {
-                                                                                                                    e.stopPropagation();
-                                                                                                                    setZoomedOutfitImageUrl(imageUrl);
-                                                                                                                }}
+                                                                                                                className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0"
                                                                                                             />
                                                                                                         ) : (
                                                                                                             <span className="w-7 h-7 rounded border border-dashed border-slate-700 flex items-center justify-center text-slate-500 flex-shrink-0">
@@ -11187,29 +11178,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 닫기
                             </button>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* [신규] 의상 썸네일 확대 모달 */}
-            {zoomedOutfitImageUrl && (
-                <div 
-                    className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-                    onClick={() => setZoomedOutfitImageUrl(null)}
-                >
-                    <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
-                        <button
-                            onClick={() => setZoomedOutfitImageUrl(null)}
-                            className="absolute -top-12 right-0 p-2 text-white hover:text-red-400 transition-colors bg-white/10 hover:bg-white/20 rounded-full"
-                        >
-                            <X className="w-6 h-6" />
-                        </button>
-                        <img 
-                            src={zoomedOutfitImageUrl} 
-                            alt="의상 확대" 
-                            className="w-auto h-auto max-w-full max-h-[85vh] object-contain rounded-xl border border-slate-700 shadow-2xl"
-                            onClick={(e) => e.stopPropagation()}
-                        />
                     </div>
                 </div>
             )}

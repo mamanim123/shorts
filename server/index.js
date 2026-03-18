@@ -3347,23 +3347,32 @@ app.post('/api/image/ai-generate', async (req, res) => {
 
                 const { filename, targetPath, safeId: normalizedId, captureResult, isLegacy: legacyFlag } = captureSummary;
 
-                // ✅ Save metadata to PNG file using sharp
+                // ✅ Save metadata to PNG file and optimize size using sharp
                 try {
+                    // 원본 이미지가 너무 크기 때문에 sharp를 사용해 최적화 진행
+                    // 1. 해상도를 너무 크지 않게 제한 (예: 최대 width 1080)
+                    // 2. 색상 팔레트 최적화 및 압축률 최대화 적용
                     const withMetadata = await sharp(targetPath)
+                        .resize({ width: 1080, withoutEnlargement: true }) // 필요 이상으로 큰 이미지 리사이징
                         .png({
-                            compressionLevel: 6,
-                            text: {
-                                'Prompt': prompt || '',
-                                'SceneNumber': String(sceneNumber || ''),
-                                'Service': requestedService || 'gemini',
-                                'CreatedAt': new Date().toISOString(),
-                                'StoryId': normalizedId || '',
-                                'Filename': filename || ''
+                            compressionLevel: 9, // 최고 압축률 (0-9)
+                            palette: true,       // 색상 수 줄여서 용량 대폭 감소
+                            quality: 80,         // 품질 80% (palette 모드 시 적용됨)
+                            force: true
+                        })
+                        .withMetadata({
+                            exif: {
+                                IFD0: {
+                                    ImageDescription: prompt || '',
+                                    DocumentName: filename || '',
+                                    Software: requestedService || 'gemini'
+                                }
                             }
                         })
                         .toBuffer();
+                    
                     fs.writeFileSync(targetPath, withMetadata);
-                    console.log(`[ImageAI] ✅ PNG metadata embedded: ${filename}`);
+                    console.log(`[ImageAI] ✅ Image optimized and metadata embedded: ${filename}`);
                 } catch (metaError) {
                     console.warn(`[ImageAI] ⚠️ Failed to embed PNG metadata for ${filename}:`, metaError);
                 }

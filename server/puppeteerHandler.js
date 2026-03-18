@@ -2342,6 +2342,9 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
     const downloadStartTime = Date.now();
     console.log(`[Puppeteer] ${captureLabel} Download start at ${new Date(downloadStartTime).toISOString()}`);
 
+    // 다운로드 시작 전 파일 목록 스냅샷 (윈도우 birthtime 오류 방지)
+    const initialFiles = new Set(fs.readdirSync(downloadDir));
+
     // CDP 세션 설정 (다운로드 허용)
     cdpClient = await scriptPage.createCDPSession();
     await cdpClient.send('Page.setDownloadBehavior', {
@@ -2581,7 +2584,9 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
             const files = fs.readdirSync(downloadDir);
             const newFiles = files.filter(f => {
                 const stat = fs.statSync(path.join(downloadDir, f));
-                return stat.birthtimeMs > downloadStartTime && !f.endsWith('.crdownload') && !f.endsWith('.tmp');
+                // 윈도우 파일 생성시간(birthtime) 부정확성 우회: 이전 파일 목록에 없거나, 최근 수정된 파일이면 새 파일로 간주
+                const isNewFile = !initialFiles.has(f) || stat.mtimeMs > (downloadStartTime - 5000);
+                return isNewFile && !f.endsWith('.crdownload') && !f.endsWith('.tmp');
             });
             if (newFiles.length > 0) {
                 downloadedFile = path.join(downloadDir, newFiles[0]);

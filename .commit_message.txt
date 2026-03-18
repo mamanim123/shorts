@@ -1,6 +1,1 @@
-﻿✨ AI 마스터 생성 2-Pass 재설계 구현
-
-- Pass 1: 대본 + 캐릭터 프로필/배경/스타일 DNA 잠금
-- Pass 2: 잠긴 프로필 기반 씬 분해 (일관성 극대화)
-- validateProfileConsistency 안전망 추가
-- Pass 1 실패 시 기존 단일 Pass 폴백 지원
+🐛 이미지 생성 시 storyId 기본값 'shorts-lab' 하드코딩 제거 (aiTopic 기반 폴더 사용)

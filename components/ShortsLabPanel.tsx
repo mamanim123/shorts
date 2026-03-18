@@ -2525,7 +2525,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     body: JSON.stringify({
                         imageData: `data:image/png;base64,${finalBase64Image}`,
                         prompt,
-                        storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+                        // currentFolderName 경유, aiTopic 버제, 없으면 timestamp UUID로 서버가 결정
+                        storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || undefined,
                         sceneNumber,
                         seed: seedToUse // Save seed info
                     })
@@ -2684,11 +2685,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt,
-                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+                    // currentFolderName 경유, aiTopic 버제, 없으면 서버가 자동 UUID로 결정
+                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || undefined,
                     sceneNumber,
                     service: targetService,
                     autoCapture: true,
-                    title: 'ShortsLab'
+                    title: aiTopic?.trim() || 'ShortsLab'
                 }),
                 signal: controller.signal
             });

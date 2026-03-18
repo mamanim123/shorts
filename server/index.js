@@ -649,20 +649,9 @@ const ensureStoryImageDirectory = (storyId, title = null) => {
     const unifiedImagesDir = path.join(storyDir, 'images');
     const legacyImagesDir = path.join(IMAGES_DIR, folderName);
 
-    // ✅ [하이브리드 로직]
-    // 1. 기존 레거시 폴더에 이미 이미지가 있는 경우 -> 레거시 경로 유지
-    // 2. 그 외의 경우 (새 프로젝트 포함) -> 통일된 새 경로 사용
+    // ✅ [수정됨] 과거 레거시 폴더(images/[폴더명]) 존재 여부와 무관하게 무조건 새 통합 폴더 사용
     let targetImagesDir = unifiedImagesDir;
-    let isLegacy = false;
-
-    if (fs.existsSync(legacyImagesDir)) {
-        const files = fs.readdirSync(legacyImagesDir).filter(f => /\.(png|jpg|jpeg)$/i.test(f));
-        if (files.length > 0) {
-            targetImagesDir = legacyImagesDir;
-            isLegacy = true;
-            console.log(`[Server] 📂 Legacy project detected for ${folderName}, using legacy path.`);
-        }
-    }
+    let isLegacy = false; // 프론트엔드 호환성을 위해 변수는 남겨둠
 
     if (!fs.existsSync(storyDir)) fs.mkdirSync(storyDir, { recursive: true });
     if (!fs.existsSync(targetImagesDir)) fs.mkdirSync(targetImagesDir, { recursive: true });

@@ -2584,11 +2584,15 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
             const files = fs.readdirSync(downloadDir);
             const newFiles = files.filter(f => {
                 const stat = fs.statSync(path.join(downloadDir, f));
-                // 윈도우 파일 생성시간(birthtime) 부정확성 우회: 이전 파일 목록에 없거나, 최근 수정된 파일이면 새 파일로 간주
-                const isNewFile = !initialFiles.has(f) || stat.mtimeMs > (downloadStartTime - 5000);
-                return isNewFile && !f.endsWith('.crdownload') && !f.endsWith('.tmp');
+                // 윈도우 파일 생성시간(birthtime) 부정확성 및 경로 변경 문제 해결: 
+                // 이전 파일 목록에 없으면서 일반적인 이미지 확장자를 가진 파일인지 1차 필터링
+                const isNewFile = !initialFiles.has(f);
+                const isImageExtension = /\.(png|jpg|jpeg|webp)$/i.test(f);
+                return isNewFile && isImageExtension && !f.endsWith('.crdownload') && !f.endsWith('.tmp');
             });
             if (newFiles.length > 0) {
+                // 다운로드된 여러 파일 중 수정 시간이 가장 최신인 이미지를 선택
+                newFiles.sort((a, b) => fs.statSync(path.join(downloadDir, b)).mtimeMs - fs.statSync(path.join(downloadDir, a)).mtimeMs);
                 downloadedFile = path.join(downloadDir, newFiles[0]);
                 break;
             }

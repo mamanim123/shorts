@@ -617,8 +617,24 @@ export interface LabImagePromptOptions {
   includeAspectRatio: boolean;
 }
 
-const buildCharacterSlotInstruction = (mode?: 'slot-only' | 'slot+name'): string => {
+// 골프/캐디 관련 주제 키워드
+const GOLF_TOPIC_KEYWORDS = ['골프', 'golf', '캐디', 'caddy', '필드', '라운드', '퍼팅', '스윙', '그린', '버디', '파3', '파4', '홀', '클럽', '아이언', '드라이버'];
+
+/**
+ * 주제에 골프 관련 키워드가 포함되어 있는지 확인
+ */
+const isGolfTopic = (topic: string): boolean =>
+  GOLF_TOPIC_KEYWORDS.some(kw => topic.toLowerCase().includes(kw.toLowerCase()));
+
+/**
+ * 캐릭터 슬롯 안내 문구 생성
+ * - topic에 골프 키워드가 있으면 → WomanD를 캐디 고정으로 안내
+ * - 그 외 주제 → WomanD를 선택적 조연으로 안내 (억지 삽입 방지)
+ */
+const buildCharacterSlotInstruction = (mode?: 'slot-only' | 'slot+name', topic?: string): string => {
   if (!mode) return '';
+  const isGolf = isGolfTopic(topic || '');
+
   if (mode === 'slot+name') {
     const nameMap = getSlotNameMap();
     const womanAName = nameMap.WomanA || '지영';
@@ -628,22 +644,40 @@ const buildCharacterSlotInstruction = (mode?: 'slot-only' | 'slot+name'): string
     const manAName = nameMap.ManA || '준호';
     const manBName = nameMap.ManB || '민수';
     const manCName = nameMap.ManC || '남성 조연';
+
+    const womanDLine = isGolf
+      ? `- WomanD = ${womanDName} (캐디, 고정 - 골프 주제이므로 반드시 등장)`
+      : `- WomanD = ${womanDName} (선택적 조연 - 스토리에 자연스럽게 필요할 때만 등장)`;
+    const caddyRule = isGolf
+      ? `규칙: 골프 주제이므로 캐디(WomanD)는 반드시 등장합니다. 역할과 대사를 자연스럽게 부여하세요.`
+      : `규칙: WomanD는 스토리에 캐디나 서비스직 인물이 필요할 때만 사용하세요. 억지로 넣지 마세요.`;
+
     return `## 👥 캐릭터 슬롯 안내
 대본에는 아래 이름/호칭을 **서로 구분되게** 사용하세요. (복수 표현 금지)
 - WomanA = ${womanAName} (주인공)
 - WomanB = ${womanBName} (상대/친구)
 - WomanC = ${womanCName} (관찰자/조연)
-- WomanD = ${womanDName} (캐디, 고정)
+${womanDLine}
 - ManA = ${manAName} (남성 주연)
 - ManB = ${manBName} (남성 조연)
 - ManC = ${manCName}
-규칙: 캐디는 항상 WomanD로 고정합니다.`;
+${caddyRule}`;
   }
+
+  // slot-only 모드
+  const womanDLine = isGolf
+    ? `- WomanD: 캐디 역할 (골프 주제 - 반드시 등장)`
+    : `- WomanD: 선택적 조연 (스토리에 필요할 때만 등장)`;
+  const caddyRule = isGolf
+    ? `규칙: 골프 주제이므로 캐디(WomanD)는 반드시 등장합니다.`
+    : `규칙: WomanD는 스토리에 자연스럽게 필요할 때만 사용하세요. 억지로 넣지 마세요.`;
+
   return `## 👥 캐릭터 슬롯 안내
 대본에는 인물을 **개별로 구분**해서 표현하세요. (복수 표현 금지)
 - 슬롯 ID: WomanA, WomanB, WomanC, WomanD, ManA, ManB, ManC
 - 이름은 고정하지 말고 "주인공/친구/상대/조연"처럼 역할로 표기
-- 캐디는 항상 WomanD로 고정합니다.`;
+${womanDLine}
+${caddyRule}`;
 };
 
 const sanitizeLegacyGenrePrompt = (prompt?: string): string => {
@@ -668,7 +702,7 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
   const slotNames = getSlotNameMap();
   const narratorName = slotNames[narratorSlot] || (gender === 'female' ? '지영' : '준호');
   const emotionFlow = genreGuide?.emotionCurve || '';
-  const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
+  const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode, topic);
 
   const step2Rules = getShortsLabStep2PromptRules();
   const customPrompt = fillStep2PromptTemplate(step2Rules.scriptPrompt, {
@@ -2782,13 +2816,18 @@ export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
   const narratorName = slotNames[narratorSlotId] || (gender === 'female' ? '지영' : '준호');
   const narratorSlotLabel = formatSlotDisplay(narratorSlotId, slotNames);
   const promptConstants = getPromptConstants();
-  const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
+  const isGolf = isGolfTopic(topic);
+  const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode, topic);
   const legacyGenreBlock = buildLegacyGenreBlock(options.legacyGenrePrompt);
+
+  const womanDDescription = isGolf 
+    ? '20대 초반 골프 캐디, 밝고 프로페셔널한 여성' 
+    : '20대 초반 여성, 상황에 맞는 역할(상점 직원, 친구, 행인 등)';
 
   const defaultCharacterSection = `## 👥 캐릭터 설정
 - **${formatSlotDisplay('WomanA', slotNames)}**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성
 - **${formatSlotDisplay('WomanB', slotNames)}**: ${ageLabel} 친구, 활발하고 장난기 있는 성격
-- **${formatSlotDisplay('WomanD', slotNames)}**: 20대 초반 골프 캐디, 밝고 프로페셔널한 여성
+- **${formatSlotDisplay('WomanD', slotNames)}**: ${womanDDescription}
 - **${formatSlotDisplay('ManA', slotNames)}**: ${ageLabel} 남성, 댄디하고 세련된 신사
 - **${formatSlotDisplay('ManB', slotNames)}**: ${ageLabel} 남성 친구, 솔직하고 유머러스함`;
 
@@ -2797,8 +2836,7 @@ export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
   const rawCharacterSection = promptSections.characterSection?.trim() || defaultCharacterSection;
   const characterSection = applySlotNameOverrides(rawCharacterSection, slotNames);
 
-  const isGolfTopic = topic.toLowerCase().includes('골프') || topic.toLowerCase().includes('golf');
-  const golfCaddyNote = isGolfTopic ? '\n- WomanD(캐디)는 골프 관련 장면에 자연스럽게 포함시킬 것.' : '';
+  const golfCaddyNote = isGolf ? '\n- WomanD(캐디)는 골프 관련 장면에 자연스럽게 포함시킬 것.' : '';
 
   const rawPrompt = `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -2974,7 +3012,7 @@ export const buildMasterPass2Prompt = (options: MasterPass2Options): string => {
   } = options;
   const genreGuide = genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const slotNames = getSlotNameMap();
-  const slotInstruction = buildCharacterSlotInstruction(characterSlotMode);
+  const slotInstruction = buildCharacterSlotInstruction(characterSlotMode, topic);
   const narratorSlotId = gender === 'female' ? 'WomanA' : 'ManA';
 
   const characterRefSheet = lockedCharacters.map(ch => {

@@ -4,12 +4,6 @@ import Spinner from './Spinner';
 
 type EditingState = 'idle' | 'prompt' | 'text' | 'background' | 'generating-prompt' | 'restoration' | 'age-20' | 'age-30' | 'age-40' | 'age-50' | 'age-multi' | 'upscale-2x' | 'upscale-4x' | 'painting' | 'generating-details' | 'object-remove' | 'aspect' | 'image-clean' | 'chest-cover';
 
-interface TurnaroundPreview {
-    key: 'front' | 'angle45' | 'back';
-    label: string;
-    imageUrl: string;
-}
-
 interface ImageEditorControlsProps {
     sourceImages: { id: string; file: File | null; name: string }[];
     activeEditingImageId: string | null;
@@ -25,16 +19,6 @@ interface ImageEditorControlsProps {
     onGeneratePersonDetails: () => void;
     onAgeChange: (age: 20 | 30 | 40 | 50 | 60) => void;
     onMultiAgeGeneration: () => void;
-    turnaroundOutfitMode: 'preserve' | 'neutral';
-    setTurnaroundOutfitMode: (value: 'preserve' | 'neutral') => void;
-    onGenerateTurnaround: () => void;
-    turnaroundPreviews: TurnaroundPreview[];
-    isGeneratingTurnaround: boolean;
-    isTurnaroundApproved: boolean;
-    turnaroundName: string;
-    setTurnaroundName: (value: string) => void;
-    onApproveTurnaround: () => void;
-    onSaveTurnaround: () => void;
 }
 
 const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
@@ -51,17 +35,7 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
     onGeneratePrompt,
     onGeneratePersonDetails,
     onAgeChange,
-    onMultiAgeGeneration,
-    turnaroundOutfitMode,
-    setTurnaroundOutfitMode,
-    onGenerateTurnaround,
-    turnaroundPreviews,
-    isGeneratingTurnaround,
-    isTurnaroundApproved,
-    turnaroundName,
-    setTurnaroundName,
-    onApproveTurnaround,
-    onSaveTurnaround
+    onMultiAgeGeneration
 }) => {
     if (!sourceImages.some(img => img.file)) return null;
 
@@ -324,94 +298,6 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
                     >
                         {editingState === 'age-multi' ? <Spinner size="sm" /> : '동시 생성'}
                     </button>
-                </div>
-                <div className="rounded-lg border border-cyan-500/20 bg-gray-900/40 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <h3 className="text-sm font-semibold text-cyan-300">캐릭터 3면도 생성</h3>
-                            <p className="mt-1 text-xs text-gray-400">
-                                현재 선택한 참조 이미지로 정면, 45도, 뒷모습 시안을 만든 뒤 승인 후 수동 저장합니다.
-                            </p>
-                        </div>
-                        <button
-                            onClick={onGenerateTurnaround}
-                            disabled={editingState !== 'idle' || isGeneratingTurnaround}
-                            className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-md transition disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-xs min-w-[88px] font-semibold"
-                        >
-                            {isGeneratingTurnaround ? <Spinner size="sm" /> : '3면도 생성'}
-                        </button>
-                    </div>
-                    <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-300 mb-2">의상 처리 방식</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setTurnaroundOutfitMode('preserve')}
-                                disabled={editingState !== 'idle' || isGeneratingTurnaround}
-                                className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
-                                    turnaroundOutfitMode === 'preserve'
-                                        ? 'border-cyan-400 bg-cyan-500/15 text-cyan-200'
-                                        : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
-                                } disabled:opacity-50`}
-                            >
-                                원본 의상 유지
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setTurnaroundOutfitMode('neutral')}
-                                disabled={editingState !== 'idle' || isGeneratingTurnaround}
-                                className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
-                                    turnaroundOutfitMode === 'neutral'
-                                        ? 'border-cyan-400 bg-cyan-500/15 text-cyan-200'
-                                        : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
-                                } disabled:opacity-50`}
-                            >
-                                중립 의상 통일
-                            </button>
-                        </div>
-                        <p className="mt-2 text-[11px] text-gray-500">
-                            {turnaroundOutfitMode === 'preserve'
-                                ? '현재는 업로드한 이미지의 의상, 신발, 악세서리를 그대로 유지하도록 생성합니다.'
-                                : '현재는 포즈 확인용으로 심플한 기본 의상으로 통일해 생성합니다.'}
-                        </p>
-                    </div>
-
-                    {turnaroundPreviews.length > 0 && (
-                        <div className="mt-3 space-y-3">
-                            <div className="grid grid-cols-3 gap-2">
-                                {turnaroundPreviews.map((preview) => (
-                                    <div key={preview.key} className="rounded-md border border-gray-700 bg-gray-800 p-2">
-                                        <img src={preview.imageUrl} alt={preview.label} className="h-28 w-full rounded object-cover" />
-                                        <p className="mt-2 text-center text-xs font-medium text-gray-200">{preview.label}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                    onClick={onApproveTurnaround}
-                                    disabled={isTurnaroundApproved}
-                                    className={`px-3 py-2 rounded-md text-xs font-semibold transition ${isTurnaroundApproved ? 'bg-emerald-900/50 text-emerald-200 cursor-default' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
-                                >
-                                    {isTurnaroundApproved ? '승인 완료' : '결과 승인'}
-                                </button>
-                                <input
-                                    type="text"
-                                    value={turnaroundName}
-                                    onChange={(e) => setTurnaroundName(e.target.value)}
-                                    placeholder="저장할 캐릭터 이름"
-                                    disabled={!isTurnaroundApproved}
-                                    className="flex-grow min-w-[180px] bg-gray-800 border border-gray-600 rounded-md p-2 text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition disabled:opacity-50"
-                                />
-                                <button
-                                    onClick={onSaveTurnaround}
-                                    disabled={!isTurnaroundApproved || !turnaroundName.trim()}
-                                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-md transition disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-xs min-w-[96px] font-semibold"
-                                >
-                                    캐릭터 저장
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

@@ -22,9 +22,6 @@ import HairMakeup from './components/HairMakeup';
 import ObjectRemover from './components/ObjectRemover';
 import AspectRatioConverter from './components/AspectRatioConverter';
 import ImageCleaner from './components/ImageCleaner';
-import { setBlob } from '../components/master-studio/services/dbService';
-import { getAppStorageValue, setAppStorageValue } from '../services/appStorageService';
-import type { CharacterCollection } from '../types';
 
 declare global {
   interface AIStudio {
@@ -151,29 +148,6 @@ interface SourceImage {
   name: string;
 }
 
-type TurnaroundViewKey = 'front' | 'angle45' | 'back';
-
-interface PendingTurnaroundSet {
-  previews: Array<{ key: TurnaroundViewKey; label: string; imageUrl: string }>;
-  approved: boolean;
-  sourceImageId: string;
-  sourcePrompt: string;
-}
-
-const blobToDataUrl = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error('blob data url 변환 실패'));
-    };
-    reader.onerror = () => reject(reader.error || new Error('blob 읽기 실패'));
-    reader.readAsDataURL(blob);
-  });
-
 interface AppProps {
   onAddHistory?: (dataUrl: string, prompt: string) => void;
 }
@@ -200,11 +174,6 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
   const [recentModes, setRecentModes] = useState<Mode[]>([]);
   const [openGroupKey, setOpenGroupKey] = useState<ModeGroupKey | null>(MODE_TO_GROUP['fusion']);
   const groupNavRef = React.useRef<HTMLDivElement | null>(null);
-  const [pendingTurnaroundSet, setPendingTurnaroundSet] = useState<PendingTurnaroundSet | null>(null);
-  const [turnaroundName, setTurnaroundName] = useState('');
-  const [turnaroundOutfitMode, setTurnaroundOutfitMode] = useState<'preserve' | 'neutral'>('preserve');
-  const [savedCharacterCount, setSavedCharacterCount] = useState(0);
-  const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
 
   const aspectRatios = [
     { label: '정사각형', value: '1:1' as const },
@@ -235,16 +204,6 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
       onAddHistory(imageUrl, label);
     }
   }, [onAddHistory]);
-
-  useEffect(() => {
-    const loadCharacterCount = async () => {
-      const saved = await getAppStorageValue<CharacterCollection[] | null>('characterCollection', null);
-      if (Array.isArray(saved)) {
-        setSavedCharacterCount(saved.length);
-      }
-    };
-    loadCharacterCount();
-  }, []);
 
   useEffect(() => {
     const activeImage = sourceImages.find(img => img.id === activeEditingImageId);
@@ -645,162 +604,6 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
       handleError(error);
     } finally {
       setEditingState('idle');
-    }
-  };
-
-  const handleGenerateTurnaround = async () => {
-    const activeImage = sourceImages.find(img => img.id === activeEditingImageId);
-    const currentFile = activeImage?.file;
-    if (!currentFile) {
-      addToast('info', '먼저 참조 이미지를 업로드해주세요.');
-      return;
-    }
-
-    setIsGeneratingTurnaround(true);
-    setPendingTurnaroundSet(null);
-    setTurnaroundName('');
-
-    const prompts: Array<{ key: TurnaroundViewKey; label: string; instruction: string }> = [
-      {
-        key: 'front',
-        label: '정면',
-        instruction: 'Generate a full-body front view turnaround of the exact same person from this reference image.'
-      },
-      {
-        key: 'angle45',
-        label: '45도',
-        instruction: 'Generate a full-body 45-degree three-quarter turnaround of the exact same person from this reference image.'
-      },
-      {
-        key: 'back',
-        label: '뒷모습',
-        instruction: 'Generate a full-body back view turnaround of the exact same person from this reference image.'
-      }
-    ];
-
-    try {
-      const previews: Array<{ key: TurnaroundViewKey; label: string; imageUrl: string }> = [];
-
-      for (const item of prompts) {
-        const outfitInstruction = turnaroundOutfitMode === 'preserve'
-          ? `Preserve the exact original outfit from the reference image.
-Keep the same clothing, colors, fabric, silhouette, shoes, and accessories.
-Do not redesign, simplify, replace, restyle, or swap the outfit.
-Only change the viewpoint to ${item.label}.`
-          : `Use a plain studio background and a neutral standing pose.
-Show the character alone, full body, in a fitted simple base outfit.
-Do not add any props, text, split panels, or extra people.`;
-
-        const prompt = `${item.instruction}
-
-Preserve the exact same face, body shape, proportions, height impression, hairstyle, and identity.
-${outfitInstruction}
-Use a clean plain background and show the character alone in a full-body standing pose.`;
-
-        const imageUrl = await editImage(currentFile, prompt);
-        previews.push({ key: item.key, label: item.label, imageUrl });
-      }
-
-      setPendingTurnaroundSet({
-        previews,
-        approved: false,
-        sourceImageId: activeImage!.id,
-        sourcePrompt: prompts.map(p => p.instruction).join(' ')
-      });
-      setResults(previews.map((preview) => ({
-        id: `turnaround-${preview.key}-${Date.now()}`,
-        prompt: `캐릭터 3면도 - ${preview.label}`,
-        imageUrl: preview.imageUrl,
-        isLoading: false,
-        error: null,
-      })));
-      addToast('success', '캐릭터 3면도 시안이 생성되었습니다. 확인 후 승인해주세요.');
-    } catch (error) {
-      console.error('캐릭터 3면도 생성 실패:', error);
-      handleError(error);
-    } finally {
-      setIsGeneratingTurnaround(false);
-    }
-  };
-
-  const handleApproveTurnaround = () => {
-    if (!pendingTurnaroundSet) return;
-    setPendingTurnaroundSet({ ...pendingTurnaroundSet, approved: true });
-    addToast('success', '3면도 결과를 승인했습니다. 이름을 입력하고 저장해주세요.');
-  };
-
-  const handleSaveTurnaround = async () => {
-    if (!pendingTurnaroundSet?.approved) {
-      addToast('info', '먼저 생성 결과를 승인해주세요.');
-      return;
-    }
-    if (!turnaroundName.trim()) {
-      addToast('info', '캐릭터 이름을 입력해주세요.');
-      return;
-    }
-
-    try {
-      const imageIds = {} as Record<TurnaroundViewKey, string>;
-      const previewDataUrls = {} as Record<TurnaroundViewKey, string>;
-      for (const preview of pendingTurnaroundSet.previews) {
-        const response = await fetch(preview.imageUrl);
-        const blob = await response.blob();
-        const dataUrl = await blobToDataUrl(blob);
-        const imageId = crypto.randomUUID();
-        await setBlob(imageId, blob);
-        imageIds[preview.key] = imageId;
-        previewDataUrls[preview.key] = dataUrl;
-      }
-
-      const activeImage = sourceImages.find((img) => img.id === pendingTurnaroundSet.sourceImageId);
-      const sourceImageData = activeImage?.file ? await blobToDataUrl(activeImage.file) : null;
-
-      const folderResponse = await fetch('http://localhost:3002/api/save-character-turnaround', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          characterName: turnaroundName.trim(),
-          sourceImageData,
-          turnaroundImages: previewDataUrls,
-          metadata: {
-            outfitMode: turnaroundOutfitMode,
-            approvedAt: Date.now(),
-            sourcePrompt: pendingTurnaroundSet.sourcePrompt,
-          }
-        })
-      });
-
-      const folderPayload = await folderResponse.json().catch(() => null);
-      if (!folderResponse.ok || !folderPayload?.success) {
-        throw new Error(folderPayload?.error || '캐릭터 폴더 저장 실패');
-      }
-
-      const existing = await getAppStorageValue<CharacterCollection[] | null>('characterCollection', null);
-      const nextCharacter: CharacterCollection = {
-        id: crypto.randomUUID(),
-        name: turnaroundName.trim(),
-        description: 'AI Studio에서 생성한 캐릭터 3면도 세트',
-        generatedImageId: imageIds.front,
-        turnaroundImageIds: {
-          front: imageIds.front,
-          angle45: imageIds.angle45,
-          back: imageIds.back
-        },
-        sourceReferenceImageId: pendingTurnaroundSet.sourceImageId,
-        approvedAt: Date.now(),
-        savedFolderPath: folderPayload.folderPath,
-        savedFolderUrl: folderPayload.folderUrl,
-      };
-
-      const next = [nextCharacter, ...(Array.isArray(existing) ? existing : [])];
-      await setAppStorageValue('characterCollection', next);
-      setSavedCharacterCount(next.length);
-      setPendingTurnaroundSet(null);
-      setTurnaroundName('');
-      addToast('success', `캐릭터 "${nextCharacter.name}" 저장 완료 (${folderPayload.folderPath})`);
-    } catch (error) {
-      console.error('캐릭터 저장 실패:', error);
-      handleError(error);
     }
   };
 
@@ -1481,11 +1284,6 @@ Use a clean plain background and show the character alone in a full-body standin
                     여러 이미지를 참조하여 스타일, 구성, 캐릭터 등을 조합할 수 있습니다. 프롬프트에서 참조할 이미지에 이름을 지정할 수 있습니다.
                   </p>
                 )}
-                {mode === 'fusion' && (
-                  <p className="text-xs text-cyan-300 mb-4">
-                    저장된 캐릭터: {savedCharacterCount}명
-                  </p>
-                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {(mode === 'video' ? sourceImages.slice(0, 1) : sourceImages).map((image, index) => (
                     <div key={image.id}>
@@ -1538,16 +1336,6 @@ Use a clean plain background and show the character alone in a full-body standin
                 onGeneratePersonDetails={handleGeneratePersonDetails}
                 onAgeChange={handleAgeChange}
                 onMultiAgeGeneration={handleMultiAgeGeneration}
-                turnaroundOutfitMode={turnaroundOutfitMode}
-                setTurnaroundOutfitMode={setTurnaroundOutfitMode}
-                onGenerateTurnaround={handleGenerateTurnaround}
-                turnaroundPreviews={pendingTurnaroundSet?.previews || []}
-                isGeneratingTurnaround={isGeneratingTurnaround}
-                isTurnaroundApproved={!!pendingTurnaroundSet?.approved}
-                turnaroundName={turnaroundName}
-                setTurnaroundName={setTurnaroundName}
-                onApproveTurnaround={handleApproveTurnaround}
-                onSaveTurnaround={handleSaveTurnaround}
               />
             )}
 

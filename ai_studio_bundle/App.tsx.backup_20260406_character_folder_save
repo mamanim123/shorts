@@ -160,20 +160,6 @@ interface PendingTurnaroundSet {
   sourcePrompt: string;
 }
 
-const blobToDataUrl = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error('blob data url 변환 실패'));
-    };
-    reader.onerror = () => reject(reader.error || new Error('blob 읽기 실패'));
-    reader.readAsDataURL(blob);
-  });
-
 interface AppProps {
   onAddHistory?: (dataUrl: string, prompt: string) => void;
 }
@@ -741,38 +727,12 @@ Use a clean plain background and show the character alone in a full-body standin
 
     try {
       const imageIds = {} as Record<TurnaroundViewKey, string>;
-      const previewDataUrls = {} as Record<TurnaroundViewKey, string>;
       for (const preview of pendingTurnaroundSet.previews) {
         const response = await fetch(preview.imageUrl);
         const blob = await response.blob();
-        const dataUrl = await blobToDataUrl(blob);
         const imageId = crypto.randomUUID();
         await setBlob(imageId, blob);
         imageIds[preview.key] = imageId;
-        previewDataUrls[preview.key] = dataUrl;
-      }
-
-      const activeImage = sourceImages.find((img) => img.id === pendingTurnaroundSet.sourceImageId);
-      const sourceImageData = activeImage?.file ? await blobToDataUrl(activeImage.file) : null;
-
-      const folderResponse = await fetch('http://localhost:3002/api/save-character-turnaround', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          characterName: turnaroundName.trim(),
-          sourceImageData,
-          turnaroundImages: previewDataUrls,
-          metadata: {
-            outfitMode: turnaroundOutfitMode,
-            approvedAt: Date.now(),
-            sourcePrompt: pendingTurnaroundSet.sourcePrompt,
-          }
-        })
-      });
-
-      const folderPayload = await folderResponse.json().catch(() => null);
-      if (!folderResponse.ok || !folderPayload?.success) {
-        throw new Error(folderPayload?.error || '캐릭터 폴더 저장 실패');
       }
 
       const existing = await getAppStorageValue<CharacterCollection[] | null>('characterCollection', null);
@@ -787,9 +747,7 @@ Use a clean plain background and show the character alone in a full-body standin
           back: imageIds.back
         },
         sourceReferenceImageId: pendingTurnaroundSet.sourceImageId,
-        approvedAt: Date.now(),
-        savedFolderPath: folderPayload.folderPath,
-        savedFolderUrl: folderPayload.folderUrl,
+        approvedAt: Date.now()
       };
 
       const next = [nextCharacter, ...(Array.isArray(existing) ? existing : [])];
@@ -797,7 +755,7 @@ Use a clean plain background and show the character alone in a full-body standin
       setSavedCharacterCount(next.length);
       setPendingTurnaroundSet(null);
       setTurnaroundName('');
-      addToast('success', `캐릭터 "${nextCharacter.name}" 저장 완료 (${folderPayload.folderPath})`);
+      addToast('success', `캐릭터 "${nextCharacter.name}" 저장 완료`);
     } catch (error) {
       console.error('캐릭터 저장 실패:', error);
       handleError(error);

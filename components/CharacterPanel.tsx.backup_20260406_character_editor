@@ -17,7 +17,6 @@ import { generateImageWithImagen } from './master-studio/services/geminiService'
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Lightbox from './master-studio/Lightbox';
-import { getBlob } from './master-studio/services/dbService';
 import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS } from '../constants';
 import { applyBaseOverrides, fetchOutfitCatalog, fetchOutfitPreviewMap, getOutfitBaseOverrides, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap, setOutfitBaseOverrides } from '../services/outfitService';
 import type { OutfitBaseOverrides, OutfitCategory, OutfitItem } from '../services/outfitService';
@@ -100,17 +99,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   // 선택 상태
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
-  const [selectedCharacterPreviewUrls, setSelectedCharacterPreviewUrls] = useState<{
-    representative: string | null;
-    front: string | null;
-    angle45: string | null;
-    back: string | null;
-  }>({
-    representative: null,
-    front: null,
-    angle45: null,
-    back: null,
-  });
   const [selectedOutfitId, setSelectedOutfitId] = useState<string | null>(null);
   const [selectedBaseOutfitId, setSelectedBaseOutfitId] = useState<string | null>(null);
   const [showOutfitEditModal, setShowOutfitEditModal] = useState(false);
@@ -165,24 +153,28 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   type BodyTuning = {
     overall: number;
-    shoulderWidth: number;
     legLength: number;
     bustFront: number;
-    bustHeight: number;
-    pelvisWidth: number;
-    buttProjection: number;
-    buttLift: number;
+    bustBack: number;
+    bustUpper: number;
+    bustLower: number;
+    hipsFront: number;
+    hipsBack: number;
+    hipsUpper: number;
+    hipsLower: number;
   };
 
   const DEFAULT_BODY_TUNING: BodyTuning = {
     overall: 55,
-    shoulderWidth: 50,
     legLength: 60,
     bustFront: 55,
-    bustHeight: 52,
-    pelvisWidth: 55,
-    buttProjection: 60,
-    buttLift: 52
+    bustBack: 45,
+    bustUpper: 55,
+    bustLower: 50,
+    hipsFront: 55,
+    hipsBack: 60,
+    hipsUpper: 55,
+    hipsLower: 55
   };
 
   const [bodyTuning, setBodyTuning] = useState<BodyTuning>({ ...DEFAULT_BODY_TUNING });
@@ -205,17 +197,19 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   const buildBodyFromTuning = useCallback((tuning: BodyTuning, gender: 'female' | 'male') => {
     const overall = toSizeLabel(tuning.overall, ['slim', 'balanced', 'curvy', 'voluminous']);
-    const shoulders = toSizeLabel(tuning.shoulderWidth, ['narrow shoulders', 'balanced shoulders', 'broad shoulders', 'very broad shoulders']);
     const leg = toSizeLabel(tuning.legLength, ['short legs', 'average leg length', 'long legs', 'extra-long legs']);
-    const bustFront = toSizeLabel(tuning.bustFront, ['subtle', 'moderate', 'full', 'very full']);
-    const bustHeight = toSizeLabel(tuning.bustHeight, ['low-set bust line', 'natural bust line', 'lifted bust line', 'high bust line']);
-    const pelvisWidth = toSizeLabel(tuning.pelvisWidth, ['narrow pelvis', 'balanced pelvis', 'wide pelvis', 'very wide pelvis']);
-    const buttProjection = toSizeLabel(tuning.buttProjection, ['subtle projection', 'moderate projection', 'full projection', 'very full projection']);
-    const buttLift = toSizeLabel(tuning.buttLift, ['low hip line', 'natural hip line', 'lifted hip line', 'high hip line']);
+    const front = toSizeLabel(tuning.bustFront, ['subtle', 'moderate', 'full', 'very full']);
+    const back = toSizeLabel(tuning.bustBack, ['subtle', 'moderate', 'full', 'very full']);
+    const upper = toSizeLabel(tuning.bustUpper, ['subtle', 'moderate', 'full', 'very full']);
+    const lower = toSizeLabel(tuning.bustLower, ['subtle', 'moderate', 'full', 'very full']);
+    const hipFront = toSizeLabel(tuning.hipsFront, ['subtle', 'moderate', 'full', 'very full']);
+    const hipBack = toSizeLabel(tuning.hipsBack, ['subtle', 'moderate', 'full', 'very full']);
+    const hipUpper = toSizeLabel(tuning.hipsUpper, ['subtle', 'moderate', 'full', 'very full']);
+    const hipLower = toSizeLabel(tuning.hipsLower, ['subtle', 'moderate', 'full', 'very full']);
 
     const core = gender === 'female'
-      ? `overall ${overall} body proportions, ${shoulders}, ${leg}, bust volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`
-      : `overall ${overall} body proportions, ${shoulders}, ${leg}, chest volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`;
+      ? `overall ${overall} body proportions, ${leg}, bust volume (front ${front}, back ${back}, upper ${upper}, lower ${lower}), hips volume (front ${hipFront}, back ${hipBack}, upper ${hipUpper}, lower ${hipLower})`
+      : `overall ${overall} body proportions, ${leg}, chest volume (front ${front}, back ${back}, upper ${upper}, lower ${lower}), hips volume (front ${hipFront}, back ${hipBack}, upper ${hipUpper}, lower ${hipLower})`;
 
     return `${core}, natural anatomy, balanced posture, well-proportioned silhouette`;
   }, []);
@@ -245,19 +239,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const getBodyPreviewMetrics = (tuning: BodyTuning) => {
     const scale = (v: number, range = 22) => ((v - 50) / 50) * range;
     const baseWidth = 88 + scale(tuning.overall, 22);
-    const shoulderWidth = baseWidth + scale(tuning.shoulderWidth, 28);
     const bustFront = baseWidth + scale(tuning.bustFront, 26);
-    const bustBack = baseWidth + scale(tuning.buttProjection, 12);
-    const bustUpper = baseWidth - 10 + scale(tuning.bustHeight, 10);
-    const bustLower = baseWidth - 4 + scale(tuning.bustFront, 12);
-    const hipsFront = baseWidth + scale(tuning.pelvisWidth, 28);
-    const hipsBack = baseWidth + scale(tuning.buttProjection, 26);
-    const hipsUpper = baseWidth - 6 + scale(tuning.buttLift, 18);
-    const hipsLower = baseWidth + scale(tuning.pelvisWidth, 18);
+    const bustBack = baseWidth + scale(tuning.bustBack, 20);
+    const bustUpper = baseWidth - 12 + scale(tuning.bustUpper, 16);
+    const bustLower = baseWidth - 6 + scale(tuning.bustLower, 16);
+    const hipsFront = baseWidth + scale(tuning.hipsFront, 26);
+    const hipsBack = baseWidth + scale(tuning.hipsBack, 24);
+    const hipsUpper = baseWidth - 8 + scale(tuning.hipsUpper, 14);
+    const hipsLower = baseWidth + scale(tuning.hipsLower, 16);
     const leg = 110 + scale(tuning.legLength, 40);
     return {
       baseWidth,
-      shoulderWidth,
       bustFront,
       bustBack,
       bustUpper,
@@ -278,7 +270,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const headSize = 30;
     const neckW = 20;
     const neckH = 16;
-    const shoulderW = clamp(metrics.shoulderWidth + 30, 86, 178);
+    const shoulderW = clamp(metrics.baseWidth + 36, 86, 168);
     const waistW = clamp(metrics.baseWidth - 28, 54, 118);
     const bustUpperW = clamp(metrics.bustUpper, 65, 160);
     const bustLowerWBase = view === 'front' ? metrics.bustFront : view === 'back' ? metrics.bustBack : (metrics.bustFront + metrics.bustBack) / 2;
@@ -372,81 +364,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const armWidth = clamp(20 + (metrics.baseWidth - 88) * 0.2, 18, 30);
     const legWidth = clamp(26 + (metrics.baseWidth - 88) * 0.25, 22, 36);
     const legGap = view === 'side' ? 6 : 14;
-    const forearmWidth = clamp(armWidth - 6, 12, 24);
-    const calfWidth = clamp(legWidth - 8, 14, 28);
-    const innerLegGap = view === 'side' ? 4 : clamp(8 + ((100 - tuning.pelvisWidth) / 100) * 10, 8, 18);
-    const handRadius = clamp(forearmWidth * 0.34, 6, 10);
-    const footWidth = view === 'side' ? 34 : 28;
-    const chestY = segments[2].y - 4;
-    const waistY = segments[3].y + 2;
-    const pelvisY = segments[5].y - 6;
-
-    const buildArmPath = (side: 'left' | 'right') => {
-      const direction = side === 'left' ? -1 : 1;
-      const shoulderX = cx + direction * (shoulderW / 2 - 6);
-      const elbowX = shoulderX + direction * (10 + armWidth * 0.25);
-      const handX = elbowX + direction * 2;
-      const shoulderTop = shoulderY + 10;
-      const elbowY = shoulderTop + armLength * 0.48;
-      const handY = shoulderTop + armLength;
-      return [
-        `M ${shoulderX} ${shoulderTop}`,
-        `Q ${shoulderX + direction * armWidth * 0.65} ${shoulderTop + 16} ${elbowX + direction * forearmWidth * 0.6} ${elbowY}`,
-        `Q ${handX + direction * forearmWidth * 0.45} ${handY - 10} ${handX} ${handY}`,
-        `Q ${handX - direction * forearmWidth * 0.75} ${handY - 2} ${elbowX - direction * forearmWidth * 0.55} ${elbowY}`,
-        `Q ${shoulderX - direction * armWidth * 0.55} ${shoulderTop + 18} ${shoulderX} ${shoulderTop}`,
-        'Z',
-      ].join(' ');
-    };
-
-    const buildSideArmPath = () => {
-      const shoulderX = cx + shoulderW / 2 - armWidth - 4;
-      const elbowX = shoulderX + 6;
-      const shoulderTop = shoulderY + 12;
-      const elbowY = shoulderTop + armLength * 0.52;
-      const handY = shoulderTop + armLength * 0.96;
-      return [
-        `M ${shoulderX} ${shoulderTop}`,
-        `Q ${shoulderX + armWidth * 0.8} ${shoulderTop + 20} ${elbowX + forearmWidth} ${elbowY}`,
-        `Q ${elbowX + forearmWidth * 0.85} ${handY - 8} ${elbowX + forearmWidth * 0.3} ${handY}`,
-        `Q ${elbowX - forearmWidth * 0.6} ${handY - 4} ${elbowX - forearmWidth * 0.4} ${elbowY}`,
-        `Q ${shoulderX - armWidth * 0.35} ${shoulderTop + 18} ${shoulderX} ${shoulderTop}`,
-        'Z',
-      ].join(' ');
-    };
-
-    const buildLegPath = (side: 'left' | 'right') => {
-      const direction = side === 'left' ? -1 : 1;
-      const thighOuterX = cx + direction * (innerLegGap + legWidth);
-      const thighInnerX = cx + direction * innerLegGap;
-      const calfOuterX = cx + direction * (innerLegGap + calfWidth);
-      const calfInnerX = cx + direction * (innerLegGap - 1);
-      const footTipX = cx + direction * (innerLegGap + footWidth);
-      return [
-        `M ${thighInnerX} ${hipY + 8}`,
-        `Q ${thighOuterX} ${hipY + 18} ${thighOuterX - direction * 4} ${kneeY - 8}`,
-        `Q ${calfOuterX} ${kneeY + 34} ${calfOuterX - direction * 2} ${ankleY}`,
-        `Q ${footTipX} ${ankleY + 10} ${footTipX - direction * 10} ${ankleY + 16}`,
-        `L ${calfInnerX} ${ankleY + 4}`,
-        `Q ${thighInnerX + direction * 2} ${kneeY + 30} ${thighInnerX} ${hipY + 8}`,
-        'Z',
-      ].join(' ');
-    };
-
-    const buildSideLegPath = () => {
-      const startX = cx + 3;
-      const outerX = startX + legWidth;
-      const calfX = startX + calfWidth;
-      return [
-        `M ${startX} ${hipY + 10}`,
-        `Q ${outerX} ${hipY + 18} ${outerX - 4} ${kneeY - 10}`,
-        `Q ${calfX + 8} ${kneeY + 36} ${calfX} ${ankleY}`,
-        `Q ${calfX + 18} ${ankleY + 10} ${calfX + 6} ${ankleY + 16}`,
-        `L ${startX - 2} ${ankleY + 6}`,
-        `Q ${startX + 2} ${kneeY + 28} ${startX} ${hipY + 10}`,
-        'Z',
-      ].join(' ');
-    };
 
     return (
       <svg viewBox="0 0 300 520" className="w-full h-full">
@@ -456,17 +373,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             <stop offset="100%" stopColor="rgba(15,23,42,0.0)" />
           </radialGradient>
           <linearGradient id={`bodyGradient-${viewLabel}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f4d7c4" />
-            <stop offset="45%" stopColor="#e6b79a" />
-            <stop offset="100%" stopColor="#bf8769" />
-          </linearGradient>
-          <radialGradient id={`skinHighlight-${viewLabel}`} cx="35%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-          </radialGradient>
-          <linearGradient id={`hairGradient-${viewLabel}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3a2a22" />
-            <stop offset="100%" stopColor="#1f1713" />
+            <stop offset="0%" stopColor="#f8d8c2" />
+            <stop offset="55%" stopColor="#e0b194" />
+            <stop offset="100%" stopColor="#c58f74" />
           </linearGradient>
           <linearGradient id={`bodyShadow-${viewLabel}`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="rgba(0,0,0,0.24)" />
@@ -484,7 +393,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         <rect x="12" y="12" width="276" height="496" rx="26" fill="rgba(10,15,28,0.85)" stroke="rgba(148,163,184,0.2)" />
         <rect x="12" y="12" width="276" height="496" rx="26" fill={`url(#bgGlow-${viewLabel})`} />
         <g transform={`translate(${cx} 0) scale(${scaleX} 1) translate(${-cx} 0)`}>
-          <ellipse cx={cx} cy={top + headSize / 2 - 2} rx={headSize * 0.72} ry={headSize * 0.86} fill={`url(#hairGradient-${viewLabel})`} opacity={0.95} />
           <ellipse cx={cx} cy={top + headSize / 2} rx={headSize * 0.55} ry={headSize * 0.7} fill={`url(#bodyGradient-${viewLabel})`} filter={`url(#softShadow-${viewLabel})`} />
           <rect
             x={cx - neckW / 2}
@@ -513,60 +421,80 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             opacity="0.35"
             transform={`translate(${-highlightShift * 0.6} 0)`}
           />
-          <path
-            d={bodyPath}
-            fill={`url(#skinHighlight-${viewLabel})`}
-            opacity="0.35"
-            transform={`translate(${highlightShift * 0.35} -2)`}
-          />
           {view !== 'back' && (
             <circle cx={cx + (view === 'side' ? 16 : 0)} cy={segments[2].y - 8} r={view === 'side' ? 8 : 10} fill="rgba(255,255,255,0.2)" />
           )}
-          <ellipse cx={cx + (view === 'side' ? 14 : 0)} cy={segments[5].y - 2} rx={view === 'side' ? 11 : 18} ry={view === 'side' ? 10 : 14} fill="rgba(255,255,255,0.12)" />
-          {view !== 'back' && (
-            <>
-              <ellipse cx={cx} cy={chestY} rx={view === 'side' ? 10 : 18} ry={view === 'side' ? 7 : 11} fill="rgba(255,255,255,0.08)" />
-              <ellipse cx={cx} cy={pelvisY} rx={view === 'side' ? 12 : 24} ry={view === 'side' ? 8 : 13} fill="rgba(255,255,255,0.06)" />
-            </>
-          )}
-          <path
-            d={`M ${cx - 8} ${chestY + 6} Q ${cx} ${waistY - 6} ${cx - 5} ${pelvisY + 6}`}
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-            opacity={view === 'side' ? 0.28 : 0.4}
-          />
+          <circle cx={cx + (view === 'side' ? 14 : 0)} cy={segments[5].y - 2} r={view === 'side' ? 10 : 12} fill="rgba(255,255,255,0.16)" />
           {view !== 'side' && (
             <>
-              <path d={buildArmPath('left')} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.88} />
-              <path d={buildArmPath('right')} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.88} />
-              <circle cx={cx - shoulderW / 2 - 14} cy={shoulderY + armLength + 8} r={handRadius} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.92} />
-              <circle cx={cx + shoulderW / 2 + 14} cy={shoulderY + armLength + 8} r={handRadius} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.92} />
+              <rect
+                x={cx - shoulderW / 2 - armWidth + 4}
+                y={shoulderY + 6}
+                width={armWidth}
+                height={armLength}
+                rx={armWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+                opacity={0.85}
+              />
+              <rect
+                x={cx + shoulderW / 2 - 4}
+                y={shoulderY + 6}
+                width={armWidth}
+                height={armLength}
+                rx={armWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+                opacity={0.85}
+              />
             </>
           )}
           {view === 'side' && (
-            <>
-              <path d={buildSideArmPath()} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.82} />
-              <circle cx={cx + shoulderW / 2 - 2} cy={shoulderY + armLength + 2} r={handRadius} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.9} />
-            </>
+            <rect
+              x={cx + shoulderW / 2 - armWidth - 8}
+              y={shoulderY + 10}
+              width={armWidth}
+              height={armLength * 0.95}
+              rx={armWidth / 2}
+              fill={`url(#bodyGradient-${viewLabel})`}
+              opacity={0.8}
+            />
           )}
           {view !== 'side' ? (
             <>
-              <path d={buildLegPath('left')} fill={`url(#bodyGradient-${viewLabel})`} />
-              <path d={buildLegPath('right')} fill={`url(#bodyGradient-${viewLabel})`} />
+              <rect
+                x={cx - legGap - legWidth}
+                y={hipY}
+                width={legWidth}
+                height={ankleY - hipY}
+                rx={legWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+              />
+              <rect
+                x={cx + legGap}
+                y={hipY}
+                width={legWidth}
+                height={ankleY - hipY}
+                rx={legWidth / 2}
+                fill={`url(#bodyGradient-${viewLabel})`}
+              />
             </>
           ) : (
-            <path d={buildSideLegPath()} fill={`url(#bodyGradient-${viewLabel})`} />
+            <rect
+              x={cx + 2}
+              y={hipY}
+              width={legWidth}
+              height={ankleY - hipY}
+              rx={legWidth / 2}
+              fill={`url(#bodyGradient-${viewLabel})`}
+            />
           )}
-          {view !== 'side' ? (
-            <>
-              <ellipse cx={cx - innerLegGap - 12} cy={ankleY + 16} rx={12} ry={5} fill="rgba(25,30,45,0.85)" />
-              <ellipse cx={cx + innerLegGap + 12} cy={ankleY + 16} rx={12} ry={5} fill="rgba(25,30,45,0.85)" />
-            </>
-          ) : (
-            <ellipse cx={cx + 18} cy={ankleY + 16} rx={16} ry={5} fill="rgba(25,30,45,0.85)" />
-          )}
+          <rect
+            x={cx - (view === 'side' ? 12 : 24)}
+            y={ankleY + 6}
+            width={view === 'side' ? 24 : 48}
+            height={8}
+            rx={4}
+            fill="rgba(148,163,184,0.3)"
+          />
           <circle cx={cx} cy={shoulderY + 8} r={4} fill="rgba(255,255,255,0.22)" />
           <circle cx={cx} cy={segments[3].y - 8} r={4} fill="rgba(255,255,255,0.22)" />
           <circle cx={cx} cy={segments[5].y + 2} r={4} fill="rgba(255,255,255,0.22)" />
@@ -579,15 +507,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   const BODY_TUNING_CONTROLS: Array<{ key: keyof BodyTuning; label: string; hint: string }> = [
     { key: 'overall', label: '전체 체형', hint: '전체 크기' },
-    { key: 'shoulderWidth', label: '어깨 넓이', hint: '좁음 ↔ 넓음' },
     { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
-    { key: 'bustHeight', label: '가슴 위', hint: '가슴 라인 위/아래' },
-    { key: 'bustFront', label: '가슴 앞', hint: '앞으로 작음 ↔ 큼' },
-    { key: 'pelvisWidth', label: '골반 크기', hint: '좁음 ↔ 넓음' },
-    { key: 'buttProjection', label: '엉덩이 뒤', hint: '뒤로 작음 ↔ 큼' },
-    { key: 'buttLift', label: '엉덩이 위', hint: '아래 ↔ 위' }
+    { key: 'bustFront', label: '가슴 앞', hint: '앞쪽 볼륨' },
+    { key: 'bustBack', label: '가슴 뒤', hint: '뒤쪽 볼륨' },
+    { key: 'bustUpper', label: '가슴 위', hint: '상부 볼륨' },
+    { key: 'bustLower', label: '가슴 아래', hint: '하부 볼륨' },
+    { key: 'hipsFront', label: '엉덩이 앞', hint: '앞쪽 볼륨' },
+    { key: 'hipsBack', label: '엉덩이 뒤', hint: '뒤쪽 볼륨' },
+    { key: 'hipsUpper', label: '엉덩이 위', hint: '상부 볼륨' },
+    { key: 'hipsLower', label: '엉덩이 아래', hint: '하부 볼륨' }
   ];
-  const BASIC_BODY_KEYS: Array<keyof BodyTuning> = ['overall', 'shoulderWidth', 'legLength'];
+  const BASIC_BODY_KEYS: Array<keyof BodyTuning> = ['overall', 'legLength'];
 
   const applyBodyTuningToCharacter = useCallback(() => {
     const prompt = buildBodyFromTuning(bodyTuning, newCharacter.gender);
@@ -603,225 +533,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     return 'back';
   }, []);
 
-  const selectedCharacter = useMemo(
-    () => characters.find((char) => char.id === selectedCharacterId) || null,
-    [characters, selectedCharacterId]
-  );
-
-  useEffect(() => {
-    let isMounted = true;
-    const objectUrls: string[] = [];
-
-    const loadSelectedCharacterPreviews = async () => {
-      if (!selectedCharacter) {
-        setSelectedCharacterPreviewUrls({
-          representative: null,
-          front: null,
-          angle45: null,
-          back: null,
-        });
-        return;
-      }
-
-      const blobToUrl = async (blobId?: string) => {
-        if (!blobId) return null;
-        try {
-          const blob = await getBlob(blobId);
-          if (!blob) return null;
-          const url = URL.createObjectURL(blob);
-          objectUrls.push(url);
-          return url;
-        } catch {
-          return null;
-        }
-      };
-
-      const representativeId = selectedCharacter.generatedImageId || selectedCharacter.turnaroundImageIds?.front;
-      const [representative, front, angle45, back] = await Promise.all([
-        blobToUrl(representativeId),
-        blobToUrl(selectedCharacter.turnaroundImageIds?.front),
-        blobToUrl(selectedCharacter.turnaroundImageIds?.angle45),
-        blobToUrl(selectedCharacter.turnaroundImageIds?.back),
-      ]);
-
-      if (!isMounted) {
-        objectUrls.forEach((url) => URL.revokeObjectURL(url));
-        return;
-      }
-
-      setSelectedCharacterPreviewUrls({
-        representative,
-        front,
-        angle45,
-        back,
-      });
-    };
-
-    loadSelectedCharacterPreviews();
-
-    return () => {
-      isMounted = false;
-      objectUrls.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [selectedCharacter]);
-
   useEffect(() => {
     setBodyPreviewView(syncViewFromAngle(bodyPreviewAngle));
   }, [bodyPreviewAngle, syncViewFromAngle]);
-
-  const activeBodyReferencePreview = useMemo(() => {
-    if (bodyPreviewView === 'front') return selectedCharacterPreviewUrls.front || selectedCharacterPreviewUrls.representative;
-    if (bodyPreviewView === 'back') return selectedCharacterPreviewUrls.back || selectedCharacterPreviewUrls.representative;
-    return selectedCharacterPreviewUrls.angle45 || selectedCharacterPreviewUrls.front || selectedCharacterPreviewUrls.representative;
-  }, [bodyPreviewView, selectedCharacterPreviewUrls]);
-
-  const renderImageBasedBodyPreview = () => {
-    if (!activeBodyReferencePreview) return null;
-
-    const overallScale = 0.92 + bodyTuning.overall / 500;
-    const shoulderScaleX = 0.9 + bodyTuning.shoulderWidth / 300;
-    const chestScaleX = 0.88 + bodyTuning.bustFront / 220;
-    const chestScaleY = 0.94 + bodyTuning.bustHeight / 700;
-    const chestTranslateY = (50 - bodyTuning.bustHeight) * 0.18;
-    const waistScaleX = 0.92 + (bodyTuning.overall - 50) / 700;
-    const pelvisScaleX = 0.9 + bodyTuning.pelvisWidth / 220;
-    const buttScaleX = 0.9 + bodyTuning.buttProjection / 240;
-    const buttTranslateX = bodyPreviewView === 'back'
-      ? 0
-      : bodyPreviewView === 'side'
-        ? (bodyTuning.buttProjection - 50) * 0.14
-        : (bodyTuning.pelvisWidth - 50) * 0.05;
-    const buttTranslateY = (50 - bodyTuning.buttLift) * 0.18;
-    const pelvisTranslateY = (50 - bodyTuning.buttLift) * 0.1;
-    const legScaleY = 0.88 + bodyTuning.legLength / 250;
-    const sideShift = bodyPreviewView === 'side' ? 6 : 0;
-
-    const overlayClassName = 'absolute inset-0 w-full h-full object-contain select-none pointer-events-none';
-    const withMask = (radial: string, linear?: string) => ({
-      WebkitMaskImage: linear ? `${radial}, ${linear}` : radial,
-      maskImage: linear ? `${radial}, ${linear}` : radial,
-      WebkitMaskRepeat: 'no-repeat',
-      maskRepeat: 'no-repeat',
-      WebkitMaskComposite: 'source-in',
-      maskComposite: 'intersect',
-    } as React.CSSProperties);
-
-    return (
-      <div className="absolute inset-0">
-        <img
-          src={activeBodyReferencePreview}
-          alt="캐릭터 체형 기준 프리뷰"
-          className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none opacity-90"
-          style={{ transform: `scale(${overallScale})` }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 28% 18% at 50% 31%, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 10%, black 22%, black 46%, transparent 58%)'
-            ),
-            transform: `translate(${sideShift}px, ${chestTranslateY}px) scale(${chestScaleX}, ${chestScaleY})`,
-            transformOrigin: '50% 31%',
-            opacity: 0.95,
-            filter: 'drop-shadow(0 0 14px rgba(139, 92, 246, 0.22))',
-          }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 22% 16% at 50% 46%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 26%, black 38%, black 58%, transparent 70%)'
-            ),
-            transform: `scale(${waistScaleX}, 1.02)`,
-            transformOrigin: '50% 48%',
-            opacity: 0.86,
-          }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 34% 20% at 50% 58%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 38%, black 48%, black 74%, transparent 86%)'
-            ),
-            transform: `translate(${sideShift * 0.4}px, ${pelvisTranslateY}px) scale(${pelvisScaleX}, 1.03)`,
-            transformOrigin: '50% 58%',
-            opacity: 0.9,
-          }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              bodyPreviewView === 'side'
-                ? 'radial-gradient(ellipse 26% 18% at 58% 60%, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
-                : 'radial-gradient(ellipse 28% 18% at 50% 60%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 42%, black 52%, black 76%, transparent 88%)'
-            ),
-            transform: `translate(${sideShift * 0.7 + buttTranslateX}px, ${buttTranslateY}px) scale(${buttScaleX}, 1.02)`,
-            transformOrigin: '50% 58%',
-            opacity: 0.94,
-            filter: 'drop-shadow(0 0 16px rgba(59, 130, 246, 0.16))',
-          }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 28% 34% at 50% 79%, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 56%, black 64%, black 100%)'
-            ),
-            transform: `translateY(${((legScaleY - 1) * 20).toFixed(1)}px) scale(1.02, ${legScaleY})`,
-            transformOrigin: '50% 58%',
-            opacity: 0.93,
-          }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 34% 12% at 50% 22%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 8%, black 16%, black 30%, transparent 40%)'
-            ),
-            transform: `scale(${shoulderScaleX}, 1)`,
-            transformOrigin: '50% 22%',
-            opacity: 0.88,
-          }}
-        />
-
-        <div className="absolute inset-x-6 top-4 rounded-lg border border-slate-700/70 bg-slate-950/75 px-3 py-2 backdrop-blur-sm">
-          <div className="text-[10px] font-bold text-slate-200">AI 3면도 기반 체형 프리뷰</div>
-          <div className="text-[10px] text-slate-400 mt-1">어깨, 가슴 위치/볼륨, 골반, 엉덩이, 다리 길이를 실제 캐릭터 이미지 기준으로 부드럽게 변형합니다.</div>
-        </div>
-      </div>
-    );
-  };
 
   useEffect(() => {
     if (!showBodyTuningModal) return;
@@ -2622,15 +2336,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-bold text-slate-200 group-hover:text-purple-300 transition-colors">{char.name}</div>
-                            {char.sourceType === 'ai-studio' && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/30 text-[9px] font-bold text-cyan-300">
-                                AI Studio
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">{char.age || '연령 미설정'} · {char.gender === 'female' ? '여성' : '남성'}</div>
+                          <div className="text-sm font-bold text-slate-200 group-hover:text-purple-300 transition-colors">{char.name}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{char.age} · {char.gender === 'female' ? '여성' : '남성'}</div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -2686,86 +2393,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               </div>
             </div>
 
-            {selectedCharacter && (
-              <div className="bg-slate-800/35 border border-slate-700/50 rounded-xl p-3 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] font-bold text-slate-200">선택된 캐릭터 미리보기</div>
-                    <div className="text-[10px] text-slate-500 mt-1">
-                      {selectedCharacter.sourceType === 'ai-studio'
-                        ? 'AI Studio에서 만든 캐릭터 3면도 세트입니다. 여기서 세부 체형과 문구를 보정한 뒤 저장할 수 있습니다.'
-                        : '현재 저장된 캐릭터 정보를 수정 중입니다.'}
-                    </div>
-                  </div>
-                  <div className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-bold text-slate-300">
-                    {selectedCharacter.sourceType === 'ai-studio' ? 'AI Studio 원본' : '쇼츠랩 캐릭터'}
-                  </div>
-                </div>
-
-                {selectedCharacterPreviewUrls.representative ? (
-                  <div className="grid grid-cols-[84px_1fr] gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setLightboxImage(selectedCharacterPreviewUrls.representative)}
-                      className="group relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950"
-                    >
-                      <img
-                        src={selectedCharacterPreviewUrls.representative}
-                        alt={`${selectedCharacter.name} 대표 이미지`}
-                        className="w-full h-full object-cover min-h-[112px]"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 px-2 py-1 text-[9px] font-bold text-white bg-gradient-to-t from-black/80 to-transparent">
-                        대표 이미지
-                      </div>
-                    </button>
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        {[
-                          { key: 'front', label: '정면', url: selectedCharacterPreviewUrls.front },
-                          { key: 'angle45', label: '45도', url: selectedCharacterPreviewUrls.angle45 },
-                          { key: 'back', label: '뒷모습', url: selectedCharacterPreviewUrls.back },
-                        ].map(item => (
-                          <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => item.url && setLightboxImage(item.url)}
-                            disabled={!item.url}
-                            className={`relative rounded-xl overflow-hidden border min-h-[84px] ${item.url
-                              ? 'border-slate-700 bg-slate-950 hover:border-purple-500/60'
-                              : 'border-dashed border-slate-700 bg-slate-900/60 text-slate-600'
-                              }`}
-                          >
-                            {item.url ? (
-                              <>
-                                <img src={item.url} alt={`${selectedCharacter.name} ${item.label}`} className="w-full h-full object-cover" />
-                                <div className="absolute inset-x-0 bottom-0 px-2 py-1 text-[9px] font-bold text-white bg-gradient-to-t from-black/80 to-transparent">
-                                  {item.label}
-                                </div>
-                              </>
-                            ) : (
-                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-                                {item.label} 없음
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2">
-                        <div className="text-[10px] font-bold text-slate-300">현재 편집 상태</div>
-                        <div className="text-[10px] text-slate-500 mt-1">
-                          이름, 연령, 성별, 얼굴/헤어 문구, 체형 튜닝을 수정한 뒤 저장하면 이 캐릭터에 덮어씌워집니다.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 px-3 py-5 text-center text-[10px] text-slate-500">
-                    아직 연결된 대표 이미지가 없습니다.
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* 서브탭 (얼굴, 체형 2개 - 헤어는 체형 탭에 통합) */}
             <div className="flex p-1 bg-slate-900/50 rounded-lg border border-slate-800">
               {(['face', 'body'] as const).map(tab => (
@@ -2786,23 +2413,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             <div className="min-h-[160px] space-y-3">
               {manageSubTab === 'face' && (
                 <div className="space-y-3 animate-in fade-in duration-300">
-                  {selectedCharacterPreviewUrls.representative && (
-                    <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
-                      <div className="text-[10px] font-bold text-slate-300 mb-2">현재 연결된 얼굴/대표 이미지</div>
-                      <button
-                        type="button"
-                        onClick={() => setLightboxImage(selectedCharacterPreviewUrls.representative)}
-                        className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950"
-                      >
-                        <img
-                          src={selectedCharacterPreviewUrls.representative}
-                          alt="현재 캐릭터 대표 이미지"
-                          className="w-full max-h-56 object-cover"
-                        />
-                      </button>
-                    </div>
-                  )}
-
                   <label
                     className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingFace
                       ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
@@ -2905,59 +2515,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
               {manageSubTab === 'body' && (
                 <div className="space-y-4 animate-in fade-in duration-300">
-                  <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">핵심 체형 조절</div>
-                        <div className="text-[10px] text-slate-500 mt-1">가슴, 다리, 엉덩이는 여기서 바로 조절하고 더 세부적인 값은 전체 커스텀에서 다듬으세요.</div>
-                      </div>
-                      <button
-                        onClick={() => setShowBodyTuningModal(true)}
-                        className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-purple-500 bg-purple-900/40 text-purple-200 hover:border-purple-400 transition-all"
-                      >
-                        전체 체형 커스텀
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {[
-                        { key: 'shoulderWidth', label: '어깨 넓이', hint: '좁음 ↔ 넓음' },
-                        { key: 'bustHeight', label: '가슴 위', hint: '가슴 라인 위치' },
-                        { key: 'bustFront', label: newCharacter.gender === 'female' ? '가슴 앞' : '가슴 앞쪽 볼륨', hint: '앞으로 작음 ↔ 큼' },
-                        { key: 'pelvisWidth', label: '골반 크기', hint: '좁음 ↔ 넓음' },
-                        { key: 'buttProjection', label: '엉덩이 뒤', hint: '뒤로 작음 ↔ 큼' },
-                        { key: 'buttLift', label: '엉덩이 위', hint: '아래 ↔ 위' },
-                        { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
-                        { key: 'overall', label: '전체 체형감', hint: '슬림 ↔ 볼륨감' },
-                      ].map(control => {
-                        const value = bodyTuning[control.key as keyof BodyTuning];
-                        const label = toSizeLabel(value, ['작음', '보통', '큼', '아주 큼']);
-                        return (
-                          <div key={control.key} className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2.5">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-200">{control.label}</div>
-                                <div className="text-[10px] text-slate-500">{control.hint}</div>
-                              </div>
-                              <div className="text-[10px] font-bold text-purple-300">{value} / {label}</div>
-                            </div>
-                            <input
-                              type="range"
-                              min={0}
-                              max={100}
-                              value={value}
-                              onChange={e => setBodyTuning(prev => ({ ...prev, [control.key]: Number(e.target.value) }))}
-                              className="w-full mt-2 accent-purple-500"
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2">
-                      <div className="text-[10px] font-bold text-slate-300">체형 문구 자동 반영</div>
-                      <div className="text-[10px] text-slate-500 mt-1">{bodyTuningPreview}</div>
-                    </div>
-                  </div>
-
                   {/* 헤어 섹션 */}
                   <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
                     <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">💇 헤어스타일</div>
@@ -3138,7 +2695,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               <Save size={16} />
-              {selectedCharacterId ? '캐릭터 업데이트 저장' : '새 캐릭터 저장'}
+              {selectedCharacterId ? '캐릭터 수정' : '새 캐릭터 저장'}
             </button>
           </div>
         )}
@@ -4152,19 +3709,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     <div className="absolute top-3 left-3 text-[10px] text-slate-300 bg-slate-950/70 px-2 py-1 rounded-md border border-slate-800 pointer-events-none">
                       드래그해서 회전
                     </div>
-                    {activeBodyReferencePreview ? (
-                      renderImageBasedBodyPreview()
-                    ) : (
-                      <>
-                        <div className="absolute inset-0 pointer-events-none">
-                          <div className="absolute left-[50%] top-[26%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
-                          <div className="absolute left-[50%] top-[39%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
-                          <div className="absolute left-[50%] top-[52%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
-                          <div className="absolute left-[50%] top-[67%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
-                        </div>
-                        {renderBodyPreviewSvg(bodyTuning, bodyPreviewView, bodyPreviewAngle)}
-                      </>
-                    )}
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute left-[50%] top-[26%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                      <div className="absolute left-[50%] top-[39%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                      <div className="absolute left-[50%] top-[52%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                      <div className="absolute left-[50%] top-[67%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                    </div>
+                    {renderBodyPreviewSvg(bodyTuning, bodyPreviewView, bodyPreviewAngle)}
                   </div>
                   <div className="text-[10px] text-slate-500 mt-2">드래그해서 회전하세요. 현재 각도: {Math.round(bodyPreviewAngle)}°</div>
                 </div>

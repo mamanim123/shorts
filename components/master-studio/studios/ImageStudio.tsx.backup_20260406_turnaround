@@ -16,24 +16,6 @@ import SaveCharacterModal from '../SaveCharacterModal';
 import { CharacterCollection } from '../../../types';
 import { getAppStorageValue, setAppStorageValue } from '../../../services/appStorageService';
 
-type StoredImageState = { file: File; url: string; id: string };
-
-type TurnaroundViewKey = 'front' | 'angle45' | 'back';
-
-type TurnaroundPreview = {
-    key: TurnaroundViewKey;
-    label: string;
-    imageId: string;
-    url: string;
-};
-
-type PendingTurnaroundSet = {
-    sourceImageId: string;
-    sourcePrompt: string;
-    previews: Record<TurnaroundViewKey, TurnaroundPreview>;
-    approved: boolean;
-};
-
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -56,42 +38,6 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
-};
-
-const extractImagePartData = (response: GenerateContentResponse | any): { data: string; mimeType: string } | null => {
-    if (response && 'generatedImages' in response) {
-        if (response.generatedImages && response.generatedImages.length > 0) {
-            const generatedImage = response.generatedImages[0];
-            if (generatedImage?.image?.imageBytes) {
-                return { data: generatedImage.image.imageBytes, mimeType: 'image/png' };
-            }
-        }
-    } else if (response) {
-        const inlineData = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData;
-        if (inlineData?.data && inlineData?.mimeType) {
-            return inlineData;
-        }
-        if (inlineData?.data) {
-            return { data: inlineData.data, mimeType: 'image/png' };
-        }
-    }
-
-    return null;
-};
-
-const TURNAROUND_PROMPTS: Record<TurnaroundViewKey, { label: string; instruction: string }> = {
-    front: {
-        label: '정면',
-        instruction: 'Generate a full-body front view turnaround shot of the exact same person from the reference image.'
-    },
-    angle45: {
-        label: '45도',
-        instruction: 'Generate a full-body 45-degree three-quarter turnaround shot of the exact same person from the reference image.'
-    },
-    back: {
-        label: '뒷모습',
-        instruction: 'Generate a full-body back view turnaround shot of the exact same person from the reference image.'
-    }
 };
 
 // ... [Prompt Templates] ...
@@ -279,10 +225,10 @@ const ImageStudio: React.FC = () => {
     const [mode, setMode] = useState<ImageMode>('Generate');
     const [aspectRatio, setAspectRatio] = useState('9:16');
     const [activeCheatKeys, setActiveCheatKeys] = useState<string[]>([]);
-    const [originalImage, setOriginalImage] = useState<StoredImageState | null>(null);
-    const [characterReference, setCharacterReference] = useState<StoredImageState | null>(null);
-    const [backgroundReference, setBackgroundReference] = useState<StoredImageState | null>(null);
-    const [templateReference, setTemplateReference] = useState<StoredImageState | null>(null);
+    const [originalImage, setOriginalImage] = useState<{ file: File; url: string; id: string } | null>(null);
+    const [characterReference, setCharacterReference] = useState<{ file: File; url: string; id: string } | null>(null);
+    const [backgroundReference, setBackgroundReference] = useState<{ file: File; url: string; id: string } | null>(null);
+    const [templateReference, setTemplateReference] = useState<{ file: File; url: string; id: string } | null>(null);
     const [generatedImage, setGeneratedImage] = useState<{ url: string; id: string } | null>(null);
     const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -310,8 +256,6 @@ const ImageStudio: React.FC = () => {
     const [characterCollection, setCharacterCollection] = useState<CharacterCollection[]>([]);
     const [isSaveCharacterModalOpen, setIsSaveCharacterModalOpen] = useState(false);
     const [selectedItemForCharacter, setSelectedItemForCharacter] = useState<ImageHistoryItem | null>(null);
-    const [pendingTurnaroundSet, setPendingTurnaroundSet] = useState<PendingTurnaroundSet | null>(null);
-    const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
 
     // Model Selection State
     const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -779,7 +723,6 @@ const ImageStudio: React.FC = () => {
             case 'original':
                 setOriginalImage(imageState);
                 setGeneratedImage(null);
-                setPendingTurnaroundSet(null);
                 // Auto-switch to Edit mode if in Generate mode so the user can see the uploaded image
                 if (mode === 'Generate') {
                     setMode('Edit');
@@ -788,7 +731,6 @@ const ImageStudio: React.FC = () => {
                 break;
             case 'character':
                 setCharacterReference(imageState);
-                setPendingTurnaroundSet(null);
                 break;
             case 'background':
                 setBackgroundReference(imageState);
@@ -798,108 +740,6 @@ const ImageStudio: React.FC = () => {
                 break;
         }
     }, [mode]);
-
-    const createStoredImageStateFromPart = useCallback(async (imagePartData: { data: string; mimeType: string }, fileName: string): Promise<StoredImageState> => {
-        const imageBlob = await fetch(`data:${imagePartData.mimeType};base64,${imagePartData.data}`).then(res => res.blob());
-        const imageId = uuidv4();
-        await setBlob(imageId, imageBlob);
-        const file = new File([imageBlob], fileName, { type: imageBlob.type || imagePartData.mimeType || 'image/png' });
-        const url = URL.createObjectURL(imageBlob);
-        return { file, url, id: imageId };
-    }, []);
-
-    const getTurnaroundSourceImage = useCallback((): StoredImageState | null => {
-        return characterReference || originalImage || null;
-    }, [characterReference, originalImage]);
-
-    const handleGenerateTurnaround = useCallback(async () => {
-        const sourceImage = getTurnaroundSourceImage();
-        if (!sourceImage) {
-            setNotification({ message: '먼저 캐릭터 기준 이미지를 업로드해주세요.', type: 'error' });
-            return;
-        }
-
-        setIsGeneratingTurnaround(true);
-        setPendingTurnaroundSet(null);
-        setError(null);
-
-        const safetySettings = noGuard ? [
-            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY, threshold: HarmBlockThreshold.BLOCK_NONE }
-        ] : undefined;
-
-        try {
-            const sourceBase64 = await fileToBase64(sourceImage.file);
-            const referencePart = { inlineData: { data: sourceBase64, mimeType: sourceImage.file.type } };
-            const effectiveModel = imageModel.toLowerCase().includes('imagen') ? 'gemini-2.5-flash-image' : imageModel;
-            const previews = {} as Record<TurnaroundViewKey, TurnaroundPreview>;
-
-            for (const [key, meta] of Object.entries(TURNAROUND_PROMPTS) as Array<[TurnaroundViewKey, { label: string; instruction: string }]>) {
-                const turnaroundPrompt = `${meta.instruction}
-
-Preserve the exact same face, body shape, proportions, height impression, hairstyle, hair volume, and overall identity from the reference image.
-Keep the character alone, centered, standing in a neutral pose, with arms relaxed naturally.
-Use a clean studio background, full-body framing, photorealistic fashion turnaround sheet style.
-Use a plain fitted base outfit so the body silhouette remains visible.
-Do not add text, split panels, extra people, props, accessories, or scenery.
-Output one single image for this viewpoint only.`;
-
-                const response = await editImage(
-                    turnaroundPrompt,
-                    referencePart,
-                    { aspectRatio: '9:16', model: effectiveModel },
-                    safetySettings
-                );
-
-                const imagePartData = extractImagePartData(response);
-                if (!imagePartData) {
-                    throw new Error(`${meta.label} 이미지 생성에 실패했습니다.`);
-                }
-
-                const stored = await createStoredImageStateFromPart(imagePartData, `turnaround-${key}.png`);
-                previews[key] = {
-                    key,
-                    label: meta.label,
-                    imageId: stored.id,
-                    url: stored.url
-                };
-            }
-
-            setPendingTurnaroundSet({
-                sourceImageId: sourceImage.id,
-                sourcePrompt: prompt,
-                previews,
-                approved: false
-            });
-            setGeneratedImage({ url: previews.front.url, id: previews.front.imageId });
-            setNotification({ message: '캐릭터 3면도 시안이 생성되었습니다. 검토 후 승인해주세요.', type: 'success' });
-        } catch (err) {
-            console.error('Turnaround generation failed:', err);
-            const message = err instanceof Error ? err.message : '3면도 생성 실패';
-            setError(message);
-            setNotification({ message, type: 'error' });
-        } finally {
-            setIsGeneratingTurnaround(false);
-        }
-    }, [createStoredImageStateFromPart, getTurnaroundSourceImage, imageModel, noGuard, prompt]);
-
-    const handleApproveTurnaround = useCallback(() => {
-        if (!pendingTurnaroundSet) return;
-        setPendingTurnaroundSet({ ...pendingTurnaroundSet, approved: true });
-        setNotification({ message: '3면도 시안이 승인되었습니다. 이제 저장할 수 있습니다.', type: 'success' });
-    }, [pendingTurnaroundSet]);
-
-    const handleSaveApprovedTurnaround = useCallback(() => {
-        if (!pendingTurnaroundSet?.approved) {
-            setNotification({ message: '먼저 3면도 결과를 승인해주세요.', type: 'error' });
-            return;
-        }
-        setSelectedItemForCharacter(null);
-        setIsSaveCharacterModalOpen(true);
-    }, [pendingTurnaroundSet]);
 
 
     const handleGenerate = async () => {
@@ -1216,37 +1056,22 @@ Output one single image for this viewpoint only.`;
     };
 
     const handleSaveCharacterConfirm = async (name: string, description: string) => {
-        let newCharacter: CharacterCollection | null = null;
+        if (!selectedItemForCharacter) return;
 
-        if (pendingTurnaroundSet?.approved) {
-            newCharacter = {
-                id: uuidv4(),
-                name,
-                description,
-                generatedImageId: pendingTurnaroundSet.previews.front.imageId,
-                turnaroundImageIds: {
-                    front: pendingTurnaroundSet.previews.front.imageId,
-                    angle45: pendingTurnaroundSet.previews.angle45.imageId,
-                    back: pendingTurnaroundSet.previews.back.imageId
-                },
-                sourceReferenceImageId: pendingTurnaroundSet.sourceImageId,
-                approvedAt: Date.now()
-            };
-        } else if (selectedItemForCharacter) {
-            newCharacter = {
-                id: uuidv4(),
-                name,
-                description,
-                generatedImageId: selectedItemForCharacter.generatedImageId
-            };
-        }
+        // Note: We don't store thumbnail to avoid storage quota issues
+        // The image can be loaded later using generatedImageId from IndexedDB
 
-        if (!newCharacter) return;
+        const newCharacter: CharacterCollection = {
+            id: uuidv4(),
+            name,
+            description,
+            // thumbnail is omitted to save storage space
+            generatedImageId: selectedItemForCharacter.generatedImageId
+        };
 
         setCharacterCollection(prev => [newCharacter, ...prev]);
         setNotification({ message: `캐릭터 "${name}"이(가) 저장되었습니다!`, type: 'success' });
         setSelectedItemForCharacter(null);
-        setPendingTurnaroundSet(null);
     };
 
     const deleteCharacter = (id: string) => {
@@ -1262,11 +1087,9 @@ Output one single image for this viewpoint only.`;
         // Load character image and display it on the right panel
 
         // Load character image if available
-        const representativeImageId = character.turnaroundImageIds?.front || character.generatedImageId;
-
-        if (representativeImageId) {
+        if (character.generatedImageId) {
             try {
-                const blob = await getBlob(representativeImageId);
+                const blob = await getBlob(character.generatedImageId);
                 if (blob) {
                     const url = URL.createObjectURL(blob);
                     const file = new File([blob], `${character.name}.png`, { type: 'image/png' });
@@ -1274,14 +1097,14 @@ Output one single image for this viewpoint only.`;
                     // Display in the right panel (generated image area)
                     setGeneratedImage({
                         url,
-                        id: representativeImageId
+                        id: character.generatedImageId
                     });
 
                     // Also set as character reference for generation (hidden from user)
                     setCharacterReference({
                         file,
                         url,
-                        id: representativeImageId
+                        id: character.generatedImageId
                     });
 
                     setNotification({ message: `캐릭터 "${character.name}" 이미지 로드됨!`, type: 'success' });
@@ -1295,10 +1118,7 @@ Output one single image for this viewpoint only.`;
         }
 
         // Inject character description into prompt
-        const turnaroundTag = character.turnaroundImageIds
-            ? 'front, 45-degree, and back turnaround references are locked'
-            : 'single reference image is locked';
-        const characterTag = `[Character: ${character.description}; ${turnaroundTag}]`;
+        const characterTag = `[Character: ${character.description}]`;
         setPrompt(prev => {
             // If there's already a [Character: ...] tag, replace it
             const characterRegex = /\[Character:.*?\]/g;
@@ -1666,9 +1486,6 @@ Output one single image for this viewpoint only.`;
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-bold text-pink-200 truncate">{character.name}</p>
                                                                 <p className="text-xs text-gray-400 truncate">{character.description.substring(0, 40)}...</p>
-                                                                {character.turnaroundImageIds && (
-                                                                    <p className="text-[10px] text-cyan-300 mt-1">3면도 저장됨</p>
-                                                                )}
                                                             </div>
                                                         </div>
                                                     </button>
@@ -1703,66 +1520,6 @@ Output one single image for this viewpoint only.`;
                             placeholder="Describe your imagination... (e.g. A futuristic city with flying cars, cyberpunk style)"
                             className="w-full h-32 bg-gray-800 text-white rounded-lg p-3 focus:ring-2 focus:ring-purple-500 border border-gray-700 resize-none text-sm mb-3"
                         />
-
-                        <div className="mb-3 bg-gray-800/60 border border-cyan-500/20 rounded-lg p-3 space-y-3">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <h3 className="text-sm font-bold text-cyan-300">캐릭터 3면도 생성</h3>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        업로드한 기준 이미지로 정면, 45도, 뒷모습 시안을 만들고 마마님 승인 후 직접 저장합니다.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={handleGenerateTurnaround}
-                                    disabled={isGeneratingTurnaround || !getTurnaroundSourceImage()}
-                                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${isGeneratingTurnaround || !getTurnaroundSourceImage()
-                                        ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                                        : 'bg-cyan-600 hover:bg-cyan-500 text-white'}`}
-                                >
-                                    {isGeneratingTurnaround ? '생성 중...' : '3면도 생성'}
-                                </button>
-                            </div>
-
-                            {pendingTurnaroundSet && (
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {(['front', 'angle45', 'back'] as TurnaroundViewKey[]).map((key) => {
-                                            const preview = pendingTurnaroundSet.previews[key];
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    onClick={() => setGeneratedImage({ url: preview.url, id: preview.imageId })}
-                                                    className="bg-gray-900/70 border border-gray-700 hover:border-cyan-400 rounded-lg p-2 text-left transition-colors"
-                                                >
-                                                    <img src={preview.url} alt={preview.label} className="w-full h-28 object-cover rounded mb-2" />
-                                                    <p className="text-xs font-semibold text-gray-200">{preview.label}</p>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={handleApproveTurnaround}
-                                            disabled={pendingTurnaroundSet.approved}
-                                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${pendingTurnaroundSet.approved
-                                                ? 'bg-emerald-900/50 text-emerald-200 border border-emerald-500/30'
-                                                : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
-                                        >
-                                            {pendingTurnaroundSet.approved ? '승인 완료' : '결과 승인'}
-                                        </button>
-                                        <button
-                                            onClick={handleSaveApprovedTurnaround}
-                                            disabled={!pendingTurnaroundSet.approved}
-                                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${pendingTurnaroundSet.approved
-                                                ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                                                : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
-                                        >
-                                            캐릭터로 저장
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
 
                         {/* Reference Image Uploads */}
                         {['Reference', 'Edit'].includes(mode) && (
@@ -2133,7 +1890,7 @@ Output one single image for this viewpoint only.`;
                         setSelectedItemForCharacter(null);
                     }}
                     onSave={handleSaveCharacterConfirm}
-                    initialPrompt={selectedItemForCharacter?.prompt || pendingTurnaroundSet?.sourcePrompt || ''}
+                    initialPrompt={selectedItemForCharacter?.prompt || ''}
                 />
             </div >
         </div >

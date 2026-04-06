@@ -318,9 +318,6 @@ const AiStudioHost: React.FC = () => {
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       const imageId = crypto.randomUUID();
-      const activeStoryId = (storyFilter && storyFilter !== STORY_FILTER_ALL && storyFilter !== STORY_FILTER_ORPHANED)
-        ? storyFilter
-        : (lightboxItem?.storyId || undefined);
 
       // 1. IndexedDB에 저장
       try {
@@ -344,6 +341,10 @@ const AiStudioHost: React.FC = () => {
       }
 
       const previewUrl = URL.createObjectURL(blob);
+
+      const activeStoryId = (storyFilter && storyFilter !== STORY_FILTER_ALL && storyFilter !== STORY_FILTER_ORPHANED)
+        ? storyFilter
+        : (lightboxItem?.storyId || undefined);
 
       const newItem = {
         id: crypto.randomUUID(),

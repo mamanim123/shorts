@@ -12,13 +12,15 @@ export interface CharacterItem {
   style: string;
   bodyTuning?: {
     overall: number;
-    shoulderWidth: number;
     legLength: number;
     bustFront: number;
-    bustHeight: number;
-    pelvisWidth: number;
-    buttProjection: number;
-    buttLift: number;
+    bustBack: number;
+    bustUpper: number;
+    bustLower: number;
+    hipsFront: number;
+    hipsBack: number;
+    hipsUpper: number;
+    hipsLower: number;
   };
   createdAt: string;
   generatedImageId?: string;

@@ -182,8 +182,6 @@ export interface CharacterCollection {
   };
   sourceReferenceImageId?: string;
   approvedAt?: number;
-  savedFolderPath?: string;
-  savedFolderUrl?: string;
 }
 
 export interface StoryResponse {

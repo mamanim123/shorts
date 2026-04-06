@@ -1711,7 +1711,7 @@ app.post('/api/translate-to-english', async (req, res) => {
         const { text, type } = req.body; // type: 'outfit' | 'face' | 'hair' | 'body'
         if (!text) return res.status(400).json({ success: false, error: '번역할 텍스트가 없습니다.' });
 
-        const normalizedType = ['outfit', 'face', 'hair', 'body', 'scene'].includes(type) ? type : 'face';
+        const normalizedType = ['outfit', 'face', 'hair', 'body'].includes(type) ? type : 'face';
         console.log(`[Translate] Korean → English (${normalizedType}): ${text.substring(0, 50)}...`);
 
         const translatePrompt = normalizedType === 'outfit'
@@ -1728,7 +1728,7 @@ Korean input:
 ${text}
 
 English prompt:`
-                : normalizedType === 'hair'
+            : normalizedType === 'hair'
                 ? `You are a hair prompt translator. Translate this Korean hairstyle description into a detailed English prompt optimized for AI image generation.
 
 RULES:
@@ -1742,21 +1742,7 @@ Korean input:
 ${text}
 
 English prompt:`
-                : normalizedType === 'scene'
-                    ? `You are a cinematic prompt translator for AI image generation. Translate this Korean scene prompt into a natural, detailed English prompt optimized for image models.
-
-RULES:
-- Preserve the original scene meaning exactly
-- Keep character identity, clothing, action, facial expression, camera, background, props, and atmosphere
-- Expand short Korean phrases into natural English image-prompt wording when needed
-- Do NOT add unrelated style changes or remove details
-- Output ONLY the English prompt, nothing else
-
-Korean input:
-${text}
-
-English prompt:`
-                    : normalizedType === 'body'
+                : normalizedType === 'body'
                     ? `You are a body-shape prompt translator. Translate this Korean body/silhouette description into a detailed English prompt optimized for AI image generation.
 
 RULES:
@@ -1800,51 +1786,6 @@ English prompt:`;
         res.json({ success: true, translated: cleanedContent });
     } catch (error) {
         console.error('번역 API 에러:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ---------------------------------------------------------
-// 영문 → 한글 번역 API (씬 프롬프트용)
-// ---------------------------------------------------------
-app.post('/api/translate-to-korean', async (req, res) => {
-    try {
-        const { text, type } = req.body;
-        if (!text) return res.status(400).json({ success: false, error: '번역할 텍스트가 없습니다.' });
-
-        const normalizedType = ['scene'].includes(type) ? type : 'scene';
-        console.log(`[Translate] English → Korean (${normalizedType}): ${text.substring(0, 50)}...`);
-
-        const translatePrompt = `You are a cinematic prompt translator for AI image generation. Translate this English scene prompt into natural Korean that is easy for a creator to read and edit.
-
-RULES:
-- Preserve the original meaning exactly
-- Keep character identity, clothing, action, facial expression, camera, background, props, and atmosphere
-- Keep prompt details useful for later re-translation into English
-- Use fluent Korean prompt wording, not awkward literal translation
-- Output ONLY the Korean prompt, nothing else
-
-English input:
-${text}
-
-Korean prompt:`;
-
-        const result = await generateContent('GEMINI', translatePrompt, [], { freshChat: false });
-        const content = typeof result === 'string' ? result.trim() : (result.content || '').trim();
-
-        if (!content) {
-            throw new Error('번역 결과가 비어있습니다.');
-        }
-
-        const cleanedContent = content
-            .replace(/^(Korean prompt:?\s*)/i, '')
-            .replace(/^["']|["']$/g, '')
-            .trim();
-
-        console.log(`[Translate] ✅ Result: ${cleanedContent.substring(0, 80)}...`);
-        res.json({ success: true, translated: cleanedContent });
-    } catch (error) {
-        console.error('한글 번역 API 에러:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

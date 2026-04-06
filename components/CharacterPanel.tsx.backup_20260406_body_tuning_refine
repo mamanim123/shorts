@@ -165,24 +165,28 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   type BodyTuning = {
     overall: number;
-    shoulderWidth: number;
     legLength: number;
     bustFront: number;
-    bustHeight: number;
-    pelvisWidth: number;
-    buttProjection: number;
-    buttLift: number;
+    bustBack: number;
+    bustUpper: number;
+    bustLower: number;
+    hipsFront: number;
+    hipsBack: number;
+    hipsUpper: number;
+    hipsLower: number;
   };
 
   const DEFAULT_BODY_TUNING: BodyTuning = {
     overall: 55,
-    shoulderWidth: 50,
     legLength: 60,
     bustFront: 55,
-    bustHeight: 52,
-    pelvisWidth: 55,
-    buttProjection: 60,
-    buttLift: 52
+    bustBack: 45,
+    bustUpper: 55,
+    bustLower: 50,
+    hipsFront: 55,
+    hipsBack: 60,
+    hipsUpper: 55,
+    hipsLower: 55
   };
 
   const [bodyTuning, setBodyTuning] = useState<BodyTuning>({ ...DEFAULT_BODY_TUNING });
@@ -205,17 +209,19 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   const buildBodyFromTuning = useCallback((tuning: BodyTuning, gender: 'female' | 'male') => {
     const overall = toSizeLabel(tuning.overall, ['slim', 'balanced', 'curvy', 'voluminous']);
-    const shoulders = toSizeLabel(tuning.shoulderWidth, ['narrow shoulders', 'balanced shoulders', 'broad shoulders', 'very broad shoulders']);
     const leg = toSizeLabel(tuning.legLength, ['short legs', 'average leg length', 'long legs', 'extra-long legs']);
-    const bustFront = toSizeLabel(tuning.bustFront, ['subtle', 'moderate', 'full', 'very full']);
-    const bustHeight = toSizeLabel(tuning.bustHeight, ['low-set bust line', 'natural bust line', 'lifted bust line', 'high bust line']);
-    const pelvisWidth = toSizeLabel(tuning.pelvisWidth, ['narrow pelvis', 'balanced pelvis', 'wide pelvis', 'very wide pelvis']);
-    const buttProjection = toSizeLabel(tuning.buttProjection, ['subtle projection', 'moderate projection', 'full projection', 'very full projection']);
-    const buttLift = toSizeLabel(tuning.buttLift, ['low hip line', 'natural hip line', 'lifted hip line', 'high hip line']);
+    const front = toSizeLabel(tuning.bustFront, ['subtle', 'moderate', 'full', 'very full']);
+    const back = toSizeLabel(tuning.bustBack, ['subtle', 'moderate', 'full', 'very full']);
+    const upper = toSizeLabel(tuning.bustUpper, ['subtle', 'moderate', 'full', 'very full']);
+    const lower = toSizeLabel(tuning.bustLower, ['subtle', 'moderate', 'full', 'very full']);
+    const hipFront = toSizeLabel(tuning.hipsFront, ['subtle', 'moderate', 'full', 'very full']);
+    const hipBack = toSizeLabel(tuning.hipsBack, ['subtle', 'moderate', 'full', 'very full']);
+    const hipUpper = toSizeLabel(tuning.hipsUpper, ['subtle', 'moderate', 'full', 'very full']);
+    const hipLower = toSizeLabel(tuning.hipsLower, ['subtle', 'moderate', 'full', 'very full']);
 
     const core = gender === 'female'
-      ? `overall ${overall} body proportions, ${shoulders}, ${leg}, bust volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`
-      : `overall ${overall} body proportions, ${shoulders}, ${leg}, chest volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`;
+      ? `overall ${overall} body proportions, ${leg}, bust volume (front ${front}, back ${back}, upper ${upper}, lower ${lower}), hips volume (front ${hipFront}, back ${hipBack}, upper ${hipUpper}, lower ${hipLower})`
+      : `overall ${overall} body proportions, ${leg}, chest volume (front ${front}, back ${back}, upper ${upper}, lower ${lower}), hips volume (front ${hipFront}, back ${hipBack}, upper ${hipUpper}, lower ${hipLower})`;
 
     return `${core}, natural anatomy, balanced posture, well-proportioned silhouette`;
   }, []);
@@ -245,19 +251,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const getBodyPreviewMetrics = (tuning: BodyTuning) => {
     const scale = (v: number, range = 22) => ((v - 50) / 50) * range;
     const baseWidth = 88 + scale(tuning.overall, 22);
-    const shoulderWidth = baseWidth + scale(tuning.shoulderWidth, 28);
     const bustFront = baseWidth + scale(tuning.bustFront, 26);
-    const bustBack = baseWidth + scale(tuning.buttProjection, 12);
-    const bustUpper = baseWidth - 10 + scale(tuning.bustHeight, 10);
-    const bustLower = baseWidth - 4 + scale(tuning.bustFront, 12);
-    const hipsFront = baseWidth + scale(tuning.pelvisWidth, 28);
-    const hipsBack = baseWidth + scale(tuning.buttProjection, 26);
-    const hipsUpper = baseWidth - 6 + scale(tuning.buttLift, 18);
-    const hipsLower = baseWidth + scale(tuning.pelvisWidth, 18);
+    const bustBack = baseWidth + scale(tuning.bustBack, 20);
+    const bustUpper = baseWidth - 12 + scale(tuning.bustUpper, 16);
+    const bustLower = baseWidth - 6 + scale(tuning.bustLower, 16);
+    const hipsFront = baseWidth + scale(tuning.hipsFront, 26);
+    const hipsBack = baseWidth + scale(tuning.hipsBack, 24);
+    const hipsUpper = baseWidth - 8 + scale(tuning.hipsUpper, 14);
+    const hipsLower = baseWidth + scale(tuning.hipsLower, 16);
     const leg = 110 + scale(tuning.legLength, 40);
     return {
       baseWidth,
-      shoulderWidth,
       bustFront,
       bustBack,
       bustUpper,
@@ -278,7 +282,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const headSize = 30;
     const neckW = 20;
     const neckH = 16;
-    const shoulderW = clamp(metrics.shoulderWidth + 30, 86, 178);
+    const shoulderW = clamp(metrics.baseWidth + 36, 86, 168);
     const waistW = clamp(metrics.baseWidth - 28, 54, 118);
     const bustUpperW = clamp(metrics.bustUpper, 65, 160);
     const bustLowerWBase = view === 'front' ? metrics.bustFront : view === 'back' ? metrics.bustBack : (metrics.bustFront + metrics.bustBack) / 2;
@@ -374,7 +378,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const legGap = view === 'side' ? 6 : 14;
     const forearmWidth = clamp(armWidth - 6, 12, 24);
     const calfWidth = clamp(legWidth - 8, 14, 28);
-    const innerLegGap = view === 'side' ? 4 : clamp(8 + ((100 - tuning.pelvisWidth) / 100) * 10, 8, 18);
+    const innerLegGap = view === 'side' ? 4 : clamp(8 + ((100 - tuning.hipsLower) / 100) * 10, 8, 18);
     const handRadius = clamp(forearmWidth * 0.34, 6, 10);
     const footWidth = view === 'side' ? 34 : 28;
     const chestY = segments[2].y - 4;
@@ -579,15 +583,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   const BODY_TUNING_CONTROLS: Array<{ key: keyof BodyTuning; label: string; hint: string }> = [
     { key: 'overall', label: '전체 체형', hint: '전체 크기' },
-    { key: 'shoulderWidth', label: '어깨 넓이', hint: '좁음 ↔ 넓음' },
     { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
-    { key: 'bustHeight', label: '가슴 위', hint: '가슴 라인 위/아래' },
-    { key: 'bustFront', label: '가슴 앞', hint: '앞으로 작음 ↔ 큼' },
-    { key: 'pelvisWidth', label: '골반 크기', hint: '좁음 ↔ 넓음' },
-    { key: 'buttProjection', label: '엉덩이 뒤', hint: '뒤로 작음 ↔ 큼' },
-    { key: 'buttLift', label: '엉덩이 위', hint: '아래 ↔ 위' }
+    { key: 'bustFront', label: '가슴 앞', hint: '앞쪽 볼륨' },
+    { key: 'bustBack', label: '가슴 뒤', hint: '뒤쪽 볼륨' },
+    { key: 'bustUpper', label: '가슴 위', hint: '상부 볼륨' },
+    { key: 'bustLower', label: '가슴 아래', hint: '하부 볼륨' },
+    { key: 'hipsFront', label: '엉덩이 앞', hint: '앞쪽 볼륨' },
+    { key: 'hipsBack', label: '엉덩이 뒤', hint: '뒤쪽 볼륨' },
+    { key: 'hipsUpper', label: '엉덩이 위', hint: '상부 볼륨' },
+    { key: 'hipsLower', label: '엉덩이 아래', hint: '하부 볼륨' }
   ];
-  const BASIC_BODY_KEYS: Array<keyof BodyTuning> = ['overall', 'shoulderWidth', 'legLength'];
+  const BASIC_BODY_KEYS: Array<keyof BodyTuning> = ['overall', 'legLength'];
 
   const applyBodyTuningToCharacter = useCallback(() => {
     const prompt = buildBodyFromTuning(bodyTuning, newCharacter.gender);
@@ -678,33 +684,27 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const renderImageBasedBodyPreview = () => {
     if (!activeBodyReferencePreview) return null;
 
-    const overallScale = 0.92 + bodyTuning.overall / 500;
-    const shoulderScaleX = 0.9 + bodyTuning.shoulderWidth / 300;
-    const chestScaleX = 0.88 + bodyTuning.bustFront / 220;
-    const chestScaleY = 0.94 + bodyTuning.bustHeight / 700;
-    const chestTranslateY = (50 - bodyTuning.bustHeight) * 0.18;
-    const waistScaleX = 0.92 + (bodyTuning.overall - 50) / 700;
-    const pelvisScaleX = 0.9 + bodyTuning.pelvisWidth / 220;
-    const buttScaleX = 0.9 + bodyTuning.buttProjection / 240;
-    const buttTranslateX = bodyPreviewView === 'back'
-      ? 0
+    const chestValue = bodyPreviewView === 'back'
+      ? bodyTuning.bustBack
       : bodyPreviewView === 'side'
-        ? (bodyTuning.buttProjection - 50) * 0.14
-        : (bodyTuning.pelvisWidth - 50) * 0.05;
-    const buttTranslateY = (50 - bodyTuning.buttLift) * 0.18;
-    const pelvisTranslateY = (50 - bodyTuning.buttLift) * 0.1;
+        ? (bodyTuning.bustFront + bodyTuning.bustBack) / 2
+        : bodyTuning.bustFront;
+    const hipValue = bodyPreviewView === 'back'
+      ? bodyTuning.hipsBack
+      : bodyPreviewView === 'side'
+        ? (bodyTuning.hipsFront + bodyTuning.hipsBack) / 2
+        : bodyTuning.hipsFront;
+
+    const overallScale = 0.92 + bodyTuning.overall / 500;
+    const chestScaleX = 0.9 + chestValue / 250;
+    const chestScaleY = 0.94 + ((bodyTuning.bustUpper + bodyTuning.bustLower) / 2) / 450;
+    const waistScaleX = 0.9 + bodyTuning.overall / 700;
+    const hipsScaleX = 0.92 + hipValue / 230;
+    const hipsScaleY = 0.94 + ((bodyTuning.hipsUpper + bodyTuning.hipsLower) / 2) / 460;
     const legScaleY = 0.88 + bodyTuning.legLength / 250;
     const sideShift = bodyPreviewView === 'side' ? 6 : 0;
 
     const overlayClassName = 'absolute inset-0 w-full h-full object-contain select-none pointer-events-none';
-    const withMask = (radial: string, linear?: string) => ({
-      WebkitMaskImage: linear ? `${radial}, ${linear}` : radial,
-      maskImage: linear ? `${radial}, ${linear}` : radial,
-      WebkitMaskRepeat: 'no-repeat',
-      maskRepeat: 'no-repeat',
-      WebkitMaskComposite: 'source-in',
-      maskComposite: 'intersect',
-    } as React.CSSProperties);
 
     return (
       <div className="absolute inset-0">
@@ -721,12 +721,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           aria-hidden="true"
           className={overlayClassName}
           style={{
-            ...withMask(
-              'radial-gradient(ellipse 28% 18% at 50% 31%, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 10%, black 22%, black 46%, transparent 58%)'
-            ),
-            transform: `translate(${sideShift}px, ${chestTranslateY}px) scale(${chestScaleX}, ${chestScaleY})`,
-            transformOrigin: '50% 31%',
+            clipPath: 'inset(16% 20% 52% 20%)',
+            transform: `translateX(${sideShift}px) scale(${chestScaleX}, ${chestScaleY})`,
+            transformOrigin: '50% 32%',
             opacity: 0.95,
             filter: 'drop-shadow(0 0 14px rgba(139, 92, 246, 0.22))',
           }}
@@ -738,28 +735,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           aria-hidden="true"
           className={overlayClassName}
           style={{
-            ...withMask(
-              'radial-gradient(ellipse 22% 16% at 50% 46%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 26%, black 38%, black 58%, transparent 70%)'
-            ),
+            clipPath: 'inset(34% 24% 42% 24%)',
             transform: `scale(${waistScaleX}, 1.02)`,
             transformOrigin: '50% 48%',
-            opacity: 0.86,
-          }}
-        />
-
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 34% 20% at 50% 58%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 38%, black 48%, black 74%, transparent 86%)'
-            ),
-            transform: `translate(${sideShift * 0.4}px, ${pelvisTranslateY}px) scale(${pelvisScaleX}, 1.03)`,
-            transformOrigin: '50% 58%',
             opacity: 0.9,
           }}
         />
@@ -770,13 +748,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           aria-hidden="true"
           className={overlayClassName}
           style={{
-            ...withMask(
-              bodyPreviewView === 'side'
-                ? 'radial-gradient(ellipse 26% 18% at 58% 60%, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
-                : 'radial-gradient(ellipse 28% 18% at 50% 60%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 42%, black 52%, black 76%, transparent 88%)'
-            ),
-            transform: `translate(${sideShift * 0.7 + buttTranslateX}px, ${buttTranslateY}px) scale(${buttScaleX}, 1.02)`,
+            clipPath: 'inset(42% 16% 24% 16%)',
+            transform: `translateX(${sideShift * 0.7}px) scale(${hipsScaleX}, ${hipsScaleY})`,
             transformOrigin: '50% 58%',
             opacity: 0.94,
             filter: 'drop-shadow(0 0 16px rgba(59, 130, 246, 0.16))',
@@ -789,35 +762,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           aria-hidden="true"
           className={overlayClassName}
           style={{
-            ...withMask(
-              'radial-gradient(ellipse 28% 34% at 50% 79%, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 56%, black 64%, black 100%)'
-            ),
+            clipPath: 'inset(56% 20% 0% 20%)',
             transform: `translateY(${((legScaleY - 1) * 20).toFixed(1)}px) scale(1.02, ${legScaleY})`,
             transformOrigin: '50% 58%',
             opacity: 0.93,
           }}
         />
 
-        <img
-          src={activeBodyReferencePreview}
-          alt=""
-          aria-hidden="true"
-          className={overlayClassName}
-          style={{
-            ...withMask(
-              'radial-gradient(ellipse 34% 12% at 50% 22%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-              'linear-gradient(to bottom, transparent 8%, black 16%, black 30%, transparent 40%)'
-            ),
-            transform: `scale(${shoulderScaleX}, 1)`,
-            transformOrigin: '50% 22%',
-            opacity: 0.88,
-          }}
-        />
-
         <div className="absolute inset-x-6 top-4 rounded-lg border border-slate-700/70 bg-slate-950/75 px-3 py-2 backdrop-blur-sm">
           <div className="text-[10px] font-bold text-slate-200">AI 3면도 기반 체형 프리뷰</div>
-          <div className="text-[10px] text-slate-400 mt-1">어깨, 가슴 위치/볼륨, 골반, 엉덩이, 다리 길이를 실제 캐릭터 이미지 기준으로 부드럽게 변형합니다.</div>
+          <div className="text-[10px] text-slate-400 mt-1">가슴, 허리, 골반, 다리 영역을 실제 캐릭터 이미지 기준으로 변형해서 보여줍니다.</div>
         </div>
       </div>
     );
@@ -2920,13 +2874,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     </div>
                     <div className="grid grid-cols-1 gap-3">
                       {[
-                        { key: 'shoulderWidth', label: '어깨 넓이', hint: '좁음 ↔ 넓음' },
-                        { key: 'bustHeight', label: '가슴 위', hint: '가슴 라인 위치' },
-                        { key: 'bustFront', label: newCharacter.gender === 'female' ? '가슴 앞' : '가슴 앞쪽 볼륨', hint: '앞으로 작음 ↔ 큼' },
-                        { key: 'pelvisWidth', label: '골반 크기', hint: '좁음 ↔ 넓음' },
-                        { key: 'buttProjection', label: '엉덩이 뒤', hint: '뒤로 작음 ↔ 큼' },
-                        { key: 'buttLift', label: '엉덩이 위', hint: '아래 ↔ 위' },
                         { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
+                        { key: 'bustFront', label: newCharacter.gender === 'female' ? '가슴 크기' : '가슴 볼륨', hint: '앞쪽 볼륨' },
+                        { key: 'hipsBack', label: '엉덩이 크기', hint: '뒤쪽 볼륨' },
                         { key: 'overall', label: '전체 체형감', hint: '슬림 ↔ 볼륨감' },
                       ].map(control => {
                         const value = bodyTuning[control.key as keyof BodyTuning];

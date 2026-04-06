@@ -62,7 +62,6 @@ const SCRIPTS_BASE_DIR = path.join(GENERATED_DIR, '대본폴더'); // 대본들�
 const LONGFORM_DIR = path.join(__dirname, '../longform_sessions');
 const TEMPLATE_DIR = path.join(__dirname, '../style_templates');
 const IMAGES_DIR = path.join(GENERATED_DIR, 'images');
-const CHARACTER_TURNAROUND_DIR = path.join(GENERATED_DIR, 'characters');
 const OUTFIT_PREVIEW_DIR = path.join(GENERATED_DIR, 'outfit_previews');
 const ENGINE_CONFIG_FILE = path.join(__dirname, '../engine_config.json');
 const PROMPT_PRESETS_FILE = path.join(__dirname, './prompt_presets.json');
@@ -264,7 +263,6 @@ if (!fs.existsSync(SCRIPTS_BASE_DIR)) fs.mkdirSync(SCRIPTS_BASE_DIR, { recursive
 if (!fs.existsSync(LONGFORM_DIR)) fs.mkdirSync(LONGFORM_DIR);
 if (!fs.existsSync(TEMPLATE_DIR)) fs.mkdirSync(TEMPLATE_DIR);
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
-if (!fs.existsSync(CHARACTER_TURNAROUND_DIR)) fs.mkdirSync(CHARACTER_TURNAROUND_DIR, { recursive: true });
 if (!fs.existsSync(OUTFIT_PREVIEW_DIR)) fs.mkdirSync(OUTFIT_PREVIEW_DIR, { recursive: true });
 if (!fs.existsSync(ENGINE_CONFIG_FILE)) {
     fs.writeFileSync(ENGINE_CONFIG_FILE, JSON.stringify({ prompts: {}, options: [] }, null, 2));
@@ -1711,7 +1709,7 @@ app.post('/api/translate-to-english', async (req, res) => {
         const { text, type } = req.body; // type: 'outfit' | 'face' | 'hair' | 'body'
         if (!text) return res.status(400).json({ success: false, error: '번역할 텍스트가 없습니다.' });
 
-        const normalizedType = ['outfit', 'face', 'hair', 'body', 'scene'].includes(type) ? type : 'face';
+        const normalizedType = ['outfit', 'face', 'hair', 'body'].includes(type) ? type : 'face';
         console.log(`[Translate] Korean → English (${normalizedType}): ${text.substring(0, 50)}...`);
 
         const translatePrompt = normalizedType === 'outfit'
@@ -1728,7 +1726,7 @@ Korean input:
 ${text}
 
 English prompt:`
-                : normalizedType === 'hair'
+            : normalizedType === 'hair'
                 ? `You are a hair prompt translator. Translate this Korean hairstyle description into a detailed English prompt optimized for AI image generation.
 
 RULES:
@@ -1742,21 +1740,7 @@ Korean input:
 ${text}
 
 English prompt:`
-                : normalizedType === 'scene'
-                    ? `You are a cinematic prompt translator for AI image generation. Translate this Korean scene prompt into a natural, detailed English prompt optimized for image models.
-
-RULES:
-- Preserve the original scene meaning exactly
-- Keep character identity, clothing, action, facial expression, camera, background, props, and atmosphere
-- Expand short Korean phrases into natural English image-prompt wording when needed
-- Do NOT add unrelated style changes or remove details
-- Output ONLY the English prompt, nothing else
-
-Korean input:
-${text}
-
-English prompt:`
-                    : normalizedType === 'body'
+                : normalizedType === 'body'
                     ? `You are a body-shape prompt translator. Translate this Korean body/silhouette description into a detailed English prompt optimized for AI image generation.
 
 RULES:
@@ -1805,51 +1789,6 @@ English prompt:`;
 });
 
 // ---------------------------------------------------------
-// 영문 → 한글 번역 API (씬 프롬프트용)
-// ---------------------------------------------------------
-app.post('/api/translate-to-korean', async (req, res) => {
-    try {
-        const { text, type } = req.body;
-        if (!text) return res.status(400).json({ success: false, error: '번역할 텍스트가 없습니다.' });
-
-        const normalizedType = ['scene'].includes(type) ? type : 'scene';
-        console.log(`[Translate] English → Korean (${normalizedType}): ${text.substring(0, 50)}...`);
-
-        const translatePrompt = `You are a cinematic prompt translator for AI image generation. Translate this English scene prompt into natural Korean that is easy for a creator to read and edit.
-
-RULES:
-- Preserve the original meaning exactly
-- Keep character identity, clothing, action, facial expression, camera, background, props, and atmosphere
-- Keep prompt details useful for later re-translation into English
-- Use fluent Korean prompt wording, not awkward literal translation
-- Output ONLY the Korean prompt, nothing else
-
-English input:
-${text}
-
-Korean prompt:`;
-
-        const result = await generateContent('GEMINI', translatePrompt, [], { freshChat: false });
-        const content = typeof result === 'string' ? result.trim() : (result.content || '').trim();
-
-        if (!content) {
-            throw new Error('번역 결과가 비어있습니다.');
-        }
-
-        const cleanedContent = content
-            .replace(/^(Korean prompt:?\s*)/i, '')
-            .replace(/^["']|["']$/g, '')
-            .trim();
-
-        console.log(`[Translate] ✅ Result: ${cleanedContent.substring(0, 80)}...`);
-        res.json({ success: true, translated: cleanedContent });
-    } catch (error) {
-        console.error('한글 번역 API 에러:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ---------------------------------------------------------
 // 캐릭터 이미지 저장 API
 // ---------------------------------------------------------
 app.post('/api/save-character-image', async (req, res) => {
@@ -1883,75 +1822,6 @@ app.post('/api/save-character-image', async (req, res) => {
         res.json({ success: true, url: fileUrl, filename });
     } catch (error) {
         console.error('이미지 저장 실패:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.post('/api/save-character-turnaround', async (req, res) => {
-    try {
-        const { characterName, sourceImageData, turnaroundImages, metadata } = req.body || {};
-        if (!characterName || typeof characterName !== 'string') {
-            return res.status(400).json({ success: false, error: '캐릭터 이름이 없습니다.' });
-        }
-        if (!turnaroundImages || typeof turnaroundImages !== 'object') {
-            return res.status(400).json({ success: false, error: '3면도 이미지 데이터가 없습니다.' });
-        }
-
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const safeName = sanitizeFolderName(characterName) || 'character';
-        const folderName = `${timestamp}_${safeName}`;
-        const targetDir = path.join(CHARACTER_TURNAROUND_DIR, folderName);
-        fs.mkdirSync(targetDir, { recursive: true });
-
-        const saveBase64Png = (filename, imageData) => {
-            if (!imageData || typeof imageData !== 'string') return null;
-            const filePath = path.join(targetDir, filename);
-            const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-            fs.writeFileSync(filePath, base64Data, 'base64');
-            return filePath;
-        };
-
-        saveBase64Png('front.png', turnaroundImages.front);
-        saveBase64Png('angle45.png', turnaroundImages.angle45);
-        saveBase64Png('back.png', turnaroundImages.back);
-        if (sourceImageData) {
-            saveBase64Png('source.png', sourceImageData);
-        }
-
-        const meta = {
-            name: characterName,
-            createdAt: new Date().toISOString(),
-            folderName,
-            files: {
-                source: sourceImageData ? 'source.png' : null,
-                front: 'front.png',
-                angle45: 'angle45.png',
-                back: 'back.png'
-            },
-            metadata: metadata || {}
-        };
-
-        fs.writeFileSync(
-            path.join(targetDir, 'character.json'),
-            JSON.stringify(meta, null, 2),
-            'utf8'
-        );
-
-        res.json({
-            success: true,
-            folderName,
-            folderPath: path.join('generated_scripts', 'characters', folderName),
-            folderUrl: `/generated_scripts/characters/${folderName}`,
-            files: {
-                source: sourceImageData ? `/generated_scripts/characters/${folderName}/source.png` : null,
-                front: `/generated_scripts/characters/${folderName}/front.png`,
-                angle45: `/generated_scripts/characters/${folderName}/angle45.png`,
-                back: `/generated_scripts/characters/${folderName}/back.png`,
-                meta: `/generated_scripts/characters/${folderName}/character.json`
-            }
-        });
-    } catch (error) {
-        console.error('캐릭터 3면도 폴더 저장 실패:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

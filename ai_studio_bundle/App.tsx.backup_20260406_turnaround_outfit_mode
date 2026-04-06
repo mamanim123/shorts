@@ -160,20 +160,6 @@ interface PendingTurnaroundSet {
   sourcePrompt: string;
 }
 
-const blobToDataUrl = (blob: Blob): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error('blob data url 변환 실패'));
-    };
-    reader.onerror = () => reject(reader.error || new Error('blob 읽기 실패'));
-    reader.readAsDataURL(blob);
-  });
-
 interface AppProps {
   onAddHistory?: (dataUrl: string, prompt: string) => void;
 }
@@ -202,7 +188,6 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
   const groupNavRef = React.useRef<HTMLDivElement | null>(null);
   const [pendingTurnaroundSet, setPendingTurnaroundSet] = useState<PendingTurnaroundSet | null>(null);
   const [turnaroundName, setTurnaroundName] = useState('');
-  const [turnaroundOutfitMode, setTurnaroundOutfitMode] = useState<'preserve' | 'neutral'>('preserve');
   const [savedCharacterCount, setSavedCharacterCount] = useState(0);
   const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
 
@@ -682,20 +667,12 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
       const previews: Array<{ key: TurnaroundViewKey; label: string; imageUrl: string }> = [];
 
       for (const item of prompts) {
-        const outfitInstruction = turnaroundOutfitMode === 'preserve'
-          ? `Preserve the exact original outfit from the reference image.
-Keep the same clothing, colors, fabric, silhouette, shoes, and accessories.
-Do not redesign, simplify, replace, restyle, or swap the outfit.
-Only change the viewpoint to ${item.label}.`
-          : `Use a plain studio background and a neutral standing pose.
-Show the character alone, full body, in a fitted simple base outfit.
-Do not add any props, text, split panels, or extra people.`;
-
         const prompt = `${item.instruction}
 
 Preserve the exact same face, body shape, proportions, height impression, hairstyle, and identity.
-${outfitInstruction}
-Use a clean plain background and show the character alone in a full-body standing pose.`;
+Use a plain studio background and a neutral standing pose.
+Show the character alone, full body, in a fitted simple base outfit.
+Do not add any props, text, split panels, or extra people.`;
 
         const imageUrl = await editImage(currentFile, prompt);
         previews.push({ key: item.key, label: item.label, imageUrl });
@@ -741,38 +718,12 @@ Use a clean plain background and show the character alone in a full-body standin
 
     try {
       const imageIds = {} as Record<TurnaroundViewKey, string>;
-      const previewDataUrls = {} as Record<TurnaroundViewKey, string>;
       for (const preview of pendingTurnaroundSet.previews) {
         const response = await fetch(preview.imageUrl);
         const blob = await response.blob();
-        const dataUrl = await blobToDataUrl(blob);
         const imageId = crypto.randomUUID();
         await setBlob(imageId, blob);
         imageIds[preview.key] = imageId;
-        previewDataUrls[preview.key] = dataUrl;
-      }
-
-      const activeImage = sourceImages.find((img) => img.id === pendingTurnaroundSet.sourceImageId);
-      const sourceImageData = activeImage?.file ? await blobToDataUrl(activeImage.file) : null;
-
-      const folderResponse = await fetch('http://localhost:3002/api/save-character-turnaround', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          characterName: turnaroundName.trim(),
-          sourceImageData,
-          turnaroundImages: previewDataUrls,
-          metadata: {
-            outfitMode: turnaroundOutfitMode,
-            approvedAt: Date.now(),
-            sourcePrompt: pendingTurnaroundSet.sourcePrompt,
-          }
-        })
-      });
-
-      const folderPayload = await folderResponse.json().catch(() => null);
-      if (!folderResponse.ok || !folderPayload?.success) {
-        throw new Error(folderPayload?.error || '캐릭터 폴더 저장 실패');
       }
 
       const existing = await getAppStorageValue<CharacterCollection[] | null>('characterCollection', null);
@@ -787,9 +738,7 @@ Use a clean plain background and show the character alone in a full-body standin
           back: imageIds.back
         },
         sourceReferenceImageId: pendingTurnaroundSet.sourceImageId,
-        approvedAt: Date.now(),
-        savedFolderPath: folderPayload.folderPath,
-        savedFolderUrl: folderPayload.folderUrl,
+        approvedAt: Date.now()
       };
 
       const next = [nextCharacter, ...(Array.isArray(existing) ? existing : [])];
@@ -797,7 +746,7 @@ Use a clean plain background and show the character alone in a full-body standin
       setSavedCharacterCount(next.length);
       setPendingTurnaroundSet(null);
       setTurnaroundName('');
-      addToast('success', `캐릭터 "${nextCharacter.name}" 저장 완료 (${folderPayload.folderPath})`);
+      addToast('success', `캐릭터 "${nextCharacter.name}" 저장 완료`);
     } catch (error) {
       console.error('캐릭터 저장 실패:', error);
       handleError(error);
@@ -1538,8 +1487,6 @@ Use a clean plain background and show the character alone in a full-body standin
                 onGeneratePersonDetails={handleGeneratePersonDetails}
                 onAgeChange={handleAgeChange}
                 onMultiAgeGeneration={handleMultiAgeGeneration}
-                turnaroundOutfitMode={turnaroundOutfitMode}
-                setTurnaroundOutfitMode={setTurnaroundOutfitMode}
                 onGenerateTurnaround={handleGenerateTurnaround}
                 turnaroundPreviews={pendingTurnaroundSet?.previews || []}
                 isGeneratingTurnaround={isGeneratingTurnaround}

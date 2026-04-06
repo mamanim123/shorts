@@ -167,13 +167,15 @@ export interface CharacterCollection {
   style?: string;
   bodyTuning?: {
     overall: number;
-    shoulderWidth: number;
     legLength: number;
     bustFront: number;
-    bustHeight: number;
-    pelvisWidth: number;
-    buttProjection: number;
-    buttLift: number;
+    bustBack: number;
+    bustUpper: number;
+    bustLower: number;
+    hipsFront: number;
+    hipsBack: number;
+    hipsUpper: number;
+    hipsLower: number;
   };
   turnaroundImageIds?: {
     front: string;
@@ -182,8 +184,6 @@ export interface CharacterCollection {
   };
   sourceReferenceImageId?: string;
   approvedAt?: number;
-  savedFolderPath?: string;
-  savedFolderUrl?: string;
 }
 
 export interface StoryResponse {

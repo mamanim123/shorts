@@ -2,6 +2,74 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { getApiKey as getMasterApiKey } from "../../components/master-studio/services/geminiService";
 
+// ========== 다중 API 키 로테이션 시스템 ==========
+let apiKeyPool: string[] = [];
+let currentKeyIndex: number = 0;
+let keyFailures: Record<string, number> = {};
+let keyCooldowns: Record<string, number> = {};
+let lastUsedKey: string = ''; // Track the actual key used for error handling
+
+const initializeKeyPool = (): void => {
+  if (apiKeyPool.length > 0) return;
+
+  // .env의 GEMINI_API_KEYS만 사용 (Master Studio 키 무시)
+  // @ts-ignore
+  const keysString = (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEYS) || '';
+  let keysList = keysString
+    .split(',')
+    .map((k: string) => k.trim())
+    .filter((k: string) => k.length > 0);
+
+  // 키가 없으면 단일 키 폴백
+  if (keysList.length === 0) {
+    const fallbackKey = (typeof process !== 'undefined' && process.env && (process.env.GEMINI_API_KEY || process.env.API_KEY)) || '';
+    if (fallbackKey) {
+      keysList = [fallbackKey];
+    }
+  }
+
+  if (keysList.length > 0) {
+    apiKeyPool = keysList;
+    console.log(`✅ [AI Studio] ${keysList.length}개의 API 키 로드됨. 다중 키 로테이션 활성화.`);
+    console.log(`📊 키 목록: ${keysList.map((k, i) => `[${i+1}] ${k.slice(0, 10)}...${k.slice(-5)}`).join(', ')}`);
+  } else {
+    console.error('❌ [AI Studio] API 키를 찾을 수 없습니다. .env에 GEMINI_API_KEYS를 설정해주세요.');
+  }
+};
+
+const getNextAvailableKey = (): string => {
+  initializeKeyPool();
+
+  if (apiKeyPool.length === 0) {
+    return '';
+  }
+
+  const now = Date.now();
+
+  // Try to find a key not in cooldown
+  for (let i = 0; i < apiKeyPool.length; i++) {
+    const index = (currentKeyIndex + i) % apiKeyPool.length;
+    const key = apiKeyPool[index];
+    const cooldownUntil = keyCooldowns[key] || 0;
+
+    if (cooldownUntil <= now) {
+      currentKeyIndex = (index + 1) % apiKeyPool.length;
+      return key;
+    }
+  }
+
+  // All keys in cooldown, return next one anyway
+  const key = apiKeyPool[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % apiKeyPool.length;
+  return key;
+};
+
+const markKeyFailed = (key: string): void => {
+  keyFailures[key] = (keyFailures[key] || 0) + 1;
+  keyCooldowns[key] = Date.now() + 60000; // 60초 쿨다운
+  console.warn(`⚠️ API 키 할당량 초과. 60초 쿨다운 적용. (실패: ${keyFailures[key]}회)`);
+};
+
 const resolveApiKey = (): string => {
   const key = getMasterApiKey();
   if (key) return key;
@@ -11,9 +79,30 @@ const resolveApiKey = (): string => {
 };
 
 const getClient = () => {
-  const apiKey = resolveApiKey();
+  initializeKeyPool();
+
+  let apiKey: string;
+  if (apiKeyPool.length > 0) {
+    apiKey = getNextAvailableKey();
+  } else {
+    apiKey = resolveApiKey();
+  }
+
   if (!apiKey) throw new Error('API 키가 없습니다. Master Studio 설정에서 키를 입력해주세요.');
+  lastUsedKey = apiKey;
   return new GoogleGenAI({ apiKey });
+};
+
+const is429Error = (error: any): boolean => {
+  const msg = (error?.message || '').toLowerCase();
+  return (
+    error?.code === 429 ||
+    error?.status === 429 ||
+    msg.includes('429') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('quota') ||
+    msg.includes('exceed')
+  );
 };
 
 const fileToBase64 = (file: File): Promise<string> =>
@@ -39,36 +128,59 @@ export async function generateImageFromImagesAndText(
     namedImageFiles: { name: string; file: File }[],
     prompt: string,
   ): Promise<string> {
-    const ai = getClient();
-    
-    type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
-    const parts: Part[] = [];
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    const namedImagesWithFiles = namedImageFiles.filter(img => img.name && img.file);
-    const imageMap = new Map(namedImagesWithFiles.map(img => [img.name, img.file]));
-    const names = [...imageMap.keys()];
-
-    if (names.length > 0) {
-        const regex = new RegExp(`(${names.join('|')})`, 'g');
-        const segments = prompt.split(regex); // ["A photo of ", "caddy", " on the beach"]
-
-        const partPromises = segments.map(async (segment) => {
-            if (imageMap.has(segment)) {
-                const file = imageMap.get(segment)!;
-                const base64Data = await fileToBase64(file);
-                return { inlineData: { data: base64Data, mimeType: file.type } };
-            } else if (segment) {
-                return { text: segment };
-            }
-            return null;
-        });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const ai = getClient();
         
-        const resolvedParts = (await Promise.all(partPromises)).filter((p): p is Part => p !== null);
+        type Part = { text: string } | { inlineData: { data: string; mimeType: string } };
+        const parts: Part[] = [];
 
-        // If prompt does not contain any reference names, then segments has only one element.
-        // In that case, use the old prompt enhancement method.
-        if (resolvedParts.length <= 1 && segments[0] === prompt) {
-            // No names found in prompt, fallback.
+        const namedImagesWithFiles = namedImageFiles.filter(img => img.name && img.file);
+        const imageMap = new Map(namedImagesWithFiles.map(img => [img.name, img.file]));
+        const names = [...imageMap.keys()];
+
+        if (names.length > 0) {
+            const regex = new RegExp(`(${names.join('|')})`, 'g');
+            const segments = prompt.split(regex); // ["A photo of ", "caddy", " on the beach"]
+
+            const partPromises = segments.map(async (segment) => {
+                if (imageMap.has(segment)) {
+                    const file = imageMap.get(segment)!;
+                    const base64Data = await fileToBase64(file);
+                    return { inlineData: { data: base64Data, mimeType: file.type } };
+                } else if (segment) {
+                    return { text: segment };
+                }
+                return null;
+            });
+            
+            const resolvedParts = (await Promise.all(partPromises)).filter((p): p is Part => p !== null);
+
+            // If prompt does not contain any reference names, then segments has only one element.
+            // In that case, use the old prompt enhancement method.
+            if (resolvedParts.length <= 1 && segments[0] === prompt) {
+                // No names found in prompt, fallback.
+                const allImageFiles = namedImageFiles.map(f => f.file);
+                const base64ImageDatas = await Promise.all(allImageFiles.map(fileToBase64));
+                const imageParts = base64ImageDatas.map((data, index) => ({
+                    inlineData: { data: data, mimeType: allImageFiles[index].type },
+                }));
+                const enhancedPrompt = `다음 이미지들을 참조하여 이미지를 만들어 주세요. 각 이미지는 스타일, 구성, 캐릭터 등의 요소를 제공합니다. 이들을 창의적으로 결합하여 다음을 만들어주세요: "${prompt}"`;
+                parts.push(...imageParts, { text: enhancedPrompt });
+            } else {
+                // Add unnamed images at the beginning for general context
+                const unnamedImages = namedImageFiles.filter(img => !img.name);
+                const unnamedImagePartsPromises = unnamedImages.map(async img => {
+                    const base64Data = await fileToBase64(img.file);
+                    return { inlineData: { data: base64Data, mimeType: img.file.type } };
+                });
+                const unnamedImageParts = await Promise.all(unnamedImagePartsPromises);
+                parts.push(...unnamedImageParts, ...resolvedParts);
+            }
+        } else {
+            // No named images at all, just use all images as context.
             const allImageFiles = namedImageFiles.map(f => f.file);
             const base64ImageDatas = await Promise.all(allImageFiles.map(fileToBase64));
             const imageParts = base64ImageDatas.map((data, index) => ({
@@ -76,57 +188,52 @@ export async function generateImageFromImagesAndText(
             }));
             const enhancedPrompt = `다음 이미지들을 참조하여 이미지를 만들어 주세요. 각 이미지는 스타일, 구성, 캐릭터 등의 요소를 제공합니다. 이들을 창의적으로 결합하여 다음을 만들어주세요: "${prompt}"`;
             parts.push(...imageParts, { text: enhancedPrompt });
-        } else {
-            // Add unnamed images at the beginning for general context
-            const unnamedImages = namedImageFiles.filter(img => !img.name);
-            const unnamedImagePartsPromises = unnamedImages.map(async img => {
-                const base64Data = await fileToBase64(img.file);
-                return { inlineData: { data: base64Data, mimeType: img.file.type } };
-            });
-            const unnamedImageParts = await Promise.all(unnamedImagePartsPromises);
-            parts.push(...unnamedImageParts, ...resolvedParts);
         }
-    } else {
-        // No named images at all, just use all images as context.
-        const allImageFiles = namedImageFiles.map(f => f.file);
-        const base64ImageDatas = await Promise.all(allImageFiles.map(fileToBase64));
-        const imageParts = base64ImageDatas.map((data, index) => ({
-            inlineData: { data: data, mimeType: allImageFiles[index].type },
-        }));
-        const enhancedPrompt = `다음 이미지들을 참조하여 이미지를 만들어 주세요. 각 이미지는 스타일, 구성, 캐릭터 등의 요소를 제공합니다. 이들을 창의적으로 결합하여 다음을 만들어주세요: "${prompt}"`;
-        parts.push(...imageParts, { text: enhancedPrompt });
-    }
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: parts,
-        },
-        config: {
-            // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
-            responseModalities: [Modality.IMAGE],
-        },
-    });
-    
-    let returnedImageUrl: string | null = null;
-    let returnedText: string | null = null;
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+              parts: parts,
+            },
+            config: {
+                // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+        
+        let returnedImageUrl: string | null = null;
+        let returnedText: string | null = null;
 
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          const base64ImageBytes: string = part.inlineData.data;
-          returnedImageUrl = `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
-        } else if (part.text) {
-          returnedText = part.text;
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+              const base64ImageBytes: string = part.inlineData.data;
+              returnedImageUrl = `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
+            } else if (part.text) {
+              returnedText = part.text;
+            }
         }
-    }
-      
-    if (returnedImageUrl) {
-        return returnedImageUrl;
+          
+        if (returnedImageUrl) {
+            return returnedImageUrl;
+        }
+
+        const defaultError = "이미지가 생성되지 않았습니다. 모델이 프롬프트를 거부했을 수 있습니다.";
+        const errorMessage = returnedText ? `${defaultError}\n모델 응답: ${returnedText}` : defaultError;
+        throw new Error(errorMessage);
+      } catch (error: any) {
+        if (is429Error(error)) {
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
+          markKeyFailed(lastUsedKey);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        throw error;
+      }
     }
 
-    const defaultError = "이미지가 생성되지 않았습니다. 모델이 프롬프트를 거부했을 수 있습니다.";
-    const errorMessage = returnedText ? `${defaultError}\n모델 응답: ${returnedText}` : defaultError;
-    throw new Error(errorMessage);
+    throw new Error('이미지 생성에 실패했습니다.');
 }
 
 export async function editImage(
@@ -134,82 +241,122 @@ export async function editImage(
     prompt: string,
     mask?: { data: string; mimeType: string }
   ): Promise<string> {
-    const ai = getClient();
-    const base64ImageData = await fileToBase64(imageFile);
-    
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: base64ImageData,
-                mimeType: imageFile.type,
-              },
-            },
-            {
-              text: prompt,
-            },
-            ...(mask ? [{ inlineData: { data: mask.data, mimeType: mask.mimeType } }] : []),
-          ],
-        },
-        config: {
-            // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
-            responseModalities: [Modality.IMAGE],
-        },
-    });
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    let returnedImageUrl: string | null = null;
-    let returnedText: string | null = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const ai = getClient();
+        const base64ImageData = await fileToBase64(imageFile);
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+              parts: [
+                {
+                  inlineData: {
+                    data: base64ImageData,
+                    mimeType: imageFile.type,
+                  },
+                },
+                {
+                  text: prompt,
+                },
+                ...(mask ? [{ inlineData: { data: mask.data, mimeType: mask.mimeType } }] : []),
+              ],
+            },
+            config: {
+                // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
+                responseModalities: [Modality.IMAGE],
+            },
+        });
 
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          const base64ImageBytes: string = part.inlineData.data;
-          returnedImageUrl = `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
-        } else if (part.text) {
-            returnedText = part.text;
+        let returnedImageUrl: string | null = null;
+        let returnedText: string | null = null;
+
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+              const base64ImageBytes: string = part.inlineData.data;
+              returnedImageUrl = `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
+            } else if (part.text) {
+                returnedText = part.text;
+            }
         }
-    }
-      
-    if (returnedImageUrl) {
-        return returnedImageUrl;
+          
+        if (returnedImageUrl) {
+            return returnedImageUrl;
+        }
+
+        // Error handling improvement: Include model response text if available
+        const defaultError = "이미지가 생성되지 않았습니다. 모델이 프롬프트를 거부했을 수 있습니다.";
+        const errorMessage = returnedText ? `${defaultError}\n(모델 응답: ${returnedText})` : defaultError;
+        throw new Error(errorMessage);
+      } catch (error: any) {
+        if (is429Error(error)) {
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
+          markKeyFailed(lastUsedKey);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        throw error;
+      }
     }
 
-    // Error handling improvement: Include model response text if available
-    const defaultError = "이미지가 생성되지 않았습니다. 모델이 프롬프트를 거부했을 수 있습니다.";
-    const errorMessage = returnedText ? `${defaultError}\n(모델 응답: ${returnedText})` : defaultError;
-    throw new Error(errorMessage);
+    throw new Error('이미지 편집에 실패했습니다.');
 }
 
 
 export async function generateImageFromText(prompt: string, aspectRatio: '1:1' | '9:16' | '16:9'): Promise<string> {
-    const ai = getClient();
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    const finalPrompt = `다음 프롬프트를 기반으로 이미지를 생성해주세요: "${prompt}". 프롬프트에 다른 국적이나 인종이 명시되지 않은 경우, 이미지에 등장하는 인물은 한국인으로 묘사해주세요.`;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const ai = getClient();
 
-    const response = await ai.models.generateImages({
-        model: 'imagen-4.0-generate-001',
-        prompt: finalPrompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/png',
-          aspectRatio: aspectRatio,
-        },
-    });
+        const finalPrompt = `다음 프롬프트를 기반으로 이미지를 생성해주세요: "${prompt}". 프롬프트에 다른 국적이나 인종이 명시되지 않은 경우, 이미지에 등장하는 인물은 한국인으로 묘사해주세요.`;
 
-    if (response.generatedImages && response.generatedImages.length > 0) {
-        const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-        return `data:image/png;base64,${base64ImageBytes}`;
+        const response = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: finalPrompt,
+            config: {
+              numberOfImages: 1,
+              outputMimeType: 'image/png',
+              aspectRatio: aspectRatio,
+            },
+        });
+
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+            return `data:image/png;base64,${base64ImageBytes}`;
+        }
+
+        throw new Error("텍스트 프롬프트로부터 이미지가 생성되지 않았습니다.");
+      } catch (error: any) {
+        if (is429Error(error)) {
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
+          markKeyFailed(lastUsedKey);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        throw error;
+      }
     }
 
-    throw new Error("텍스트 프롬프트로부터 이미지가 생성되지 않았습니다.");
+    throw new Error('이미지 생성에 실패했습니다.');
 }
 
 export async function generatePromptFromImage(imageFile: File): Promise<string> {
-    const ai = getClient();
-    const base64ImageData = await fileToBase64(imageFile);
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    const detailedPromptInstruction = `당신은 AI 이미지 생성기를 위한 상세한 프롬프트를 작성하는 전문 시나리오 작가입니다. 제공된 이미지를 분석하여, 아래의 규칙과 형식을 '반드시' 그리고 '엄격하게' 준수하여 프롬프트를 생성해주세요.
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const ai = getClient();
+        const base64ImageData = await fileToBase64(imageFile);
+
+        const detailedPromptInstruction = `당신은 AI 이미지 생성기를 위한 상세한 프롬프트를 작성하는 전문 시나리오 작가입니다. 제공된 이미지를 분석하여, 아래의 규칙과 형식을 '반드시' 그리고 '엄격하게' 준수하여 프롬프트를 생성해주세요.
 
 **이미지 프롬프트 생성 규칙**
 
@@ -249,36 +396,54 @@ export async function generatePromptFromImage(imageFile: File): Promise<string> 
 
 이제, 첨부된 이미지에 대한 프롬프트를 위의 규칙과 형식에 맞춰 **한국어**로 생성해주세요.`;
 
-    const textPart = { text: detailedPromptInstruction };
-    const imagePart = {
-      inlineData: {
-        mimeType: imageFile.type,
-        data: base64ImageData,
-      },
-    };
+        const textPart = { text: detailedPromptInstruction };
+        const imagePart = {
+          inlineData: {
+            mimeType: imageFile.type,
+            data: base64ImageData,
+          },
+        };
 
-    // Use Gemini 2.5 Flash with Thinking Config for deeper analysis
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { parts: [textPart, imagePart] },
-      config: {
-          thinkingConfig: { thinkingBudget: 2048 } // Allocate token budget for thinking
+        // Use Gemini 2.5 Flash with Thinking Config for deeper analysis
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: { parts: [textPart, imagePart] },
+          config: {
+              thinkingConfig: { thinkingBudget: 2048 } // Allocate token budget for thinking
+          }
+        });
+
+        const prompt = response.text;
+        if (prompt) {
+          return prompt;
+        }
+
+        throw new Error("프롬프트를 생성하지 못했습니다. 모델이 요청을 거부했을 수 있습니다.");
+      } catch (error: any) {
+        if (is429Error(error)) {
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
+          markKeyFailed(lastUsedKey);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        throw error;
       }
-    });
-
-    const prompt = response.text;
-    if (prompt) {
-      return prompt;
     }
 
-    throw new Error("프롬프트를 생성하지 못했습니다. 모델이 요청을 거부했을 수 있습니다.");
+    throw new Error('프롬프트 생성에 실패했습니다.');
 }
 
 export async function generatePersonDetailsFromImage(imageFile: File): Promise<string> {
-    const ai = getClient();
-    const base64ImageData = await fileToBase64(imageFile);
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    const detailedPromptInstruction = `당신은 패션 스타일리스트이자 캐릭터 디자이너입니다. 제공된 이미지 속 인물에 대해서만 집중하여 아래 두 가지 항목에 대해 매우 상세하고 구체적으로 묘사해주세요.
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const ai = getClient();
+        const base64ImageData = await fileToBase64(imageFile);
+
+        const detailedPromptInstruction = `당신은 패션 스타일리스트이자 캐릭터 디자이너입니다. 제공된 이미지 속 인물에 대해서만 집중하여 아래 두 가지 항목에 대해 매우 상세하고 구체적으로 묘사해주세요.
 
 1.  **몸매 디테일:**
     *   전체적인 체형 (예: 슬림한, 글래머러스한, 근육질의 등)
@@ -299,29 +464,43 @@ export async function generatePersonDetailsFromImage(imageFile: File): Promise<s
 *   각 항목을 명확하게 구분하여 작성해주세요.
 *   결과는 한국어로 작성해주세요.`;
 
-    const textPart = { text: detailedPromptInstruction };
-    const imagePart = {
-      inlineData: {
-        mimeType: imageFile.type,
-        data: base64ImageData,
-      },
-    };
+        const textPart = { text: detailedPromptInstruction };
+        const imagePart = {
+          inlineData: {
+            mimeType: imageFile.type,
+            data: base64ImageData,
+          },
+        };
 
-    // Use Gemini 2.5 Flash with Thinking Config
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { parts: [textPart, imagePart] },
-      config: {
-          thinkingConfig: { thinkingBudget: 1024 } // Allocate token budget for thinking
+        // Use Gemini 2.5 Flash with Thinking Config
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: { parts: [textPart, imagePart] },
+          config: {
+              thinkingConfig: { thinkingBudget: 1024 } // Allocate token budget for thinking
+          }
+        });
+
+        const prompt = response.text;
+        if (prompt) {
+          return prompt;
+        }
+
+        throw new Error("인물 디테일 프롬프트를 생성하지 못했습니다. 모델이 요청을 거부했을 수 있습니다.");
+      } catch (error: any) {
+        if (is429Error(error)) {
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
+          markKeyFailed(lastUsedKey);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        throw error;
       }
-    });
-
-    const prompt = response.text;
-    if (prompt) {
-      return prompt;
     }
 
-    throw new Error("인물 디테일 프롬프트를 생성하지 못했습니다. 모델이 요청을 거부했을 수 있습니다.");
+    throw new Error('인물 디테일 생성에 실패했습니다.');
 }
 
 export async function generateVideo(
@@ -329,7 +508,9 @@ export async function generateVideo(
     imageFile: File | null,
     onProgress: (message: string) => void
 ): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    initializeKeyPool();
+    const apiKey = apiKeyPool.length > 0 ? getNextAvailableKey() : (process.env.API_KEY || '');
+    const ai = new GoogleGenAI({ apiKey });
 
     let imagePayload = undefined;
     if (imageFile) {
@@ -379,7 +560,7 @@ export async function generateVideo(
     }
     
     // API 키를 포함하여 비디오 데이터 가져오기
-    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    const response = await fetch(`${downloadLink}&key=${apiKey}`);
     if (!response.ok) {
         const errorBody = await response.text();
         console.error("비디오 다운로드 실패 응답:", errorBody);
@@ -392,7 +573,9 @@ export async function generateVideo(
 }
 
 export async function revisePromptsForPolicy(prompts: string[]): Promise<string[]> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    initializeKeyPool();
+    const apiKey = apiKeyPool.length > 0 ? getNextAvailableKey() : (process.env.API_KEY || '');
+    const ai = new GoogleGenAI({ apiKey });
 
     const systemInstruction = `You are a helpful assistant that revises user prompts for an AI image generation service. Your goal is to modify the prompts to ensure they comply with safety policies, avoiding themes of violence, hate, explicit content, or other harmful subjects. You must preserve the user's original creative intent as much as possible. The user will provide a list of prompts. You must return a JSON array of strings, where each string is the revised version of the corresponding prompt in the input list. The output array must have the same number of elements as the input array.`;
 

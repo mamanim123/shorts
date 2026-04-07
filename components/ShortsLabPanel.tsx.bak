@@ -2509,8 +2509,12 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             let result: any;
             let finalBase64Image: string | null = null;
 
-            // Step 1: Generate base image using Gemini (gemini-2.5-flash-image)
-            result = await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
+            // Step 1: Generate base image
+            if (imageModel.toLowerCase().includes('imagen')) {
+                result = await generateImageWithImagen(enhancedPrompt, "", { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
+            } else {
+                result = await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
+            }
 
             // Extract base64 from result
             if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {

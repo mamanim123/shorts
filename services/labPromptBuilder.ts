@@ -2233,6 +2233,12 @@ ${characterSection}
 8. **배경은 1번 씬의 문구를 그대로 복붙** (장소 전환이 scriptLine에 명시된 경우만 변경 허용)
 9. **의상 명칭 보존 (중요)**: \`shortPrompt\`와 \`longPrompt\` 모두에서 캐릭터에게 지정된 의상 명칭(예: "Pink & White Striped Knit + White Micro Short Pants")을 절대 요약하거나 일부를 생략하지 말고 **명칭 전체를 100% 동일하게 입력**할 것.
 10. **[대괄호 템플릿] 형태 그대로 출력 금지** (실제 문장으로 채우기)
+11. **🔴 shortPromptKo / longPromptKo 한글 번역 규칙 (매우 중요!)**:
+    - \`shortPromptKo\`는 \`shortPrompt\`(영어 이미지 프롬프트)를 **자연스러운 한국어 이미지 프롬프트로 번역**한 것
+    - \`longPromptKo\`는 \`longPrompt\`(영어 상세 이미지 프롬프트)를 **자연스러운 한국어 이미지 프롬프트로 번역**한 것
+    - **절대로 scriptLine(대본 대사)를 shortPromptKo/longPromptKo에 복사하지 말 것!**
+    - 예: shortPrompt="close-up portrait shot, A stunning Korean woman..." → shortPromptKo="클로즈업 초상화 샷, 20대 초반의 아름다운 한국인 여성..."
+    - 예: longPrompt="Scene 1. unfiltered raw photograph, highly detailed..." → longPromptKo="장면 1. 필터 없는 생생한 사진, 매우 상세한 피부 질감..."
 
 ### 🔴 투샷/쓰리샷 필드 복사 절대 규칙 (매우 중요!)
 ⚠️ **투샷/쓰리샷에서 각 캐릭터의 모든 필드를 characters 배열에서 100% 그대로 복사해야 합니다!**
@@ -2426,10 +2432,10 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
       },
 
       "shortPrompt": "[카메라 앵글], [인물 설명 with outfit color], [행동/표정], [배경]. 투샷/쓰리샷 시: [Person 1: Name in White] [Person 2: Name in Navy] 형식으로 색상 구분 필수",
-      "shortPromptKo": "[카메라 앵글], [인물 설명 및 의상 색상], [행동/표정], [배경]. 2명 이상 시 각 인물별 의상 색상 명시 필수",
+      "shortPromptKo": "shortPrompt(영어 이미지 프롬프트)를 자연스러운 한국어로 번역한 것. 예: '클로즈업 초상화 샷, 20대 초반의 아름다운 한국인 여성 지영, 긴 소프트 웨이브 헤어, 화이트 마이크로 미니스커트 입고, 창밖을 바라보며 미소 짓는, 햇살 가득한 거실'. 절대로 scriptLine(대본 대사)를 복사하지 말 것!",
       "longPrompt": "${promptConstants.START}, [⚠️ 카메라앵글: close-up portrait shot 등], [characters[해당캐릭터].identity - 전체 문자열 100% 복사], [characters[해당캐릭터].hair - 전체 복사], [characters[해당캐릭터].body - 전체 복사, 절대 생략 금지!], wearing [characters[해당캐릭터].outfit - 전체 복사, 축약 금지], [행동/표정], [배경], ${promptConstants.END}. ⚠️ 투샷/쓰리샷: 각 Person마다 [Person X: identity, hair, body, wearing outfit] 형식으로 모든 필드 100% 포함. body 필드 누락 절대 금지!",
       "negativePrompt": "${promptConstants.NEGATIVE}",
-      "longPromptKo": "상세 한글 프롬프트",
+      "longPromptKo": "longPrompt(영어 상세 이미지 프롬프트)를 자연스러운 한국어로 번역한 것. 예: '장면 1. 필터 없는 생생한 사진, 매우 상세한 피부 질감, 모공 visible, 자연스러운 피부 광택, 20대 초반의 아름다운 한국인 여성 지영, 긴 소프트 웨이브 헤어스타일, 날씬한 모래시계 체형, 핑크 & 화이트 스트라이프 니트 + 화이트 마이크로 쇼트 팬츠 입고, 창밖을 바라보며 부드럽게 미소 짓는, 햇살 가득한 모던 거실, 85mm 렌즈로 촬영, f/1.8, 리얼리스틱 소프트 스킨, 하이패션 글래머 사진, 8k 초고화질, --ar 9:16'. 절대로 scriptLine(대본 대사)를 복사하지 말 것!",
       "videoPrompt": "[한국어] 40대 한국인 여성이 [동작], [카메라 무빙], [조명/분위기]"
     }
   ]

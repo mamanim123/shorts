@@ -8,15 +8,6 @@ let currentKeyIndex: number = 0;
 let keyFailures: Record<string, number> = {};
 let keyCooldowns: Record<string, number> = {};
 let lastUsedKey: string = ''; // Track the actual key used for error handling
-const DEFAULT_GEMINI_IMAGE_MODELS = [
-  'gemini-2.5-flash-image',
-  'gemini-2.0-flash-preview-image-generation',
-];
-const DEFAULT_IMAGEN_MODELS = [
-  'imagen-4.0-generate-001',
-  'imagen-4.0-fast-generate-001',
-  'imagen-3.0-generate-001',
-];
 
 const initializeKeyPool = (): void => {
   if (apiKeyPool.length > 0) return;
@@ -114,40 +105,6 @@ const is429Error = (error: any): boolean => {
   );
 };
 
-const isTransientError = (error: any): boolean => {
-  const msg = (error?.message || '').toLowerCase();
-  return (
-    error?.code === 500 ||
-    error?.code === 502 ||
-    error?.code === 503 ||
-    error?.status === 500 ||
-    error?.status === 502 ||
-    error?.status === 503 ||
-    msg.includes('unavailable') ||
-    msg.includes('internal') ||
-    msg.includes('timeout') ||
-    msg.includes('temporarily')
-  );
-};
-
-const getEnvList = (name: string, fallback: string[]): string[] => {
-  // @ts-ignore
-  const raw = (typeof process !== 'undefined' && process.env && process.env[name]) || '';
-  const parsed = raw
-    .split(',')
-    .map((item: string) => item.trim())
-    .filter((item: string) => item.length > 0);
-  return parsed.length > 0 ? parsed : fallback;
-};
-
-const getGeminiImageModels = (): string[] => getEnvList('GEMINI_IMAGE_MODELS', DEFAULT_GEMINI_IMAGE_MODELS);
-const getImagenModels = (): string[] => getEnvList('GEMINI_IMAGEN_MODELS', DEFAULT_IMAGEN_MODELS);
-
-const getKeyRetryLimit = (): number => {
-  initializeKeyPool();
-  return Math.max(1, apiKeyPool.length || 1);
-};
-
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -171,12 +128,8 @@ export async function generateImageFromImagesAndText(
     namedImageFiles: { name: string; file: File }[],
     prompt: string,
   ): Promise<string> {
-    const maxRetries = getKeyRetryLimit();
-    const modelCandidates = getGeminiImageModels();
-    let lastError: any = null;
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex++) {
-    const model = modelCandidates[modelIndex];
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const ai = getClient();
@@ -238,7 +191,7 @@ export async function generateImageFromImagesAndText(
         }
 
         const response = await ai.models.generateContent({
-            model,
+            model: 'gemini-2.5-flash-image',
             contents: {
               parts: parts,
             },
@@ -268,29 +221,19 @@ export async function generateImageFromImagesAndText(
         const errorMessage = returnedText ? `${defaultError}\n모델 응답: ${returnedText}` : defaultError;
         throw new Error(errorMessage);
       } catch (error: any) {
-        lastError = error;
         if (is429Error(error)) {
-          console.log(`🔄 429 에러 감지. 다음 키/모델로 재시도합니다. model=${model} (${attempt}/${maxRetries})`);
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
           markKeyFailed(lastUsedKey);
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             continue;
           }
         }
-        if (isTransientError(error) && attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-        if (modelIndex < modelCandidates.length - 1) {
-          console.warn(`⚠️ ${model} 실패. 다음 이미지 모델로 롤백합니다.`);
-          break;
-        }
         throw error;
       }
     }
-    }
 
-    throw lastError || new Error('이미지 생성에 실패했습니다.');
+    throw new Error('이미지 생성에 실패했습니다.');
 }
 
 export async function editImage(
@@ -298,19 +241,15 @@ export async function editImage(
     prompt: string,
     mask?: { data: string; mimeType: string }
   ): Promise<string> {
-    const maxRetries = getKeyRetryLimit();
-    const modelCandidates = getGeminiImageModels();
-    let lastError: any = null;
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex++) {
-    const model = modelCandidates[modelIndex];
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const ai = getClient();
         const base64ImageData = await fileToBase64(imageFile);
         
         const response = await ai.models.generateContent({
-            model,
+            model: 'gemini-2.5-flash-image',
             contents: {
               parts: [
                 {
@@ -352,39 +291,25 @@ export async function editImage(
         const errorMessage = returnedText ? `${defaultError}\n(모델 응답: ${returnedText})` : defaultError;
         throw new Error(errorMessage);
       } catch (error: any) {
-        lastError = error;
         if (is429Error(error)) {
-          console.log(`🔄 429 에러 감지. 다음 키/모델로 재시도합니다. model=${model} (${attempt}/${maxRetries})`);
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
           markKeyFailed(lastUsedKey);
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             continue;
           }
         }
-        if (isTransientError(error) && attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-        if (modelIndex < modelCandidates.length - 1) {
-          console.warn(`⚠️ ${model} 편집 실패. 다음 이미지 모델로 롤백합니다.`);
-          break;
-        }
         throw error;
       }
     }
-    }
 
-    throw lastError || new Error('이미지 편집에 실패했습니다.');
+    throw new Error('이미지 편집에 실패했습니다.');
 }
 
 
 export async function generateImageFromText(prompt: string, aspectRatio: '1:1' | '9:16' | '16:9'): Promise<string> {
-    const maxRetries = getKeyRetryLimit();
-    const modelCandidates = getImagenModels();
-    let lastError: any = null;
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
-    for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex++) {
-    const model = modelCandidates[modelIndex];
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const ai = getClient();
@@ -392,7 +317,7 @@ export async function generateImageFromText(prompt: string, aspectRatio: '1:1' |
         const finalPrompt = `다음 프롬프트를 기반으로 이미지를 생성해주세요: "${prompt}". 프롬프트에 다른 국적이나 인종이 명시되지 않은 경우, 이미지에 등장하는 인물은 한국인으로 묘사해주세요.`;
 
         const response = await ai.models.generateImages({
-            model,
+            model: 'imagen-4.0-generate-001',
             prompt: finalPrompt,
             config: {
               numberOfImages: 1,
@@ -408,33 +333,23 @@ export async function generateImageFromText(prompt: string, aspectRatio: '1:1' |
 
         throw new Error("텍스트 프롬프트로부터 이미지가 생성되지 않았습니다.");
       } catch (error: any) {
-        lastError = error;
         if (is429Error(error)) {
-          console.log(`🔄 429 에러 감지. 다음 키/모델로 재시도합니다. model=${model} (${attempt}/${maxRetries})`);
+          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. (${attempt}/${maxRetries})`);
           markKeyFailed(lastUsedKey);
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             continue;
           }
         }
-        if (isTransientError(error) && attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-        if (modelIndex < modelCandidates.length - 1) {
-          console.warn(`⚠️ ${model} 텍스트 이미지 생성 실패. 다음 Imagen 모델로 롤백합니다.`);
-          break;
-        }
         throw error;
       }
     }
-    }
 
-    throw lastError || new Error('이미지 생성에 실패했습니다.');
+    throw new Error('이미지 생성에 실패했습니다.');
 }
 
 export async function generatePromptFromImage(imageFile: File): Promise<string> {
-    const maxRetries = getKeyRetryLimit();
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -521,7 +436,7 @@ export async function generatePromptFromImage(imageFile: File): Promise<string> 
 }
 
 export async function generatePersonDetailsFromImage(imageFile: File): Promise<string> {
-    const maxRetries = getKeyRetryLimit();
+    const maxRetries = apiKeyPool.length > 1 ? 3 : 1;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {

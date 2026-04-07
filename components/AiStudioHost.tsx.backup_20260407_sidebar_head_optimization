@@ -21,21 +21,7 @@ const getImageServerOrigins = (): string[] => {
 
 const toServerImageUrls = (url?: string): string[] => {
   if (!url) return [];
-  if (/^(blob:|data:)/i.test(url)) return [url];
-  if (/^https?:\/\//i.test(url)) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.pathname.startsWith('/generated_scripts/')) {
-        return Array.from(new Set([
-          url,
-          ...getImageServerOrigins().map((origin) => new URL(`${parsed.pathname}${parsed.search}`, origin).toString())
-        ]));
-      }
-    } catch {
-      // Fall back to the original URL below.
-    }
-    return [url];
-  }
+  if (/^(blob:|data:|https?:\/\/)/i.test(url)) return [url];
   const normalized = url.startsWith('/') ? url : `/${url}`;
   return getImageServerOrigins().map((origin) => new URL(normalized, origin).toString());
 };
@@ -69,15 +55,18 @@ const buildHistoryImageUrlCandidates = (item: any): string[] => {
   return Array.from(new Set(candidates));
 };
 
-const resolveHistoryImageUrl = (item: any): string | undefined => {
+const getReachableImageUrl = async (item: any): Promise<string | undefined> => {
   const candidates = buildHistoryImageUrlCandidates(item);
-  return candidates[0];
-};
-
-const getNextHistoryImageUrl = (item: any, currentUrl?: string): string | undefined => {
-  const candidates = buildHistoryImageUrlCandidates(item);
-  if (!currentUrl) return candidates[0];
-  return candidates.find(candidate => candidate !== currentUrl);
+  for (const candidate of candidates) {
+    if (/^(blob:|data:)/i.test(candidate)) return candidate;
+    try {
+      const resp = await fetch(candidate, { method: 'HEAD', cache: 'no-store' });
+      if (resp.ok) return candidate;
+    } catch {
+      // Try next candidate.
+    }
+  }
+  return undefined;
 };
 
 const AiStudioHost: React.FC = () => {
@@ -193,7 +182,7 @@ const AiStudioHost: React.FC = () => {
   const loadedIdsRef = useRef<Set<string>>(new Set());
 
   const resolveHistoryItemUrl = useCallback((item: any): string | undefined => {
-    return resolveHistoryImageUrl(item);
+    return buildHistoryImageUrlCandidates(item)[0];
   }, []);
 
   // blob -> URL 로드 (PERFORMANCE: 디바운스 및 중복 로딩 방지)
@@ -210,7 +199,7 @@ const AiStudioHost: React.FC = () => {
 
       if (needsLoad.length === 0) return;
 
-      console.log(`[Performance] AiStudio resolving ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
+      console.log(`[Performance] AiStudio loading ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
 
       const urls: Record<string, string> = {};
       const batchSize = 12;
@@ -236,7 +225,7 @@ const AiStudioHost: React.FC = () => {
             }
           }
           if (item.url || item.localFilename) {
-            const resolved = resolveHistoryImageUrl(item);
+            const resolved = await getReachableImageUrl(item);
             if (!resolved) return;
             urls[item.id] = resolved;
             loadedIds.add(item.id);
@@ -245,7 +234,7 @@ const AiStudioHost: React.FC = () => {
       }
       if (mounted && Object.keys(urls).length > 0) {
         setHistoryUrls(prev => ({ ...prev, ...urls }));
-        console.log(`[Performance] AiStudio resolved ${Object.keys(urls).length} thumbnails successfully`);
+        console.log(`[Performance] AiStudio loaded ${Object.keys(urls).length} thumbnails successfully`);
       }
     };
 
@@ -380,13 +369,11 @@ const AiStudioHost: React.FC = () => {
       // 2. 서버 디스크에 저장 (영구 보존)
       let savedFilename: string | undefined;
       let savedUrl: string | undefined;
-      let savedStoryId: string | undefined = activeStoryId;
       try {
         // dataUrl은 base64 포함 전체 문자열
         const saveResult = await saveImageToDisk(dataUrl, prompt, activeStoryId);
         savedFilename = saveResult?.filename;
         savedUrl = saveResult?.url;
-        savedStoryId = saveResult?.storyId || activeStoryId;
         console.log('Saved to disk:', savedFilename);
       } catch (err) {
         console.error('Failed to save image to disk', err);
@@ -405,7 +392,7 @@ const AiStudioHost: React.FC = () => {
         url: savedUrl,
         createdAt: Date.now(),
         source: 'ai-studio',
-        storyId: savedStoryId,
+        storyId: activeStoryId,
         settings: { mode: 'Generate', aspectRatio: '1:1', activeCheatKeys: [], noGuard: false, enhanceBackground: false, removeBackground: false, creativity: 0.8 }
       };
 
@@ -607,12 +594,6 @@ const AiStudioHost: React.FC = () => {
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover"
-                      onError={() => {
-                        const nextUrl = getNextHistoryImageUrl(item, historyUrls[item.id]);
-                        if (nextUrl) {
-                          setHistoryUrls(prev => ({ ...prev, [item.id]: nextUrl }));
-                        }
-                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-800 animate-pulse">

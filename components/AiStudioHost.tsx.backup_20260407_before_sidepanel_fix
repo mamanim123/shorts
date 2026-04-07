@@ -11,73 +11,13 @@ import { Star, X, Copy, Loader2, RefreshCw, History as HistoryIcon } from 'lucid
 const MAX_HISTORY = 100; // 히스토리 제한 (IndexedDB 사용으로 100개로 상향)
 const STORY_FILTER_ALL = 'all';
 const STORY_FILTER_ORPHANED = '__legacy__';
-const IMAGE_SERVER_ORIGINS = ['http://localhost:3002', 'http://127.0.0.1:3002'];
+const IMAGE_SERVER_ORIGIN = 'http://localhost:3002';
 
-const getImageServerOrigins = (): string[] => {
-  if (typeof window === 'undefined') return IMAGE_SERVER_ORIGINS;
-  const currentHost = `${window.location.protocol}//${window.location.hostname}:3002`;
-  return Array.from(new Set([currentHost, ...IMAGE_SERVER_ORIGINS]));
-};
-
-const toServerImageUrls = (url?: string): string[] => {
-  if (!url) return [];
-  if (/^(blob:|data:)/i.test(url)) return [url];
-  if (/^https?:\/\//i.test(url)) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.pathname.startsWith('/generated_scripts/')) {
-        return Array.from(new Set([
-          url,
-          ...getImageServerOrigins().map((origin) => new URL(`${parsed.pathname}${parsed.search}`, origin).toString())
-        ]));
-      }
-    } catch {
-      // Fall back to the original URL below.
-    }
-    return [url];
-  }
+const toServerImageUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (/^(blob:|data:|https?:\/\/)/i.test(url)) return url;
   const normalized = url.startsWith('/') ? url : `/${url}`;
-  return getImageServerOrigins().map((origin) => new URL(normalized, origin).toString());
-};
-
-const buildHistoryImageUrlCandidates = (item: any): string[] => {
-  if (!item) return [];
-  const candidates: string[] = [];
-  if (item.url) candidates.push(...toServerImageUrls(item.url));
-
-  if (item.localFilename) {
-    const trimmed = String(item.localFilename).replace(/^\/+/, '');
-    if (trimmed.startsWith('generated_scripts/')) {
-      candidates.push(...toServerImageUrls(`/${trimmed}`));
-    } else if (trimmed.startsWith('대본폴더/')) {
-      candidates.push(...toServerImageUrls(`/generated_scripts/${trimmed}`));
-    } else if (trimmed.includes('/')) {
-      const [folderName, ...fileParts] = trimmed.split('/');
-      const fileName = fileParts.join('/');
-      if (item.storyId || item.source === 'ai-studio') {
-        candidates.push(...toServerImageUrls(`/generated_scripts/대본폴더/${folderName}/images/${fileName}`));
-      }
-      candidates.push(...toServerImageUrls(`/generated_scripts/images/${trimmed}`));
-    } else {
-      if (item.storyId) {
-        candidates.push(...toServerImageUrls(`/generated_scripts/대본폴더/${item.storyId}/images/${trimmed}`));
-      }
-      candidates.push(...toServerImageUrls(`/generated_scripts/images/${trimmed}`));
-    }
-  }
-
-  return Array.from(new Set(candidates));
-};
-
-const resolveHistoryImageUrl = (item: any): string | undefined => {
-  const candidates = buildHistoryImageUrlCandidates(item);
-  return candidates[0];
-};
-
-const getNextHistoryImageUrl = (item: any, currentUrl?: string): string | undefined => {
-  const candidates = buildHistoryImageUrlCandidates(item);
-  if (!currentUrl) return candidates[0];
-  return candidates.find(candidate => candidate !== currentUrl);
+  return `${IMAGE_SERVER_ORIGIN}${normalized}`;
 };
 
 const AiStudioHost: React.FC = () => {
@@ -193,7 +133,30 @@ const AiStudioHost: React.FC = () => {
   const loadedIdsRef = useRef<Set<string>>(new Set());
 
   const resolveHistoryItemUrl = useCallback((item: any): string | undefined => {
-    return resolveHistoryImageUrl(item);
+    if (!item) return undefined;
+    if (item.url) return toServerImageUrl(item.url);
+    if (item.localFilename) {
+      const trimmed = String(item.localFilename).replace(/^\/+/, '');
+      if (trimmed.startsWith('generated_scripts/')) {
+        return toServerImageUrl(`/${trimmed}`);
+      }
+      if (trimmed.startsWith('대본폴더/')) {
+        return toServerImageUrl(`/generated_scripts/${trimmed}`);
+      }
+      if (trimmed.includes('/')) {
+        const [folderName, ...fileParts] = trimmed.split('/');
+        const fileName = fileParts.join('/');
+        if (item.storyId || item.source === 'ai-studio') {
+          return toServerImageUrl(`/generated_scripts/대본폴더/${folderName}/images/${fileName}`);
+        }
+        return toServerImageUrl(`/generated_scripts/images/${trimmed}`);
+      }
+      if (item.storyId) {
+        return toServerImageUrl(`/generated_scripts/대본폴더/${item.storyId}/images/${trimmed}`);
+      }
+      return toServerImageUrl(`/generated_scripts/images/${trimmed}`);
+    }
+    return undefined;
   }, []);
 
   // blob -> URL 로드 (PERFORMANCE: 디바운스 및 중복 로딩 방지)
@@ -210,7 +173,7 @@ const AiStudioHost: React.FC = () => {
 
       if (needsLoad.length === 0) return;
 
-      console.log(`[Performance] AiStudio resolving ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
+      console.log(`[Performance] AiStudio loading ${needsLoad.length} new thumbnails (${loadedIds.size} already loaded)`);
 
       const urls: Record<string, string> = {};
       const batchSize = 12;
@@ -220,6 +183,11 @@ const AiStudioHost: React.FC = () => {
           // dataUrl 우선 복원 (하위 호환성)
           if (item.dataUrl) {
             urls[item.id] = item.dataUrl;
+            loadedIds.add(item.id);
+            return;
+          }
+          if (item.url) {
+            urls[item.id] = toServerImageUrl(item.url) || item.url;
             loadedIds.add(item.id);
             return;
           }
@@ -235,17 +203,18 @@ const AiStudioHost: React.FC = () => {
               console.error('Failed to load blob', e);
             }
           }
-          if (item.url || item.localFilename) {
-            const resolved = resolveHistoryImageUrl(item);
-            if (!resolved) return;
-            urls[item.id] = resolved;
+          if (item.localFilename) {
+            const resolved = resolveHistoryItemUrl(item);
+            if (resolved) {
+              urls[item.id] = resolved;
+            }
             loadedIds.add(item.id);
           }
         }));
       }
       if (mounted && Object.keys(urls).length > 0) {
         setHistoryUrls(prev => ({ ...prev, ...urls }));
-        console.log(`[Performance] AiStudio resolved ${Object.keys(urls).length} thumbnails successfully`);
+        console.log(`[Performance] AiStudio loaded ${Object.keys(urls).length} thumbnails successfully`);
       }
     };
 
@@ -380,13 +349,11 @@ const AiStudioHost: React.FC = () => {
       // 2. 서버 디스크에 저장 (영구 보존)
       let savedFilename: string | undefined;
       let savedUrl: string | undefined;
-      let savedStoryId: string | undefined = activeStoryId;
       try {
         // dataUrl은 base64 포함 전체 문자열
         const saveResult = await saveImageToDisk(dataUrl, prompt, activeStoryId);
         savedFilename = saveResult?.filename;
         savedUrl = saveResult?.url;
-        savedStoryId = saveResult?.storyId || activeStoryId;
         console.log('Saved to disk:', savedFilename);
       } catch (err) {
         console.error('Failed to save image to disk', err);
@@ -405,7 +372,7 @@ const AiStudioHost: React.FC = () => {
         url: savedUrl,
         createdAt: Date.now(),
         source: 'ai-studio',
-        storyId: savedStoryId,
+        storyId: activeStoryId,
         settings: { mode: 'Generate', aspectRatio: '1:1', activeCheatKeys: [], noGuard: false, enhanceBackground: false, removeBackground: false, creativity: 0.8 }
       };
 
@@ -449,6 +416,22 @@ const AiStudioHost: React.FC = () => {
     }
     return orderedHistory;
   }, [orderedHistory, storyFilter]);
+
+  const restoredAiStudioResults = useMemo(() => {
+    const results: Array<{ id: string; prompt: string; imageUrl: string; isLoading: boolean; error: null }> = [];
+    displayHistory.forEach((item: any) => {
+      const imageUrl = historyUrls[item.id] || resolveHistoryItemUrl(item);
+      if (!imageUrl) return;
+      results.push({
+        id: `restored-${item.id}`,
+        prompt: item.prompt || item.filename || 'Saved image',
+        imageUrl,
+        isLoading: false,
+        error: null
+      });
+    });
+    return results.slice(0, 12);
+  }, [displayHistory, historyUrls, resolveHistoryItemUrl]);
 
   const storyFilterOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [{ value: STORY_FILTER_ALL, label: '전체보기' }];
@@ -509,7 +492,7 @@ const AiStudioHost: React.FC = () => {
         }}
       />
       <div className="flex-1 overflow-y-auto">
-        <AiStudioApp onAddHistory={handleAddHistoryFromDataUrl} />
+        <AiStudioApp onAddHistory={handleAddHistoryFromDataUrl} restoredResults={restoredAiStudioResults} />
       </div>
       <div className={`relative shrink-0 transition-all duration-300 ${showImageHistory ? 'w-28' : 'w-0'}`}>
         <div className={`sticky top-16 h-[calc(100vh-64px)] bg-gray-950 border-l border-gray-800 shadow-xl flex flex-col z-30 transition-opacity duration-300 ${showImageHistory ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
@@ -607,12 +590,6 @@ const AiStudioHost: React.FC = () => {
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover"
-                      onError={() => {
-                        const nextUrl = getNextHistoryImageUrl(item, historyUrls[item.id]);
-                        if (nextUrl) {
-                          setHistoryUrls(prev => ({ ...prev, [item.id]: nextUrl }));
-                        }
-                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-800 animate-pulse">

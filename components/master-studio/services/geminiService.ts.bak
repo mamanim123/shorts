@@ -90,158 +90,40 @@ const getClient = () => {
  * @param apiCall The async function to call.
  * @returns The result of the apiCall.
  */
-// ========== 다중 API 키 로테이션 (Master Studio용) ==========
-let masterKeyPool: string[] = [];
-let masterKeyIndex: number = 0;
-let masterKeyCooldowns: Record<string, number> = {};
-const DEFAULT_GEMINI_IMAGE_MODELS = [
-    'gemini-2.5-flash-image',
-    'gemini-2.0-flash-preview-image-generation',
-];
-const DEFAULT_IMAGEN_MODELS = [
-    'imagen-4.0-generate-001',
-    'imagen-4.0-fast-generate-001',
-    'imagen-3.0-generate-001',
-];
-
-const readEnvList = (name: string, fallback: string[]): string[] => {
-    // @ts-ignore
-    const raw = (typeof process !== 'undefined' && process.env && process.env[name]) || '';
-    const parsed = raw
-        .split(',')
-        .map((item: string) => item.trim())
-        .filter((item: string) => item.length > 0);
-    return parsed.length > 0 ? parsed : fallback;
-};
-
-const withPreferredModel = (preferred: string | undefined, fallback: string[]): string[] => {
-    const normalized = preferred?.trim();
-    return Array.from(new Set([...(normalized ? [normalized] : []), ...fallback]));
-};
-
-const getGeminiImageModels = (preferred?: string): string[] =>
-    withPreferredModel(preferred, readEnvList('GEMINI_IMAGE_MODELS', DEFAULT_GEMINI_IMAGE_MODELS));
-
-const getImagenModels = (preferred?: string): string[] =>
-    withPreferredModel(preferred, readEnvList('GEMINI_IMAGEN_MODELS', DEFAULT_IMAGEN_MODELS));
-
-const initMasterKeyPool = (): void => {
-    if (masterKeyPool.length > 0) return;
-
-    // @ts-ignore
-    const keysString = (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEYS) || '';
-    const keysList = keysString
-        .split(',')
-        .map((k: string) => k.trim())
-        .filter((k: string) => k.length > 0);
-
-    if (keysList.length > 0) {
-        masterKeyPool = keysList;
-        console.log(`✅ [Master Studio] ${keysList.length}개의 API 키 로드됨. 키 로테이션 활성화.`);
-    }
-};
-
-const getNextMasterKey = (): string => {
-    initMasterKeyPool();
-    if (masterKeyPool.length === 0) return '';
-
-    const now = Date.now();
-    for (let i = 0; i < masterKeyPool.length; i++) {
-        const index = (masterKeyIndex + i) % masterKeyPool.length;
-        const key = masterKeyPool[index];
-        if ((masterKeyCooldowns[key] || 0) <= now) {
-            masterKeyIndex = (index + 1) % masterKeyPool.length;
-            return key;
-        }
-    }
-    const key = masterKeyPool[masterKeyIndex];
-    masterKeyIndex = (masterKeyIndex + 1) % masterKeyPool.length;
-    return key;
-};
-
-const markMasterKeyFailed = (key: string): void => {
-    masterKeyCooldowns[key] = Date.now() + 60000;
-    console.warn(`⚠️ API 키 할당량 초과. 60초 쿨다운: ${key.slice(0, 10)}...`);
-};
-
 const withRetry = async <T>(apiCall: () => Promise<T>, usageContext?: string): Promise<T> => {
-    initMasterKeyPool();
-    const maxRetries = Math.max(3, masterKeyPool.length || 1);
+    const maxRetries = 3;
     let lastError: Error | null = null;
+    const usageKeyId = getActiveApiKeyId();
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            // 키 풀이 있으면 다음 사용 가능한 키로 sessionApiKey 교체
-            if (masterKeyPool.length > 1) {
-                const nextKey = getNextMasterKey();
-                if (nextKey) {
-                    sessionApiKey = nextKey;
-                    console.log(`🔑 API 키 사용: ${nextKey.slice(0, 10)}...${nextKey.slice(-5)} (시도 ${attempt}/${maxRetries})`);
-                }
-            }
-
             const result = await apiCall();
             if (usageContext) {
-                recordUsage(usageContext, result, getActiveApiKeyId());
+                recordUsage(usageContext, result, usageKeyId);
             }
             return result;
         } catch (error) {
             lastError = error as Error;
             const errorMessage = lastError.message?.toLowerCase() || '';
 
-            // Check for 429 / RESOURCE_EXHAUSTED
-            const is429 = errorMessage.includes('resource_exhausted') || errorMessage.includes('"code":429') || errorMessage.includes('"status":"resource_exhausted"') || errorMessage.includes('quota exceeded');
-
-            if (is429 && attempt < maxRetries && masterKeyPool.length > 1) {
-                // Mark current key as failed
-                if (sessionApiKey) {
-                    markMasterKeyFailed(sessionApiKey);
-                }
-                console.log(`🔄 429 에러 감지! 다음 키로 전환 (시도 ${attempt}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                continue;
-            }
-
-            // Check for other retryable errors (503)
-            if (errorMessage.includes('"code":503') || errorMessage.includes('"status":"unavailable"')) {
+            // Check for retryable error codes (503, 429)
+            if (errorMessage.includes('"code":503') || errorMessage.includes('"status":"unavailable"') || errorMessage.includes('resource_exhausted')) {
                 if (attempt < maxRetries) {
-                    const delay = Math.pow(2, attempt) * 1000;
-                    console.log(`API call failed (Attempt ${attempt}/${maxRetries}). Retrying in ${delay / 1000}s...`);
+                    const delay = Math.pow(2, attempt) * 1000; // 2s, 4s
+                    console.log(`API call failed (Attempt ${attempt}/${maxRetries}). Retrying in ${delay / 1000}s... Error: ${lastError.message}`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
                 } else {
                     console.error(`API call failed after ${maxRetries} attempts.`);
-                    break;
+                    break; // Max retries reached
                 }
+            } else {
+                // Not a retryable error, break immediately
+                break;
             }
-
-            // Not a retryable error, break immediately
-            break;
         }
     }
+    // If we're here, all attempts failed. Throw the last captured error.
     throw lastError;
-};
-
-const withModelFallback = async <T>(
-    models: string[],
-    apiCall: (model: string) => Promise<T>,
-    usageContext: string
-): Promise<T> => {
-    let lastError: unknown = null;
-    for (let index = 0; index < models.length; index++) {
-        const model = models[index];
-        try {
-            return await apiCall(model);
-        } catch (error) {
-            lastError = error;
-            if (index < models.length - 1) {
-                console.warn(`⚠️ ${usageContext} 모델 실패: ${model}. 다음 모델로 롤백합니다.`);
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw lastError instanceof Error ? lastError : new Error(`${usageContext} 실패`);
 };
 
 // --- IMAGE STUDIO ---
@@ -251,6 +133,7 @@ export const generateImageWithImagen = async (
     config: { aspectRatio: string; model?: string; seed?: number },
     safetySettings?: any
 ): Promise<any> => {
+    const ai = getClient();
     // [FIX] Use raw prompt as server already enhanced it
     const finalPrompt = prompt;
 
@@ -271,11 +154,7 @@ export const generateImageWithImagen = async (
     }
 
     console.log("Generating Image with Imagen:", { finalPrompt, safetySettings, aspectRatio: config.aspectRatio, seed: config.seed });
-    return withModelFallback(
-        getImagenModels(config.model),
-        (model) => withRetry(() => getClient().models.generateImages({ ...payload, model }), 'Imagen 이미지 생성'),
-        'Imagen 이미지 생성'
-    );
+    return withRetry(() => ai.models.generateImages(payload), 'Imagen 이미지 생성');
 };
 
 // [NEW] Fetch available models dynamically
@@ -322,21 +201,22 @@ export const fetchAvailableModels = async (): Promise<string[]> => {
 };
 
 export const generateImage = async (prompt: string, config: any, safetySettings?: any, imageParts?: { inlineData: { data: string, mimeType: string } }[]): Promise<GenerateContentResponse> => {
+    const ai = getClient();
     // [FIX] Use raw prompt as server already enhanced it
     const finalPrompt = prompt;
     const parts: any[] = [{ text: finalPrompt }];
     if (imageParts && imageParts.length > 0) {
         parts.push(...imageParts);
     }
-    return withModelFallback(getGeminiImageModels(config.model), (model) => withRetry(() => getClient().models.generateContent({
-        model,
+    return withRetry(() => ai.models.generateContent({
+        model: config.model || 'gemini-1.5-flash', // Fallback to standard Gemini model
         contents: { parts },
         config: {
             ...config,
             responseModalities: [Modality.IMAGE],
             safetySettings,
         },
-    }), 'Gemini 이미지 생성'), 'Gemini 이미지 생성');
+    }), 'Gemini 이미지 생성');
 };
 
 // [NEW] Make prompt safe for content filters
@@ -467,6 +347,7 @@ export const editImage = async (
     referenceImage?: { inlineData: { data: string, mimeType: string } },
     mask?: { inlineData: { data: string, mimeType: string } }
 ): Promise<GenerateContentResponse> => {
+    const ai = getClient();
     // [FIX] Use raw prompt as server already enhanced it
     const finalPrompt = prompt;
     const parts: any[] = [{ text: finalPrompt }, image];
@@ -476,30 +357,31 @@ export const editImage = async (
     if (mask) {
         parts.push(mask);
     }
-    return withModelFallback(getGeminiImageModels(config.model), (model) => withRetry(() => getClient().models.generateContent({
-        model,
+    return withRetry(() => ai.models.generateContent({
+        model: config.model || 'gemini-2.5-flash-image',
         contents: { parts },
         config: {
             ...config,
             responseModalities: [Modality.IMAGE],
             safetySettings,
         },
-    }), '이미지 편집'), '이미지 편집');
+    }), '이미지 편집');
 };
 
 export const variationsImage = async (prompt: string, image: { inlineData: { data: string, mimeType: string } }, config: any, safetySettings?: any): Promise<GenerateContentResponse> => {
+    const ai = getClient();
     // [FIX] Use raw prompt as server already enhanced it
     const finalPrompt = prompt;
     const parts = [{ text: finalPrompt }, image];
-    return withModelFallback(getGeminiImageModels(config.model), (model) => withRetry(() => getClient().models.generateContent({
-        model,
+    return withRetry(() => ai.models.generateContent({
+        model: config.model || 'gemini-2.5-flash-image',
         contents: { parts },
         config: {
             ...config,
             responseModalities: [Modality.IMAGE],
             safetySettings,
         },
-    }), '이미지 변형'), '이미지 변형');
+    }), '이미지 변형');
 };
 
 

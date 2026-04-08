@@ -3714,9 +3714,8 @@ ${scriptInput}
             }
 
             const fallbackFolderTitle = (() => {
-                const parsedTitle = typeof parsedResult.title === 'string' ? parsedResult.title.trim() : '';
                 const firstLine = scriptLines.find((line) => line.trim()) || 'shorts_lab';
-                return (parsedTitle || aiTopic || firstLine).trim();
+                return (aiTopic || firstLine).trim();
             })();
             const consolidatedPayload = {
                 title: fallbackFolderTitle,

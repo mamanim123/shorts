@@ -3268,30 +3268,30 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
       "scriptLine": "첫 번째 대사 (scriptBody/scriptLines의 첫 번째 문장과 정확히 일치)",
       "characterIds": ["WomanA", "WomanB"],
       "cameraAngle": "drone shot",
-      "background": "lush spring golf course with fresh green fairway, warm afternoon sunlight, and soft cherry blossoms swaying near the path",
-      "action": "walking side by side across the fairway with light playful smiles, hair moving gently in the spring breeze",
+      "background": "vast snow-covered golf course stretching to horizon under golden morning light",
+      "action": "walking side by side leaving footprints in pristine snow, laughing joyfully",
       "emotion": "설렘",
-      "summary": "two women appearing on a warm spring golf course with a playful and intriguing mood"
+      "summary": "two women enjoying a beautiful winter day at the golf course"
     },
     {
       "sceneNumber": 2,
       "scriptLine": "두 번째 대사",
       "characterIds": ["WomanA"],
       "cameraAngle": "full body wide shot",
-      "background": "elegant clubhouse entrance with polished glass, sunlit stone steps, and bright spring trees surrounding the terrace",
-      "action": "pausing mid-step with a golf club in hand, glancing back with a subtle smile as the spring light hits her face",
+      "background": "elegant clubhouse entrance with modern glass architecture reflecting winter sky",
+      "action": "twirling gracefully with golf club in hand, snow gently falling around her",
       "emotion": "행복",
-      "summary": "a woman drawing attention near the clubhouse in a bright spring atmosphere"
+      "summary": "woman playfully twirling in the snow outside the clubhouse"
     },
     {
       "sceneNumber": 3,
       "scriptLine": "세 번째 대사",
       "characterIds": ["ManA", "ManB"],
       "cameraAngle": "low angle wide",
-      "background": "dramatic fairway lined with tall pine trees and vivid spring greenery under a clear blue sky",
-      "action": "striding forward with tense expressions, exchanging quick looks as if something suspicious just happened",
+      "background": "dramatic golf course fairway with towering pine trees covered in snow",
+      "action": "striding confidently forward toward camera, snow crunching beneath their feet",
       "emotion": "비장",
-      "summary": "two men reacting tensely on the fairway after noticing an awkward moment"
+      "summary": "two men walking confidently on the snowy fairway"
     }
     // ... ${sentenceRange.min}~${sentenceRange.max}개 씬 (scriptBody의 문장 수와 정확히 일치)
     // 반드시 drone shot, full body wide, low angle wide, establishing wide 위주로!
@@ -3325,13 +3325,6 @@ ${formatRulesText}
 
 7. **대본 구조 필수**:
    - 첫 문장은 반드시 질문형 / 충격형 / 관계 의심형 Hook
-   - 첫 문장은 스크롤을 멈추게 할 정도로 강해야 하며, 누가 수상한지 / 누가 들켰는지 / 무슨 일이 터졌는지가 즉시 느껴져야 함
-   - 첫 문장은 배경 설명으로 시작하지 말 것 ("봄날 골프장에 갔어", "오늘 라운딩을 나갔어" 금지)
-   - 첫 문장은 18~32자 내외의 짧고 날카로운 문장으로 작성
-   - 아래 3가지 유형 중 하나로만 시작:
-     1) 질문형: "여보, 방금 누구한테 한 거야?"
-     2) 충격형: "그 윙크 하나에 분위기 끝났어"
-     3) 관계 의심형: "남편 친구 쳐다보다가 딱 걸렸어"
    - 전체 문장의 70% 이상을 대사로 작성
    - 구조는 반드시 오해 유발 → 오해 강화 → 반전 폭발
    - 마지막 문장은 가장 강한 반전 대사로 마무리
@@ -3354,7 +3347,6 @@ ${formatRulesText}
 10. **배경 일관성 규칙**:
    - Scene 1에서 설정한 배경 톤/계절/날씨를 전 씬에 일관되게 유지
    - 장소 전환이 명시된 경우에만 배경 변경 허용
-   - 현재 주제의 계절/장소와 맞지 않는 예시는 절대 섞지 말 것 (예: 봄 주제인데 snow/winter 배경 금지)
 
 11. **POV 금지**:
    - POV/first-person 시점 카메라 앵글은 사용하지 말 것
@@ -3403,18 +3395,17 @@ ${formatRulesText}
    - **창의적이고 구체적으로** 작성
    - 나쁜 예: "golf course" (너무 간단함)
    - 좋은 예: "sunlit golf course green with morning dew sparkling on grass"
-   - 좋은 예: "elegant clubhouse lounge with wide glass windows overlooking a bright spring fairway"
+   - 좋은 예: "elegant clubhouse lounge with floor-to-ceiling windows overlooking snow-covered fairway"
    - 좋은 예: "pristine white sand bunker with dramatic shadows"
    - **시각적 요소 포함**: 조명, 분위기, 시간대, 날씨, 특징적 오브젝트
    - **감정 전달**: 배경으로 감정과 분위기를 강화
-   - **주제 일치**: 배경의 계절, 날씨, 소품은 반드시 현재 주제와 일치해야 함
 
 6. **동작(action) 작성 규칙**:
    - **역동적이고 생생하게** 작성
    - 나쁜 예: "sitting and smiling" (너무 평범함)
    - 좋은 예: "laughing joyfully while tossing her hair back in the golden sunlight"
    - 좋은 예: "confidently walking toward camera with a mysterious smile"
-   - 좋은 예: "suddenly stopping mid-step and turning back with an awkward smile as everyone watches"
+   - 좋은 예: "dramatically spinning around with arms wide open, snow falling around her"
    - **감정과 뉘앙스 포함**: 단순 동작이 아닌 감정이 담긴 행동
    - **세부 묘사**: 손동작, 시선, 표정 변화 등 구체적으로
 
@@ -3430,8 +3421,6 @@ ${formatRulesText}
 - [ ] 동일 인물 원샷이 2씬 이상 연속되지 않는가?
 - [ ] 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않았는가?
 - [ ] 첫 문장이 질문형/충격형/관계 의심형 Hook인가?
-- [ ] 첫 문장이 배경 설명이 아니라 사건/의심/충격 그 자체로 시작하는가?
-- [ ] 첫 문장이 18~32자 내외로 짧고 날카로운가?
 - [ ] 전체 문장의 70% 이상이 대사인가?
 - [ ] 오해 유발 → 오해 강화 → 반전 폭발의 3단 구조인가?
 - [ ] 카메라 앵글 비율을 준수했는가? (drone shot 25%, full body wide 25%, low angle wide 20%, establishing wide 15%, close-up 최대 10%, POV 5%)

@@ -3626,262 +3626,19 @@ ${scriptInput}
         }
     };
 
-    const handleMasterStyleSceneGeneration = async () => {
-        if (isManualSceneParsing) return;
-        if (!scriptInput.trim()) return;
-
-        setIsManualSceneParsing(true);
-        try {
-            const selectedService = targetService || 'GEMINI';
-            const finalScript = scriptInput.trim();
-            const inferredScriptGender = inferGenderFromText(finalScript, settings.koreanGender);
-            const scriptLines = extractManualScriptLines(finalScript);
-
-            showToast(`${selectedService} AI로 인물 추출 중...`, 'info');
-            const characterExtractPrompt = buildCharacterExtractionPrompt({
-                scriptLines,
-                defaultGender: inferredScriptGender
-            });
-
-            const characterResponse = await fetch('http://localhost:3002/api/generate/raw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    service: selectedService,
-                    prompt: characterExtractPrompt,
-                    maxTokens: 1200,
-                    temperature: 0.2,
-                    folderName: currentFolderName,
-                    skipFolderCreation: true
-                })
-            });
-
-            if (!characterResponse.ok) {
-                throw new Error(`인물 추출 API 오류: ${characterResponse.status}`);
-            }
-
-            const characterData = await characterResponse.json();
-            const characterText = characterData.rawResponse || characterData.text || characterData.result || '';
-            const extractedCharacters = parseCharacterExtractionResponse(characterText);
-
-            const slotMap = buildCharacterSlotMapping(extractedCharacters.characters);
-            const lineCharacterMap = mapLineCharactersToSlots(extractedCharacters.lineCharacterNames, slotMap);
-
-            const uniqueSlotIds = Array.from(new Set(Array.from(slotMap.values())));
-            const hasCaddy = extractedCharacters.characters.some((char) => {
-                const name = (char.name || '').trim();
-                return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
-            });
-            const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
-
-            const characterList = allSlotIds.map((slotId) => ({
-                id: slotId,
-                name: '',
-                slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man ')
-            }));
-
-            const scenePrompt = buildManualSceneDecompositionPrompt({
-                scriptLines,
-                characters: characterList,
-                enableWinterAccessories
-            });
-
-            showToast(`${selectedService} AI로 씬 분해 중...`, 'info');
-            const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    service: selectedService,
-                    prompt: scenePrompt,
-                    folderName: currentFolderName,
-                    maxTokens: 2000,
-                    temperature: 0.6,
-                    skipFolderCreation: true
-                })
-            });
-
-            if (!sceneResponse.ok) {
-                throw new Error(`씬 분해 API 오류: ${sceneResponse.status}`);
-            }
-
-            const sceneData = await sceneResponse.json();
-            const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
-            const parsedResult = parseManualSceneDecompositionResponse(generatedText);
-            const scenesSource = parsedResult.scenes || [];
-
-            if (scenesSource.length === 0) {
-                throw new Error('씬 분해 결과가 비어있습니다.');
-            }
-
-            const fallbackFolderTitle = (() => {
-                const firstLine = scriptLines.find((line) => line.trim()) || 'shorts_lab';
-                return (aiTopic || firstLine).trim();
-            })();
-            const consolidatedPayload = {
-                title: fallbackFolderTitle,
-                scriptBody: finalScript,
-                scenes: scenesSource,
-                characters: extractedCharacters.characters || [],
-                lineCharacterNames: extractedCharacters.lineCharacterNames || [],
-                source: 'master-step2'
-            };
-
-            let resolvedFolderName: string | null = null;
-            try {
-                const saveResponse = await fetch('http://localhost:3002/api/save-story', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title: fallbackFolderTitle,
-                        content: JSON.stringify(consolidatedPayload, null, 2),
-                        service: selectedService
-                    })
-                });
-
-                if (!saveResponse.ok) {
-                    throw new Error(`폴더 저장 API 오류: ${saveResponse.status}`);
-                }
-
-                const saveData = await saveResponse.json();
-                if (saveData?.folderName) {
-                    resolvedFolderName = saveData.folderName;
-                    setCurrentFolderName(saveData.folderName);
-                }
-            } catch (saveError) {
-                console.error('Failed to anchor master scene folder:', saveError);
-                showToast('최종 저장 폴더를 확정하지 못했습니다. 임시 상태로 계속 진행합니다.', 'warning');
-            }
-
-            const normalizedMasterScenes = scenesSource.map((scene, idx) => {
-                const sceneNumber = scene.sceneNumber || idx + 1;
-                const lineSlots = normalizeSceneCharacterIds(
-                    lineCharacterMap.get(sceneNumber) || [],
-                    slotMap,
-                    settings.koreanGender,
-                    hasCaddy
-                );
-                const normalizedSceneIds = normalizeSceneCharacterIds(
-                    Array.isArray(scene.characterIds) ? scene.characterIds : [],
-                    slotMap,
-                    settings.koreanGender,
-                    hasCaddy
-                );
-                const fallbackId = allSlotIds[0] || (settings.koreanGender === 'male' ? 'ManA' : 'WomanA');
-                const sceneCharacterIds = lineSlots.length > 0
-                    ? lineSlots
-                    : (normalizedSceneIds.length > 0 ? normalizedSceneIds : [fallbackId]);
-
-                return {
-                    sceneNumber,
-                    scriptLine: scene.scriptLine || scriptLines[idx] || `장면 ${sceneNumber}`,
-                    characterIds: sceneCharacterIds,
-                    cameraAngle: scene.cameraAngle || '',
-                    background: scene.background || '',
-                    action: scene.action || '',
-                    summary: scene.summary || ''
-                };
-            });
-
-            const rebalancedScenes = rebalanceMasterSceneCharacterMix(
-                normalizedMasterScenes,
-                settings.koreanGender
-            );
-
-            const allCharacterIds = new Set<string>();
-            rebalancedScenes.forEach((scene: any) => {
-                (scene.characterIds || []).forEach((id: string) => allCharacterIds.add(id));
-            });
-
-            const outfitsResponse = await fetch('http://localhost:3002/api/outfits');
-            const outfitsData = await outfitsResponse.json();
-            const allOutfits = outfitsData.outfits || [];
-            const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
-            const outfitMap = assignOutfitsToCharacters({
-                characterIds: Array.from(allCharacterIds),
-                genre: aiGenre,
-                outfitsData: allOutfits,
-                topic: aiTopic || finalScript
-            });
-
-            const characterRules = getCharacterRules();
-            const profiles = Array.from(allCharacterIds).map((slotId) => {
-                const outfit = outfitMap.get(slotId);
-                let characterInfo: any = {};
-
-                if (slotId.startsWith('Woman')) {
-                    characterInfo = characterRules.females.find((f: any) => f.id === slotId) || {};
-                } else if (slotId.startsWith('Man')) {
-                    characterInfo = characterRules.males.find((m: any) => m.id === slotId) || {};
-                }
-
-                return {
-                    slotId,
-                    name: characterInfo.name || slotId,
-                    identity: characterInfo.identity || '',
-                    hair: characterInfo.hair || '',
-                    body: characterInfo.body || '',
-                    outfit: outfit?.name || '의상 미선택',
-                    outfitPrompt: outfit?.prompt || ''
-                };
-            });
-
-            setMasterCharacterProfiles(profiles);
-            setMasterOutfitMap(outfitMap);
-            const storageFolderName = resolvedFolderName || currentFolderName;
-            if (storageFolderName) {
-                setAppStorageValue(getMasterProfilesStorageKey(storageFolderName), profiles);
-                setAppStorageValue(getMasterOutfitsStorageKey(storageFolderName), serializeMasterOutfitMap(outfitMap));
-            }
-
-            const extractedScenes = rebalancedScenes.map((scene: any, index: number) => ({
-                number: index + 1,
-                text: scene.scriptLine || '',
-                characterIds: scene.characterIds || [],
-                cameraAngle: scene.cameraAngle || 'full body wide shot',
-                background: scene.background || '',
-                action: scene.action || 'standing naturally',
-                prompt: '',
-                characterProfilesApplied: false,
-                imageUrl: undefined,
-                isSelected: true,
-                shotType: getShotTypeByCharacterCount((scene.characterIds || []).length),
-                age: aiTargetAge,
-                outfit: '',
-                summary: scene.summary || '',
-                camera: scene.cameraAngle || '',
-                videoPrompt: '',
-                dialogue: scene.scriptLine || '',
-                voiceType: 'narration' as const,
-                narrationText: scene.scriptLine || '',
-                narrationEmotion: '',
-                narrationSpeed: 'normal' as const,
-                lipSyncSpeaker: '',
-                lipSyncSpeakerName: '',
-                lipSyncLine: '',
-                lipSyncEmotion: '',
-                lipSyncTiming: undefined,
-                shortPromptKo: '',
-                longPromptKo: ''
-            }));
-
-            setScenes(extractedScenes);
-            setActiveTab('preview');
-            showToast(`✓ ${selectedService} AI로 씬 분해를 완료했습니다! 캐릭터 적용 버튼으로 이미지 프롬프트를 생성하세요.`, 'success');
-        } catch (error) {
-            console.error('Master-style scene generation failed:', error);
-            const message = error instanceof Error ? error.message : '씬 분해에 실패했습니다.';
-            showToast(message, 'error');
-        } finally {
-            setIsManualSceneParsing(false);
-        }
-    };
-
     const handleParseScenes = () => {
         if (activeTab === 'manual') {
             handleManualSceneGeneration();
             return;
         }
-        handleMasterStyleSceneGeneration();
+        if (!validateIdentityLock()) return;
+        const parsed = parseScenes(scriptInput);
+        const withPrompts = parsed.map(scene => ({
+            ...scene,
+            prompt: generatePrompt(scene.text)
+        }));
+        setScenes(normalizeSceneNumbers(withPrompts));
+        setActiveTab('preview');
     };
 
     const handleRegeneratePrompts = () => {
@@ -4641,14 +4398,17 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 : undefined;
             const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
 
-            // 대본 전용 프롬프트 생성
-            const prompt = buildLabScriptOnlyPrompt({
+            // ShortsLab lightweight prompt generation with genre guide override
+            const prompt = buildLabScriptPrompt({
                 topic: aiTopic,
                 genre: aiGenre,
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
                 legacyGenrePrompt,
+                enableWinterAccessories: enableWinterAccessories,
+                useRandomOutfits,
+                allowedOutfitCategories,
                 characterSlotMode: scriptCharacterMode
             });
 
@@ -4663,8 +4423,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     service: selectedService,  // ← AI 서비스 선택 추가
                     prompt,
                     maxTokens: 2000,
-                    temperature: 0.9,
-                    skipFolderCreation: true
+                    temperature: 0.9
                 })
             });
 
@@ -4675,11 +4434,15 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             const data = await response.json();
             const generatedText = data.rawResponse || data.text || data.result || '';
 
-            // 1단계 대본 생성은 임시 단계이므로 폴더를 만들지 않고 기존 앵커도 제거
-            setCurrentFolderName(null);
+            // 스토리 폴더명 저장 (기존 시스템 호환)
+            if (data._folderName) {
+                setCurrentFolderName(data._folderName);
+                console.log(`[ShortsLab] Story folder assigned: ${data._folderName}`);
+            }
 
-            // 결과에서 대본만 추출
-            let finalScript = '';
+            // 결과에서 대본 및 scenes 추출
+            let finalScript = '';  // [FIX] 빈 문자열로 초기화 (JSON 전체가 들어가는 것 방지)
+            let extractedScenes: Scene[] = [];
 
             try {
                 // 1. JSON 클리닝 로직 강화: "JSON" 접두사, 마크다운 등 제거
@@ -4689,46 +4452,115 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     jsonClean = jsonClean.replace(/^```(json)?/, "").replace(/```$/, "").trim();
                 }
 
-                const parsed = parseJsonFromText<any>(jsonClean, [
-                    "script",
-                    "scriptBody",
-                    "scriptLines",
-                    "openingLine",
-                    "hook",
-                    "punchline",
-                    "twist",
-                    "title"
-                ]);
+                const parsed = parseJsonFromText<any>(jsonClean, ["script", "scriptBody", "scriptLine", "shortPrompt", "shortPromptKo", "longPrompt", "longPromptKo", "hook", "punchline", "twist", "title"]);
                 if (!parsed) {
                     throw new Error('JSON parse failed');
                 }
 
-                const normalizeScriptOnlyLines = (value: unknown): string[] => {
-                    if (Array.isArray(value)) {
-                        return value
-                            .map((line) => (typeof line === 'string' ? line.trim() : ''))
-                            .filter(Boolean);
-                    }
-                    if (typeof value === 'string') {
-                        return value
-                            .split('\n')
-                            .map((line) => line.trim())
-                            .filter(Boolean);
-                    }
-                    return [];
-                };
-
                 // 쇼츠 생성기 호환 구조 (scriptBody) 또는 기존 구조 (scripts[0].script)
                 const scriptData = parsed.scripts?.[0] || parsed;
-                const normalizedScriptLines = normalizeScriptOnlyLines(scriptData.scriptLines || parsed.scriptLines);
-                const rawScript = normalizedScriptLines.length > 0
-                    ? normalizedScriptLines.join('\n')
-                    : (scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || "");
+                const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || "";
 
                 if (rawScript) {
                     // --- 구분자가 포함되어 있다면 본문만 추출 시도
                     const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
                     finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
+                }
+
+                // scenes 배열 추출 + 후처리 적용
+                const scenesSource = scriptData.scenes || parsed.scenes;
+                if (scenesSource && Array.isArray(scenesSource)) {
+                    if (Array.isArray(scriptData.characters)) {
+                        scriptData.characters = scriptData.characters.map((character: any) => {
+                            const id = String(character?.id || '').trim();
+                            if (id.toLowerCase().startsWith('man') && typeof character.identity === 'string') {
+                                const fixedIdentity = character.identity.replace(/\bin her\b/gi, 'in his');
+                                return { ...character, identity: fixedIdentity };
+                            }
+                            return character;
+                        });
+                    }
+                    // [FIX] 후처리 적용: 한국인 정체성, 의상, no text 태그 등
+                    const lockedOutfits = scriptData.lockedOutfits || parsed.lockedOutfits;
+                    const preferredFemaleOutfit = lockedOutfits?.womanA || settings.selectedOutfit || undefined;
+                    const preferredMaleOutfit = lockedOutfits?.manA || undefined;
+
+                    const processedScenes = postProcessAiScenes(scenesSource, {
+                        femaleOutfit: preferredFemaleOutfit,
+                        maleOutfit: preferredMaleOutfit,
+                        targetAgeLabel: aiTargetAge,
+                        gender: settings.koreanGender,
+                        characters: scriptData.characters || parsed.characters, // 캐릭터 정보 전달
+                        genre: aiGenre,                    // v3.6: 장르 정보 전달
+                        totalScenes: scenesSource.length,   // v3.6: 전체 장면 수 전달
+                        enableWinterAccessories,
+                        useGenderGuard: settings.useGenderGuard, // 성별 가드 전달
+                        postProcessConfig: selectedGenreData?.postProcessConfig
+                    });
+
+                    processedScenes.forEach((scene: any, idx: number) => {
+                        const rawScene = scenesSource[idx] || {};
+                        const sceneNo = scene.sceneNumber || idx + 1;
+                        console.log(`[ShortsLab] PostProcess Scene ${sceneNo}`);
+                        console.log('LLM longPrompt:', rawScene.longPrompt || rawScene.shortPrompt || rawScene.prompt || '');
+                        console.log('POST longPrompt:', scene.longPrompt || scene.shortPrompt || scene.prompt || '');
+                    });
+
+                    try {
+                        const diffReport = buildPromptDiffReport(scenesSource, processedScenes, {
+                            title: aiTopic?.trim() || 'ShortsLab',
+                            folderName: data._folderName,
+                            service: selectedService
+                        });
+                        await fetch('http://localhost:3002/api/save-story', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: `${aiTopic?.trim() || 'ShortsLab'}_prompt_diff`,
+                                content: diffReport,
+                                service: 'ShortsLab',
+                                folderName: data._folderName
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('[ShortsLab] Failed to save prompt diff report:', e);
+                    }
+
+                    extractedScenes = processedScenes.map((scene: any, idx: number) => {
+                        const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
+                        const narrationText = typeof scene.narration === 'string'
+                            ? scene.narration
+                            : scene.narration?.text || '';
+                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
+                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
+
+                        return {
+                            number: scene.sceneNumber || idx + 1,
+                            text: sceneText,
+                            prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || '',
+                            imageUrl: undefined,
+                            shortPromptKo: scene.shortPromptKo || '',
+                            longPromptKo: scene.longPromptKo || '',
+                            summary: scene.summary || sceneText,
+                            camera: scene.camera || '',
+                            shotType: scene.shotType || '',
+                            age: scene.age || '',
+                            outfit: scene.outfit || '',
+                            isSelected: true,
+                            videoPrompt: scene.videoPrompt || '',
+                            dialogue: scene.dialogue || lipSyncLine || '',
+                            voiceType,
+                            narrationText: narrationText || sceneText,
+                            narrationEmotion: scene.narration?.emotion || '',
+                            narrationSpeed: scene.narration?.speed || 'normal',
+                            lipSyncSpeaker: scene.lipSync?.speaker || '',
+                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
+                            lipSyncLine: lipSyncLine || '',
+                            lipSyncEmotion: scene.lipSync?.emotion || '',
+                            lipSyncTiming: scene.lipSync?.timing || undefined
+                        };
+                    });
+                    console.log(`[ShortsLab] Extracted and post-processed ${extractedScenes.length} scenes`);
                 }
             } catch (e) {
                 console.warn('[ShortsLab] JSON parsing failed, using regex fallback:', e);
@@ -4750,14 +4582,20 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             }
 
             // 결과 유효성 체크 및 상태 업데이트
-            if (!finalScript) {
+            if (!finalScript && extractedScenes.length === 0) {
                 throw new Error('대본을 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
             }
 
-            setScriptInput(finalScript.trim());
-            setScenes([]);
-            setActiveTab('input');
-            showToast(`✅ ${selectedService} AI로 대본이 생성되었습니다. 입력란에서 수정 후 씬 분해를 진행하세요.`, 'success');
+            if (finalScript) setScriptInput(finalScript.trim());
+
+            if (extractedScenes.length > 0) {
+                setScenes(extractedScenes);
+                setActiveTab('preview');
+
+                // 사용자 피드백: 생성 완료
+                const selectedService = targetService || 'GEMINI';
+                showToast(`✅ ${selectedService} AI로 대본이 생성되었습니다! (${extractedScenes.length}개 씬)`, 'success');
+            }
 
         } catch (error) {
             console.error('AI 대본 생성 실패:', error);

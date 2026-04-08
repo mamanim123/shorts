@@ -3713,45 +3713,6 @@ ${scriptInput}
                 throw new Error('씬 분해 결과가 비어있습니다.');
             }
 
-            const fallbackFolderTitle = (() => {
-                const firstLine = scriptLines.find((line) => line.trim()) || 'shorts_lab';
-                return (aiTopic || firstLine).trim();
-            })();
-            const consolidatedPayload = {
-                title: fallbackFolderTitle,
-                scriptBody: finalScript,
-                scenes: scenesSource,
-                characters: extractedCharacters.characters || [],
-                lineCharacterNames: extractedCharacters.lineCharacterNames || [],
-                source: 'master-step2'
-            };
-
-            let resolvedFolderName: string | null = null;
-            try {
-                const saveResponse = await fetch('http://localhost:3002/api/save-story', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title: fallbackFolderTitle,
-                        content: JSON.stringify(consolidatedPayload, null, 2),
-                        service: selectedService
-                    })
-                });
-
-                if (!saveResponse.ok) {
-                    throw new Error(`폴더 저장 API 오류: ${saveResponse.status}`);
-                }
-
-                const saveData = await saveResponse.json();
-                if (saveData?.folderName) {
-                    resolvedFolderName = saveData.folderName;
-                    setCurrentFolderName(saveData.folderName);
-                }
-            } catch (saveError) {
-                console.error('Failed to anchor master scene folder:', saveError);
-                showToast('최종 저장 폴더를 확정하지 못했습니다. 임시 상태로 계속 진행합니다.', 'warning');
-            }
-
             const normalizedMasterScenes = scenesSource.map((scene, idx) => {
                 const sceneNumber = scene.sceneNumber || idx + 1;
                 const lineSlots = normalizeSceneCharacterIds(
@@ -3827,10 +3788,9 @@ ${scriptInput}
 
             setMasterCharacterProfiles(profiles);
             setMasterOutfitMap(outfitMap);
-            const storageFolderName = resolvedFolderName || currentFolderName;
-            if (storageFolderName) {
-                setAppStorageValue(getMasterProfilesStorageKey(storageFolderName), profiles);
-                setAppStorageValue(getMasterOutfitsStorageKey(storageFolderName), serializeMasterOutfitMap(outfitMap));
+            if (currentFolderName) {
+                setAppStorageValue(getMasterProfilesStorageKey(currentFolderName), profiles);
+                setAppStorageValue(getMasterOutfitsStorageKey(currentFolderName), serializeMasterOutfitMap(outfitMap));
             }
 
             const extractedScenes = rebalancedScenes.map((scene: any, index: number) => ({
@@ -4663,8 +4623,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     service: selectedService,  // ← AI 서비스 선택 추가
                     prompt,
                     maxTokens: 2000,
-                    temperature: 0.9,
-                    skipFolderCreation: true
+                    temperature: 0.9
                 })
             });
 
@@ -4675,8 +4634,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             const data = await response.json();
             const generatedText = data.rawResponse || data.text || data.result || '';
 
-            // 1단계 대본 생성은 임시 단계이므로 폴더를 만들지 않고 기존 앵커도 제거
-            setCurrentFolderName(null);
+            // 스토리 폴더명 저장 (기존 시스템 호환)
+            if (data._folderName) {
+                setCurrentFolderName(data._folderName);
+                console.log(`[ShortsLab] Story folder assigned: ${data._folderName}`);
+            }
 
             // 결과에서 대본만 추출
             let finalScript = '';

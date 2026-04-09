@@ -25,6 +25,8 @@ interface ImageEditorControlsProps {
     onGeneratePersonDetails: () => void;
     onAgeChange: (age: 20 | 30 | 40 | 50 | 60) => void;
     onMultiAgeGeneration: () => void;
+    bodyEnhanceLevel: number;
+    setBodyEnhanceLevel: (val: number) => void;
     turnaroundOutfitMode: 'preserve' | 'neutral';
     setTurnaroundOutfitMode: (value: 'preserve' | 'neutral') => void;
     onGenerateTurnaround: () => void;
@@ -320,39 +322,55 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm text-gray-400 whitespace-nowrap">나이 변환:</p>
-                    <div className="relative inline-flex items-center gap-2">
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-400 whitespace-nowrap">나이 변환:</p>
+                        <div className="relative inline-flex items-center gap-2">
+                            <select 
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        onAgeChange(Number(e.target.value) as any);
+                                        e.target.value = "";
+                                    }
+                                }}
+                                disabled={editingState !== 'idle'}
+                                className="bg-gray-700 border border-gray-600 text-sm rounded-md px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-100 transition-all cursor-pointer disabled:bg-gray-800 disabled:text-gray-500"
+                                value=""
+                            >
+                                <option value="" disabled>나이 선택</option>
+                                <option value="20">20대</option>
+                                <option value="30">30대</option>
+                                <option value="40">40대</option>
+                                <option value="50">50대</option>
+                            </select>
+                            <button
+                                onClick={onMultiAgeGeneration}
+                                disabled={editingState !== 'idle'}
+                                className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-orange-400 hover:from-pink-600 hover:to-orange-500 rounded-md transition disabled:bg-gray-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-xs font-semibold text-white shadow-sm"
+                            >
+                                {editingState === 'age-multi' ? <Spinner size="sm" /> : '동시 생성'}
+                            </button>
+                            {['age-20', 'age-30', 'age-40', 'age-50'].includes(editingState) && (
+                                <div className="flex items-center gap-1.5 text-xs text-indigo-400 animate-pulse">
+                                    <Spinner size="sm" />
+                                    <span>변환 중...</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-400 whitespace-nowrap">볼륨 강조:</p>
                         <select 
-                            onChange={(e) => {
-                                if (e.target.value) {
-                                    onAgeChange(Number(e.target.value) as any);
-                                    e.target.value = "";
-                                }
-                            }}
+                            value={bodyEnhanceLevel}
+                            onChange={(e) => setBodyEnhanceLevel(Number(e.target.value))}
                             disabled={editingState !== 'idle'}
                             className="bg-gray-700 border border-gray-600 text-sm rounded-md px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-100 transition-all cursor-pointer disabled:bg-gray-800 disabled:text-gray-500"
-                            value=""
                         >
-                            <option value="" disabled>나이 선택</option>
-                            <option value="20">20대</option>
-                            <option value="30">30대</option>
-                            <option value="40">40대</option>
-                            <option value="50">50대</option>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(lv => (
+                                <option key={lv} value={lv}>{lv === 5 ? '5 (보통)' : lv === 1 ? '1 (슬림)' : lv === 8 ? '8 (글래머)' : lv === 10 ? '10 (울트라)' : lv}</option>
+                            ))}
                         </select>
-                        <button
-                            onClick={onMultiAgeGeneration}
-                            disabled={editingState !== 'idle'}
-                            className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-orange-400 hover:from-pink-600 hover:to-orange-500 rounded-md transition disabled:bg-gray-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed flex items-center justify-center text-xs font-semibold text-white shadow-sm"
-                        >
-                            {editingState === 'age-multi' ? <Spinner size="sm" /> : '동시 생성'}
-                        </button>
-                        {['age-20', 'age-30', 'age-40', 'age-50'].includes(editingState) && (
-                            <div className="flex items-center gap-1.5 text-xs text-indigo-400 animate-pulse">
-                                <Spinner size="sm" />
-                                <span>변환 중...</span>
-                            </div>
-                        )}
                     </div>
                 </div>
                 <div className="rounded-lg border border-cyan-500/20 bg-gray-900/40 p-3">

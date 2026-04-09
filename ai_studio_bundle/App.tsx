@@ -204,6 +204,21 @@ const App: React.FC<AppProps> = ({ onAddHistory }) => {
   const [turnaroundName, setTurnaroundName] = useState('');
   const [turnaroundOutfitMode, setTurnaroundOutfitMode] = useState<'preserve' | 'neutral'>('preserve');
   const [savedCharacterCount, setSavedCharacterCount] = useState(0);
+  const [bodyEnhanceLevel, setBodyEnhanceLevel] = useState(5); // 신체 볼륨 강조 기본값 5 (1~10)
+
+  // 신체 강조 레벨에 따른 가중치 태그 생성 함수
+  const getBodyEnhancePrompt = useCallback(() => {
+    if (bodyEnhanceLevel <= 2) return ''; // 낮은 단계는 자연스럽게
+    const weight = (1.0 + (bodyEnhanceLevel * 0.05)).toFixed(2); // 최대 1.5 가중치
+    const tags = [
+      `(extremely large breasts:${weight})`,
+      `(curvy hourglass figure:${weight})`,
+      `(thick thighs:${weight})`,
+      `(shapely emphasized hips:${weight})`,
+      `(narrow waist:1.2)`
+    ];
+    return tags.join(', ');
+  }, [bodyEnhanceLevel]);
   const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
 
   const aspectRatios = [
@@ -857,11 +872,12 @@ Use a clean plain background and show the character alone in a full-body standin
           setResults([]);
           return;
         }
-        generationPromises = validPrompts.map(prompt =>
-          generateImageFromImagesAndText(imageFiles, enhancePromptWithCamera(prompt.value))
+        generationPromises = validPrompts.map(prompt => {
+          const enhancedPrompt = `${getBodyEnhancePrompt()}, ${enhancePromptWithCamera(prompt.value)}`;
+          return generateImageFromImagesAndText(imageFiles, enhancedPrompt)
             .then(imageUrl => ({ id: prompt.id, status: 'fulfilled' as const, value: imageUrl }))
-            .catch(error => ({ id: prompt.id, status: 'rejected' as const, reason: (error as Error).message }))
-        );
+            .catch(error => ({ id: prompt.id, status: 'rejected' as const, reason: (error as Error).message }));
+        });
       } else { // text mode
         generationPromises = validPrompts.map(prompt =>
           generateImageFromText(enhancePromptWithCamera(prompt.value), aspectRatio)
@@ -1546,6 +1562,8 @@ Use a clean plain background and show the character alone in a full-body standin
                 onGeneratePersonDetails={handleGeneratePersonDetails}
                 onAgeChange={handleAgeChange}
                 onMultiAgeGeneration={handleMultiAgeGeneration}
+                bodyEnhanceLevel={bodyEnhanceLevel}
+                setBodyEnhanceLevel={setBodyEnhanceLevel}
                 turnaroundOutfitMode={turnaroundOutfitMode}
                 setTurnaroundOutfitMode={setTurnaroundOutfitMode}
                 onGenerateTurnaround={handleGenerateTurnaround}

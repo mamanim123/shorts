@@ -253,7 +253,8 @@ export async function generateImageFromImagesAndText(
               parts: parts,
             },
             config: {
-                responseModalities: [Modality.TEXT, Modality.IMAGE],
+                // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
+                responseModalities: [Modality.IMAGE],
             },
         });
         
@@ -336,7 +337,8 @@ export async function editImage(
               ],
             },
             config: {
-                responseModalities: [Modality.TEXT, Modality.IMAGE],
+                // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
+                responseModalities: [Modality.IMAGE],
             },
         });
 

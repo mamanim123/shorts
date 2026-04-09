@@ -1,10 +1,5 @@
 import { getAppStorageCachedValue, primeAppStorageCache, setAppStorageValue } from './appStorageService';
-import type {
-  CharacterCollection,
-  CharacterIdentitySpec,
-  CharacterReferencePreference,
-  CharacterWardrobeProfile
-} from '../types';
+import type { CharacterCollection } from '../types';
 
 export interface CharacterItem {
   id: string;
@@ -34,9 +29,6 @@ export interface CharacterItem {
   };
   sourceReferenceImageId?: string;
   sourceType?: 'catalog' | 'ai-studio';
-  identitySpec?: CharacterIdentitySpec;
-  referencePreference?: CharacterReferencePreference;
-  wardrobeProfile?: CharacterWardrobeProfile;
 }
 
 // 기존 데이터 호환성: style 필드가 없는 경우 빈 문자열로 처리
@@ -55,9 +47,6 @@ const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }):
   turnaroundImageIds: character.turnaroundImageIds,
   sourceReferenceImageId: character.sourceReferenceImageId,
   sourceType: character.sourceType || 'catalog',
-  identitySpec: character.identitySpec,
-  referencePreference: character.referencePreference,
-  wardrobeProfile: character.wardrobeProfile,
 });
 
 const normalizeCharacters = (characters: Array<Partial<CharacterItem> & { id: string }>): CharacterItem[] =>
@@ -97,9 +86,6 @@ export const fetchCharacters = async (): Promise<CharacterItem[]> => {
     turnaroundImageIds: char.turnaroundImageIds,
     sourceReferenceImageId: char.sourceReferenceImageId,
     sourceType: 'ai-studio',
-    identitySpec: char.identitySpec,
-    referencePreference: char.referencePreference,
-    wardrobeProfile: char.wardrobeProfile,
   }));
 
   try {
@@ -141,9 +127,6 @@ export const saveCharacters = async (characters: CharacterItem[]): Promise<boole
       body: character.body,
       style: character.style,
       bodyTuning: character.bodyTuning,
-      identitySpec: character.identitySpec,
-      referencePreference: character.referencePreference,
-      wardrobeProfile: character.wardrobeProfile,
     });
   });
 

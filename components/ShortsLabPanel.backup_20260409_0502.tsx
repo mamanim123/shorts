@@ -36,7 +36,7 @@ import { ShortsIdentityCard, CharacterIdentity } from './ShortsIdentityCard';
 import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
-import { UNIFIED_OUTFIT_LIST, ACCESSORY_PRESETS } from '../constants';
+import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS, ACCESSORY_PRESETS } from '../constants';
 import { fetchCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
@@ -1598,15 +1598,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
     const [masterCharacterProfiles, setMasterCharacterProfiles] = useState<Array<{
         slotId: string;
-        characterId?: string;
         name: string;
         identity: string;
-        face?: string;
         hair: string;
         body: string;
-        style?: string;
-        skinTone?: string;
-        signatureFeatures?: string;
         outfit: string;
         outfitPrompt: string;
         accessory?: string; // [NEW] 악세서리 추가
@@ -1677,7 +1672,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [manualMissingNotice, setManualMissingNotice] = useState('');
     const [manualExtractionNotice, setManualExtractionNotice] = useState('');
     const [manualAnalyzing, setManualAnalyzing] = useState(false);
-    const [savedCharacters, setSavedCharacters] = useState<CharacterItem[]>([]);
 
     // 프롬프트 수정 모달 상태
     const [showPromptEditModal, setShowPromptEditModal] = useState(false);
@@ -5067,15 +5061,10 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                 const profile = {
                     slotId,
-                    characterId: undefined,
                     name: characterInfo.name || slotId,
                     identity: characterInfo.identity || '',
-                    face: characterInfo.face || '',
                     hair: characterInfo.hair || '',
                     body: characterInfo.body || '',
-                    style: characterInfo.style || '',
-                    skinTone: characterInfo.skinTone || '',
-                    signatureFeatures: characterInfo.signatureFeatures || '',
                     outfit: outfit?.name || '의상 미선택',
                     outfitPrompt: outfit?.prompt || ''
                 };
@@ -5182,90 +5171,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.error('Failed to sync character rule:', e);
         }
     };
-
-    const loadSavedCharacters = useCallback(async () => {
-        try {
-            const chars = await fetchCharacters();
-            setSavedCharacters(chars);
-            return chars;
-        } catch (error) {
-            console.error('Failed to load saved characters:', error);
-            return [] as CharacterItem[];
-        }
-    }, []);
-
-    const blobToDataUrl = useCallback(async (blobId?: string) => {
-        if (!blobId) return '';
-        const blob = await getBlob(blobId);
-        if (!blob) return '';
-        return await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve((reader.result as string) || '');
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(blob);
-        });
-    }, []);
-
-    async function applyCharacterToMasterProfile(slotId: string, char: CharacterItem) {
-        await shortsLabCharacterRulesManager.importCharacter(char, slotId);
-
-        try {
-            const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
-            const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
-            const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
-            const referenceImageUrl = frontUrl || angle45Url || backUrl;
-
-            if (referenceImageUrl) {
-                setCharacterCastings((prev) => {
-                    const newMap = new Map(prev);
-                    newMap.set(slotId, {
-                        characterId: slotId,
-                        referenceImageUrl,
-                        referenceImageUrls: {
-                            front: frontUrl || undefined,
-                            angle45: angle45Url || undefined,
-                            back: backUrl || undefined,
-                        },
-                        referenceViewPreference: char.referencePreference?.defaultView || 'front',
-                        identitySummary: [
-                            char.face || char.identitySpec?.faceShape,
-                            char.hair || char.identitySpec?.hairDescription,
-                            char.body || char.identitySpec?.bodyType,
-                            char.identitySpec?.skinTone,
-                            char.identitySpec?.signatureFeatures,
-                            char.style || char.identitySpec?.styleCore,
-                        ].filter(Boolean).join(', '),
-                        name: char.name,
-                    });
-                    return newMap;
-                });
-            }
-        } catch (imageError) {
-            console.warn('Failed to attach character reference image to master profile:', imageError);
-        }
-
-        setMasterCharacterProfiles((prev) => prev.map((profile) => {
-            if (profile.slotId !== slotId) return profile;
-            return {
-                ...profile,
-                characterId: char.id,
-                name: char.name || profile.name,
-                identity: char.face || char.identitySpec?.faceShape || profile.identity,
-                face: char.face || char.identitySpec?.faceShape || profile.face,
-                hair: char.hair || char.identitySpec?.hairDescription || profile.hair,
-                body: char.body || char.identitySpec?.bodyType || profile.body,
-                style: char.style || char.identitySpec?.styleCore || profile.style,
-                skinTone: char.identitySpec?.skinTone || profile.skinTone,
-                signatureFeatures: char.identitySpec?.signatureFeatures || profile.signatureFeatures,
-            };
-        }));
-    }
-
-    useEffect(() => {
-        if (activeTab === 'preview' && masterCharacterProfiles.length > 0 && savedCharacters.length === 0) {
-            void loadSavedCharacters();
-        }
-    }, [activeTab, loadSavedCharacters, masterCharacterProfiles.length, savedCharacters.length]);
 
     // ============================================
     // [신규] 캐릭터 정보 적용 버튼 핸들러
@@ -7468,41 +7373,17 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                 {/* 헤어 (Hair) + 악세서리 (Accessory) */}
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
-                                                        <span className="text-[10px] text-slate-500 block mb-1">캐릭터 (Character)</span>
+                                                        <span className="text-[10px] text-slate-500 block mb-1">헤어 (Hair)</span>
                                                         <select
-                                                            value={profile.characterId || ''}
-                                                            onChange={async (e) => {
-                                                                const selectedId = e.target.value;
-                                                                if (!selectedId) return;
-                                                                const selectedCharacter = savedCharacters.find((char) => char.id === selectedId);
-                                                                if (!selectedCharacter) {
-                                                                    showToast('선택한 캐릭터 정보를 찾을 수 없습니다.', 'warning');
-                                                                    return;
-                                                                }
-                                                                try {
-                                                                    await applyCharacterToMasterProfile(profile.slotId, selectedCharacter);
-                                                                    showToast(`${profile.slotId} 슬롯에 ${selectedCharacter.name} 캐릭터를 적용했습니다.`, 'success');
-                                                                } catch (error) {
-                                                                    console.error('Failed to apply character to profile:', error);
-                                                                    showToast('캐릭터 적용에 실패했습니다.', 'error');
-                                                                }
-                                                            }}
+                                                            value={profile.hair}
+                                                            onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'hair', e.target.value)}
                                                             className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
                                                         >
-                                                            <option value="">캐릭터 선택</option>
-                                                            {savedCharacters
-                                                                .filter((char) => profile.slotId.startsWith('Woman') ? char.gender === 'female' : char.gender === 'male')
-                                                                .map((char) => (
-                                                                    <option key={char.id} value={char.id}>{char.name || char.id}</option>
-                                                                ))}
+                                                            <option value="">헤어 선택</option>
+                                                            {HAIR_PRESETS.map(h => (
+                                                                <option key={h.id} value={h.prompt}>{h.name}</option>
+                                                            ))}
                                                         </select>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => void loadSavedCharacters()}
-                                                            className="mt-1 text-[10px] text-emerald-400 hover:text-emerald-300"
-                                                        >
-                                                            저장 캐릭터 새로고침
-                                                        </button>
                                                     </div>
 
                                                     {/* [NEW] 악세서리 (Accessory) - 겨울용/그외용 분류 */}
@@ -7526,16 +7407,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                             </optgroup>
                                                         </select>
                                                     </div>
-                                                </div>
-
-                                                <div className="rounded-md border border-slate-800 bg-slate-950/60 p-2 space-y-1">
-                                                    <div className="text-[10px] font-semibold text-slate-400">캐릭터 상세</div>
-                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">얼굴:</span> {profile.face || profile.identity || '미설정'}</div>
-                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">몸매:</span> {profile.body || '미설정'}</div>
-                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">헤어:</span> {profile.hair || '미설정'}</div>
-                                                    {profile.style && <div className="text-[11px] text-slate-300"><span className="text-slate-500">스타일:</span> {profile.style}</div>}
-                                                    {profile.skinTone && <div className="text-[11px] text-slate-300"><span className="text-slate-500">피부톤:</span> {profile.skinTone}</div>}
-                                                    {profile.signatureFeatures && <div className="text-[11px] text-slate-300"><span className="text-slate-500">시그니처:</span> {profile.signatureFeatures}</div>}
                                                 </div>
                                             </div>
                                         </div>
@@ -9325,24 +9196,54 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const handleImportCharacter = useCallback(async (char: CharacterItem) => {
         try {
             await shortsLabCharacterRulesManager.importCharacter(char, importTargetSlotId);
-            const refreshedRules = getCharacterRules();
-            setCharacterRulesState({
-                females: (refreshedRules.females || []).map((item) => ({
-                    ...item,
-                    name: typeof item.name === 'string' ? item.name : '',
-                    id: typeof item.id === 'string'
-                        ? item.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
-                        : item.id
-                })),
-                males: (refreshedRules.males || []).map((item) => ({
-                    ...item,
-                    name: typeof item.name === 'string' ? item.name : '',
-                    id: typeof item.id === 'string'
-                        ? item.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
-                        : item.id
-                })),
-                common: refreshedRules.common || { negativePrompt: '', qualityTags: '' }
-            });
+            if (char.generatedImageId || char.turnaroundImageIds) {
+                try {
+                    const blobToDataUrl = async (blobId?: string) => {
+                        if (!blobId) return '';
+                        const blob = await getBlob(blobId);
+                        if (!blob) return '';
+                        return await new Promise<string>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve((reader.result as string) || '');
+                            reader.onerror = () => resolve('');
+                            reader.readAsDataURL(blob);
+                        });
+                    };
+
+                    const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
+                    const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
+                    const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
+                    const referenceImageUrl = frontUrl || angle45Url || backUrl;
+
+                    if (referenceImageUrl) {
+                        setCharacterCastings(prev => {
+                            const newMap = new Map(prev);
+                            newMap.set(importTargetSlotId, {
+                                characterId: importTargetSlotId,
+                                referenceImageUrl,
+                                referenceImageUrls: {
+                                    front: frontUrl || undefined,
+                                    angle45: angle45Url || undefined,
+                                    back: backUrl || undefined
+                                },
+                                referenceViewPreference: char.referencePreference?.defaultView || 'front',
+                                identitySummary: [
+                                    char.face || char.identitySpec?.faceShape,
+                                    char.hair || char.identitySpec?.hairDescription,
+                                    char.body || char.identitySpec?.bodyType,
+                                    char.identitySpec?.skinTone,
+                                    char.identitySpec?.signatureFeatures,
+                                    char.style || char.identitySpec?.styleCore
+                                ].filter(Boolean).join(', '),
+                                name: char.name
+                            });
+                            return newMap;
+                        });
+                    }
+                } catch (imageError) {
+                    console.warn('Failed to attach imported character reference image:', imageError);
+                }
+            }
             showToast(`${char.name} 캐릭터를 가져왔습니다.`, 'success');
             setShowImportModal(false);
         } catch (err) {

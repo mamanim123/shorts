@@ -16,13 +16,6 @@ export interface CharacterSlotRule {
   body: string;          // "slim hourglass figure..."
   style: string;         // "perfectly managed sophisticated look"
   outfitFit: string;     // "tight-fitting, form-hugging..."
-  face?: string;
-  skinTone?: string;
-  signatureFeatures?: string;
-  bustDescription?: string;
-  heightDescription?: string;
-  referenceViewPreference?: 'front' | 'angle45' | 'back';
-  preserveIdentityOnly?: boolean;
   isFixedAge?: boolean;  // true면 fixedAge 사용 (Female D 전용)
   fixedAge?: string;     // "in her early 20s" (Female D 전용)
 }

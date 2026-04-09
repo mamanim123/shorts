@@ -10,6 +10,7 @@ let keyCooldowns: Record<string, number> = {};
 let lastUsedKey: string = ''; // Track the actual key used for error handling
 const DEFAULT_GEMINI_IMAGE_MODELS = [
   'gemini-2.5-flash-image',
+  'gemini-2.0-flash-preview-image-generation',
 ];
 const DEFAULT_IMAGEN_MODELS = [
   'imagen-4.0-generate-001',
@@ -129,17 +130,6 @@ const isTransientError = (error: any): boolean => {
   );
 };
 
-const isNoImageGeneratedError = (error: any): boolean => {
-  const msg = (error?.message || '').toLowerCase();
-  return msg.includes('이미지가 생성되지 않았습니다') || msg.includes('image was not generated');
-};
-
-const maskKeyForLog = (key: string): string => {
-  if (!key) return 'no-key';
-  if (key.length <= 8) return `${key.slice(0, 2)}***`;
-  return `${key.slice(0, 6)}...${key.slice(-4)}`;
-};
-
 const getEnvList = (name: string, fallback: string[]): string[] => {
   // @ts-ignore
   const raw = (typeof process !== 'undefined' && process.env && process.env[name]) || '';
@@ -253,7 +243,8 @@ export async function generateImageFromImagesAndText(
               parts: parts,
             },
             config: {
-                responseModalities: [Modality.TEXT, Modality.IMAGE],
+                // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
+                responseModalities: [Modality.IMAGE],
             },
         });
         
@@ -316,7 +307,6 @@ export async function editImage(
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const ai = getClient();
-        console.log(`🎯 [AI Studio editImage] 시도 ${attempt}/${maxRetries} model=${model} key=${maskKeyForLog(lastUsedKey)}`);
         const base64ImageData = await fileToBase64(imageFile);
         
         const response = await ai.models.generateContent({
@@ -336,7 +326,8 @@ export async function editImage(
               ],
             },
             config: {
-                responseModalities: [Modality.TEXT, Modality.IMAGE],
+                // Fix: responseModalities for gemini-2.5-flash-image must be an array with a single Modality.IMAGE element.
+                responseModalities: [Modality.IMAGE],
             },
         });
 
@@ -353,7 +344,6 @@ export async function editImage(
         }
           
         if (returnedImageUrl) {
-            console.log(`✅ [AI Studio editImage] 성공 model=${model} key=${maskKeyForLog(lastUsedKey)} attempt=${attempt}`);
             return returnedImageUrl;
         }
 
@@ -364,20 +354,14 @@ export async function editImage(
       } catch (error: any) {
         lastError = error;
         if (is429Error(error)) {
-          console.log(`🔄 429 에러 감지. 다음 키로 재시도합니다. model=${model} key=${maskKeyForLog(lastUsedKey)} (${attempt}/${maxRetries})`);
+          console.log(`🔄 429 에러 감지. 다음 키/모델로 재시도합니다. model=${model} (${attempt}/${maxRetries})`);
           markKeyFailed(lastUsedKey);
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             continue;
           }
         }
-        if (isNoImageGeneratedError(error) && attempt < maxRetries) {
-          console.warn(`🖼️ [AI Studio editImage] 이미지 미생성 응답. 다음 키로 재시도합니다. model=${model} key=${maskKeyForLog(lastUsedKey)} (${attempt}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
-          continue;
-        }
         if (isTransientError(error) && attempt < maxRetries) {
-          console.warn(`⏳ [AI Studio editImage] 일시 오류. 재시도합니다. model=${model} key=${maskKeyForLog(lastUsedKey)} (${attempt}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           continue;
         }

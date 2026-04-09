@@ -204,8 +204,6 @@ export interface CharacterIdentitySpec {
   signatureFeatures?: string;
   styleCore?: string;
   lockedTraits?: string[];
-  aiDraftFields?: string[];
-  lockedFieldKeys?: string[];
 }
 
 export interface CharacterReferencePreference {

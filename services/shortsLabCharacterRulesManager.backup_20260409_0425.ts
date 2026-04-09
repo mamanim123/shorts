@@ -26,32 +26,14 @@ export const convertCharacterToSlotRule = (
   identity: char.gender === 'female'
     ? `A stunning Korean woman${char.age ? ` in her ${char.age}` : ''}`
     : `A handsome Korean man${char.age ? ` in his ${char.age}` : ''}`,
-  hair: char.identitySpec?.hairDescription || char.hair || 'elegant hairstyle',
-  body: [
-    char.identitySpec?.bodyType,
-    char.identitySpec?.bustDescription,
-    char.identitySpec?.heightDescription,
-    char.body
-  ].filter(Boolean).join(', ') || 'graceful figure',
-  style: [
-    char.identitySpec?.styleCore,
-    char.identitySpec?.signatureFeatures,
-    char.style
-  ].filter(Boolean).join(', ') || (char.gender === 'female'
+  hair: char.hair || 'elegant hairstyle',
+  body: char.body || 'graceful figure',
+  style: char.style || (char.gender === 'female'
     ? 'perfectly managed sophisticated look'
     : 'dandy and refined presence'),
-  outfitFit: char.wardrobeProfile?.preserveBodySilhouette === false
-    ? 'wardrobe may change while preserving the same person'
-    : char.gender === 'female'
+  outfitFit: char.gender === 'female'
     ? 'tight-fitting, form-hugging, accentuating curves naturally'
-    : 'tailored slim-fit, clean and sharp lines',
-  face: char.identitySpec?.faceShape || char.face || '',
-  skinTone: char.identitySpec?.skinTone || '',
-  signatureFeatures: char.identitySpec?.signatureFeatures || '',
-  bustDescription: char.identitySpec?.bustDescription || '',
-  heightDescription: char.identitySpec?.heightDescription || '',
-  referenceViewPreference: char.referencePreference?.defaultView || 'front',
-  preserveIdentityOnly: char.wardrobeProfile?.outfitChangePolicy === 'outfit-only'
+    : 'tailored slim-fit, clean and sharp lines'
 });
 
 const STORAGE_KEY = 'shorts-lab-character-rules';
@@ -106,13 +88,6 @@ const normalizeCharacterSlot = (input?: Partial<CharacterSlotRule>): CharacterSl
     body: typeof source.body === 'string' ? source.body : '',
     style: typeof source.style === 'string' ? source.style : '',
     outfitFit: typeof source.outfitFit === 'string' ? source.outfitFit : '',
-    face: typeof source.face === 'string' ? source.face : '',
-    skinTone: typeof source.skinTone === 'string' ? source.skinTone : '',
-    signatureFeatures: typeof source.signatureFeatures === 'string' ? source.signatureFeatures : '',
-    bustDescription: typeof source.bustDescription === 'string' ? source.bustDescription : '',
-    heightDescription: typeof source.heightDescription === 'string' ? source.heightDescription : '',
-    referenceViewPreference: source.referenceViewPreference === 'angle45' || source.referenceViewPreference === 'back' ? source.referenceViewPreference : 'front',
-    preserveIdentityOnly: source.preserveIdentityOnly === true,
     isFixedAge: source.isFixedAge === true,
     fixedAge: typeof source.fixedAge === 'string' ? source.fixedAge : undefined
   };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Loader2, Lock, Unlock } from 'lucide-react';
+import { X, User, Loader2 } from 'lucide-react';
 import { extractCharacterDescription, extractCharacterProfile } from './services/geminiService';
 import type { CharacterIdentitySpec, CharacterReferencePreference, CharacterWardrobeProfile } from '../../types';
 
@@ -16,8 +16,6 @@ export interface SaveCharacterPayload {
     referencePreference: CharacterReferencePreference;
     wardrobeProfile: CharacterWardrobeProfile;
 }
-
-type DraftFieldKey = 'description' | 'age' | 'gender' | 'face' | 'hair' | 'body' | 'style' | 'skinTone' | 'bustDescription' | 'heightDescription' | 'signatureFeatures';
 
 interface SaveCharacterModalProps {
     isOpen: boolean;
@@ -49,8 +47,6 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
     const [heightDescription, setHeightDescription] = useState('');
     const [signatureFeatures, setSignatureFeatures] = useState('');
     const [isAnalyzingImages, setIsAnalyzingImages] = useState(false);
-    const [aiDraftFields, setAiDraftFields] = useState<DraftFieldKey[]>([]);
-    const [lockedFieldKeys, setLockedFieldKeys] = useState<DraftFieldKey[]>(['face', 'hair', 'body', 'style']);
 
     const convertUrlToInlineData = async (url: string): Promise<{ inlineData: { data: string; mimeType: string } } | null> => {
         try {
@@ -90,7 +86,6 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
             setBustDescription(profile.bustDescription || '');
             setHeightDescription(profile.heightDescription || '');
             setSignatureFeatures(profile.signatureFeatures || '');
-            setAiDraftFields(['description', 'age', 'gender', 'face', 'hair', 'body', 'style', 'skinTone', 'bustDescription', 'heightDescription', 'signatureFeatures']);
         } catch (error) {
             console.error('Image-aware character analysis failed:', error);
         } finally {
@@ -139,50 +134,10 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
             setHeightDescription('');
             setSignatureFeatures('');
             setIsAnalyzingImages(false);
-            setAiDraftFields([]);
-            setLockedFieldKeys(['face', 'hair', 'body', 'style']);
         }
     }, [isOpen]); // Only depend on isOpen to prevent infinite loop
 
     if (!isOpen) return null;
-
-    const markManualEdit = (field: DraftFieldKey) => {
-        setAiDraftFields((prev) => prev.filter((item) => item !== field));
-    };
-
-    const toggleFieldLock = (field: DraftFieldKey) => {
-        setLockedFieldKeys((prev) => prev.includes(field)
-            ? prev.filter((item) => item !== field)
-            : [...prev, field]);
-    };
-
-    const isAiDraft = (field: DraftFieldKey) => aiDraftFields.includes(field);
-    const isLocked = (field: DraftFieldKey) => lockedFieldKeys.includes(field);
-
-    const renderFieldHeader = (label: string, field: DraftFieldKey) => (
-        <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-gray-300">{label}</label>
-                {isAiDraft(field) && (
-                    <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-200">AI 초안</span>
-                )}
-                {isLocked(field) && (
-                    <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-200">고정됨</span>
-                )}
-            </div>
-            <button
-                type="button"
-                onClick={() => toggleFieldLock(field)}
-                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold transition-colors ${isLocked(field)
-                    ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-                aria-label={`${label} ${isLocked(field) ? '잠금 해제' : '잠금'}`}
-            >
-                {isLocked(field) ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                {isLocked(field) ? '잠금 해제' : '고정'}
-            </button>
-        </div>
-    );
 
     const handleSave = () => {
         if (!name.trim()) {
@@ -209,9 +164,7 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
                 bustDescription: bustDescription.trim(),
                 heightDescription: heightDescription.trim(),
                 signatureFeatures: signatureFeatures.trim(),
-                lockedTraits: [face.trim(), hair.trim(), body.trim(), style.trim(), skinTone.trim(), bustDescription.trim(), heightDescription.trim(), signatureFeatures.trim()].filter((value): value is string => Boolean(value)),
-                aiDraftFields,
-                lockedFieldKeys
+                lockedTraits: [face.trim(), hair.trim(), body.trim(), style.trim(), skinTone.trim(), bustDescription.trim(), heightDescription.trim(), signatureFeatures.trim()].filter((value): value is string => Boolean(value))
             },
             referencePreference: {
                 defaultView: 'front',
@@ -270,10 +223,7 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
                         <div className="relative">
                             <textarea
                                 value={description}
-                                onChange={(e) => {
-                                    setDescription(e.target.value);
-                                    markManualEdit('description');
-                                }}
+                                onChange={(e) => setDescription(e.target.value)}
                                 placeholder="캐릭터의 외모, 의상, 특징을 설명하는 프롬프트"
                                 className="w-full h-40 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 resize-none font-mono text-sm"
                                 disabled={isExtracting}
@@ -327,13 +277,10 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            {renderFieldHeader('연령대', 'age')}
+                            <label className="block text-sm font-medium text-gray-300 mb-2">연령대</label>
                             <select
                                 value={age}
-                                onChange={(e) => {
-                                    setAge(e.target.value);
-                                    markManualEdit('age');
-                                }}
+                                onChange={(e) => setAge(e.target.value)}
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
                             >
                                 {['10대', '20대', '30대', '40대', '50대'].map((value) => (
@@ -342,13 +289,10 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
                             </select>
                         </div>
                         <div>
-                            {renderFieldHeader('성별', 'gender')}
+                            <label className="block text-sm font-medium text-gray-300 mb-2">성별</label>
                             <select
                                 value={gender}
-                                onChange={(e) => {
-                                    setGender(e.target.value as 'female' | 'male');
-                                    markManualEdit('gender');
-                                }}
+                                onChange={(e) => setGender(e.target.value as 'female' | 'male')}
                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
                             >
                                 <option value="female">여성</option>
@@ -359,49 +303,44 @@ const SaveCharacterModal: React.FC<SaveCharacterModalProps> = ({
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            {renderFieldHeader('얼굴 고정 포인트', 'face')}
-                            <input value={face} onChange={(e) => { setFace(e.target.value); markManualEdit('face'); }} placeholder="예: oval face, sharp jawline, large almond eyes" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">얼굴 고정 포인트</label>
+                            <input value={face} onChange={(e) => setFace(e.target.value)} placeholder="예: oval face, sharp jawline, large almond eyes" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                         <div>
-                            {renderFieldHeader('헤어 고정 포인트', 'hair')}
-                            <input value={hair} onChange={(e) => { setHair(e.target.value); markManualEdit('hair'); }} placeholder="예: long black straight hair, clean hairline" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">헤어 고정 포인트</label>
+                            <input value={hair} onChange={(e) => setHair(e.target.value)} placeholder="예: long black straight hair, clean hairline" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                         <div>
-                            {renderFieldHeader('체형 고정 포인트', 'body')}
-                            <input value={body} onChange={(e) => { setBody(e.target.value); markManualEdit('body'); }} placeholder="예: slim hourglass figure, long legs" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">체형 고정 포인트</label>
+                            <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="예: slim hourglass figure, long legs" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                         <div>
-                            {renderFieldHeader('스타일 코어', 'style')}
-                            <input value={style} onChange={(e) => { setStyle(e.target.value); markManualEdit('style'); }} placeholder="예: elegant sophisticated presence" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">스타일 코어</label>
+                            <input value={style} onChange={(e) => setStyle(e.target.value)} placeholder="예: elegant sophisticated presence" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                         <div>
-                            {renderFieldHeader('피부톤', 'skinTone')}
-                            <input value={skinTone} onChange={(e) => { setSkinTone(e.target.value); markManualEdit('skinTone'); }} placeholder="예: warm light beige skin tone" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">피부톤</label>
+                            <input value={skinTone} onChange={(e) => setSkinTone(e.target.value)} placeholder="예: warm light beige skin tone" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                         <div>
-                            {renderFieldHeader('가슴/상체 포인트', 'bustDescription')}
-                            <input value={bustDescription} onChange={(e) => { setBustDescription(e.target.value); markManualEdit('bustDescription'); }} placeholder="예: high chest line, natural full bust" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">가슴/상체 포인트</label>
+                            <input value={bustDescription} onChange={(e) => setBustDescription(e.target.value)} placeholder="예: high chest line, natural full bust" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            {renderFieldHeader('키/비율 인상', 'heightDescription')}
-                            <input value={heightDescription} onChange={(e) => { setHeightDescription(e.target.value); markManualEdit('heightDescription'); }} placeholder="예: medium height, long-legged proportions" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">키/비율 인상</label>
+                            <input value={heightDescription} onChange={(e) => setHeightDescription(e.target.value)} placeholder="예: medium height, long-legged proportions" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                         <div>
-                            {renderFieldHeader('시그니처 특징', 'signatureFeatures')}
-                            <input value={signatureFeatures} onChange={(e) => { setSignatureFeatures(e.target.value); markManualEdit('signatureFeatures'); }} placeholder="예: beauty mark under left eye" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                            <label className="block text-sm font-medium text-gray-300 mb-2">시그니처 특징</label>
+                            <input value={signatureFeatures} onChange={(e) => setSignatureFeatures(e.target.value)} placeholder="예: beauty mark under left eye" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                         </div>
                     </div>
 
                     <div className="rounded-lg border border-cyan-500/30 bg-cyan-900/10 px-4 py-3 text-sm text-cyan-100">
                         저장 시 이 캐릭터는 기본적으로 <strong>동일 인물 유지 + 의상만 변경</strong> 전략으로 저장됩니다. 이후 쇼츠랩에서 이 identity spec과 3면도 참조를 재사용할 수 있게 됩니다.
-                    </div>
-
-                    <div className="rounded-lg border border-violet-500/30 bg-violet-900/10 px-4 py-3 text-xs text-violet-100 space-y-1">
-                        <p><strong>AI 초안</strong>: 자동 분석으로 채워진 값입니다. 직접 수정하면 초안 표시가 사라집니다.</p>
-                        <p><strong>고정됨</strong>: 이후 캐릭터 일관성 유지 시 우선적으로 묶어둘 필드입니다.</p>
                     </div>
 
                     <div className="flex gap-3 pt-4">

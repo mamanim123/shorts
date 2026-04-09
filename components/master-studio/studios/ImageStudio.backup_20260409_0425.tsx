@@ -12,7 +12,7 @@ import { Image as ImageIcon, Sparkles, Paperclip, Download, Trash2, Loader2, Wan
 import { HarmCategory, HarmBlockThreshold, GenerateContentResponse } from '@google/genai';
 import { saveImageToDisk, deleteFileFromDisk } from '../services/serverService';
 import ImageHistorySidebar from '../ImageHistorySidebar';
-import SaveCharacterModal, { SaveCharacterPayload } from '../SaveCharacterModal';
+import SaveCharacterModal from '../SaveCharacterModal';
 import { CharacterCollection } from '../../../types';
 import { getAppStorageValue, setAppStorageValue } from '../../../services/appStorageService';
 
@@ -1215,21 +1215,8 @@ Output one single image for this viewpoint only.`;
         setIsSaveCharacterModalOpen(true);
     };
 
-    const handleSaveCharacterConfirm = async (payload: SaveCharacterPayload) => {
+    const handleSaveCharacterConfirm = async (name: string, description: string) => {
         let newCharacter: CharacterCollection | null = null;
-        const {
-            name,
-            description,
-            age,
-            gender,
-            face,
-            hair,
-            body,
-            style,
-            identitySpec,
-            referencePreference,
-            wardrobeProfile
-        } = payload;
 
         if (pendingTurnaroundSet?.approved) {
             newCharacter = {
@@ -1237,38 +1224,20 @@ Output one single image for this viewpoint only.`;
                 name,
                 description,
                 generatedImageId: pendingTurnaroundSet.previews.front.imageId,
-                age,
-                gender,
-                face,
-                hair,
-                body,
-                style,
                 turnaroundImageIds: {
                     front: pendingTurnaroundSet.previews.front.imageId,
                     angle45: pendingTurnaroundSet.previews.angle45.imageId,
                     back: pendingTurnaroundSet.previews.back.imageId
                 },
                 sourceReferenceImageId: pendingTurnaroundSet.sourceImageId,
-                approvedAt: Date.now(),
-                identitySpec,
-                referencePreference,
-                wardrobeProfile
+                approvedAt: Date.now()
             };
         } else if (selectedItemForCharacter) {
             newCharacter = {
                 id: uuidv4(),
                 name,
                 description,
-                generatedImageId: selectedItemForCharacter.generatedImageId,
-                age,
-                gender,
-                face,
-                hair,
-                body,
-                style,
-                identitySpec,
-                referencePreference,
-                wardrobeProfile
+                generatedImageId: selectedItemForCharacter.generatedImageId
             };
         }
 
@@ -1279,35 +1248,6 @@ Output one single image for this viewpoint only.`;
         setSelectedItemForCharacter(null);
         setPendingTurnaroundSet(null);
     };
-
-    const modalReferenceImages = useMemo(() => {
-        const items: Array<{ url: string; label: string }> = [];
-        if (characterReference?.url) {
-            items.push({ url: characterReference.url, label: '기준 얼굴' });
-        }
-        if (originalImage?.url) {
-            items.push({ url: originalImage.url, label: '원본 이미지' });
-        }
-        if (pendingTurnaroundSet?.previews?.front?.url) {
-            items.push({ url: pendingTurnaroundSet.previews.front.url, label: '정면' });
-        }
-        if (pendingTurnaroundSet?.previews?.angle45?.url) {
-            items.push({ url: pendingTurnaroundSet.previews.angle45.url, label: '45도' });
-        }
-        if (pendingTurnaroundSet?.previews?.back?.url) {
-            items.push({ url: pendingTurnaroundSet.previews.back.url, label: '후면' });
-        }
-        if (generatedImage?.url) {
-            items.push({ url: generatedImage.url, label: '대표 이미지' });
-        }
-
-        const seen = new Set<string>();
-        return items.filter((item) => {
-            if (!item.url || seen.has(item.url)) return false;
-            seen.add(item.url);
-            return true;
-        });
-    }, [characterReference, generatedImage, originalImage, pendingTurnaroundSet]);
 
     const deleteCharacter = (id: string) => {
         if (!confirm('이 캐릭터를 삭제하시겠습니까?')) return;
@@ -2194,7 +2134,6 @@ Output one single image for this viewpoint only.`;
                     }}
                     onSave={handleSaveCharacterConfirm}
                     initialPrompt={selectedItemForCharacter?.prompt || pendingTurnaroundSet?.sourcePrompt || ''}
-                    initialReferenceImages={modalReferenceImages}
                 />
             </div >
         </div >

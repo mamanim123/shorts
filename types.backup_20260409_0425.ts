@@ -184,40 +184,6 @@ export interface CharacterCollection {
   approvedAt?: number;
   savedFolderPath?: string;
   savedFolderUrl?: string;
-  identitySpec?: CharacterIdentitySpec;
-  referencePreference?: CharacterReferencePreference;
-  wardrobeProfile?: CharacterWardrobeProfile;
-}
-
-export interface CharacterIdentitySpec {
-  age?: string;
-  gender?: 'female' | 'male';
-  faceShape?: string;
-  eyeDescription?: string;
-  noseDescription?: string;
-  lipDescription?: string;
-  skinTone?: string;
-  hairDescription?: string;
-  bodyType?: string;
-  bustDescription?: string;
-  heightDescription?: string;
-  signatureFeatures?: string;
-  styleCore?: string;
-  lockedTraits?: string[];
-  aiDraftFields?: string[];
-  lockedFieldKeys?: string[];
-}
-
-export interface CharacterReferencePreference {
-  defaultView?: 'front' | 'angle45' | 'back';
-  useTurnaroundViews?: boolean;
-  lockFaceReference?: boolean;
-}
-
-export interface CharacterWardrobeProfile {
-  outfitChangePolicy?: 'outfit-only' | 'allow-style-shift';
-  preserveBodySilhouette?: boolean;
-  baseWardrobeNote?: string;
 }
 
 export interface StoryResponse {

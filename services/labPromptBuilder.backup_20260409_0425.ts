@@ -2504,10 +2504,8 @@ export interface CharacterInfo {
   name?: string;
   gender?: string;
   identity: string; 
-  face?: string;
   hair: string; 
   body: string; 
-  style?: string;
   outfit: string; 
 }
 
@@ -3181,10 +3179,6 @@ export const validateProfileConsistency = (
       if (locked.body && !block.includes(locked.body.substring(0, 30))) {
         issues.push(`Scene ${sceneIndex + 1}: ${slotId} body field may be missing`);
       }
-
-      if ((locked as MasterLockedCharacter & { style?: string }).style && !block.includes(((locked as MasterLockedCharacter & { style?: string }).style || '').substring(0, 20))) {
-        issues.push(`Scene ${sceneIndex + 1}: ${slotId} style field may be missing`);
-      }
     });
   });
 
@@ -3690,16 +3684,6 @@ export const applyCharacterInfoToScenes = (params: {
   const hasWinterKeyword = (value: string) => /snow|winter|ice|frost|icy|blizzard|snowy/i.test(value || '');
   const winterHint = 'snowy winter landscape, visible snow on ground, cold atmosphere';
   const colorLockPerCharacter = 'exact outfit colors, no hue shift, no color variation';
-  const buildIdentityTraitBlock = (characterRule: any) => {
-    return [
-      characterRule.face,
-      characterRule.skinTone,
-      characterRule.signatureFeatures,
-      characterRule.bustDescription,
-      characterRule.heightDescription,
-      characterRule.style
-    ].filter(Boolean).join(', ');
-  };
   const scene1Background = scenes[0]?.background || '';
 
   return scenes.map((scene, sceneIndex) => {
@@ -3727,7 +3711,6 @@ export const applyCharacterInfoToScenes = (params: {
         const identity = `A stunning Korean woman ${ageText}`;
         const hair = femaleChar.hair;
         const body = femaleChar.body;
-        const identityTraits = buildIdentityTraitBlock(femaleChar);
         const outfit = outfitMap.get(slotId);
         const outfitText = outfit ? outfit.prompt : 'elegant casual outfit';
         const accessories = accessoryMap?.get(slotId) || [];
@@ -3736,9 +3719,7 @@ export const applyCharacterInfoToScenes = (params: {
           : '';
 
         characterBlocks.push(
-          [identity, hair, body, identityTraits, `wearing ${outfitText}${accessoryText}`, colorLockPerCharacter]
-            .filter(Boolean)
-            .join(', ')
+          `${identity}, ${hair}, ${body}, wearing ${outfitText}${accessoryText}, ${colorLockPerCharacter}`
         );
       }
       else if (slotId.startsWith('Man')) {
@@ -3751,14 +3732,11 @@ export const applyCharacterInfoToScenes = (params: {
         const identity = `A handsome Korean man ${ageText}`;
         const hair = maleChar.hair;
         const body = maleChar.body;
-        const identityTraits = buildIdentityTraitBlock(maleChar);
         const outfit = outfitMap.get(slotId);
         const outfitText = outfit ? outfit.prompt : 'tailored casual outfit';
 
         characterBlocks.push(
-          [identity, hair, body, identityTraits, `wearing ${outfitText}`, colorLockPerCharacter]
-            .filter(Boolean)
-            .join(', ')
+          `${identity}, ${hair}, ${body}, wearing ${outfitText}, ${colorLockPerCharacter}`
         );
       }
     });

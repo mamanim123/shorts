@@ -96,6 +96,7 @@ let masterKeyIndex: number = 0;
 let masterKeyCooldowns: Record<string, number> = {};
 const DEFAULT_GEMINI_IMAGE_MODELS = [
     'gemini-2.5-flash-image',
+    'gemini-2.0-flash-preview-image-generation',
 ];
 const DEFAULT_IMAGEN_MODELS = [
     'imagen-4.0-generate-001',

@@ -1,56 +1,6 @@
 {
   "characters": [
     {
-      "id": "aistudio-447aa8dd-9580-4c7f-8ced-e160ffe53b8e",
-      "name": "혜진",
-      "age": "30대",
-      "gender": "female",
-      "face": "AI Studio에서 생성한 캐릭터 3면도 세트",
-      "hair": "",
-      "body": "",
-      "style": "AI Studio에서 생성한 캐릭터 3면도 세트",
-      "createdAt": "2026-04-06T12:51:58.892Z",
-      "generatedImageId": "a2d87282-ea1c-4c4a-8a15-eae54dd53da1",
-      "turnaroundImageIds": {
-        "front": "a2d87282-ea1c-4c4a-8a15-eae54dd53da1",
-        "angle45": "331e124f-fbbb-431b-aa09-ffc1588c8ff8",
-        "back": "4feb299b-aa52-41d2-a2f3-42f01d86ec88"
-      },
-      "sourceReferenceImageId": "source-1775479785226",
-      "sourceType": "ai-studio",
-      "bodyTuning": {
-        "overall": 55,
-        "legLength": 60,
-        "bustFront": 55,
-        "bustBack": 45,
-        "bustUpper": 55,
-        "bustLower": 50,
-        "hipsFront": 55,
-        "hipsBack": 60,
-        "hipsUpper": 55,
-        "hipsLower": 55
-      }
-    },
-    {
-      "id": "aistudio-a962c533-1a72-446c-9ee7-2ab48b282f5e",
-      "name": "수진",
-      "age": "",
-      "gender": "female",
-      "face": "[대상: ], [외형: ], [의상: ], [행동/자세: ], [표정/감정: ],\n8K UHD, CGI & VFX, Intricate Details, Insanely Detailed, Hyper-realistic face, Lifelike skin Texture, Unreal Engine 5, Octane Render,",
-      "hair": "",
-      "body": "",
-      "style": "[대상: ], [외형: ], [의상: ], [행동/자세: ], [표정/감정: ],\n8K UHD, CGI & VFX, Intricate Details, Insanely Detailed, Hyper-realistic face, Lifelike skin Texture, Unreal Engine 5, Octane Render,",
-      "createdAt": "2026-04-06T12:26:22.849Z",
-      "generatedImageId": "30c38ae9-595e-4d68-ac61-6d2bfab23904",
-      "turnaroundImageIds": {
-        "front": "30c38ae9-595e-4d68-ac61-6d2bfab23904",
-        "angle45": "594066dd-99d0-4b11-93d1-fc0fceb8491a",
-        "back": "6085078f-fc08-497d-800b-f2d2c24a05da"
-      },
-      "sourceReferenceImageId": "e2e8d6f5-6806-4665-9c56-d77e3cd399ca",
-      "sourceType": "ai-studio"
-    },
-    {
       "id": "char-1769573224153",
       "name": "수아",
       "age": "40대",
@@ -72,78 +22,6 @@
       "body": "",
       "style": "perfectly managed sophisticated look",
       "createdAt": "2026-01-28T05:34:12.591Z",
-      "sourceType": "catalog"
-    },
-    {
-      "id": "char-1769580400461",
-      "name": "지영",
-      "age": "40대",
-      "gender": "female",
-      "face": "",
-      "hair": "",
-      "body": "A side-profile silhouette of a slim Korean woman with an exaggerated hourglass figure and a voluminous chest. She is walking forward with a confident posture, straight back, and elegant arm swing. She is wearing a tight-fitting black long-sleeved ribbed top and a short mini skirt that emphasizes her narrow waist and curved hips. The lighting is backlit, creating a high-contrast silhouette against a blurred urban architectural background.",
-      "style": "glamorous and alluring presence, captivating charm",
-      "createdAt": "2026-01-28T06:06:40.461Z",
-      "sourceType": "catalog"
-    },
-    {
-      "id": "char-1770273611376",
-      "name": "선희",
-      "age": "40대",
-      "gender": "female",
-      "face": "",
-      "hair": "",
-      "body": "",
-      "style": "perfectly managed sophisticated look",
-      "createdAt": "2026-02-05T06:40:11.376Z",
-      "sourceType": "catalog"
-    },
-    {
-      "id": "char-1770513778122",
-      "name": "옥자",
-      "age": "40대",
-      "gender": "female",
-      "face": "",
-      "hair": "",
-      "body": "",
-      "style": "perfectly managed sophisticated look",
-      "bodyTuning": {
-        "overall": 55,
-        "legLength": 60,
-        "bustFront": 55,
-        "bustBack": 45,
-        "bustUpper": 55,
-        "bustLower": 50,
-        "hipsFront": 55,
-        "hipsBack": 60,
-        "hipsUpper": 55,
-        "hipsLower": 55
-      },
-      "createdAt": "2026-02-08T01:22:58.122Z",
-      "sourceType": "catalog"
-    },
-    {
-      "id": "char-1770514299792",
-      "name": "옥자1",
-      "age": "40대",
-      "gender": "female",
-      "face": "",
-      "hair": "",
-      "body": "Full body shot of a Korean woman, hourglass figure, high-set voluminous bust, rounded and firm breasts, narrow cinched waistline, balanced pelvic width, harmonious hourglass silhouette, tight-fitting long-sleeve top, high-waisted leggings, athletic lower body proportions, smooth feminine curves, natural upright standing posture, arms relaxed at sides, subtle three-quarter view, 3D body contour, realistic body proportions, dimensional silhouette.",
-      "style": "confident athletic presence, energetic and vibrant aura",
-      "bodyTuning": {
-        "overall": 55,
-        "legLength": 60,
-        "bustFront": 55,
-        "bustBack": 45,
-        "bustUpper": 55,
-        "bustLower": 50,
-        "hipsFront": 55,
-        "hipsBack": 60,
-        "hipsUpper": 55,
-        "hipsLower": 55
-      },
-      "createdAt": "2026-02-08T01:31:39.792Z",
       "sourceType": "catalog"
     }
   ]

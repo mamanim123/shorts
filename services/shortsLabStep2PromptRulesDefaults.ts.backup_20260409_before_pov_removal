@@ -156,6 +156,15 @@ unfiltered raw photograph..., [Person 1: A handsome Korean man in his 40s, short
 3. **full body visible** - 인물 전신이 보여야 배경도 보임
 4. **background details** - 눈, 나무, 건물 등 구체적 배경 묘사
 
+## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️
+POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
+
+**필수 규칙:**
+1. ✅ **화면에 보이는 캐릭터만 longPrompt에 포함**
+2. ❌ **시점의 주인공(카메라 역할)은 절대 프롬프트에 포함 금지**
+3. ✅ **POV 대상 캐릭터는 카메라를 바라봄**
+   - "looking at camera (POV target)" 필수
+
 {{WINTER_ACCESSORIES_RULE}}
 
 {{CHARACTER_OUTFIT_CONSISTENCY_RULE}}

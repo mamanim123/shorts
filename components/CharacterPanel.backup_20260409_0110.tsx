@@ -13,7 +13,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2, Copy, Check, Pencil } from 'lucide-react';
 import { showToast } from './Toast';
 
-import { generateImage, generateImageWithImagen } from './master-studio/services/geminiService';
+import { generateImageWithImagen } from './master-studio/services/geminiService';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
 import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Lightbox from './master-studio/Lightbox';
@@ -1447,68 +1447,49 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   }, [isGeneratingImage]);
 
-  const persistOutfitPreviewEntry = useCallback(async (outfitId: string, imageUrl: string) => {
-    const updatedMap = {
-      ...baseOutfitPreviewMap,
-      [outfitId]: imageUrl
-    };
-    setBaseOutfitPreviewMap(updatedMap);
-    await saveOutfitPreviewMap(updatedMap);
-  }, [baseOutfitPreviewMap, saveOutfitPreviewMap]);
-
-  const persistUserOutfitPreview = useCallback(async (outfitId: string, imageUrl: string) => {
-    const updated = outfits.map(item => (
-      item.id === outfitId ? { ...item, imageUrl } : item
-    ));
-    setOutfits(updated);
-    await persistOutfitPreviewEntry(outfitId, imageUrl);
-    await saveOutfitsToBE(updated, outfitCategories);
-  }, [outfitCategories, outfits, persistOutfitPreviewEntry, saveOutfitsToBE]);
-
-  const persistBaseOutfitPreview = useCallback(async (outfitId: string, imageUrl: string) => {
-    await persistOutfitPreviewEntry(outfitId, imageUrl);
-  }, [persistOutfitPreviewEntry]);
-
   const createOutfitPreview = useCallback(async (prompt: string, id: string) => {
     if (!prompt?.trim()) {
       showToast('프롬프트가 없어 이미지를 생성할 수 없습니다.', 'warning');
       return null;
     }
-    const safetySettings = [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
-    ];
+    const response = await fetch('http://localhost:3002/api/image/ai-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        storyId: 'outfit_previews',
+        sceneNumber: 1,
+        service: 'GEMINI',
+        autoCapture: true,
+        title: 'OutfitPreview'
+      })
+    });
 
-    const result: any = await generateImage(
-      prompt.trim(),
-      { aspectRatio: '9:16', model: 'gemini-2.5-flash-image' },
-      safetySettings
-    );
-
-    let base64Image: string | null = null;
-    if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
-      const generatedImage = result.generatedImages[0];
-      if (generatedImage?.image?.imageBytes) {
-        base64Image = generatedImage.image.imageBytes;
-      } else if (generatedImage?.imageBytes) {
-        base64Image = generatedImage.imageBytes;
+    if (!response.ok) {
+      let message = 'AI 이미지 생성에 실패했습니다.';
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) message = errorData.error;
+      } catch {
+        // ignore
       }
-    } else if (result && result.images && result.images.length > 0) {
-      base64Image = result.images[0];
-    } else if (result && result.candidates) {
-      const inlineData = result.candidates?.[0]?.content?.parts?.find((part: { inlineData?: { data?: string } }) => part.inlineData)?.inlineData;
-      if (inlineData?.data) {
-        base64Image = inlineData.data;
-      }
+      throw new Error(message);
     }
 
-    if (!base64Image) {
-      throw new Error('의상 썸네일 이미지 생성에 실패했습니다.');
-    }
+    const payload = await response.json();
+    const rawUrl = payload?.url ? `http://localhost:3002${payload.url}` : null;
+    if (!rawUrl) return null;
 
-    const dataUrl = `data:image/png;base64,${base64Image}`;
+    const imageResponse = await fetch(rawUrl);
+    if (!imageResponse.ok) return null;
+    const blob = await imageResponse.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('이미지 읽기에 실패했습니다.'));
+      reader.readAsDataURL(blob);
+    });
+
     const savedUrl = await saveOutfitPreviewImage(dataUrl, id, prompt);
     return savedUrl || null;
   }, []);
@@ -1518,12 +1499,59 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     if (isGeneratingOutfitPreview) return;
     setIsGeneratingOutfitPreview(true);
     try {
-      const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
-      if (!savedUrl) throw new Error('이미지 저장 실패');
-      const resolvedUrl = `http://localhost:3002${savedUrl}`;
-      await persistUserOutfitPreview(outfit.id, resolvedUrl);
-      setLightboxImage(resolvedUrl);
-      showToast('의상 미리보기가 생성되었습니다.', 'success');
+      const finalPrompt = outfit.prompt.trim();
+      if (!finalPrompt) throw new Error('프롬프트가 비어있습니다.');
+
+      const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+      ];
+
+      const result = await generateImageWithImagen(
+        finalPrompt,
+        "",
+        { aspectRatio: "9:16", model: 'imagen-4.0-generate-001' },
+        safetySettings
+      );
+
+      let base64Image: string | null = null;
+      if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+        const generatedImage = result.generatedImages[0];
+        if (generatedImage?.image?.imageBytes) {
+          base64Image = generatedImage.image.imageBytes;
+        } else if (generatedImage?.imageBytes) {
+          base64Image = generatedImage.imageBytes;
+        }
+      } else if (result && result.images && result.images.length > 0) {
+        base64Image = result.images[0];
+      }
+
+      if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
+
+      const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: `data:image/png;base64,${base64Image}`,
+          prompt: finalPrompt,
+          type: 'outfit'
+        })
+      });
+
+      const saveResult = await saveResponse.json();
+      if (saveResult.success) {
+        const imageUrl = `http://localhost:3002${saveResult.url}`;
+        const updated = outfits.map(item => (
+          item.id === outfit.id ? { ...item, imageUrl } : item
+        ));
+        setOutfits(updated);
+        saveOutfitsToBE(updated, outfitCategories);
+        showToast('의상 미리보기가 생성되었습니다.', 'success');
+      } else {
+        throw new Error(saveResult.error || '이미지 저장 실패');
+      }
 
     } catch (error: any) {
       console.error('의상 미리보기 생성 실패:', error);
@@ -1531,7 +1559,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsGeneratingOutfitPreview(false);
     }
-  }, [createOutfitPreview, isGeneratingOutfitPreview, persistUserOutfitPreview]);
+  }, [isGeneratingOutfitPreview, outfitCategories, outfits, saveOutfitsToBE]);
 
   const handleGenerateOutfitPreview = useCallback(async (outfit: Outfit) => {
     if (isGeneratingOutfitPreview) return;
@@ -1539,9 +1567,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     try {
       const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
       if (!savedUrl) throw new Error('이미지 저장 실패');
-      const resolvedUrl = `http://localhost:3002${savedUrl}`;
-      await persistUserOutfitPreview(outfit.id, resolvedUrl);
-      setLightboxImage(resolvedUrl);
+      const updated = outfits.map(item => (
+        item.id === outfit.id ? { ...item, imageUrl: `http://localhost:3002${savedUrl}` } : item
+      ));
+      setOutfits(updated);
+      saveOutfitsToBE(updated, outfitCategories);
       showToast('의상 미리보기가 생성되었습니다.', 'success');
     } catch (error: any) {
       console.error('의상 미리보기 생성 실패:', error);
@@ -1549,7 +1579,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsGeneratingOutfitPreview(false);
     }
-  }, [createOutfitPreview, isGeneratingOutfitPreview, persistUserOutfitPreview]);
+  }, [createOutfitPreview, isGeneratingOutfitPreview, outfitCategories, outfits, saveOutfitsToBE]);
 
   const handleRefreshOutfitPreviewMap = useCallback(async () => {
     try {
@@ -1567,13 +1597,60 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     if (isGeneratingBaseOutfitPreview) return;
     setIsGeneratingBaseOutfitPreview(true);
     try {
-      const prompt = (editingBaseOutfitPrompt.trim() || item.prompt || item.name).trim();
-      const savedUrl = await createOutfitPreview(prompt, item.id);
-      if (!savedUrl) throw new Error('이미지 저장 실패');
-      const resolvedUrl = `http://localhost:3002${savedUrl}`;
-      await persistBaseOutfitPreview(item.id, resolvedUrl);
-      setLightboxImage(resolvedUrl);
-      showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
+      const finalPrompt = (editingBaseOutfitPrompt.trim() || item.prompt || item.name).trim();
+      if (!finalPrompt) throw new Error('프롬프트가 비어있습니다.');
+
+      const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+      ];
+
+      const result = await generateImageWithImagen(
+        finalPrompt,
+        "",
+        { aspectRatio: "9:16", model: 'imagen-4.0-generate-001' },
+        safetySettings
+      );
+
+      let base64Image: string | null = null;
+      if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+        const generatedImage = result.generatedImages[0];
+        if (generatedImage?.image?.imageBytes) {
+          base64Image = generatedImage.image.imageBytes;
+        } else if (generatedImage?.imageBytes) {
+          base64Image = generatedImage.imageBytes;
+        }
+      } else if (result && result.images && result.images.length > 0) {
+        base64Image = result.images[0];
+      }
+
+      if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
+
+      const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: `data:image/png;base64,${base64Image}`,
+          prompt: finalPrompt,
+          type: 'outfit'
+        })
+      });
+
+      const saveResult = await saveResponse.json();
+      if (saveResult.success) {
+        const imageUrl = `http://localhost:3002${saveResult.url}`;
+        const updatedMap = {
+          ...baseOutfitPreviewMap,
+          [item.id]: imageUrl
+        };
+        setBaseOutfitPreviewMap(updatedMap);
+        saveOutfitPreviewMap(updatedMap);
+        showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
+      } else {
+        throw new Error(saveResult.error || '이미지 저장 실패');
+      }
 
     } catch (error: any) {
       console.error('기본 의상 미리보기 생성 실패:', error);
@@ -1581,7 +1658,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsGeneratingBaseOutfitPreview(false);
     }
-  }, [createOutfitPreview, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, persistBaseOutfitPreview]);
+  }, [baseOutfitPreviewMap, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, saveOutfitPreviewMap]);
 
   const handleGenerateBaseOutfitPreview = useCallback(async (item: BaseOutfitItem) => {
     if (isGeneratingBaseOutfitPreview) return;
@@ -1590,9 +1667,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       const prompt = editingBaseOutfitPrompt.trim() || item.prompt || item.name;
       const savedUrl = await createOutfitPreview(prompt, item.id);
       if (!savedUrl) throw new Error('이미지 저장 실패');
-      const resolvedUrl = `http://localhost:3002${savedUrl}`;
-      await persistBaseOutfitPreview(item.id, resolvedUrl);
-      setLightboxImage(resolvedUrl);
+      const updatedMap = {
+        ...baseOutfitPreviewMap,
+        [item.id]: `http://localhost:3002${savedUrl}`
+      };
+      setBaseOutfitPreviewMap(updatedMap);
+      saveOutfitPreviewMap(updatedMap);
       showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
     } catch (error: any) {
       console.error('기본 의상 미리보기 생성 실패:', error);
@@ -1600,7 +1680,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     } finally {
       setIsGeneratingBaseOutfitPreview(false);
     }
-  }, [createOutfitPreview, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, persistBaseOutfitPreview]);
+  }, [baseOutfitPreviewMap, createOutfitPreview, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, saveOutfitPreviewMap]);
 
   const readBlobAsDataUrl = useCallback((blob: Blob) => {
     return new Promise<string>((resolve, reject) => {
@@ -1709,16 +1789,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       try {
         const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
         if (!savedUrl) throw new Error('이미지 저장 실패');
-        const resolvedUrl = `http://localhost:3002${savedUrl}`;
-        updatedBaseMap[outfit.id] = resolvedUrl;
         if (outfit.kind === 'user') {
           const index = updatedOutfits.findIndex(item => item.id === outfit.id);
           if (index >= 0) {
             updatedOutfits[index] = {
               ...updatedOutfits[index],
-              imageUrl: resolvedUrl
+              imageUrl: `http://localhost:3002${savedUrl}`
             };
           }
+        } else {
+          updatedBaseMap[outfit.id] = `http://localhost:3002${savedUrl}`;
         }
       } catch (error) {
         failedIds.push(outfit.id);

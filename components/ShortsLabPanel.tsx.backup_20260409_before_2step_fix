@@ -1574,6 +1574,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
+    const [zoomedOutfitImageUrl, setZoomedOutfitImageUrl] = useState<string | null>(null);
 
     // 대본 입력 상태
     const [scriptInput, setScriptInput] = useState('');
@@ -2120,20 +2121,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, [outfitCatalog.outfits, resolveOutfitThumbnailUrl]);
 
     const getOutfitThumbnailByItem = useCallback((item: OutfitPoolItem): string => {
-        const primaryId = (item.id || '').trim();
-        if (primaryId) {
-            const fromPreviewMap = resolveOutfitThumbnailUrl(outfitPreviewMap[primaryId]);
-            if (fromPreviewMap) return fromPreviewMap;
-
-            const fromCatalogById = outfitCatalogImageMap.get(primaryId);
-            if (fromCatalogById) return fromCatalogById;
-        }
-
-        const legacyKeys = [item.name, item.translation, item.prompt];
-        for (const key of legacyKeys) {
+        const keys = [item.id, item.name, item.translation, item.prompt];
+        for (const key of keys) {
             const normalizedKey = (key || '').trim();
             if (!normalizedKey) continue;
-
             const fromCatalog = outfitCatalogImageMap.get(normalizedKey);
             if (fromCatalog) return fromCatalog;
 
@@ -3843,7 +3834,6 @@ ${scriptInput}
                 setAppStorageValue(getMasterOutfitsStorageKey(storageFolderName), serializeMasterOutfitMap(outfitMap));
             }
 
-            // [2단계 수정] 씬 생성 후 자동으로 캐릭터 정보 적용
             const extractedScenes = rebalancedScenes.map((scene: any, index: number) => ({
                 number: index + 1,
                 text: scene.scriptLine || '',
@@ -3851,7 +3841,7 @@ ${scriptInput}
                 cameraAngle: scene.cameraAngle || 'full body wide shot',
                 background: scene.background || '',
                 action: scene.action || 'standing naturally',
-                prompt: '',  // 캐릭터 적용 후 생성됨
+                prompt: '',
                 characterProfilesApplied: false,
                 imageUrl: undefined,
                 isSelected: true,
@@ -3875,71 +3865,9 @@ ${scriptInput}
                 longPromptKo: ''
             }));
 
-            // [A안] 자동으로 캐릭터 정보 적용 로직 실행
-            try {
-                const { applyCharacterInfoToScenes } = await import('../services/labPromptBuilder');
-                const characterRules = getCharacterRules();
-
-                const shouldLockBackground = enableWinterAccessories || isWinterTopic(aiTopic || scriptInput || '');
-                
-                // 장소 일관성을 위해 1번 씬 배경으로 모든 씬 강제 고정
-                const baseBackground = extractedScenes.find((scene) => (scene.background || '').trim())?.background || '';
-                const sanitizeCameraAngle = (value: string) => {
-                    const raw = String(value || '').trim();
-                    if (!raw) return 'full body wide shot';
-                    if (/pov/i.test(raw)) return 'full body wide shot';
-                    return raw;
-                };
-
-                const normalizedScenes = extractedScenes.map((scene) => ({
-                    ...scene,
-                    cameraAngle: sanitizeCameraAngle(scene.cameraAngle || scene.camera || ''),
-                    background: baseBackground || scene.background || '',
-                    action: scene.action || 'standing naturally'
-                }));
-
-                const uniqueIds = new Set<string>();
-                normalizedScenes.forEach((scene) => {
-                    (scene.characterIds || []).forEach((id) => {
-                        if (id) uniqueIds.add(id);
-                    });
-                });
-                const femaleIds = Array.from(uniqueIds).filter((id) => getCharacterGender(id) === 'female');
-                const accessoryMap = enableWinterAccessories ? buildUniqueFemaleAccessoryMap(femaleIds) : new Map<string, string[]>();
-
-                const updatedScenes = applyCharacterInfoToScenes({
-                    scenes: normalizedScenes,
-                    characterRules,
-                    outfitMap: outfitMap,
-                    accessoryMap,
-                    forceWinterBackground: shouldLockBackground,
-                    targetAge: aiTargetAge
-                });
-
-                // 한국어 프롬프트 설정에 따른 번역 처리
-                const displayScenes = settings.imagePromptLanguage === 'ko'
-                    ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
-                        const translatedKo = scene.prompt
-                            ? await translateScenePromptToKorean(scene.prompt)
-                            : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
-                        return {
-                            ...scene,
-                            longPromptKo: translatedKo,
-                            shortPromptKo: translatedKo
-                        };
-                    }))
-                    : updatedScenes;
-
-                setScenes(displayScenes);
-                setActiveTab('preview');
-                showToast(`✓ ${selectedService} AI로 대본 생성 + 씬 분해 + 캐릭터 적용이 완료되었습니다! (${displayScenes.length}개 씬)`, 'success');
-            } catch (applyError) {
-                // 캐릭터 자동 적용 실패 시에도 씬은 표시 (사용자가 수동으로 적용 가능)
-                console.error('[2Step Fix] 자동 캐릭터 적용 실패:', applyError);
-                setScenes(extractedScenes);
-                setActiveTab('preview');
-                showToast(`✓ ${selectedService} AI로 씬 분해를 완료했습니다. 캐릭터 정보는 '캐릭터 정보 적용' 버튼을 눌러주세요.`, 'success');
-            }
+            setScenes(extractedScenes);
+            setActiveTab('preview');
+            showToast(`✓ ${selectedService} AI로 씬 분해를 완료했습니다! 캐릭터 적용 버튼으로 이미지 프롬프트를 생성하세요.`, 'success');
         } catch (error) {
             console.error('Master-style scene generation failed:', error);
             const message = error instanceof Error ? error.message : '씬 분해에 실패했습니다.';
@@ -7246,7 +7174,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                                 className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
-                                                                                    setSelectedImageForView(selectedOutfitImageUrl);
+                                                                                    setZoomedOutfitImageUrl(selectedOutfitImageUrl);
                                                                                 }}
                                                                             />
                                                                         ) : (
@@ -7308,7 +7236,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                                                                 className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
                                                                                                                 onClick={(e) => {
                                                                                                                     e.stopPropagation();
-                                                                                                                    setSelectedImageForView(imageUrl);
+                                                                                                                    setZoomedOutfitImageUrl(imageUrl);
                                                                                                                 }}
                                                                                                             />
                                                                                                         ) : (

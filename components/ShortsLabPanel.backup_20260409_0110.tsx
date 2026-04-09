@@ -1574,6 +1574,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     // Genre management modal state
     const [showGenreModal, setShowGenreModal] = useState(false);
+    const [zoomedOutfitImageUrl, setZoomedOutfitImageUrl] = useState<string | null>(null);
 
     // 대본 입력 상태
     const [scriptInput, setScriptInput] = useState('');
@@ -2120,20 +2121,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, [outfitCatalog.outfits, resolveOutfitThumbnailUrl]);
 
     const getOutfitThumbnailByItem = useCallback((item: OutfitPoolItem): string => {
-        const primaryId = (item.id || '').trim();
-        if (primaryId) {
-            const fromPreviewMap = resolveOutfitThumbnailUrl(outfitPreviewMap[primaryId]);
-            if (fromPreviewMap) return fromPreviewMap;
-
-            const fromCatalogById = outfitCatalogImageMap.get(primaryId);
-            if (fromCatalogById) return fromCatalogById;
-        }
-
-        const legacyKeys = [item.name, item.translation, item.prompt];
-        for (const key of legacyKeys) {
+        const keys = [item.id, item.name, item.translation, item.prompt];
+        for (const key of keys) {
             const normalizedKey = (key || '').trim();
             if (!normalizedKey) continue;
-
             const fromCatalog = outfitCatalogImageMap.get(normalizedKey);
             if (fromCatalog) return fromCatalog;
 
@@ -7246,7 +7237,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                                 className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
-                                                                                    setSelectedImageForView(selectedOutfitImageUrl);
+                                                                                    setZoomedOutfitImageUrl(selectedOutfitImageUrl);
                                                                                 }}
                                                                             />
                                                                         ) : (
@@ -7308,7 +7299,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                                                                 className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
                                                                                                                 onClick={(e) => {
                                                                                                                     e.stopPropagation();
-                                                                                                                    setSelectedImageForView(imageUrl);
+                                                                                                                    setZoomedOutfitImageUrl(imageUrl);
                                                                                                                 }}
                                                                                                             />
                                                                                                         ) : (

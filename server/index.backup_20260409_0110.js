@@ -141,26 +141,6 @@ const extractUnifiedOutfitIds = () => {
     }
 };
 
-const extractSavedOutfitIds = () => {
-    try {
-        if (!fs.existsSync(OUTFITS_FILE)) return [];
-        const raw = fs.readFileSync(OUTFITS_FILE, 'utf8');
-        const parsed = JSON.parse(raw);
-        const outfits = Array.isArray(parsed?.outfits) ? parsed.outfits : [];
-        const seen = new Set();
-        return outfits
-            .map((outfit) => (typeof outfit?.id === 'string' ? outfit.id.trim() : ''))
-            .filter((id) => {
-                if (!id || seen.has(id)) return false;
-                seen.add(id);
-                return true;
-            });
-    } catch (error) {
-        console.warn('[OutfitPreview] Failed to parse saved outfit ids:', error?.message || error);
-        return [];
-    }
-};
-
 const normalizeOutfitPreviewUrl = (filename) =>
     `${OUTFIT_PREVIEW_PUBLIC_PREFIX}${filename}`;
 
@@ -225,10 +205,7 @@ const syncOutfitPreviewMap = (inputPreviews = {}) => {
         synced[key] = normalizeOutfitPreviewUrl(filename);
     });
 
-    const unifiedIds = Array.from(new Set([
-        ...extractUnifiedOutfitIds(),
-        ...extractSavedOutfitIds()
-    ]));
+    const unifiedIds = extractUnifiedOutfitIds();
     let recoveredCount = 0;
     let missingCount = 0;
 

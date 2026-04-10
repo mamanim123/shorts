@@ -8640,7 +8640,6 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [characterRulesBackupEditText, setCharacterRulesBackupEditText] = useState('');
     const [characterRulesBackupEditError, setCharacterRulesBackupEditError] = useState<string | null>(null);
     const [characterRulesBackupEdits, setCharacterRulesBackupEdits] = useState<Record<string, string>>({});
-    const [dirtyCharacterIds, setDirtyCharacterIds] = useState<Set<string>>(new Set());
 
     // 아코디언 상태 (펼쳐진 캐릭터 ID들)
     const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
@@ -8707,7 +8706,6 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                 })),
                 common: characterRules.common || { negativePrompt: '', qualityTags: '' }
             });
-            setDirtyCharacterIds(new Set());
         }
     }, [characterRules, characterRulesDirty]);
 
@@ -9384,8 +9382,6 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             await onCharacterRulesSave(characterRulesState);
             setCharacterRulesDirty(false);
             setCharacterRulesEditError(null);
-            setDirtyCharacterIds(new Set());
-            showToast('캐릭터 설정이 저장되었습니다.', 'success');
         } catch (err) {
             console.error('Failed to save character rules:', err);
             setCharacterRulesEditError('의상 규칙 저장에 실패했습니다.');
@@ -9399,8 +9395,6 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             await onCharacterRulesReset();
             setCharacterRulesDirty(false);
             setCharacterRulesEditError(null);
-            setDirtyCharacterIds(new Set());
-            showToast('캐릭터 설정을 기본값으로 초기화했습니다.', 'info');
         } catch (err) {
             console.error('Failed to reset character rules:', err);
             alert('의상 규칙 초기화에 실패했습니다.');
@@ -9459,18 +9453,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             )
         }));
         setCharacterRulesDirty(true);
-        setDirtyCharacterIds(prev => new Set(prev).add(id));
         setCharacterRulesEditError(null);
-    };
-
-    const handleSingleCharacterSave = async (e: React.MouseEvent, id: string) => {
-        e.stopPropagation();
-        await handleCharacterRulesSave();
-        setDirtyCharacterIds(prev => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-        });
     };
 
     const toggleCharacterExpand = (id: string) => {
@@ -10834,7 +10817,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.females.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
-                                        const isDirty = dirtyCharacterIds.has(char.id);
                                         return (
                                             <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
                                                 <div
@@ -10849,9 +10831,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             {formatSlotLabel(char.id, idx, 'female', char.name)}
                                                             {char.id === 'WomanD' && (
                                                                 <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
-                                                            )}
-                                                            {isDirty && (
-                                                                <span className="ml-2 text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded">저장 필요</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -10885,12 +10864,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                                 삭제
                                                             </button>
                                                         )}
-                                                        <button
-                                                            onClick={(e) => handleSingleCharacterSave(e, char.id)}
-                                                            className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors"
-                                                        >
-                                                            캐릭터 저장
-                                                        </button>
                                                     </div>
                                                 </div>
                                                 {isExpanded && (
@@ -11037,7 +11010,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.males.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
-                                        const isDirty = dirtyCharacterIds.has(char.id);
                                         return (
                                             <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
                                                 <div
@@ -11050,9 +11022,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
                                                             {formatSlotLabel(char.id, idx, 'male', char.name)}
-                                                            {isDirty && (
-                                                                <span className="ml-2 text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded">저장 필요</span>
-                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
@@ -11082,12 +11051,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         >
                                                             <Trash2 className="w-3 h-3" />
                                                             삭제
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => handleSingleCharacterSave(e, char.id)}
-                                                            className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors"
-                                                        >
-                                                            캐릭터 저장
                                                         </button>
                                                     </div>
                                                 </div>
@@ -11176,10 +11139,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     ...prev,
                                                     common: { ...prev.common, negativePrompt: e.target.value }
                                                 }))}
-                                                onBlur={() => {
-                                                    setCharacterRulesDirty(true);
-                                                    setCharacterRulesEditError(null);
-                                                }}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 placeholder="NOT cartoon, NOT anime..."
@@ -11193,10 +11152,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     ...prev,
                                                     common: { ...prev.common, qualityTags: e.target.value }
                                                 }))}
-                                                onBlur={() => {
-                                                    setCharacterRulesDirty(true);
-                                                    setCharacterRulesEditError(null);
-                                                }}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 placeholder="photorealistic, 8k resolution..."
@@ -11226,7 +11181,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             onClick={handleCharacterRulesSave}
                                             className="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold"
                                         >
-                                            전체 저장
+                                            저장
                                         </button>
                                     </div>
                                     <button
@@ -11235,7 +11190,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     >
                                         기본값으로 초기화
                                     </button>
-                                    <div className="text-[11px] text-slate-500">개별 캐릭터 저장 또는 전체 저장 후 즉시 적용됩니다.</div>
+                                    <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
                                     {characterRulesEditError && (
                                         <div className="text-xs text-rose-400">{characterRulesEditError}</div>
                                     )}

@@ -3860,24 +3860,8 @@ export const applyCharacterInfoToScenes = (params: {
     const isWideShot = /wide|full body|aerial|drone|establishing/i.test(resolvedCamera);
     const fullBodyHint = isWideShot ? 'full body visible, head-to-toe' : '';
     const colorLockHint = 'color-accurate, preserve original outfit colors, no color changes';
-  const candidGroupHint = filteredCharacterIds.length >= 2
+    const candidGroupHint = filteredCharacterIds.length >= 2
       ? 'candid multi-person shot, natural asymmetry, no identical pose, no synchronized gesture'
-      : '';
-    const multiCharacterCountHint = filteredCharacterIds.length === 2
-      ? 'two people only, exactly two characters visible'
-      : filteredCharacterIds.length >= 3
-        ? 'three people only, exactly three characters visible'
-        : '';
-    const multiCharacterPositionHint = filteredCharacterIds.length === 2
-      ? 'Person 1 on the left, Person 2 on the right, clear spacing between both characters'
-      : filteredCharacterIds.length >= 3
-        ? 'Person 1 on the left, Person 2 in the center, Person 3 on the right, clear spacing between all characters'
-        : '';
-    const identitySeparationHint = filteredCharacterIds.length >= 2
-      ? 'different face, different hairstyle, different outfit, different pose, different hand gesture, different gaze direction, clear facial separation between each person'
-      : '';
-    const antiSwapHint = filteredCharacterIds.length >= 2
-      ? 'do not swap identities, do not merge faces, do not duplicate any character, do not invent extra people'
       : '';
 
     // ========================================
@@ -3902,10 +3886,6 @@ export const applyCharacterInfoToScenes = (params: {
       backgroundBlock,
       colorLockHint,
       candidGroupHint,
-      multiCharacterCountHint,
-      multiCharacterPositionHint,
-      identitySeparationHint,
-      antiSwapHint,
       'no text, no letters, no typography',
       'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16'
     ].filter(Boolean);

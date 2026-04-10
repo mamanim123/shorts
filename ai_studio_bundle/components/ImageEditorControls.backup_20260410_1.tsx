@@ -54,8 +54,6 @@ const ImageEditorControls: React.FC<ImageEditorControlsProps> = ({
     onGeneratePersonDetails,
     onAgeChange,
     onMultiAgeGeneration,
-    bodyEnhanceLevel,
-    setBodyEnhanceLevel,
     turnaroundOutfitMode,
     setTurnaroundOutfitMode,
     onGenerateTurnaround,

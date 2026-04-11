@@ -1,1 +1,1 @@
-﻿ Pass2 마스터 생성 경로에 LLM lockedOutfits 최우선 반영 (캐릭터 프로필 탭 의상 수정)
+﻿ LLM 응답 원본(RAW JSON) 자동 폴더 저장 기능 복구

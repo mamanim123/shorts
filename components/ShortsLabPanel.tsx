@@ -3512,6 +3512,21 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     const saveData = await saveResponse.json();
                     if (saveData?.folderName) {
                         setCurrentFolderName(saveData.folderName);
+                        // [v3.5.3] LLM 원본 응답 복구 (자동 저장)
+                        try {
+                            await fetch('http://localhost:3002/api/save-story', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    title: 'raw_llm_response',
+                                    content: generatedText,
+                                    service: selectedService,
+                                    folderName: saveData.folderName
+                                })
+                            });
+                        } catch (e) {
+                            console.warn('[ShortsLab] 원본 JSON 저장 실패:', e);
+                        }
                     }
                 } else {
                     showToast('대본 저장에 실패했습니다.', 'warning');
@@ -3967,6 +3982,21 @@ ${scriptInput}
                 if (saveData?.folderName) {
                     resolvedFolderName = saveData.folderName;
                     setCurrentFolderName(saveData.folderName);
+                    // [v3.5.3] LLM 원본 응답 복구 (자동 저장)
+                    try {
+                        await fetch('http://localhost:3002/api/save-story', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: 'raw_llm_response_master',
+                                content: generatedText,
+                                service: selectedService,
+                                folderName: saveData.folderName
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('[ShortsLab] 원본 마스터 JSON 저장 실패:', e);
+                    }
                 }
             } catch (saveError) {
                 console.error('Failed to anchor master scene folder:', saveError);

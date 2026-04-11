@@ -10,6 +10,7 @@
 
 export interface CharacterSlotRule {
   id: string;            // "WomanA", "ManB" 등
+  characterId?: string;  // [NEW] 서버 저장 캐릭터와 링크
   name?: string;         // "지영", "준호" 등 (한글 이름)
   identity: string;      // "A stunning Korean woman"
   hair: string;          // "long soft-wave hairstyle"

@@ -3491,6 +3491,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 title: 'manual_script',
                 scriptBody: finalScript,
                 scenes: scenesSource,
+                lockedOutfits: llmLockedOutfits,
                 characters: extractedCharacters.characters || [],
                 lineCharacterNames: extractedCharacters.lineCharacterNames || [],
                 source: 'manual'
@@ -3940,6 +3941,7 @@ ${scriptInput}
                 title: fallbackFolderTitle,
                 scriptBody: finalScript,
                 scenes: scenesSource,
+                lockedOutfits: llmLockedOutfitsMaster,
                 characters: extractedCharacters.characters || [],
                 lineCharacterNames: extractedCharacters.lineCharacterNames || [],
                 source: 'master-step2'

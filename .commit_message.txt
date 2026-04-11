@@ -1,1 +1,1 @@
-﻿� LLM 선택 의상(lockedOutfits)을 씬 미리보기에 반영 수정
+﻿ 저장 페이로드에 lockedOutfits 포함 - 폴더 불러오기 시 LLM 의상 유지

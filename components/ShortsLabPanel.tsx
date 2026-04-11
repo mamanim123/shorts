@@ -5239,6 +5239,17 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 outfitMap.set(key, value);
             });
 
+            // [v3.5.3 fix] LLM JSON에 담긴 lockedOutfits를 최우선으로 반영
+            const llmLockedOutfitsPass2 = parsed.lockedOutfits || {};
+            if (Object.keys(llmLockedOutfitsPass2).length > 0) {
+                Object.entries(llmLockedOutfitsPass2).forEach(([slotId, outfitName]) => {
+                    if (outfitName) {
+                        outfitMap.set(slotId, { name: String(outfitName), prompt: String(outfitName) });
+                    }
+                });
+                console.log('[AI Master] LLM lockedOutfits applied:', llmLockedOutfitsPass2);
+            }
+
             console.log('[AI Master] Outfit map created:', outfitMap);
 
             // 7. 캐릭터 정보 및 의상 정보 저장 (미리보기용)

@@ -153,14 +153,12 @@ const DEFAULT_MODE_TEMPLATES: ModeTemplates = {
       "sceneNumber": 1,
       "scriptLine": "해당 장면의 대사 또는 나레이션",
       "shortPrompt": "unfiltered raw photo, A stunning Korean woman in her {{TARGET_LABEL}}, [Slot ID], [상세 의상], [동작/표정], 8k --ar 9:16",
-      "shortPromptKo": "shortPrompt(영어 이미지 프롬프트)를 자연스러운 한국어로 번역한 것 (절대로 scriptLine을 복사하지 마세요)",
-      "longPrompt": "unfiltered raw photograph, highly detailed skin texture, A stunning Korean woman in her {{TARGET_LABEL}}, [Slot ID], [헤어], [체형], [상세 의상], [배경], [동작], [표정], shot on 85mm, f/1.8, 8k --ar 9:16",
-      "longPromptKo": "longPrompt(영어 상세 이미지 프롬프트)를 자연스러운 한국어로 번역한 것 (절대로 scriptLine을 복사하지 마세요)"
+      "longPrompt": "unfiltered raw photograph, highly detailed skin texture, A stunning Korean woman in her {{TARGET_LABEL}}, [Slot ID], [헤어], [체형], [상세 의상], [배경], [동작], [표정], shot on 85mm, f/1.8, 8k --ar 9:16"
     }
   ]
 }
 
-**🚨 주의: 정확히 8개의 scenes를 생성하고, shortPromptKo/longPromptKo는 반드시 영문 프롬프트의 한글 번역본으로 채우세요. 8개 미만 절대 금지.**`,
+**🚨 주의: 정확히 8개의 scenes를 생성하세요. 8개 미만 절대 금지.**`,
   scriptOnlyBackups: [],
   scriptImageBackups: []
 };
@@ -258,7 +256,7 @@ const enforceKoreanIdentity = (text: string, targetAgeLabel?: string, sceneNumbe
   const formatEnglishAgeLabel = (label?: string) => {
     if (!label) return '';
     const match = label.match(/\d+/);
-    return (match && match[0]) ? `${match[0]}s` : '';
+    return match ? `${match[0]}s` : '';
   };
 
   const englishAge = formatEnglishAgeLabel(targetAgeLabel);

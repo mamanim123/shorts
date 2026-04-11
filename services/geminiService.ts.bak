@@ -1632,10 +1632,10 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
           shortPrompt: scene.shortPrompt || '',
           longPrompt,
           negativePrompt: scene.negativePrompt || '',
-          shortPromptKo: scene.shortPromptKo || '',
-          longPromptKo: scene.longPromptKo || '',
+          shortPromptKo: scene.scriptLine || '',
+          longPromptKo: scene.scriptLine || '',
           soraPrompt: longPrompt,
-          soraPromptKo: scene.shortPromptKo || ''
+          soraPromptKo: scene.scriptLine || ''
         };
       });
 
@@ -2011,8 +2011,8 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
           shortPrompt: scene.shortPrompt || '',
           longPrompt: scene.longPrompt || '',
           negativePrompt: scene.negativePrompt || '',
-          shortPromptKo: scene.shortPromptKo || '',
-          longPromptKo: scene.longPromptKo || ''
+          shortPromptKo: scene.shortPromptKo || scene.scriptLine || scene.summary || '',
+          longPromptKo: scene.longPromptKo || scene.scriptLine || scene.summary || ''
         }));
       } else {
         // [ENHANCED] Richer Quality Tags for "Bold Glamour"

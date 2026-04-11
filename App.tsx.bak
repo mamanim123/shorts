@@ -539,7 +539,7 @@ const App: React.FC = () => {
           const scenes = Array.isArray(s.scenes) ? s.scenes.map((scene: any, sceneIdx: number) => ({
             sceneNumber: scene.sceneNumber || sceneIdx + 1,
             shortPrompt: scene.shortPrompt || '',
-            shortPromptKo: scene.shortPromptKo || '',
+            shortPromptKo: scene.shortPromptKo || scene.scriptLineAnchor || '',
             longPrompt: scene.longPrompt || '',
             longPromptKo: scene.longPromptKo || '',
             soraPrompt: scene.soraPrompt || '',

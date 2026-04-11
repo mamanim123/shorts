@@ -1939,8 +1939,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     const getScenePromptForGeneration = useCallback(async (scene?: Scene | null) => {
         if (!scene) return '';
-        const koreanPrompt = scene.longPromptKo || scene.shortPromptKo || '';
-        const englishPrompt = scene.prompt || scene.longPrompt || scene.shortPrompt || '';
+        const koreanPrompt = scene.longPromptKo || scene.shortPromptKo || scene.text || '';
+        const englishPrompt = scene.prompt || '';
         if (settings.imagePromptLanguage === 'ko') {
             if (!koreanPrompt.trim()) {
                 return englishPrompt.trim();
@@ -4179,10 +4179,9 @@ ${scriptInput}
                 // 한국어 프롬프트 설정에 따른 번역 처리
                 const displayScenes = settings.imagePromptLanguage === 'ko'
                     ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
-                        const sourcePromptForTranslation = scene.prompt || scene.longPrompt || scene.shortPrompt || '';
-                        const translatedKo = sourcePromptForTranslation
-                            ? await translateScenePromptToKorean(sourcePromptForTranslation)
-                            : (scene.longPromptKo || scene.shortPromptKo || '');
+                        const translatedKo = scene.prompt
+                            ? await translateScenePromptToKorean(scene.prompt)
+                            : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
                         return {
                             ...scene,
                             longPromptKo: translatedKo,
@@ -5614,10 +5613,9 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
             const displayScenes = settings.imagePromptLanguage === 'ko'
                 ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
-                    const sourcePromptForTranslation = scene.prompt || scene.longPrompt || scene.shortPrompt || '';
-                    const translatedKo = sourcePromptForTranslation
-                        ? await translateScenePromptToKorean(sourcePromptForTranslation)
-                        : (scene.longPromptKo || scene.shortPromptKo || '');
+                    const translatedKo = scene.prompt
+                        ? await translateScenePromptToKorean(scene.prompt)
+                        : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
                     return {
                         ...scene,
                         longPromptKo: translatedKo,

@@ -2223,6 +2223,25 @@ app.post('/api/character-backups', (req, res) => {
     }
 });
 
+app.get('/api/character-backups/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const files = fs.readdirSync(CHARACTER_BACKUPS_DIR)
+            .filter(f => f.includes(id) && f.endsWith('.json'));
+
+        if (files.length === 0) {
+            return res.status(404).json({ success: false, error: 'Backup not found' });
+        }
+
+        const filepath = path.join(CHARACTER_BACKUPS_DIR, files[0]);
+        const content = fs.readFileSync(filepath, 'utf8');
+        res.json(JSON.parse(content));
+    } catch (error) {
+        console.error('단일 백업 로드 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.delete('/api/character-backups/:id', (req, res) => {
     try {
         const { id } = req.params;

@@ -1,4 +1,4 @@
-[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]\n\n당신은 유튜브 쇼츠 대본 전문 작가입니다.\n아래 주제/장르/연령에 맞는 대본만 생성하세요.\n이미지 프롬프트나 scenes는 절대 생성하지 않습니다.\n\n주제: 봄기운이 완연한 골프장에서 아름다운 여성들이 나타나면 생기는일\n장르: 코미디 / 유머\n타겟 연령: 40s\n\n## 장르별 지침\n{{GENRE_GUIDELINES}}\n\n## 문장별 구조 (12문장 기준)\n| 문장 번호 | 구조 | 역할 | 감정 |\n|----------|------|------|------|\n| 1 | HOOK | 강한 시작, 시청자 멈추게 하기 | 호기심/긴장 |\n| 2~3 | SETUP | 배경/상황 설명, 복선 심기 | 평화/일상 |\n| 4~6 | BUILD-UP | 전개/행동, 긴장 고조 | 기대/설렘 |\n| 7~8 | CLIMAX | 절정/충격의 순간 | 충격/당황 |\n| 9~10 | TWIST | 반전/진실 공개 | 민망/깨달음 |\n| 11~12 | OUTRO | 마무리/교훈/자폭 | 웃음/공감 |\n\n## 캐릭터 초점 규칙 (매우 중요!)\n1. **비주얼 중심 캐릭터 식별**\n - 주제에서 \"아름다운 OO\", \"예쁜 OO\", \"멋진 OO\" 등 외모 언급 → 해당 캐릭터가 비주얼 중심\n - 예: \"눈오는 골프장에 아름다운 캐디\" → 캐디가 비주얼 중심\n\n2. **비주얼 중심 캐릭터 묘사 필수** (최소 4~5문장)\n | 문장 위치 | 묘사 내용 | 예시 |\n |----------|----------|------|\n | HOOK/SETUP | 첫인상, 전체 분위기 | \"설원 위의 요정\", \"연예인급 비주얼\" |\n | BUILD-UP | 표정, 행동 | \"생긋 웃으며\", \"달려가더라고요\" |\n | CLIMAX | 특정 부위 | \"뒤태가 아름다워서\", \"눈빛이\" |\n | TWIST | 태도 변화 | \"쿨하게\", \"팩트로 때리며\" |\n\n3. **비주얼 캐릭터 직접 대사**: 최소 1~2개 포함\n\n## 대사 규칙\n1) scriptBody는 8~12문장 (줄바꿈으로 구분)\n2) 대사는 자연스러운 구어체 한국어 (...했어, ...했지, ...했는데, ...거든요)\n3) scenes/longPrompt/shortPrompt 절대 포함 금지\n4) 마크다운 금지, JSON만 출력\n\n## 출력 형식\n{\n \"scriptBody\": \"1번 문장\\n2번 문장\\n...\\n12번 문장\",\n \"visualCharacter\": \"비주얼 중심 캐릭터 이름 (없으면 null)\",\n \"visualMoments\": [외모 묘사가 있는 문장 번호 배열]\n}
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]\n\n당신은 유튜브 쇼츠 대본 전문 작가입니다.\n아래 주제/장르/연령에 맞는 대본만 생성하세요.\n이미지 프롬프트나 scenes는 절대 생성하지 않습니다.\n\n주제: 봄꽃이 만발한 골프장에 아름다운 여성들이 모임을 갖으면 생기는일\n장르: 코미디 / 유머\n타겟 연령: 40s\n\n## 장르별 지침\n{{GENRE_GUIDELINES}}\n\n## 문장별 구조 (12문장 기준)\n| 문장 번호 | 구조 | 역할 | 감정 |\n|----------|------|------|------|\n| 1 | HOOK | 강한 시작, 시청자 멈추게 하기 | 호기심/긴장 |\n| 2~3 | SETUP | 배경/상황 설명, 복선 심기 | 평화/일상 |\n| 4~6 | BUILD-UP | 전개/행동, 긴장 고조 | 기대/설렘 |\n| 7~8 | CLIMAX | 절정/충격의 순간 | 충격/당황 |\n| 9~10 | TWIST | 반전/진실 공개 | 민망/깨달음 |\n| 11~12 | OUTRO | 마무리/교훈/자폭 | 웃음/공감 |\n\n## 캐릭터 초점 규칙 (매우 중요!)\n1. **비주얼 중심 캐릭터 식별**\n - 주제에서 \"아름다운 OO\", \"예쁜 OO\", \"멋진 OO\" 등 외모 언급 → 해당 캐릭터가 비주얼 중심\n - 예: \"눈오는 골프장에 아름다운 캐디\" → 캐디가 비주얼 중심\n\n2. **비주얼 중심 캐릭터 묘사 필수** (최소 4~5문장)\n | 문장 위치 | 묘사 내용 | 예시 |\n |----------|----------|------|\n | HOOK/SETUP | 첫인상, 전체 분위기 | \"설원 위의 요정\", \"연예인급 비주얼\" |\n | BUILD-UP | 표정, 행동 | \"생긋 웃으며\", \"달려가더라고요\" |\n | CLIMAX | 특정 부위 | \"뒤태가 아름다워서\", \"눈빛이\" |\n | TWIST | 태도 변화 | \"쿨하게\", \"팩트로 때리며\" |\n\n3. **비주얼 캐릭터 직접 대사**: 최소 1~2개 포함\n\n## 대사 규칙\n1) scriptBody는 8~12문장 (줄바꿈으로 구분)\n2) 대사는 자연스러운 구어체 한국어 (...했어, ...했지, ...했는데, ...거든요)\n3) scenes/longPrompt/shortPrompt 절대 포함 금지\n4) 마크다운 금지, JSON만 출력\n\n## 출력 형식\n{\n \"scriptBody\": \"1번 문장\\n2번 문장\\n...\\n12번 문장\",\n \"visualCharacter\": \"비주얼 중심 캐릭터 이름 (없으면 null)\",\n \"visualMoments\": [외모 묘사가 있는 문장 번호 배열]\n}
 
 
 
@@ -6,9 +6,9 @@
 
 대본에는 아래 이름/호칭을 **서로 구분되게** 사용하세요. (복수 표현 금지)
 
-- WomanA = 지영 (주인공)
+- WomanA = 혜진이 (주인공)
 
-- WomanB = 혜경 (상대/친구)
+- WomanB = 수애 (상대/친구)
 
 - WomanC = 미숙 (관찰자/조연)
 
@@ -23,128 +23,91 @@
 규칙: 골프 주제이므로 캐디(WomanD)는 반드시 등장합니다. 역할과 대사를 자연스럽게 부여하세요.
 
 {
-"scriptBody": "와, 저기 멀리서 걸어오는 분들 모델인가요? 아니면 연예인인가요?\n화창한 봄 햇살 아래 지영이 화사한 핑크색 골프웨어를 입고 필드에 등장합니다.\n옆에 있는 혜경도 마치 런웨이를 걷는 것처럼 우아하게 걸어오더라고요.\n지영이 생긋 웃으며 머리카락을 넘기는데, 주변 남자 골퍼들이 전부 넋을 잃고 쳐다봅니다.\n준호는 샷을 하려다 말고 멍하니 지영의 늘씬한 뒤태만 감시하고 있네요.\n지영이 가볍게 스윙을 준비하자 미숙은 부러운 듯 그 비주얼을 감상합니다.\n지영이 자신감 있게 외쳤어요. '자, 이번엔 제가 먼저 칠게요!'\n그런데 공을 치는 순간, 지영의 드라이버가 잔디만 퍽 하고 파헤치며 헛스윙을 하네요.\n지켜보던 캐디가 무표정하게 다가가서 한마디 툭 던졌어요.\n'고객님, 비주얼은 싱글이신데 골프 실력은 완전 명랑 골프시네요!'\n민망해진 지영이 얼굴이 빨개져서 '아니, 잔디가 너무 예뻐서 그랬죠!'라며 수줍게 웃습니다.\n결국 골프장은 비주얼 쇼가 아니라 오늘도 몸개그 대잔치로 마무리됐네요.",
-"visualCharacter": "지영",
-"visualMoments": [
-1,
-2,
-3,
-4,
-5,
-11
-]
+"scriptBody": "봄꽃보다 더 화사한 혜진이가 필드에 나타나면 골프장은 순간 패션쇼 런웨이가 되어버려요\n파스텔톤 스커트 사이로 보이는 늘씬한 각선미는 정말 모델 뺨치는 수준이었죠\n혜진이가 티박스에 올라서자마자 벚꽃 잎이 흩날리며 비현실적인 아우라를 뿜어내더라고요\n수애는 그 모습 보면서 입술을 꽉 깨물고는 연습 스윙을 미친 듯이 하대요\n혜진이가 생긋 웃으면서 '오늘 날씨가 너무 예뻐서 공이 안 맞으면 어떡해?'라며 콧노래를 불러요\n풀스윙하는 찰나에 바람에 머릿결이 찰랑이는데 뒤태가 진짜 여신 그 자체였거든요\n그런데 혜진이가 힘껏 휘두른 드라이버 샷이 꽃나무 정중앙을 강타해버렸어요\n우수수 떨어지는 꽃비 속에서 혜진이가 당황하며 눈을 깜빡이는데 눈빛이 참 처연하더라고요\n캐디 언니가 한숨을 내쉬며 '혜진 님, 꽃 구경은 그만하시고 로스트볼 하나 더 꺼내세요'라고 팩폭을 날려요\n알고 보니 혜진이는 공 맞히는 것보다 사진 백 장 찍는 게 오늘 진정한 목표였던 거죠\n혜진이는 쿨하게 '수애야, 공은 중요하지 않아, 내 인생샷 건졌으면 된 거지!'라며 포즈를 잡아요\n결국 스코어는 엉망진창이지만 앨범만큼은 우승컵 따놓은 것 같은 우리들의 봄 소풍이었네요",
+"visualCharacter": "혜진이",
+"visualMoments": [1, 2, 3, 5, 6, 8]
 }
 
-[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]\n\n당신은 등장인물 추출 전문가입니다. 아래 대본 라인에서 등장인물과 각 라인에 등장하는 인물 목록을 추출하세요.\n\n기본 성별: female\n\n## 대본 라인\n1. 와, 저기 멀리서 걸어오는 분들 모델인가요? 아니면 연예인인가요?
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]\n\n당신은 등장인물 추출 전문가입니다. 아래 대본 라인에서 등장인물과 각 라인에 등장하는 인물 목록을 추출하세요.\n\n기본 성별: female\n\n## 대본 라인\n1. 봄꽃보다 더 화사한 혜진이가 필드에 나타나면 골프장은 순간 패션쇼 런웨이가 되어버려요
 
-2. 화창한 봄 햇살 아래 지영이 화사한 핑크색 골프웨어를 입고 필드에 등장합니다.
+2. 파스텔톤 스커트 사이로 보이는 늘씬한 각선미는 정말 모델 뺨치는 수준이었죠
 
-3. 옆에 있는 혜경도 마치 런웨이를 걷는 것처럼 우아하게 걸어오더라고요.
+3. 혜진이가 티박스에 올라서자마자 벚꽃 잎이 흩날리며 비현실적인 아우라를 뿜어내더라고요
 
-4. 지영이 생긋 웃으며 머리카락을 넘기는데, 주변 남자 골퍼들이 전부 넋을 잃고 쳐다봅니다.
+4. 수애는 그 모습 보면서 입술을 꽉 깨물고는 연습 스윙을 미친 듯이 하대요
 
-5. 준호는 샷을 하려다 말고 멍하니 지영의 늘씬한 뒤태만 감시하고 있네요.
+5. 혜진이가 생긋 웃으면서 '오늘 날씨가 너무 예뻐서 공이 안 맞으면 어떡해?'라며 콧노래를 불러요
 
-6. 지영이 가볍게 스윙을 준비하자 미숙은 부러운 듯 그 비주얼을 감상합니다.
+6. 풀스윙하는 찰나에 바람에 머릿결이 찰랑이는데 뒤태가 진짜 여신 그 자체였거든요
 
-7. 지영이 자신감 있게 외쳤어요. '자, 이번엔 제가 먼저 칠게요!'
+7. 그런데 혜진이가 힘껏 휘두른 드라이버 샷이 꽃나무 정중앙을 강타해버렸어요
 
-8. 그런데 공을 치는 순간, 지영의 드라이버가 잔디만 퍽 하고 파헤치며 헛스윙을 하네요.
+8. 우수수 떨어지는 꽃비 속에서 혜진이가 당황하며 눈을 깜빡이는데 눈빛이 참 처연하더라고요
 
-9. 지켜보던 캐디가 무표정하게 다가가서 한마디 툭 던졌어요.
+9. 캐디 언니가 한숨을 내쉬며 '혜진 님, 꽃 구경은 그만하시고 로스트볼 하나 더 꺼내세요'라고 팩폭을 날려요
 
-10. '고객님, 비주얼은 싱글이신데 골프 실력은 완전 명랑 골프시네요!'
+10. 알고 보니 혜진이는 공 맞히는 것보다 사진 백 장 찍는 게 오늘 진정한 목표였던 거죠
 
-11. 민망해진 지영이 얼굴이 빨개져서 '아니, 잔디가 너무 예뻐서 그랬죠!'라며 수줍게 웃습니다.
+11. 혜진이는 쿨하게 '수애야, 공은 중요하지 않아, 내 인생샷 건졌으면 된 거지!'라며 포즈를 잡아요
 
-12. 결국 골프장은 비주얼 쇼가 아니라 오늘도 몸개그 대잔치로 마무리됐네요.\n\n## 추출 규칙\n1. 대본 변경 금지, 등장인물 이름만 추출\n2. \"나/내가\" → \"주인공\"으로 표기\n3. 성별 불명확 시 \"unknown\", 주인공은 기본 성별 따름\n4. 복수 지칭(\"얘들아\", \"친구들\")은 2명 이상으로 분리\n5. 이름 없는 조연은 \"지인1\", \"지인2\"처럼 구분\n\n## 역할(role) 분류\n- narrator: 이야기 화자 (주인공) → 반드시 WomanA 또는 ManA 슬롯 배정\n- visual_focus: 외모/매력 강조 캐릭터 (대본에서 \"아름다운\", \"예쁜\", \"멋진\" 등으로 묘사된 캐릭터)\n- supporting: 일반 조연\n\n## 중요: 비주얼 캐릭터 판단 기준\n대본 내용에서 외모/매력이 직접 언급된 캐릭터만 visual_focus로 지정하세요.\n주인공이 \"아름다운\", \"예쁜\" 등으로 묘사되면 주인공이 visual_focus입니다.\n조연이 외모 묘사 없이 단순 등장하면 supporting입니다.\n\n## 비주얼 언급 추출\n비주얼 캐릭터의 외모/매력 언급을 모두 추출:\n- 전체 외모: \"연예인급\", \"요정 같은\"\n- 미소: \"생긋 웃으며\", \"미소가\"\n- 뒤태: \"뒤태가\", \"뒷모습이\"\n- 눈빛: \"눈빛이\", \"눈이\"\n\n## 출력 형식 (예시: 주인공이 비주얼 캐릭터인 경우)\n{\n \"characters\": [\n {\n \"name\": \"주인공\",\n \"gender\": \"female\",\n \"role\": \"narrator\",\n \"visualFocus\": true,\n \"visualMentions\": [\n {\"line\": 1, \"mention\": \"아름다운 나\", \"type\": \"overall\"},\n {\"line\": 5, \"mention\": \"뒤태가 예뻐서\", \"type\": \"back_view\"}\n ]\n },\n {\n \"name\": \"친구\",\n \"gender\": \"female\",\n \"role\": \"supporting\",\n \"visualFocus\": false\n }\n ],\n \"lines\": [\n {\"line_number\": 1, \"character_names\": [\"주인공\"], \"focus_character\": \"주인공\", \"focus_type\": \"overall\"},\n {\"line_number\": 2, \"character_names\": [\"주인공\", \"친구\"], \"focus_character\": null, \"focus_type\": null}\n ],\n \"visualFocusInfo\": {\n \"character\": \"주인공\",\n \"characterId\": \"WomanA\",\n \"totalFocusLines\": [1, 5],\n \"backViewLines\": [5],\n \"smileLines\": [],\n \"closeUpLines\": [1]\n }\n}\n
+12. 결국 스코어는 엉망진창이지만 앨범만큼은 우승컵 따놓은 것 같은 우리들의 봄 소풍이었네요\n\n## 추출 규칙\n1. 대본 변경 금지, 등장인물 이름만 추출\n2. \"나/내가\" → \"주인공\"으로 표기\n3. 성별 불명확 시 \"unknown\", 주인공은 기본 성별 따름\n4. 복수 지칭(\"얘들아\", \"친구들\")은 2명 이상으로 분리\n5. 이름 없는 조연은 \"지인1\", \"지인2\"처럼 구분\n\n## 역할(role) 분류\n- narrator: 이야기 화자 (주인공) → 반드시 WomanA 또는 ManA 슬롯 배정\n- visual_focus: 외모/매력 강조 캐릭터 (대본에서 \"아름다운\", \"예쁜\", \"멋진\" 등으로 묘사된 캐릭터)\n- supporting: 일반 조연\n\n## 중요: 비주얼 캐릭터 판단 기준\n대본 내용에서 외모/매력이 직접 언급된 캐릭터만 visual_focus로 지정하세요.\n주인공이 \"아름다운\", \"예쁜\" 등으로 묘사되면 주인공이 visual_focus입니다.\n조연이 외모 묘사 없이 단순 등장하면 supporting입니다.\n\n## 비주얼 언급 추출\n비주얼 캐릭터의 외모/매력 언급을 모두 추출:\n- 전체 외모: \"연예인급\", \"요정 같은\"\n- 미소: \"생긋 웃으며\", \"미소가\"\n- 뒤태: \"뒤태가\", \"뒷모습이\"\n- 눈빛: \"눈빛이\", \"눈이\"\n\n## 출력 형식 (예시: 주인공이 비주얼 캐릭터인 경우)\n{\n \"characters\": [\n {\n \"name\": \"주인공\",\n \"gender\": \"female\",\n \"role\": \"narrator\",\n \"visualFocus\": true,\n \"visualMentions\": [\n {\"line\": 1, \"mention\": \"아름다운 나\", \"type\": \"overall\"},\n {\"line\": 5, \"mention\": \"뒤태가 예뻐서\", \"type\": \"back_view\"}\n ]\n },\n {\n \"name\": \"친구\",\n \"gender\": \"female\",\n \"role\": \"supporting\",\n \"visualFocus\": false\n }\n ],\n \"lines\": [\n {\"line_number\": 1, \"character_names\": [\"주인공\"], \"focus_character\": \"주인공\", \"focus_type\": \"overall\"},\n {\"line_number\": 2, \"character_names\": [\"주인공\", \"친구\"], \"focus_character\": null, \"focus_type\": null}\n ],\n \"visualFocusInfo\": {\n \"character\": \"주인공\",\n \"characterId\": \"WomanA\",\n \"totalFocusLines\": [1, 5],\n \"backViewLines\": [5],\n \"smileLines\": [],\n \"closeUpLines\": [1]\n }\n}\n
 
 {
 "characters": [
 {
-"name": "나",
-"gender": "female",
-"role": "narrator",
-"visualFocus": false
-},
-{
-"name": "지영",
+"name": "혜진이",
 "gender": "female",
 "role": "visual_focus",
 "visualFocus": true,
 "visualMentions": [
 {
 "line": 1,
-"mention": "모델인가요? 아니면 연예인인가요?",
+"mention": "봄꽃보다 더 화사한",
 "type": "overall"
 },
 {
 "line": 2,
-"mention": "화사한 핑크색 골프웨어를 입고",
-"type": "overall"
-},
-{
-"line": 4,
-"mention": "생긋 웃으며 머리카락을 넘기는데",
-"type": "smile"
-},
-{
-"line": 5,
-"mention": "늘씬한 뒤태",
-"type": "back_view"
-},
-{
-"line": 10,
-"mention": "비주얼은 싱글",
-"type": "overall"
-},
-{
-"line": 11,
-"mention": "수줍게 웃습니다",
-"type": "smile"
-}
-]
-},
-{
-"name": "혜경",
-"gender": "female",
-"role": "visual_focus",
-"visualFocus": true,
-"visualMentions": [
-{
-"line": 1,
-"mention": "모델인가요? 아니면 연예인인가요?",
+"mention": "늘씬한 각선미는 정말 모델 뺨치는 수준",
 "type": "overall"
 },
 {
 "line": 3,
-"mention": "런웨이를 걷는 것처럼 우아하게",
+"mention": "비현실적인 아우라",
 "type": "overall"
+},
+{
+"line": 5,
+"mention": "생긋 웃으면서",
+"type": "smile"
+},
+{
+"line": 6,
+"mention": "뒤태가 진짜 여신 그 자체",
+"type": "back_view"
+},
+{
+"line": 8,
+"mention": "눈빛이 참 처연하더라고요",
+"type": "eyes"
 }
 ]
 },
 {
-"name": "준호",
-"gender": "male",
-"role": "supporting",
-"visualFocus": false
-},
-{
-"name": "미숙",
+"name": "수애",
 "gender": "female",
 "role": "supporting",
 "visualFocus": false
 },
 {
-"name": "캐디",
+"name": "캐디 언니",
 "gender": "female",
 "role": "supporting",
 "visualFocus": false
 },
 {
-"name": "민수",
-"gender": "male",
-"role": "supporting",
+"name": "주인공",
+"gender": "female",
+"role": "narrator",
 "visualFocus": false
 }
 ],
@@ -152,61 +115,56 @@
 {
 "line_number": 1,
 "character_names": [
-"나",
-"지영",
-"혜경"
+"혜진이"
 ],
-"focus_character": "지영",
+"focus_character": "혜진이",
 "focus_type": "overall"
 },
 {
 "line_number": 2,
 "character_names": [
-"지영"
+"혜진이"
 ],
-"focus_character": "지영",
+"focus_character": "혜진이",
 "focus_type": "overall"
 },
 {
 "line_number": 3,
 "character_names": [
-"혜경"
+"혜진이"
 ],
-"focus_character": "혜경",
+"focus_character": "혜진이",
 "focus_type": "overall"
 },
 {
 "line_number": 4,
 "character_names": [
-"지영",
-"준호",
-"민수"
+"수애",
+"혜진이"
 ],
-"focus_character": "지영",
-"focus_type": "smile"
+"focus_character": null,
+"focus_type": null
 },
 {
 "line_number": 5,
 "character_names": [
-"준호",
-"지영"
+"혜진이"
 ],
-"focus_character": "지영",
-"focus_type": "back_view"
+"focus_character": "혜진이",
+"focus_type": "smile"
 },
 {
 "line_number": 6,
 "character_names": [
-"지영",
-"미숙"
+"혜진이"
 ],
-"focus_character": "지영",
-"focus_type": "overall"
+"focus_character": "혜진이",
+"focus_type": "back_view"
 },
 {
 "line_number": 7,
 "character_names": [
-"지영"
+"혜진이"
 ],
 "focus_character": null,
 "focus_type": null
@@ -214,15 +172,16 @@
 {
 "line_number": 8,
 "character_names": [
-"지영"
+"혜진이"
 ],
-"focus_character": null,
-"focus_type": null
+"focus_character": "혜진이",
+"focus_type": "eyes"
 },
 {
 "line_number": 9,
 "character_names": [
-"캐디"
+"캐디 언니",
+"혜진이"
 ],
 "focus_character": null,
 "focus_type": null
@@ -230,52 +189,54 @@
 {
 "line_number": 10,
 "character_names": [
-"캐디",
-"지영"
+"혜진이"
 ],
-"focus_character": "지영",
-"focus_type": "overall"
+"focus_character": null,
+"focus_type": null
 },
 {
 "line_number": 11,
 "character_names": [
-"지영"
+"혜진이",
+"수애"
 ],
-"focus_character": "지영",
-"focus_type": "smile"
+"focus_character": null,
+"focus_type": null
 },
 {
 "line_number": 12,
 "character_names": [
-"나"
+"주인공",
+"혜진이",
+"수애",
+"캐디 언니"
 ],
 "focus_character": null,
 "focus_type": null
 }
 ],
 "visualFocusInfo": {
-"character": "지영",
+"character": "혜진이",
 "characterId": "WomanA",
 "totalFocusLines": [
 1,
 2,
-4,
+3,
 5,
 6,
-10,
-11
+8
 ],
 "backViewLines": [
-5
+6
 ],
 "smileLines": [
-4,
-11
+5
 ],
 "closeUpLines": [
 1,
 2,
-10
+3,
+8
 ]
 }
 }
@@ -634,29 +595,29 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 
 ## 대본 라인
 
-1. 와, 저기 멀리서 걸어오는 분들 모델인가요? 아니면 연예인인가요?
+1. 봄꽃보다 더 화사한 혜진이가 필드에 나타나면 골프장은 순간 패션쇼 런웨이가 되어버려요
 
-2. 화창한 봄 햇살 아래 지영이 화사한 핑크색 골프웨어를 입고 필드에 등장합니다.
+2. 파스텔톤 스커트 사이로 보이는 늘씬한 각선미는 정말 모델 뺨치는 수준이었죠
 
-3. 옆에 있는 혜경도 마치 런웨이를 걷는 것처럼 우아하게 걸어오더라고요.
+3. 혜진이가 티박스에 올라서자마자 벚꽃 잎이 흩날리며 비현실적인 아우라를 뿜어내더라고요
 
-4. 지영이 생긋 웃으며 머리카락을 넘기는데, 주변 남자 골퍼들이 전부 넋을 잃고 쳐다봅니다.
+4. 수애는 그 모습 보면서 입술을 꽉 깨물고는 연습 스윙을 미친 듯이 하대요
 
-5. 준호는 샷을 하려다 말고 멍하니 지영의 늘씬한 뒤태만 감시하고 있네요.
+5. 혜진이가 생긋 웃으면서 '오늘 날씨가 너무 예뻐서 공이 안 맞으면 어떡해?'라며 콧노래를 불러요
 
-6. 지영이 가볍게 스윙을 준비하자 미숙은 부러운 듯 그 비주얼을 감상합니다.
+6. 풀스윙하는 찰나에 바람에 머릿결이 찰랑이는데 뒤태가 진짜 여신 그 자체였거든요
 
-7. 지영이 자신감 있게 외쳤어요. '자, 이번엔 제가 먼저 칠게요!'
+7. 그런데 혜진이가 힘껏 휘두른 드라이버 샷이 꽃나무 정중앙을 강타해버렸어요
 
-8. 그런데 공을 치는 순간, 지영의 드라이버가 잔디만 퍽 하고 파헤치며 헛스윙을 하네요.
+8. 우수수 떨어지는 꽃비 속에서 혜진이가 당황하며 눈을 깜빡이는데 눈빛이 참 처연하더라고요
 
-9. 지켜보던 캐디가 무표정하게 다가가서 한마디 툭 던졌어요.
+9. 캐디 언니가 한숨을 내쉬며 '혜진 님, 꽃 구경은 그만하시고 로스트볼 하나 더 꺼내세요'라고 팩폭을 날려요
 
-10. '고객님, 비주얼은 싱글이신데 골프 실력은 완전 명랑 골프시네요!'
+10. 알고 보니 혜진이는 공 맞히는 것보다 사진 백 장 찍는 게 오늘 진정한 목표였던 거죠
 
-11. 민망해진 지영이 얼굴이 빨개져서 '아니, 잔디가 너무 예뻐서 그랬죠!'라며 수줍게 웃습니다.
+11. 혜진이는 쿨하게 '수애야, 공은 중요하지 않아, 내 인생샷 건졌으면 된 거지!'라며 포즈를 잡아요
 
-12. 결국 골프장은 비주얼 쇼가 아니라 오늘도 몸개그 대잔치로 마무리됐네요.
+12. 결국 스코어는 엉망진창이지만 앨범만큼은 우승컵 따놓은 것 같은 우리들의 봄 소풍이었네요
 
 
 
@@ -669,10 +630,6 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 - WomanC / Woman C
 
 - WomanD / Woman D
-
-- ManA / Man A
-
-- ManB / Man B
 
 
 
@@ -800,7 +757,7 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 
 - 첫 씬에서 설정된 장소/배경은 대본에 명시된 이동이 없으면 끝까지 유지한다.
 
-- 골프장/설산 배경을 실내/스튜디오로 바꾸지 말 것.
+- 골프장/설산 배경을室内/스튜디오로 바꾸지 말 것.
 
 2) **다인원 동작 다양성 (Action Diversity)**:
 
@@ -812,7 +769,7 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 
 - 미디엄샷을 연속으로 사용하지 말 것.
 
-- close-up, wide, POV, over-the-shoulder 등을 섞어라.
+- close-up, wide, OTS, extreme close-up 등을 섞어라.
 
 4) **Candid Shot 스타일**:
 
@@ -826,195 +783,909 @@ unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman i
 
 - 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.
 
+6) **샷 타입 분배 규칙**:
+
+- **원샷(1인물)은 전체의 약 20%만 사용** (2~3개)
+
+- **투샷/쓰리샷/멀티샷(2~4인물)은 전체의 약 80%** (8~10개)
+
+- 4명 등장 시 group shot 또는 4인 멀티샷 활용
+
+7) **POV 절대 금지** (문제太多) → 대신 wide/OTS 사용
+
+대답이 중지되었습니다.
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]\n\n당신은 등장인물 추출 전문가입니다. 아래 대본 라인에서 등장인물과 각 라인에 등장하는 인물 목록을 추출하세요.\n\n기본 성별: female\n\n## 대본 라인\n1. 봄꽃보다 더 화사한 혜진이가 필드에 나타나면 골프장은 순간 패션쇼 런웨이가 되어버려요
+
+2. 파스텔톤 스커트 사이로 보이는 늘씬한 각선미는 정말 모델 뺨치는 수준이었죠
+
+3. 혜진이가 티박스에 올라서자마자 벚꽃 잎이 흩날리며 비현실적인 아우라를 뿜어내더라고요
+
+4. 수애는 그 모습 보면서 입술을 꽉 깨물고는 연습 스윙을 미친 듯이 하대요
+
+5. 혜진이가 생긋 웃으면서 '오늘 날씨가 너무 예뻐서 공이 안 맞으면 어떡해?'라며 콧노래를 불러요
+
+6. 풀스윙하는 찰나에 바람에 머릿결이 찰랑이는데 뒤태가 진짜 여신 그 자체였거든요
+
+7. 그런데 혜진이가 힘껏 휘두른 드라이버 샷이 꽃나무 정중앙을 강타해버렸어요
+
+8. 우수수 떨어지는 꽃비 속에서 혜진이가 당황하며 눈을 깜빡이는데 눈빛이 참 처연하더라고요
+
+9. 캐디 언니가 한숨을 내쉬며 '혜진 님, 꽃 구경은 그만하시고 로스트볼 하나 더 꺼내세요'라고 팩폭을 날려요
+
+10. 알고 보니 혜진이는 공 맞히는 것보다 사진 백 장 찍는 게 오늘 진정한 목표였던 거죠
+
+11. 혜진이는 쿨하게 '수애야, 공은 중요하지 않아, 내 인생샷 건졌으면 된 거지!'라며 포즈를 잡아요
+
+12. 결국 스코어는 엉망진창이지만 앨범만큼은 우승컵 따놓은 것 같은 우리들의 봄 소풍이었네요\n\n## 추출 규칙\n1. 대본 변경 금지, 등장인물 이름만 추출\n2. \"나/내가\" → \"주인공\"으로 표기\n3. 성별 불명확 시 \"unknown\", 주인공은 기본 성별 따름\n4. 복수 지칭(\"얘들아\", \"친구들\")은 2명 이상으로 분리\n5. 이름 없는 조연은 \"지인1\", \"지인2\"처럼 구분\n\n## 역할(role) 분류\n- narrator: 이야기 화자 (주인공) → 반드시 WomanA 또는 ManA 슬롯 배정\n- visual_focus: 외모/매력 강조 캐릭터 (대본에서 \"아름다운\", \"예쁜\", \"멋진\" 등으로 묘사된 캐릭터)\n- supporting: 일반 조연\n\n## 중요: 비주얼 캐릭터 판단 기준\n대본 내용에서 외모/매력이 직접 언급된 캐릭터만 visual_focus로 지정하세요.\n주인공이 \"아름다운\", \"예쁜\" 등으로 묘사되면 주인공이 visual_focus입니다.\n조연이 외모 묘사 없이 단순 등장하면 supporting입니다.\n\n## 비주얼 언급 추출\n비주얼 캐릭터의 외모/매력 언급을 모두 추출:\n- 전체 외모: \"연예인급\", \"요정 같은\"\n- 미소: \"생긋 웃으며\", \"미소가\"\n- 뒤태: \"뒤태가\", \"뒷모습이\"\n- 눈빛: \"눈빛이\", \"눈이\"\n\n## 출력 형식 (예시: 주인공이 비주얼 캐릭터인 경우)\n{\n \"characters\": [\n {\n \"name\": \"주인공\",\n \"gender\": \"female\",\n \"role\": \"narrator\",\n \"visualFocus\": true,\n \"visualMentions\": [\n {\"line\": 1, \"mention\": \"아름다운 나\", \"type\": \"overall\"},\n {\"line\": 5, \"mention\": \"뒤태가 예뻐서\", \"type\": \"back_view\"}\n ]\n },\n {\n \"name\": \"친구\",\n \"gender\": \"female\",\n \"role\": \"supporting\",\n \"visualFocus\": false\n }\n ],\n \"lines\": [\n {\"line_number\": 1, \"character_names\": [\"주인공\"], \"focus_character\": \"주인공\", \"focus_type\": \"overall\"},\n {\"line_number\": 2, \"character_names\": [\"주인공\", \"친구\"], \"focus_character\": null, \"focus_type\": null}\n ],\n \"visualFocusInfo\": {\n \"character\": \"주인공\",\n \"characterId\": \"WomanA\",\n \"totalFocusLines\": [1, 5],\n \"backViewLines\": [5],\n \"smileLines\": [],\n \"closeUpLines\": [1]\n }\n}\n
+
+{
+"characters": [
+{
+"name": "주인공",
+"gender": "female",
+"role": "narrator",
+"visualFocus": false
+},
+{
+"name": "혜진이",
+"gender": "female",
+"role": "visual_focus",
+"visualFocus": true,
+"visualMentions": [
+{
+"line": 1,
+"mention": "봄꽃보다 더 화사한",
+"type": "overall"
+},
+{
+"line": 2,
+"mention": "늘씬한 각선미는 정말 모델 뺨치는 수준",
+"type": "overall"
+},
+{
+"line": 3,
+"mention": "비현실적인 아우라",
+"type": "overall"
+},
+{
+"line": 5,
+"mention": "생긋 웃으면서",
+"type": "smile"
+},
+{
+"line": 6,
+"mention": "뒤태가 진짜 여신 그 자체",
+"type": "back_view"
+},
+{
+"line": 8,
+"mention": "눈빛이 참 처연하더라고요",
+"type": "eyes"
+}
+]
+},
+{
+"name": "수애",
+"gender": "female",
+"role": "supporting",
+"visualFocus": false
+},
+{
+"name": "캐디 언니",
+"gender": "female",
+"role": "supporting",
+"visualFocus": false
+}
+],
+"lines": [
+{
+"line_number": 1,
+"character_names": ["혜진이"],
+"focus_character": "혜진이",
+"focus_type": "overall"
+},
+{
+"line_number": 2,
+"character_names": ["혜진이"],
+"focus_character": "혜진이",
+"focus_type": "overall"
+},
+{
+"line_number": 3,
+"character_names": ["혜진이"],
+"focus_character": "혜진이",
+"focus_type": "overall"
+},
+{
+"line_number": 4,
+"character_names": ["수애", "혜진이"],
+"focus_character": null,
+"focus_type": null
+},
+{
+"line_number": 5,
+"character_names": ["혜진이"],
+"focus_character": "혜진이",
+"focus_type": "smile"
+},
+{
+"line_number": 6,
+"character_names": ["혜진이"],
+"focus_character": "혜진이",
+"focus_type": "back_view"
+},
+{
+"line_number": 7,
+"character_names": ["혜진이"],
+"focus_character": null,
+"focus_type": null
+},
+{
+"line_number": 8,
+"character_names": ["혜진이"],
+"focus_character": "혜진이",
+"focus_type": "eyes"
+},
+{
+"line_number": 9,
+"character_names": ["캐디 언니", "혜진이"],
+"focus_character": null,
+"focus_type": null
+},
+{
+"line_number": 10,
+"character_names": ["혜진이"],
+"focus_character": null,
+"focus_type": null
+},
+{
+"line_number": 11,
+"character_names": ["혜진이", "수애"],
+"focus_character": null,
+"focus_type": null
+},
+{
+"line_number": 12,
+"character_names": ["주인공", "혜진이", "수애", "캐디 언니"],
+"focus_character": null,
+"focus_type": null
+}
+],
+"visualFocusInfo": {
+"character": "혜진이",
+"characterId": "WomanA",
+"totalFocusLines": [1, 2, 3, 5, 6, 8],
+"backViewLines": [6],
+"smileLines": [5],
+"closeUpLines": [1, 2, 3, 8]
+}
+}
+
+[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+
+
+당신은 장면 분해 전문가입니다. 아래 "대본 라인"을 그대로 유지하면서 씬 정보를 구조화하세요.
+
+대본을 새로 쓰거나 요약해서 scriptLine을 바꾸지 마세요.
+
+
+
+## 필수 규칙
+
+1) JSON만 출력 (설명/마크다운 금지)
+
+2) scenes 개수 = 대본 라인 수 (1:1 매칭)
+
+3) scriptLine은 대본 라인을 **그대로 복사**
+
+4) characterIds는 아래 목록의 ID만 사용 (없으면 빈 배열 [])
+
+5) summary/action/background는 짧고 명확한 영어 묘사로 작성
+
+6) longPrompt/shortPrompt는 이미지 생성용 영어 프롬프트로 작성
+
+
+
+---
+
+
+
+## 🎯 캐릭터 초점 규칙 (가장 중요!)
+
+
+
+### 비주얼 초점 정보
+
+{{VISUAL_FOCUS_INFO}}
+
+
+
+### 씬별 초점 결정 규칙
+
+| 조건 | 메인 캐릭터 | 샷 타입 |
+
+|------|------------|---------|
+
+| visual_focus_character가 있는 라인 | 비주얼 캐릭터 | 비주얼 캐릭터 원샷 또는 클로즈업 |
+
+| 화자 리액션/감정 표현 라인 | 화자 | 화자 원샷 |
+
+| 두 사람 대화/상호작용 | 둘 다 | 투샷 |
+
+
+
+### 비주얼 캐릭터 최소 등장 규칙 (12씬 기준)
+
+- ✅ 비주얼 캐릭터 메인 등장: **최소 5~6씬**
+
+- ✅ 비주얼 캐릭터 클로즈업: **최소 2씬**
+
+- ✅ 비주얼 캐릭터 전신샷: **최소 1씬**
+
+- ✅ 비주얼 캐릭터 뒤태 (언급 시): **필수 1씬**
+
+
+
+### 비주얼 언급별 필수 처리
+
+| 대본 언급 | 필수 프롬프트 요소 |
+
+|----------|-------------------|
+
+| "예쁘다/아름답다/연예인급" | 해당 캐릭터 클로즈업, beautiful, stunning |
+
+| "미소/웃으며/생긋" | close-up on smile, gentle smile, soft expression |
+
+| "뒤태/뒷모습" | **from behind, back view, rear view** (필수!) |
+
+| "눈빛/눈이" | eyes in focus, captivating gaze |
+
+| "걸어가며/달려가며" | full body shot, graceful movement |
+
+
+
+---
+
+
+
+## 📸 샷 타입 규칙
+
+### 등장 인물 수에 따른 샷 타입
+
+- **1명 등장**: shotType = "원샷"
+
+- **2명 등장**: shotType = "투샷"
+
+- **3명 등장**: shotType = "쓰리샷"
+
+
+
+### 투샷/쓰리샷 longPrompt 작성 필수 규칙
+
+**여러 캐릭터가 등장할 때는 반드시 [Person 1], [Person 2], [Person 3]로 구분!**
+
+
+
+✅ **원샷 예시** (1명):
+
+unfiltered raw photograph, close-up portrait shot, A stunning Korean woman in her 20s, high-bun hairstyle, slim figure, wearing White Blouse + Royal Blue Skirt, gentle smile, looking at camera, snowy golf course, 8k resolution
+
+
+
+
+
+✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
+
+unfiltered raw photograph, medium two-shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, slim hourglass figure, wearing Black Bodycon Dress, looking at Person 2 with admiration] [Person 2: A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing White Blouse + Royal Blue Skirt, standing on the right, smiling softly], facing each other, snowy golf course, natural interaction
+
+
+
+
+
+### 투샷 필수 요소
+
+- 각 인물의 **위치** 명시: on the left, on the right, in foreground, in background
+
+- **상호작용** 키워드: facing each other, making eye contact, natural conversation
+
+- **동작 차별화**: Person 1은 A 동작, Person 2는 B 동작
+
+
+
+❌ **금지**: 캐릭터 구분 없이 쉼표로만 연결
+
+
+
+---
+
+
+
+## 📷 카메라 앵글 필수 규칙
+
+
+
+### 구조별 권장 앵글
+
+| 씬 구조 | 권장 앵글 | 프롬프트 키워드 |
+
+|--------|----------|---------------|
+
+| HOOK (1) | **close-up** | close-up portrait shot, face in focus, shallow depth of field |
+
+| SETUP (2~3) | **wide** | wide establishing shot, full body visible, environment context, deep focus |
+
+| BUILD-UP (4~6) | **medium / OTS / POV** | medium shot, over-the-shoulder, first-person POV |
+
+| CLIMAX (7~8) | **close-up** | close-up shot, dramatic expression, face in focus |
+
+| TWIST (9~10) | **wide / medium** | wide shot revealing context, medium reaction shot |
+
+| OUTRO (11~12) | **medium** | medium shot, natural pose, waist-up framing |
+
+
+
+### 앵글 다양성 체크리스트
+
+- ✅ close-up 최소 3개 (Hook, Climax, 비주얼 캐릭터용)
+
+- ✅ wide 최소 2개 (Setup, Twist)
+
+- ✅ medium 2~3개
+
+- ✅ over-the-shoulder 또는 POV 최소 1개
+
+- ❌ 같은 앵글 3연속 금지
+
+
+
+---
+
+
+
+## 🎥 POV (1인칭 시점) 샷 절대 규칙 ⚠️
+
+
+
+**POV = 특정 캐릭터의 눈으로 보는 시점**
+
+
+
+1. ✅ **화면에 보이는 캐릭터만** longPrompt에 포함
+
+2. ❌ **카메라 역할 캐릭터는 절대 포함 금지**
+
+3. ✅ POV 대상은 **looking at camera (POV target)** 필수
+
+
+
+**올바른 예시:**
+
+대본: "캐디님이 생긋 웃으면서 달려가더라고요" (주인공 시점에서 캐디를 봄) longPrompt: "unfiltered raw photograph, first-person POV shot, A beautiful Korean woman in her 20s, high-bun hairstyle, wearing White Blouse + Royal Blue Skirt, running toward camera with a bright smile, looking at camera (POV target), snowy golf course"
+
+
+
+→ 주인공은 카메라이므로 프롬프트에서 완전 제외!
+
+
+
+---
+
+
+
+## 📐 특수 앵글 규칙
+
+
+
+### 뒤태 촬영 (Back View) - 필수!
+
+대본에 "뒤태", "뒷모습", "돌아서며" 등 언급 시:
+
+
+
+필수 키워드: from behind, back view, rear view, walking away 예시: "unfiltered raw photograph, medium shot from behind, A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing White Blouse + Royal Blue Skirt, beautiful silhouette, walking away on snowy golf course, back view"
+
+
+
+
+
+### 특정 부위 강조
+
+| 대본 언급 | 프롬프트 키워드 |
+
+|----------|----------------|
+
+| 미소/웃음 | close-up, gentle smile, soft expression, smile in focus |
+
+| 눈빛 | close-up, eyes in focus, captivating gaze, eye contact |
+
+| 뒤태 | from behind, back view, beautiful silhouette |
+
+| 전신/걸음 | full body shot, graceful stride, elegant posture |
+
+
+
+---
+
+
+
+
+
+
+
+
+
+2. **의상 자율 선택 (LLM Selection)**:
+
+- 현재 캐릭터들의 의상이 지정되지 않았습니다.
+
+- 대본의 주제, 분위기, 장르를 종합적으로 분석하여 **각 캐릭터에게 가장 잘 어울리는 최상급 명품 의상 명칭**을 직접 선택하세요.
+
+- **⚠️ 의상 정책 (Must Follow)**: 쇄골(Collarbone)과 어깨(Shoulder) 라인이 드러나는 스타일(Off-shoulder 등)은 허용되지만, **가슴골(Cleavage)이 깊게 파인 디자인(Deep V-neck, Plunging, Low-cut)은 절대 피하세요.**
+
+- 선택한 의상은 아래 JSON의 "lockedOutfits" 객체에 담아야 합니다.
+
+## 👗 의상 일관성 규칙 (절대 엄수! 위반 시 즉시 실패!)
+
+
+
+### 🚨 핵심 규칙 (반드시 준수)
+
+1. **의상 명칭 100% 동일 복사**: lockedOutfits/characters의 outfit 문자열을 **단어 하나도 변경/생략/요약하지 말고** 그대로 복사
+
+- ❌ 금지: "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress" → "coral dress"
+
+- ❌ 금지: "denim hot pants" → "denim shorts" (동의어 사용 금지!)
+
+- ✅ 올바름: 전체 명칭 그대로 복사붙여넣기
+
+
+
+2. **characterSlot 순서 = Person 번호 순서**: characterSlot이 "WomanA, WomanB"면 반드시 Person 1=WomanA, Person 2=WomanB
+
+- ❌ 금지: characterSlot은 WomanA,WomanB인데 longPrompt에서 Person 1이 WomanB인 경우
+
+- ✅ 올바름: characterSlot 순서와 Person 번호가 정확히 일치
+
+
+
+3. **투샷/쓰리샷에서 identity+hair+body+outfit 전부 필수**: 여러 캐릭터 등장 시 **절대 생략 금지**
+
+- ❌ 금지: "[Person 1: stunning Korean woman in 40s, coral dress]" (identity 축약, hair/body 누락)
+
+- ✅ 올바름: "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look..., wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress]"
+
+
+
+4. **모든 씬에서 동일한 캐릭터는 동일한 문구 사용**: Scene 1부터 마지막 Scene까지 identity/hair/body/outfit 문구가 100% 동일해야 함
+
+
+
+5. **투샷/쓰리샷에서 각 캐릭터 개별 동작 필수 (쌍둥이 방지!)**
+
+- ❌ 금지: "walking together", "standing together", "both smiling" (공통 동작만 사용)
+
+- ✅ 올바름: Person 1 = "gesturing while speaking", Person 2 = "listening with crossed arms"
+
+- 각 Person 블록 안에 개별 동작/표정을 명시할 것!
+
+
+
+6. **악세서리는 반드시 Person 블록 안에 포함**
+
+- ❌ 금지: "[Person 1: ...] [Person 2: ...], wearing scarf" (scarf가 밖에 있으면 새 캐릭터로 오인!)
+
+- ✅ 올바름: "[Person 1: ..., accessorized with scarf] [Person 2: ..., accessorized with beanie]"
+
+
+
+### ✅ 최종 검증 체크리스트 (출력 전 반드시 확인!)
+
+- [ ] 모든 outfit이 lockedOutfits의 원본과 글자 하나 틀림없이 동일한가?
+
+- [ ] characterSlot의 순서와 Person 번호 순서가 일치하는가?
+
+- [ ] 투샷/쓰리샷의 모든 Person에 identity, hair, body, wearing, outfit이 포함되어 있는가?
+
+- [ ] 같은 캐릭터의 문구가 모든 씬에서 100% 동일한가?
+
+- [ ] "shorts"를 "hot pants" 대신 쓰거나, 의상 단어를 동의어로 바꾸지 않았는가?
+
+- [ ] 투샷/쓰리샷에서 각 캐릭터가 **서로 다른 개별 동작**을 하고 있는가?
+
+- [ ] 모든 악세서리(scarf, gloves, beanie 등)가 **Person 블록 안**에 있는가?
+
+
+
+## 🎥 샷 품질 고도화 규칙
+
+1) **배경 일관성**: 첫 씬 배경을 끝까지 유지 (이동 없으면 장소 변경 금지)
+
+2) **다인원 동작 다양성**: 2명 이상 시 각 인물 동작을 다르게 설정
+
+3) **Candid Shot 스타일**: candid moment, natural interaction, captured mid-action
+
+4) **배경 가시성**: wide shot에서 deep focus, sharp background 포함
+
+
+
+---
+
+
+
+## 대본 라인
+
+1. 봄꽃보다 더 화사한 혜진이가 필드에 나타나면 골프장은 순간 패션쇼 런웨이가 되어버려요
+
+2. 파스텔톤 스커트 사이로 보이는 늘씬한 각선미는 정말 모델 뺨치는 수준이었죠
+
+3. 혜진이가 티박스에 올라서자마자 벚꽃 잎이 흩날리며 비현실적인 아우라를 뿜어내더라고요
+
+4. 수애는 그 모습 보면서 입술을 꽉 깨물고는 연습 스윙을 미친 듯이 하대요
+
+5. 혜진이가 생긋 웃으면서 '오늘 날씨가 너무 예뻐서 공이 안 맞으면 어떡해?'라며 콧노래를 불러요
+
+6. 풀스윙하는 찰나에 바람에 머릿결이 찰랑이는데 뒤태가 진짜 여신 그 자체였거든요
+
+7. 그런데 혜진이가 힘껏 휘두른 드라이버 샷이 꽃나무 정중앙을 강타해버렸어요
+
+8. 우수수 떨어지는 꽃비 속에서 혜진이가 당황하며 눈을 깜빡이는데 눈빛이 참 처연하더라고요
+
+9. 캐디 언니가 한숨을 내쉬며 '혜진 님, 꽃 구경은 그만하시고 로스트볼 하나 더 꺼내세요'라고 팩폭을 날려요
+
+10. 알고 보니 혜진이는 공 맞히는 것보다 사진 백 장 찍는 게 오늘 진정한 목표였던 거죠
+
+11. 혜진이는 쿨하게 '수애야, 공은 중요하지 않아, 내 인생샷 건졌으면 된 거지!'라며 포즈를 잡아요
+
+12. 결국 스코어는 엉망진창이지만 앨범만큼은 우승컵 따놓은 것 같은 우리들의 봄 소풍이었네요
+
+
+
+## 캐릭터 ID 목록 (의상 정보 포함)
+
+- WomanA / Woman A
+
+- WomanB / Woman B
+
+- WomanC / Woman C
+
+- WomanD / Woman D
+
+
+
+## 비주얼 초점 정보
+
+{{VISUAL_FOCUS_INFO}}
+
+
+
+### 비주얼 초점 적용 규칙
+
+1. **focus_character가 있는 라인** → 해당 캐릭터 원샷 또는 클로즈업
+
+2. **focus_type별 필수 처리**:
+
+| focus_type | 필수 프롬프트 요소 |
+
+|------------|-------------------|
+
+| overall | 해당 캐릭터 클로즈업/전신, stunning, beautiful |
+
+| smile | close-up, gentle smile, soft expression |
+
+| back_view | **from behind, back view** (필수!) |
+
+| gaze | eyes in focus, captivating gaze |
+
+
+
+3. **비주얼 캐릭터 최소 등장**: 12씬 중 5~6씬
+
+4. **backViewLines에 해당하는 씬**: 반드시 from behind, back view 포함
+
+
+
+## 감정별 이미지 키워드
+
+{{EMOTION_KEYWORDS}}
+
+
+
+## 비주얼 캐릭터 이미지 규칙
+
+{{VISUAL_CHARACTER_RULES}}
+
+
+
+## 출력 형식
+
+{
+
+"scenes": [
+
+{
+
+"sceneNumber": 1,
+
+"scriptLine": "대본 라인 그대로 복사",
+
+"characterIds": ["WomanD"],
+
+"shotType": "원샷",
+
+"focusCharacter": "캐디",
+
+"focusType": "overall",
+
+"cameraAngle": "close-up",
+
+"emotion": "호기심",
+
+"summary": "Caddy appears like a snow fairy",
+
+"action": "standing gracefully, looking at camera",
+
+"background": "snowy golf course with falling snowflakes",
+
+"longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing White Blouse + Royal Blue Skirt, with white fur earmuffs and matching gloves, gentle smile, looking at camera, stunning beauty, snowy golf course, soft falling snow, 8k resolution, highly detailed",
+
+"shortPrompt": "close-up, beautiful Korean caddy, white blouse, blue skirt, gentle smile, snowy golf course"
+
+},
+
+{
+
+"sceneNumber": 2,
+
+"scriptLine": "뒤태가 너무 아름다워서 넋 놓고 보고 있는데",
+
+"characterIds": ["WomanD"],
+
+"shotType": "원샷",
+
+"focusCharacter": "캐디",
+
+"focusType": "back_view",
+
+"cameraAngle": "medium",
+
+"emotion": "설렘",
+
+"summary": "Caddy's beautiful back view",
+
+"action": "walking away gracefully",
+
+"background": "snowy fairway with winter trees",
+
+"longPrompt": "unfiltered raw photograph, medium shot from behind, back view, A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing White Blouse + Royal Blue Skirt, with white scarf flowing, beautiful silhouette, walking away on snowy golf course, rear view, elegant posture, 8k resolution",
+
+"shortPrompt": "back view, Korean caddy walking away, blue skirt, beautiful silhouette, snowy golf course"
+
+}
+
+]
+
+}
+
+
+
+
+
+## 🎥 샷 품질 고도화 규칙 (매우 중요!)
+
+1) **배경 일관성 (Environment Continuity)**:
+
+- 첫 씬에서 설정된 장소/배경은 대본에 명시된 이동이 없으면 끝까지 유지한다.
+
+- 골프장/설산 배경을室内/스튜디오로 바꾸지 말 것.
+
+2) **다인원 동작 다양성 (Action Diversity)**:
+
+- 2명 이상 등장 시 각 인물의 동작을 서로 다르게 설정한다.
+
+- 예: Person1=스윙 준비, Person2=박수/웃음, Person3=고개 돌림.
+
+3) **카메라 앵글 다양성**:
+
+- 미디엄샷을 연속으로 사용하지 말 것.
+
+- close-up, wide, OTS, extreme close-up 등을 섞어라.
+
+4) **Candid Shot 스타일**:
+
+- 자연스럽고 우연히 찍힌 느낌을 강조한다.
+
+- 키워드 예: candid moment, natural interaction, captured mid-action.
+
+5) **배경 가시성 강화**:
+
+- wide/establishing shot에서는 배경이 선명하게 보이도록 deep focus, sharp background를 포함한다.
+
+- 인물이 배경을 가리지 않도록 환경이 화면에 넓게 드러나야 한다.
+
+6) **샷 타입 분배 규칙**:
+
+- **원샷(1인물)은 전체의 약 20%만 사용** (2~3개)
+
+- **투샷/쓰리샷/멀티샷(2~4인물)은 전체의 약 80%** (8~10개)
+
+- 4명 등장 시 group shot 또는 4인 멀티샷 활용
+
+7) **POV 절대 금지** (문제太多) → 대신 wide/OTS 사용
+
 {
 "lockedOutfits": {
-"WomanA": "Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping",
-"WomanB": "Lavender High-waisted Golf Slacks + Slim-fit Pastel Purple Mock-neck Thermal Base Layer",
-"WomanC": "Emerald Green Zip-up Golf Vest + White Technical Tapered Pants",
-"WomanD": "Navy Blue Professional Golf Skorts + Sky Blue Long-sleeve Polo Shirt + White Sun Visor",
-"ManA": "Charcoal Grey Slim-fit Golf Trousers + Premium Navy Blue Tech-fabric Polo Shirt",
-"ManB": "Beige Chino Golf Pants + Forest Green Performance Knit Sweater"
+"WomanA": "Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress",
+"WomanB": "Mint Green Tweed Vest and Matching Pleated Skirt Set",
+"WomanC": "Lavender Silk Tie-neck Blouse with White High-waisted Trousers",
+"WomanD": "Luxury White Performance Polo with Navy Pleated Skirt and Visor"
 },
 "scenes": [
 {
 "sceneNumber": 1,
-"scriptLine": "와, 저기 멀리서 걸어오는 분들 모델인가요? 아니면 연예인인가요?",
-"characterIds": ["WomanA", "WomanB"],
-"shotType": "투샷",
-"focusCharacter": "지영",
+"scriptLine": "봄꽃보다 더 화사한 혜진이가 필드에 나타나면 골프장은 순간 패션쇼 런웨이가 되어버려요",
+"characterIds": ["WomanA"],
+"shotType": "원샷",
+"focusCharacter": "혜진이",
 "focusType": "overall",
 "cameraAngle": "close-up",
 "emotion": "호기심",
-"summary": "Stunning entry of two beautiful women on the golf course",
-"action": "[Person 1: looking toward the camera with a dazzling smile] [Person 2: glancing sideways with a sophisticated expression]",
-"background": "Green golf course fairway under bright spring sunlight",
-"longPrompt": "unfiltered raw photograph, close-up shot, shallow depth of field, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, looking at camera with a dazzling smile, stunning beauty] [Person 2: A beautiful Korean woman in her 40s, elegant bob hairstyle, slim figure, wearing Lavender High-waisted Golf Slacks + Slim-fit Pastel Purple Mock-neck Thermal Base Layer, standing on the right, glancing sideways gracefully], bright spring golf course, 8k resolution",
-"shortPrompt": "close-up, two stunning Korean women, pink and lavender golf wear, dazzling smiles, spring golf course"
+"summary": "Hyejin arrives at the golf course looking stunning",
+"action": "stepping onto the green, looking at camera with a radiant smile",
+"background": "vibrant spring golf course with blooming cherry blossoms",
+"longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, shallow depth of field, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, radiant smile, looking at camera, stunning beauty, spring golf course with blooming cherry blossoms, 8k resolution, highly detailed",
+"shortPrompt": "close-up, stunning Korean woman, coral mini dress, radiant smile, cherry blossoms golf course"
 },
 {
 "sceneNumber": 2,
-"scriptLine": "화창한 봄 햇살 아래 지영이 화사한 핑크색 골프웨어를 입고 필드에 등장합니다.",
+"scriptLine": "파스텔톤 스커트 사이로 보이는 늘씬한 각선미는 정말 모델 뺨치는 수준이었죠",
 "characterIds": ["WomanA"],
 "shotType": "원샷",
-"focusCharacter": "지영",
+"focusCharacter": "혜진이",
 "focusType": "overall",
 "cameraAngle": "wide",
 "emotion": "평화",
-"summary": "Jiyoung walking onto the green field",
-"action": "walking gracefully toward the center of the fairway, holding a golf club",
-"background": "Lush green golf course, vibrant spring trees in the distance, bright sun",
-"longPrompt": "unfiltered raw photograph, wide establishing shot, full body visible, deep focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, walking gracefully toward the center of the fairway, holding a golf club, vibrant spring golf course, bright sunlight, sharp background, 8k resolution",
-"shortPrompt": "wide shot, stunning Korean woman, pink golf wear, walking on green field, spring sunlight"
+"summary": "Full body shot of Hyejin showing her slim figure",
+"action": "standing elegantly on the fairway, posing like a model",
+"background": "wide view of the golf course with green grass and pink flowers",
+"longPrompt": "unfiltered raw photograph, wide establishing shot, full body visible, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, standing elegantly on the fairway, posing like a model, slim hourglass figure, spring golf course, deep focus, sharp background, 8k resolution",
+"shortPrompt": "wide shot, full body, stunning Korean woman, coral mini dress, model pose, golf course"
 },
 {
 "sceneNumber": 3,
-"scriptLine": "옆에 있는 혜경도 마치 런웨이를 걷는 것처럼 우아하게 걸어오더라고요.",
-"characterIds": ["WomanB"],
-"shotType": "원샷",
-"focusCharacter": "혜경",
+"scriptLine": "혜진이가 티박스에 올라서자마자 벚꽃 잎이 흩날리며 비현실적인 아우라를 뿜어내더라고요",
+"characterIds": ["WomanA", "WomanC"],
+"shotType": "투샷",
+"focusCharacter": "혜진이",
 "focusType": "overall",
 "cameraAngle": "medium",
 "emotion": "일상",
-"summary": "Hyekyung walking like a model",
-"action": "walking with a confident model-like stride, looking forward",
-"background": "Golf course path with green grass and spring flowers",
-"longPrompt": "unfiltered raw photograph, medium shot, A beautiful Korean woman in her 40s, elegant bob hairstyle, slim figure, wearing Lavender High-waisted Golf Slacks + Slim-fit Pastel Purple Mock-neck Thermal Base Layer, walking with a confident model-like stride on the golf course path, graceful movement, looking forward, spring green background, 8k resolution",
-"shortPrompt": "medium shot, beautiful Korean woman, lavender golf wear, model walk, golf course"
+"summary": "Hyejin on the tee box with falling petals while Misuk watches",
+"action": "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, standing on the tee box as cherry blossom petals fall around her, looking ethereal] [Person 2: A beautiful Korean woman in her 40s, short bob hairstyle, wearing Lavender Silk Tie-neck Blouse with White High-waisted Trousers, standing on the right, watching Person 1 with a surprised expression], spring golf course, 8k resolution",
+"shortPrompt": "medium shot, [Person 1: coral dress on tee box] [Person 2: lavender blouse watching], falling petals, golf course"
 },
 {
 "sceneNumber": 4,
-"scriptLine": "지영이 생긋 웃으며 머리카락을 넘기는데, 주변 남자 골퍼들이 전부 넋을 잃고 쳐다봅니다.",
-"characterIds": ["WomanA", "ManB"],
+"scriptLine": "수애는 그 모습 보면서 입술을 꽉 깨물고는 연습 스윙을 미친 듯이 하대요",
+"characterIds": ["WomanB", "WomanA"],
 "shotType": "투샷",
-"focusCharacter": "지영",
-"focusType": "smile",
+"focusCharacter": "수애",
+"focusType": "overall",
 "cameraAngle": "medium",
-"emotion": "설렘",
-"summary": "Jiyoung smiling while men watch in awe",
-"action": "[Person 1: tucking hair behind ear with a gentle smile] [Person 2: standing in the background, frozen while holding a club, staring in awe]",
-"background": "Golf tee box area, sunny spring day",
-"longPrompt": "unfiltered raw photograph, medium shot, candid moment, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, tucking hair behind ear with a gentle smile, soft expression] [Person 2: A Korean man in his 40s, short neat hair, wearing Beige Chino Golf Pants + Forest Green Performance Knit Sweater, standing in the background on the right, frozen while holding a golf club, staring in awe], sunny golf tee box, 8k resolution",
-"shortPrompt": "medium shot, stunning woman smiling and tucking hair, man staring in awe, golf course"
+"emotion": "기대",
+"summary": "Suae practicing swing aggressively while Hyejin looks on",
+"action": "[Person 1: A beautiful Korean woman in her 40s, elegant updo hairstyle, wearing Mint Green Tweed Vest and Matching Pleated Skirt Set, practicing a golf swing with a determined and slightly jealous face, biting her lip] [Person 2: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, standing in the background, looking amused], sunny fairway, 8k resolution",
+"shortPrompt": "medium shot, [Person 1: mint green set swinging club] [Person 2: coral dress in background], golf course"
 },
 {
 "sceneNumber": 5,
-"scriptLine": "준호는 샷을 하려다 말고 멍하니 지영의 늘씬한 뒤태만 감시하고 있네요.",
-"characterIds": ["ManA", "WomanA"],
-"shotType": "투샷",
-"focusCharacter": "지영",
-"focusType": "back_view",
-"cameraAngle": "POV",
-"emotion": "기대",
-"summary": "Junho mesmerized by Jiyoung's back view",
-"action": "[Person 1: facing away from camera, showing a beautiful silhouette] [Person 2: leanring on a golf club, staring intently at Person 1]",
-"background": "Golf course fairway, vibrant green grass",
-"longPrompt": "unfiltered raw photograph, over-the-shoulder shot from Junho's perspective, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, facing away from camera, from behind, back view, beautiful silhouette, standing on the green] [Person 2: A handsome Korean man in his 40s, athletic build, wearing Charcoal Grey Slim-fit Golf Trousers + Premium Navy Blue Tech-fabric Polo Shirt, leaning on a golf club on the left, staring intently at Person 1], captured mid-action, 8k resolution",
-"shortPrompt": "back view of stunning woman in pink golf wear, man staring from the side, golf course"
+"scriptLine": "혜진이가 생긋 웃으면서 '오늘 날씨가 너무 예뻐서 공이 안 맞으면 어떡해?'라며 콧노래를 불러요",
+"characterIds": ["WomanA"],
+"shotType": "원샷",
+"focusCharacter": "혜진이",
+"focusType": "smile",
+"cameraAngle": "close-up",
+"emotion": "설렘",
+"summary": "Close-up of Hyejin smiling and singing",
+"action": "holding a golf club, gentle smile, humming a song",
+"background": "soft-focus cherry blossom trees",
+"longPrompt": "unfiltered raw photograph, close-up portrait shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, close-up on smile, gentle smile, soft expression, humming happily, spring golf course, bokeh background, 8k resolution",
+"shortPrompt": "close-up, smiling Korean woman, coral dress, humming, soft expression, cherry blossoms"
 },
 {
 "sceneNumber": 6,
-"scriptLine": "지영이 가볍게 스윙을 준비하자 미숙은 부러운 듯 그 비주얼을 감상합니다.",
-"characterIds": ["WomanA", "WomanC"],
-"shotType": "투샷",
-"focusCharacter": "지영",
-"focusType": "overall",
+"scriptLine": "풀스윙하는 찰나에 바람에 머릿결이 찰랑이는데 뒤태가 진짜 여신 그 자체였거든요",
+"characterIds": ["WomanA"],
+"shotType": "원샷",
+"focusCharacter": "혜진이",
+"focusType": "back_view",
 "cameraAngle": "medium",
 "emotion": "설렘",
-"summary": "Misook admiring Jiyoung's posture",
-"action": "[Person 1: taking a golf stance, looking focused] [Person 2: leaning against a golf cart, watching with an envious expression]",
-"background": "Golf course teeing ground, blooming spring flowers in background",
-"longPrompt": "unfiltered raw photograph, medium shot, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, taking a golf stance, focusing on the ball] [Person 2: A Korean woman in her 40s, short perm hairstyle, wearing Emerald Green Zip-up Golf Vest + White Technical Tapered Pants, on the right, leaning against a golf cart, watching Person 1 with an envious expression], natural interaction, 8k resolution",
-"shortPrompt": "medium shot, woman in pink taking golf stance, another woman watching enviously, golf cart"
+"summary": "Beautiful back view of Hyejin's swing",
+"action": "from behind, back view, executing a golf swing, hair fluttering in the wind",
+"background": "scenic golf course green",
+"longPrompt": "unfiltered raw photograph, medium shot from behind, back view, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, from behind, beautiful silhouette, hair fluttering in the wind, executing a golf swing, spring golf course, rear view, 8k resolution",
+"shortPrompt": "back view, Korean woman in coral dress, golf swing, hair fluttering, beautiful silhouette"
 },
 {
 "sceneNumber": 7,
-"scriptLine": "지영이 자신감 있게 외쳤어요. '자, 이번엔 제가 먼저 칠게요!'",
-"characterIds": ["WomanA"],
-"shotType": "원샷",
-"focusCharacter": "지영",
+"scriptLine": "그런데 혜진이가 힘껏 휘두른 드라이버 샷이 꽃나무 정중앙을 강타해버렸어요",
+"characterIds": ["WomanA", "WomanD"],
+"shotType": "투샷",
+"focusCharacter": "혜진이",
 "focusType": "overall",
-"cameraAngle": "close-up",
-"emotion": "긴장",
-"summary": "Jiyoung speaking confidently",
-"action": "holding a driver club, pointing forward with a confident facial expression",
-"background": "Golf course green, bright sky",
-"longPrompt": "unfiltered raw photograph, close-up shot, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, holding a driver club, pointing forward with a confident and determined facial expression, looking at camera, 8k resolution",
-"shortPrompt": "close-up, confident Korean woman, pink golf polo, holding driver, determined look"
+"cameraAngle": "wide",
+"emotion": "충격",
+"summary": "Hyejin hits a tree with her shot",
+"action": "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, holding a driver, looking shocked as the ball hits a tree] [Person 2: A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing Luxury White Performance Polo with Navy Pleated Skirt and Visor, standing on the right, looking at the tree in disbelief], golf course with flowering trees, 8k resolution",
+"shortPrompt": "wide shot, [Person 1: coral dress shocked] [Person 2: caddy in navy skirt], ball hitting tree, golf course"
 },
 {
 "sceneNumber": 8,
-"scriptLine": "그런데 공을 치는 순간, 지영의 드라이버가 잔디만 퍽 하고 파헤치며 헛스윙을 하네요.",
+"scriptLine": "우수수 떨어지는 꽃비 속에서 혜진이가 당황하며 눈을 깜빡이는데 눈빛이 참 처연하더라고요",
 "characterIds": ["WomanA"],
 "shotType": "원샷",
-"focusCharacter": "지영",
-"focusType": "overall",
-"cameraAngle": "medium",
-"emotion": "충격",
-"summary": "Jiyoung making a huge divot with a missed swing",
-"action": "swinging the club and hitting the ground, grass flying in the air, look of shock",
-"background": "Golf course tee box, damaged turf",
-"longPrompt": "unfiltered raw photograph, medium shot, captured mid-action, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, swinging the club and hitting the ground hard, grass and dirt flying in the air, look of extreme shock on face, body tilted forward, 8k resolution",
-"shortPrompt": "medium shot, woman hitting ground with golf club, grass flying, shocked face"
+"focusCharacter": "혜진이",
+"focusType": "gaze",
+"cameraAngle": "close-up",
+"emotion": "당황",
+"summary": "Close-up of Hyejin's eyes amidst falling flowers",
+"action": "looking at camera, blinking in surprise, dramatic expression",
+"background": "heavy rain of cherry blossom petals",
+"longPrompt": "unfiltered raw photograph, close-up shot, dramatic expression, face in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, eyes in focus, captivating gaze, blinking in confusion, falling petals everywhere, spring golf course, 8k resolution",
+"shortPrompt": "close-up, Korean woman, coral dress, captivating gaze, blinking, falling petals"
 },
 {
 "sceneNumber": 9,
-"scriptLine": "지켜보던 캐디가 무표정하게 다가가서 한마디 툭 던졌어요.",
-"characterIds": ["WomanD"],
-"shotType": "원샷",
+"scriptLine": "캐디 언니가 한숨을 내쉬며 '혜진 님, 꽃 구경은 그만하시고 로스트볼 하나 더 꺼내세요'라고 팩폭을 날려요",
+"characterIds": ["WomanD", "WomanA"],
+"shotType": "투샷",
 "focusCharacter": "캐디",
 "focusType": "overall",
 "cameraAngle": "medium",
-"emotion": "당황",
-"summary": "The caddy approaching with a straight face",
-"action": "walking toward the player with a deadpan expression, holding a towel",
-"background": "Golf course fairway, other golfers in distance",
-"longPrompt": "unfiltered raw photograph, medium shot, A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing Navy Blue Professional Golf Skorts + Sky Blue Long-sleeve Polo Shirt + White Sun Visor, walking toward the camera with a completely deadpan and expressionless face, holding a golf towel, professional posture, golf course background, 8k resolution",
-"shortPrompt": "medium shot, Korean caddy, navy and sky blue uniform, expressionless face, walking"
+"emotion": "민망",
+"summary": "Caddy sighing while Hyejin looks embarrassed",
+"action": "[Person 1: A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing Luxury White Performance Polo with Navy Pleated Skirt and Visor, sighing and pointing to the golf bag] [Person 2: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, looking down embarrassed, holding a golf club], golf course background, 8k resolution",
+"shortPrompt": "medium shot, [Person 1: caddy sighing] [Person 2: coral dress embarrassed], golf course"
 },
 {
 "sceneNumber": 10,
-"scriptLine": "'고객님, 비주얼은 싱글이신데 골프 실력은 완전 명랑 골프시네요!'",
-"characterIds": ["WomanD", "WomanA"],
-"shotType": "투샷",
-"focusCharacter": "지영",
+"scriptLine": "알고 보니 혜진이는 공 맞히는 것보다 사진 백 장 찍는 게 오늘 진정한 목표였던 거죠",
+"characterIds": ["WomanA", "WomanB", "WomanC"],
+"shotType": "쓰리샷",
+"focusCharacter": "혜진이",
 "focusType": "overall",
-"cameraAngle": "medium",
-"emotion": "당황",
-"summary": "Caddy giving a witty comment to Jiyoung",
-"action": "[Person 1: looking at Person 2 with a calm, poker face] [Person 2: standing awkwardly with a golf club, looking embarrassed]",
-"background": "Golf course green, bright daylight",
-"longPrompt": "unfiltered raw photograph, medium two-shot, [Person 1: A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing Navy Blue Professional Golf Skorts + Sky Blue Long-sleeve Polo Shirt + White Sun Visor, looking at Person 2 with a calm poker face, speaking] [Person 2: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, on the right, standing awkwardly with a golf club, looking highly embarrassed], facing each other, 8k resolution",
-"shortPrompt": "two-shot, caddy talking to embarrassed woman in pink, golf course interaction"
+"cameraAngle": "wide",
+"emotion": "깨달음",
+"summary": "Hyejin taking selfies while others look confused",
+"action": "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, holding a smartphone and taking a selfie with a big smile] [Person 2: A beautiful Korean woman in her 40s, elegant updo hairstyle, wearing Mint Green Tweed Vest and Matching Pleated Skirt Set, standing on the left, looking confused] [Person 3: A beautiful Korean woman in her 40s, short bob hairstyle, wearing Lavender Silk Tie-neck Blouse with White High-waisted Trousers, standing on the right, shaking her head], spring golf course, 8k resolution",
+"shortPrompt": "wide shot, [Person 1: coral dress selfie] [Person 2: mint green confused] [Person 3: lavender blouse shaking head]"
 },
 {
 "sceneNumber": 11,
-"scriptLine": "민망해진 지영이 얼굴이 빨개져서 '아니, 잔디가 너무 예뻐서 그랬죠!'라며 수줍게 웃습니다.",
-"characterIds": ["WomanA"],
-"shotType": "원샷",
-"focusCharacter": "지영",
-"focusType": "smile",
-"cameraAngle": "close-up",
-"emotion": "민망",
-"summary": "Jiyoung blushing and laughing shyly",
-"action": "covering mouth with one hand, blushing cheeks, laughing shyly",
-"background": "Lush green golf course, soft bokeh",
-"longPrompt": "unfiltered raw photograph, close-up shot, smile in focus, A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, covering mouth with one hand, blushing cheeks, laughing shyly, looking at camera, soft expression, 8k resolution",
-"shortPrompt": "close-up, blushing stunning woman, laughing shyly, covering mouth, pink golf wear"
+"scriptLine": "혜진이는 쿨하게 '수애야, 공은 중요하지 않아, 내 인생샷 건졌으면 된 거지!'라며 포즈를 잡아요",
+"characterIds": ["WomanA", "WomanB"],
+"shotType": "투샷",
+"focusCharacter": "혜진이",
+"focusType": "overall",
+"cameraAngle": "medium",
+"emotion": "웃음",
+"summary": "Hyejin talking to Suae with a cool pose",
+"action": "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, posing confidently with a 'V' sign, talking brightly] [Person 2: A beautiful Korean woman in her 40s, elegant updo hairstyle, wearing Mint Green Tweed Vest and Matching Pleated Skirt Set, listening with crossed arms and a skeptical smile], spring golf course, 8k resolution",
+"shortPrompt": "medium shot, [Person 1: coral dress posing] [Person 2: mint green arms crossed], golf course"
 },
 {
 "sceneNumber": 12,
-"scriptLine": "결국 골프장은 비주얼 쇼가 아니라 오늘도 몸개그 대잔치로 마무리됐네요.",
+"scriptLine": "결국 스코어는 엉망진창이지만 앨범만큼은 우승컵 따놓은 것 같은 우리들의 봄 소풍이었네요",
 "characterIds": ["WomanA", "WomanB", "WomanC", "WomanD"],
-"shotType": "쓰리샷",
-"focusCharacter": null,
-"focusType": null,
-"cameraAngle": "wide",
-"emotion": "웃음",
-"summary": "Everyone laughing together at the end",
-"action": "[Person 1: laughing heartily while holding a club] [Person 2: smiling and shaking head] [Person 3: giggling next to the golf cart]",
-"background": "Wide view of the golf course at sunset",
-"longPrompt": "unfiltered raw photograph, wide shot, deep focus, [Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Hot Pink Pleated Golf Skirt + Tight-fitting White Long-sleeve Performance Polo with Pink Piping, laughing heartily while holding a club] [Person 2: A beautiful Korean woman in her 40s, elegant bob hairstyle, wearing Lavender High-waisted Golf Slacks + Slim-fit Pastel Purple Mock-neck Thermal Base Layer, smiling and shaking her head] [Person 3: A Korean woman in her 40s, short perm hair, wearing Emerald Green Zip-up Golf Vest + White Technical Tapered Pants, giggling next to the cart], group of friends having fun, golden hour golf course, 8k resolution",
-"shortPrompt": "wide shot, group of Korean women in colorful golf wear laughing on field, sunset"
+"shotType": "멀티샷",
+"focusCharacter": "주인공",
+"focusType": "overall",
+"cameraAngle": "medium",
+"emotion": "공감",
+"summary": "Group photo of all four women laughing together",
+"action": "[Person 1: A stunning Korean woman in her 40s, long soft-wave hairstyle, perfectly managed sophisticated look, wearing Coral Ruched Off-shoulder tight-fitting long-sleeve Mini Dress, laughing brightly] [Person 2: A beautiful Korean woman in her 40s, elegant updo hairstyle, wearing Mint Green Tweed Vest and Matching Pleated Skirt Set, leaning in and laughing] [Person 3: A beautiful Korean woman in her 40s, short bob hairstyle, wearing Lavender Silk Tie-neck Blouse with White High-waisted Trousers, waving at the camera] [Person 4: A beautiful Korean woman in her 20s, high-bun hairstyle, slim figure, wearing Luxury White Performance Polo with Navy Pleated Skirt and Visor, holding the golf flag and smiling], spring golf course, 8k resolution",
+"shortPrompt": "group shot, four Korean women in golf wear laughing together, coral dress, mint set, lavender blouse, caddy uniform, spring golf course"
 }
 ]
 }

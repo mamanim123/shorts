@@ -27,6 +27,7 @@ import { genreManager as legacyGenreManager, getGenreGuideline as getLegacyGenre
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
 import { generateImage, generateImageWithImagen, editImage, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
+import { getBlob } from './master-studio/services/dbService';
 import { enhancePromptWithSafeGlamour } from '../services/geminiService';
 import { showToast } from './Toast';
 import Lightbox from './master-studio/Lightbox';
@@ -35,7 +36,7 @@ import { ShortsIdentityCard, CharacterIdentity } from './ShortsIdentityCard';
 import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '../services/appStorageService';
 import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
-import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS, ACCESSORY_PRESETS } from '../constants';
+import { UNIFIED_OUTFIT_LIST, ACCESSORY_PRESETS } from '../constants';
 import { fetchCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
@@ -1179,6 +1180,9 @@ interface LocationPreset {
 interface CharacterCasting {
     characterId: string;
     referenceImageUrl?: string;
+    referenceImageUrls?: Partial<Record<'front' | 'angle45' | 'back', string>>;
+    referenceViewPreference?: 'front' | 'angle45' | 'back';
+    identitySummary?: string;
     name?: string;
 }
 
@@ -1236,6 +1240,7 @@ interface PromptSettings {
     selectedStyle: string;
     useGenderGuard?: boolean;
     imageService?: 'GEMINI' | 'GENSPARK';
+    imagePromptLanguage?: 'en' | 'ko';
     globalSeed?: number | null; // [NEW] 전역 시드
     isSeedLocked?: boolean;     // [NEW] 시드 잠금 여부
 }
@@ -1593,10 +1598,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
     const [masterCharacterProfiles, setMasterCharacterProfiles] = useState<Array<{
         slotId: string;
+        characterId?: string;
         name: string;
         identity: string;
+        face?: string;
         hair: string;
         body: string;
+        style?: string;
+        skinTone?: string;
+        signatureFeatures?: string;
         outfit: string;
         outfitPrompt: string;
         accessory?: string; // [NEW] 악세서리 추가
@@ -1608,7 +1618,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
 
     // 이미지 생성 상태 (신규!)
-    const [imageModel] = useState<string>('imagen-4.0-generate-001');
+    const [imageModel] = useState<string>('gemini-2.5-flash-image');
     const [generatingId, setGeneratingId] = useState<string | null>(null);
     const [aiForwardingId, setAiForwardingId] = useState<string | null>(null);
     const [gensparkForwardingId, setGensparkForwardingId] = useState<string | null>(null);
@@ -1630,14 +1640,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         selectedSlot: '',
         useBodyKeywords: true,
         selectedBody: BODY_KEYWORDS[0],
-        useOutfitKeywords: true,
-        selectedOutfit: OUTFIT_KEYWORDS[0],
+        useOutfitKeywords: false,
+        selectedOutfit: '',
         useEthnicityKeywords: true,
         selectedEthnicity: ETHNICITY_KEYWORDS[0],
         useStylePreset: true,
         selectedStyle: 'cinematic',
         useGenderGuard: true,
-        imageService: 'GEMINI'
+        imageService: 'GEMINI',
+        imagePromptLanguage: 'en'
     });
 
     // [NEW] Location Bank 상태
@@ -1666,6 +1677,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [manualMissingNotice, setManualMissingNotice] = useState('');
     const [manualExtractionNotice, setManualExtractionNotice] = useState('');
     const [manualAnalyzing, setManualAnalyzing] = useState(false);
+    const [savedCharacters, setSavedCharacters] = useState<CharacterItem[]>([]);
 
     // 프롬프트 수정 모달 상태
     const [showPromptEditModal, setShowPromptEditModal] = useState(false);
@@ -1733,6 +1745,132 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         setSettings(prev => ({ ...prev, [key]: value }));
     }, []);
 
+    const resolveOutfitEntry = useCallback((value?: string) => {
+        const normalized = String(value || '').trim();
+        if (!normalized) return null;
+        const localOutfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+        const matched = localOutfitPool.find((item) => {
+            const promptValue = String(item.prompt || item.name || '').trim();
+            const nameValue = String(item.name || '').trim();
+            return promptValue === normalized || nameValue === normalized;
+        });
+        if (matched) {
+            return {
+                name: matched.name,
+                prompt: matched.prompt || matched.name
+            };
+        }
+        return {
+            name: normalized,
+            prompt: normalized
+        };
+    }, []);
+
+    const buildCastingIdentitySummary = useCallback((character: Partial<CharacterItem>) => {
+        return [
+            character.face || character.identitySpec?.faceShape,
+            character.hair || character.identitySpec?.hairDescription,
+            character.body || character.identitySpec?.bodyType,
+            character.identitySpec?.skinTone,
+            character.identitySpec?.signatureFeatures,
+            character.style || character.identitySpec?.styleCore,
+        ].filter(Boolean).join(', ');
+    }, []);
+
+    const extractLlmOutfitTextFromPromptBlock = useCallback((block: string) => {
+        const matched = block.match(/wearing\s+([^,\]]+)/i);
+        return matched?.[1]?.trim() || '';
+    }, []);
+
+    const deriveOutfitMapFromScenePrompts = useCallback((scenesInput: Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>) => {
+        const derived = new Map<string, { name: string; prompt: string }>();
+        const candidateMap = new Map<string, Map<string, { outfit: { name: string; prompt: string }; count: number }>>();
+
+        scenesInput.forEach((scene) => {
+            const longPrompt = String(scene.longPrompt || scene.prompt || '').trim();
+            const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
+            if (!longPrompt || characterIds.length === 0) return;
+
+            const personBlocks = new Map<number, string>();
+            const personRegex = /\[Person\s*(\d+)\s*:\s*([^\]]*)\]/gi;
+            let match: RegExpExecArray | null = null;
+            while ((match = personRegex.exec(longPrompt)) !== null) {
+                const personNumber = Number(match[1]);
+                const blockText = String(match[2] || '').trim();
+                if (!Number.isFinite(personNumber) || !blockText) continue;
+                personBlocks.set(personNumber, blockText);
+            }
+
+            characterIds.forEach((slotId, index) => {
+                if (!slotId) return;
+
+                const personBlock = personBlocks.get(index + 1) || '';
+                const extracted = extractLlmOutfitTextFromPromptBlock(personBlock);
+                const resolved = resolveOutfitEntry(extracted);
+
+                if (resolved) {
+                    const key = resolved.prompt || resolved.name;
+                    const slotCandidates = candidateMap.get(slotId) || new Map<string, { outfit: { name: string; prompt: string }; count: number }>();
+                    const existing = slotCandidates.get(key);
+                    slotCandidates.set(key, {
+                        outfit: resolved,
+                        count: (existing?.count || 0) + 1
+                    });
+                    candidateMap.set(slotId, slotCandidates);
+                }
+            });
+        });
+
+        candidateMap.forEach((slotCandidates, slotId) => {
+            const selected = Array.from(slotCandidates.values()).sort((a, b) => b.count - a.count)[0];
+            if (selected?.outfit) {
+                derived.set(slotId, selected.outfit);
+            }
+        });
+
+        return derived;
+    }, [extractLlmOutfitTextFromPromptBlock, resolveOutfitEntry]);
+
+    const buildOutfitMapFromLockedCharacters = useCallback((lockedCharacters: Array<{ slotId: string; outfit?: string }>) => {
+        const map = new Map<string, { name: string; prompt: string }>();
+        lockedCharacters.forEach((character) => {
+            const outfit = resolveOutfitEntry(character.outfit);
+            if (!outfit) return;
+            map.set(character.slotId, outfit);
+        });
+        return map;
+    }, [resolveOutfitEntry]);
+
+    const buildProfilesFromLockedCharacters = useCallback((lockedCharacters: Array<{
+        slotId: string;
+        identity?: string;
+        hair?: string;
+        body?: string;
+        outfit?: string;
+    }>, rulesInput: ReturnType<typeof getCharacterRules>) => {
+        return lockedCharacters.map((character) => {
+            const slotId = character.slotId;
+            const baseInfo = slotId.startsWith('Woman')
+                ? rulesInput.females.find((item: any) => item.id === slotId) || {}
+                : rulesInput.males.find((item: any) => item.id === slotId) || {};
+            const outfit = resolveOutfitEntry(character.outfit);
+            return {
+                slotId,
+                characterId: undefined,
+                name: baseInfo.name || slotId,
+                identity: character.identity || baseInfo.identity || '',
+                face: baseInfo.face || '',
+                hair: character.hair || baseInfo.hair || '',
+                body: character.body || baseInfo.body || '',
+                style: baseInfo.style || '',
+                skinTone: baseInfo.skinTone || '',
+                signatureFeatures: baseInfo.signatureFeatures || '',
+                outfit: outfit?.name || character.outfit || '의상 미선택',
+                outfitPrompt: outfit?.prompt || character.outfit || ''
+            };
+        });
+    }, [resolveOutfitEntry]);
+
     /**
      * [NEW] Location Bank 핸들러
      */
@@ -1773,6 +1911,45 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         showToast(`'${preset.name}' 배경이 모든 씬에 적용되었습니다.`, 'success');
     }, []);
 
+    const translateScenePromptToEnglish = useCallback(async (text: string) => {
+        const response = await fetch('http://localhost:3002/api/translate-to-english', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, type: 'scene' })
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.success || !result?.translated) {
+            throw new Error(result?.error || '씬 프롬프트 번역 실패');
+        }
+        return String(result.translated).trim();
+    }, []);
+
+    const translateScenePromptToKorean = useCallback(async (text: string) => {
+        const response = await fetch('http://localhost:3002/api/translate-to-korean', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, type: 'scene' })
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.success || !result?.translated) {
+            throw new Error(result?.error || '씬 프롬프트 한글 변환 실패');
+        }
+        return String(result.translated).trim();
+    }, []);
+
+    const getScenePromptForGeneration = useCallback(async (scene?: Scene | null) => {
+        if (!scene) return '';
+        const koreanPrompt = scene.longPromptKo || scene.shortPromptKo || scene.text || '';
+        const englishPrompt = scene.prompt || '';
+        if (settings.imagePromptLanguage === 'ko') {
+            if (!koreanPrompt.trim()) {
+                return englishPrompt.trim();
+            }
+            return translateScenePromptToEnglish(koreanPrompt.trim());
+        }
+        return englishPrompt.trim() || (koreanPrompt.trim() ? translateScenePromptToEnglish(koreanPrompt.trim()) : '');
+    }, [settings.imagePromptLanguage, translateScenePromptToEnglish]);
+
     /**
      * [NEW] Character Casting 핸들러
      */
@@ -1784,9 +1961,16 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const imageUrl = e.target?.result as string;
                 setCharacterCastings(prev => {
                     const newMap = new Map(prev);
+                    const existing = newMap.get(characterId);
                     newMap.set(characterId, {
+                        ...existing,
                         characterId,
                         referenceImageUrl: imageUrl,
+                        referenceImageUrls: {
+                            ...existing?.referenceImageUrls,
+                            front: imageUrl
+                        },
+                        referenceViewPreference: existing?.referenceViewPreference || 'front',
                         name: file.name.replace(/\.[^/.]+$/, '')
                     });
                     return newMap;
@@ -2078,10 +2262,20 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     }, [outfitCatalog.outfits, resolveOutfitThumbnailUrl]);
 
     const getOutfitThumbnailByItem = useCallback((item: OutfitPoolItem): string => {
-        const keys = [item.id, item.name, item.translation, item.prompt];
-        for (const key of keys) {
+        const primaryId = (item.id || '').trim();
+        if (primaryId) {
+            const fromPreviewMap = resolveOutfitThumbnailUrl(outfitPreviewMap[primaryId]);
+            if (fromPreviewMap) return fromPreviewMap;
+
+            const fromCatalogById = outfitCatalogImageMap.get(primaryId);
+            if (fromCatalogById) return fromCatalogById;
+        }
+
+        const legacyKeys = [item.name, item.translation, item.prompt];
+        for (const key of legacyKeys) {
             const normalizedKey = (key || '').trim();
             if (!normalizedKey) continue;
+
             const fromCatalog = outfitCatalogImageMap.get(normalizedKey);
             if (fromCatalog) return fromCatalog;
 
@@ -2246,6 +2440,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                         globalSeed: savedSettings.globalSeed ?? prev.globalSeed,
                         isSeedLocked: savedSettings.isSeedLocked ?? prev.isSeedLocked,
                         imageService: savedSettings.imageService ?? prev.imageService,
+                        imagePromptLanguage: savedSettings.imagePromptLanguage ?? prev.imagePromptLanguage,
                         selectedStyle: savedSettings.selectedStyle ?? prev.selectedStyle,
                     }));
                     console.log('[ShortsLab] ✅ Settings 복원 완료:', {
@@ -2406,12 +2601,49 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
             // [NEW] Check for character casting reference images
             const currentScene = scenes.find(s => s.number === sceneNumber);
-            const referenceImages: string[] = [];
+            const pickReferenceViewFromCamera = (cameraValue: string): 'front' | 'angle45' | 'back' => {
+                const normalized = String(cameraValue || '').toLowerCase();
+                if (/back|rear|behind|후면|뒷모습|뒤/.test(normalized)) return 'back';
+                if (/45|three-quarter|three quarter|3\/4|quarter|side|측면|사선/.test(normalized)) return 'angle45';
+                return 'front';
+            };
+
+            const pickCastingReferenceForScene = (casting: CharacterCasting, cameraValue: string) => {
+                const preferredView = pickReferenceViewFromCamera(cameraValue);
+                const refs = casting.referenceImageUrls;
+                return refs?.[preferredView]
+                    || refs?.[casting.referenceViewPreference || 'front']
+                    || casting.referenceImageUrl
+                    || refs?.front
+                    || refs?.angle45
+                    || refs?.back
+                    || '';
+            };
+
+            const formatCastingLabel = (slotId: string, casting?: CharacterCasting) => {
+                const base = slotId.replace('Woman', 'Woman ').replace('Man', 'Man ');
+                const name = String(casting?.name || '').trim();
+                return name ? `${base} (${name})` : base;
+            };
+
+            const referenceImages: Array<{ slotId: string; label: string; imageUrl: string; identitySummary: string }> = [];
+            const identityLocks: string[] = [];
             if (currentScene?.characterIds) {
                 currentScene.characterIds.forEach(charId => {
                     const casting = characterCastings.get(charId);
-                    if (casting?.referenceImageUrl) {
-                        referenceImages.push(casting.referenceImageUrl);
+                    if (!casting) return;
+                    const selectedReference = pickCastingReferenceForScene(casting, currentScene.cameraAngle || currentScene.camera || '');
+                    const label = formatCastingLabel(charId, casting);
+                    if (selectedReference) {
+                        referenceImages.push({
+                            slotId: charId,
+                            label,
+                            imageUrl: selectedReference,
+                            identitySummary: String(casting.identitySummary || '').trim()
+                        });
+                    }
+                    if (casting.identitySummary) {
+                        identityLocks.push(`${label}: ${casting.identitySummary}`);
                     }
                 });
             }
@@ -2419,12 +2651,37 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const hasReferenceImages = referenceImages.length > 0;
             
             // [NEW] Apply age and outfit settings to prompt
-            let enhancedPrompt = prompt;
+            let basePrompt = prompt;
+            if (sceneNumber) {
+                const promptScene = scenes.find(s => s.number === sceneNumber);
+                if (promptScene) {
+                    basePrompt = await getScenePromptForGeneration(promptScene);
+                }
+            }
+            if (!basePrompt.trim()) {
+                throw new Error('생성에 사용할 프롬프트가 없습니다.');
+            }
+
+            let enhancedPrompt = basePrompt;
             if (currentScene) {
+                if (identityLocks.length > 0) {
+                    enhancedPrompt = `${enhancedPrompt}, same exact recurring character identity, preserve immutable traits: ${identityLocks.join(' / ')}`;
+                }
+                if (referenceImages.length > 0) {
+                    const referenceGuide = referenceImages
+                        .map((reference, index) => `Reference ${index + 1} is ${reference.label}${reference.identitySummary ? ` (${reference.identitySummary})` : ''}`)
+                        .join('. ');
+                    const positionGuide = referenceImages.length === 2
+                        ? 'Person 1 on the left, Person 2 on the right, exactly two characters visible.'
+                        : referenceImages.length >= 3
+                            ? 'Person 1 on the left, Person 2 in the center, Person 3 on the right, exactly three characters visible.'
+                            : '';
+                    enhancedPrompt = `${enhancedPrompt}, ${referenceGuide}. ${positionGuide} Use the correct reference for each named character, keep faces distinct, different pose for each person, do not swap identities between characters, do not merge faces, and do not invent extra people beyond the scene character list.`;
+                }
                 // Apply age
                 if (currentScene.age) {
                     const ageText = convertAgeToEnglish(currentScene.age);
-                    if (ageText && !prompt.toLowerCase().includes(ageText.toLowerCase())) {
+                    if (ageText && !basePrompt.toLowerCase().includes(ageText.toLowerCase())) {
                         enhancedPrompt = enhancedPrompt.replace(/A stunning Korean woman/, `A stunning Korean woman in her ${ageText}`);
                         enhancedPrompt = enhancedPrompt.replace(/A stunning Korean man/, `A stunning Korean man in his ${ageText}`);
                         enhancedPrompt = enhancedPrompt.replace(/A handsome Korean man/, `A handsome Korean man in his ${ageText}`);
@@ -2432,7 +2689,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 }
                 
                 // Apply outfit
-                if (currentScene.outfit && !prompt.toLowerCase().includes(currentScene.outfit.toLowerCase())) {
+                if (currentScene.outfit && !basePrompt.toLowerCase().includes(currentScene.outfit.toLowerCase())) {
                     enhancedPrompt = `${enhancedPrompt}, ${currentScene.outfit}`;
                 }
                 
@@ -2447,19 +2704,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             }
             
             console.log(`[ShortsLab] Generating image with seed: ${seedToUse} (Locked: ${settings.isSeedLocked}), Reference Images: ${referenceImages.length}`);
-            if (enhancedPrompt !== prompt) {
+            if (enhancedPrompt !== basePrompt) {
                 console.log(`[ShortsLab] Enhanced prompt with age/outfit:`, enhancedPrompt.substring(0, 100) + '...');
             }
 
             let result: any;
             let finalBase64Image: string | null = null;
 
-            // Step 1: Generate base image
-            if (imageModel.toLowerCase().includes('imagen')) {
-                result = await generateImageWithImagen(enhancedPrompt, "", { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
-            } else {
-                result = await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
-            }
+            // Step 1: Generate base image using Gemini (gemini-2.5-flash-image)
+            result = await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
 
             // Extract base64 from result
             if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
@@ -2484,15 +2737,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             if (finalBase64Image && hasReferenceImages) {
                 showToast('캐릭터 캐스팅 이미지를 적용하는 중...', 'info');
                 
-                for (const refImageUrl of referenceImages) {
+                for (const reference of referenceImages) {
                     try {
                         // Convert reference image URL to base64 if needed
-                        let refImageBase64 = refImageUrl;
-                        if (refImageUrl.startsWith('data:')) {
-                            refImageBase64 = refImageUrl.split(',')[1];
+                        let refImageBase64 = reference.imageUrl;
+                        if (reference.imageUrl.startsWith('data:')) {
+                            refImageBase64 = reference.imageUrl.split(',')[1];
                         }
 
-                        const editPrompt = `${prompt}. Maintain the exact facial features from the reference image. Same person, consistent face, preserve identity while matching the pose and scene context.`;
+                        const editPrompt = `${enhancedPrompt}. The attached reference image is ${reference.label}. Maintain the exact facial features, hairstyle, age impression, and signature traits of ${reference.label}. Same person, consistent face, preserve identity while matching the pose and scene context. If multiple characters appear, keep ${reference.label} distinct from the other referenced characters, preserve clear facial separation, and do not swap identities.`;
                         
                         const editResult = await editImage(
                             editPrompt,
@@ -2523,8 +2776,9 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         imageData: `data:image/png;base64,${finalBase64Image}`,
-                        prompt,
-                        storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+                        prompt: enhancedPrompt,
+                        // currentFolderName 경유, aiTopic 버제, 없으면 timestamp UUID로 서버가 결정
+                        storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || undefined,
                         sceneNumber,
                         seed: seedToUse // Save seed info
                     })
@@ -2602,7 +2856,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 setBatchImageCurrentScene(scene.number);
                 showToast(`이미지 생성 중 (${currentIndex}/${scenesWithoutImages.length}) - 장면 ${scene.number}`, 'info');
                 try {
-                    await handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number, settings.imageService);
+                    const scenePrompt = await getScenePromptForGeneration(scene);
+                    await handleForwardPromptToImageAI(scenePrompt, `scene-${scene.number}`, scene.number, settings.imageService);
                     // 각 요청 사이에 잠시 대기 (API 제한 방지)
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 } catch (error) {
@@ -2661,7 +2916,15 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             setAiForwardingId(id);
         }
 
-        if (!prompt || !prompt.trim()) {
+        let promptToSend = prompt;
+        if (sceneNumber !== undefined) {
+            const scene = scenes.find((item) => item.number === sceneNumber);
+            if (scene) {
+                promptToSend = await getScenePromptForGeneration(scene);
+            }
+        }
+
+        if (!promptToSend || !promptToSend.trim()) {
             showToast('전송할 프롬프트가 없습니다.', 'warning');
             if (isGenspark) setGensparkForwardingId(null);
             else setAiForwardingId(null);
@@ -2682,12 +2945,13 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    prompt,
-                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || 'shorts-lab',
+                    prompt: promptToSend,
+                    // currentFolderName 경유, aiTopic 버제, 없으면 서버가 자동 UUID로 결정
+                    storyId: currentFolderName || aiTopic?.trim()?.replace(/\s+/g, '_') || undefined,
                     sceneNumber,
                     service: targetService,
                     autoCapture: true,
-                    title: 'ShortsLab'
+                    title: aiTopic?.trim() || 'ShortsLab'
                 }),
                 signal: controller.signal
             });
@@ -3564,19 +3828,336 @@ ${scriptInput}
         }
     };
 
+    const handleMasterStyleSceneGeneration = async () => {
+        if (isManualSceneParsing) return;
+        if (!scriptInput.trim()) return;
+
+        setIsManualSceneParsing(true);
+        try {
+            const selectedService = targetService || 'GEMINI';
+            const finalScript = scriptInput.trim();
+            const inferredScriptGender = inferGenderFromText(finalScript, settings.koreanGender);
+            const scriptLines = extractManualScriptLines(finalScript);
+
+            showToast(`${selectedService} AI로 인물 추출 중...`, 'info');
+            const characterExtractPrompt = buildCharacterExtractionPrompt({
+                scriptLines,
+                defaultGender: inferredScriptGender
+            });
+
+            const characterResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: characterExtractPrompt,
+                    maxTokens: 1200,
+                    temperature: 0.2,
+                    folderName: currentFolderName,
+                    skipFolderCreation: true
+                })
+            });
+
+            if (!characterResponse.ok) {
+                throw new Error(`인물 추출 API 오류: ${characterResponse.status}`);
+            }
+
+            const characterData = await characterResponse.json();
+            const characterText = characterData.rawResponse || characterData.text || characterData.result || '';
+            const extractedCharacters = parseCharacterExtractionResponse(characterText);
+
+            const slotMap = buildCharacterSlotMapping(extractedCharacters.characters);
+            const lineCharacterMap = mapLineCharactersToSlots(extractedCharacters.lineCharacterNames, slotMap);
+
+            const uniqueSlotIds = Array.from(new Set(Array.from(slotMap.values())));
+            const hasCaddy = extractedCharacters.characters.some((char) => {
+                const name = (char.name || '').trim();
+                return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
+            });
+            const allSlotIds = normalizeSlotList(uniqueSlotIds, settings.koreanGender, hasCaddy);
+
+            const characterList = allSlotIds.map((slotId) => ({
+                id: slotId,
+                name: '',
+                slotLabel: slotId.replace('Woman', 'Woman ').replace('Man', 'Man ')
+            }));
+
+            const scenePrompt = buildManualSceneDecompositionPrompt({
+                scriptLines,
+                characters: characterList,
+                enableWinterAccessories
+            });
+
+            showToast(`${selectedService} AI로 씬 분해 중...`, 'info');
+            const sceneResponse = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service: selectedService,
+                    prompt: scenePrompt,
+                    folderName: currentFolderName,
+                    maxTokens: 2000,
+                    temperature: 0.6,
+                    skipFolderCreation: true
+                })
+            });
+
+            if (!sceneResponse.ok) {
+                throw new Error(`씬 분해 API 오류: ${sceneResponse.status}`);
+            }
+
+            const sceneData = await sceneResponse.json();
+            const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
+            const parsedResult = parseManualSceneDecompositionResponse(generatedText);
+            const scenesSource = parsedResult.scenes || [];
+
+            if (scenesSource.length === 0) {
+                throw new Error('씬 분해 결과가 비어있습니다.');
+            }
+
+            const fallbackFolderTitle = (() => {
+                const parsedTitle = typeof parsedResult.title === 'string' ? parsedResult.title.trim() : '';
+                const firstLine = scriptLines.find((line) => line.trim()) || 'shorts_lab';
+                return (parsedTitle || aiTopic || firstLine).trim();
+            })();
+            const consolidatedPayload = {
+                title: fallbackFolderTitle,
+                scriptBody: finalScript,
+                scenes: scenesSource,
+                characters: extractedCharacters.characters || [],
+                lineCharacterNames: extractedCharacters.lineCharacterNames || [],
+                source: 'master-step2'
+            };
+
+            let resolvedFolderName: string | null = null;
+            try {
+                const saveResponse = await fetch('http://localhost:3002/api/save-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: fallbackFolderTitle,
+                        content: JSON.stringify(consolidatedPayload, null, 2),
+                        service: selectedService
+                    })
+                });
+
+                if (!saveResponse.ok) {
+                    throw new Error(`폴더 저장 API 오류: ${saveResponse.status}`);
+                }
+
+                const saveData = await saveResponse.json();
+                if (saveData?.folderName) {
+                    resolvedFolderName = saveData.folderName;
+                    setCurrentFolderName(saveData.folderName);
+                }
+            } catch (saveError) {
+                console.error('Failed to anchor master scene folder:', saveError);
+                showToast('최종 저장 폴더를 확정하지 못했습니다. 임시 상태로 계속 진행합니다.', 'warning');
+            }
+
+            const normalizedMasterScenes = scenesSource.map((scene, idx) => {
+                const sceneNumber = scene.sceneNumber || idx + 1;
+                const lineSlots = normalizeSceneCharacterIds(
+                    lineCharacterMap.get(sceneNumber) || [],
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                const normalizedSceneIds = normalizeSceneCharacterIds(
+                    Array.isArray(scene.characterIds) ? scene.characterIds : [],
+                    slotMap,
+                    settings.koreanGender,
+                    hasCaddy
+                );
+                const fallbackId = allSlotIds[0] || (settings.koreanGender === 'male' ? 'ManA' : 'WomanA');
+                const sceneCharacterIds = lineSlots.length > 0
+                    ? lineSlots
+                    : (normalizedSceneIds.length > 0 ? normalizedSceneIds : [fallbackId]);
+
+                return {
+                    sceneNumber,
+                    scriptLine: scene.scriptLine || scriptLines[idx] || `장면 ${sceneNumber}`,
+                    characterIds: sceneCharacterIds,
+                    cameraAngle: scene.cameraAngle || '',
+                    background: scene.background || '',
+                    action: scene.action || '',
+                    summary: scene.summary || '',
+                    shortPrompt: scene.shortPrompt || '',
+                    longPrompt: scene.longPrompt || scene.prompt || '',
+                    shortPromptKo: scene.shortPromptKo || '',
+                    longPromptKo: scene.longPromptKo || '',
+                    outfit: scene.outfit || ''
+                };
+            });
+
+            const rebalancedScenes = rebalanceMasterSceneCharacterMix(
+                normalizedMasterScenes,
+                settings.koreanGender
+            );
+
+            const allCharacterIds = new Set<string>();
+            rebalancedScenes.forEach((scene: any) => {
+                (scene.characterIds || []).forEach((id: string) => allCharacterIds.add(id));
+            });
+
+            const outfitsResponse = await fetch('http://localhost:3002/api/outfits');
+            const outfitsData = await outfitsResponse.json();
+            const allOutfits = outfitsData.outfits || [];
+            const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
+            const fallbackOutfitMap = assignOutfitsToCharacters({
+                characterIds: Array.from(allCharacterIds),
+                genre: aiGenre,
+                outfitsData: allOutfits,
+                topic: aiTopic || finalScript
+            });
+            const llmDerivedOutfitMap = deriveOutfitMapFromScenePrompts(scenesSource as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+            const outfitMap = new Map(fallbackOutfitMap);
+            llmDerivedOutfitMap.forEach((value, key) => {
+                outfitMap.set(key, value);
+            });
+
+            const characterRules = getCharacterRules();
+            const profiles = Array.from(allCharacterIds).map((slotId) => {
+                const outfit = outfitMap.get(slotId);
+                let characterInfo: any = {};
+
+                if (slotId.startsWith('Woman')) {
+                    characterInfo = characterRules.females.find((f: any) => f.id === slotId) || {};
+                } else if (slotId.startsWith('Man')) {
+                    characterInfo = characterRules.males.find((m: any) => m.id === slotId) || {};
+                }
+
+                return {
+                    slotId,
+                    name: characterInfo.name || slotId,
+                    identity: characterInfo.identity || '',
+                    hair: characterInfo.hair || '',
+                    body: characterInfo.body || '',
+                    outfit: outfit?.name || '의상 미선택',
+                    outfitPrompt: outfit?.prompt || ''
+                };
+            });
+
+            setMasterCharacterProfiles(profiles);
+            setMasterOutfitMap(outfitMap);
+            const storageFolderName = resolvedFolderName || currentFolderName;
+            if (storageFolderName) {
+                setAppStorageValue(getMasterProfilesStorageKey(storageFolderName), profiles);
+                setAppStorageValue(getMasterOutfitsStorageKey(storageFolderName), serializeMasterOutfitMap(outfitMap));
+            }
+
+            // [2단계 수정] 씬 생성 후 자동으로 캐릭터 정보 적용
+            const extractedScenes = rebalancedScenes.map((scene: any, index: number) => ({
+                number: index + 1,
+                text: scene.scriptLine || '',
+                characterIds: scene.characterIds || [],
+                cameraAngle: scene.cameraAngle || 'full body wide shot',
+                background: scene.background || '',
+                action: scene.action || 'standing naturally',
+                prompt: '',  // 캐릭터 적용 후 생성됨
+                characterProfilesApplied: false,
+                imageUrl: undefined,
+                isSelected: true,
+                shotType: getShotTypeByCharacterCount((scene.characterIds || []).length),
+                age: aiTargetAge,
+                outfit: '',
+                summary: scene.summary || '',
+                camera: scene.cameraAngle || '',
+                videoPrompt: '',
+                dialogue: scene.scriptLine || '',
+                voiceType: 'narration' as const,
+                narrationText: scene.scriptLine || '',
+                narrationEmotion: '',
+                narrationSpeed: 'normal' as const,
+                lipSyncSpeaker: '',
+                lipSyncSpeakerName: '',
+                lipSyncLine: '',
+                lipSyncEmotion: '',
+                lipSyncTiming: undefined,
+                shortPromptKo: '',
+                longPromptKo: ''
+            }));
+
+            // [A안] 자동으로 캐릭터 정보 적용 로직 실행
+            try {
+                const { applyCharacterInfoToScenes } = await import('../services/labPromptBuilder');
+                const characterRules = getCharacterRules();
+
+                const shouldLockBackground = enableWinterAccessories || isWinterTopic(aiTopic || scriptInput || '');
+                
+                // 장소 일관성을 위해 1번 씬 배경으로 모든 씬 강제 고정
+                const baseBackground = extractedScenes.find((scene) => (scene.background || '').trim())?.background || '';
+                const sanitizeCameraAngle = (value: string) => {
+                    const raw = String(value || '').trim();
+                    if (!raw) return 'full body wide shot';
+                    if (/pov/i.test(raw)) return 'full body wide shot';
+                    return raw;
+                };
+
+                const normalizedScenes = extractedScenes.map((scene) => ({
+                    ...scene,
+                    cameraAngle: sanitizeCameraAngle(scene.cameraAngle || scene.camera || ''),
+                    background: baseBackground || scene.background || '',
+                    action: scene.action || 'standing naturally'
+                }));
+
+                const uniqueIds = new Set<string>();
+                normalizedScenes.forEach((scene) => {
+                    (scene.characterIds || []).forEach((id) => {
+                        if (id) uniqueIds.add(id);
+                    });
+                });
+                const femaleIds = Array.from(uniqueIds).filter((id) => getCharacterGender(id) === 'female');
+                const accessoryMap = enableWinterAccessories ? buildUniqueFemaleAccessoryMap(femaleIds) : new Map<string, string[]>();
+
+                const updatedScenes = applyCharacterInfoToScenes({
+                    scenes: normalizedScenes,
+                    characterRules,
+                    outfitMap: outfitMap,
+                    accessoryMap,
+                    forceWinterBackground: shouldLockBackground,
+                    targetAge: aiTargetAge
+                });
+
+                // 한국어 프롬프트 설정에 따른 번역 처리
+                const displayScenes = settings.imagePromptLanguage === 'ko'
+                    ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
+                        const translatedKo = scene.prompt
+                            ? await translateScenePromptToKorean(scene.prompt)
+                            : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
+                        return {
+                            ...scene,
+                            longPromptKo: translatedKo,
+                            shortPromptKo: translatedKo
+                        };
+                    }))
+                    : updatedScenes;
+
+                setScenes(displayScenes);
+                setActiveTab('preview');
+                showToast(`✓ ${selectedService} AI로 대본 생성 + 씬 분해 + 캐릭터 적용이 완료되었습니다! (${displayScenes.length}개 씬)`, 'success');
+            } catch (applyError) {
+                // 캐릭터 자동 적용 실패 시에도 씬은 표시 (사용자가 수동으로 적용 가능)
+                console.error('[2Step Fix] 자동 캐릭터 적용 실패:', applyError);
+                setScenes(extractedScenes);
+                setActiveTab('preview');
+                showToast(`✓ ${selectedService} AI로 씬 분해를 완료했습니다. 캐릭터 정보는 '캐릭터 정보 적용' 버튼을 눌러주세요.`, 'success');
+            }
+        } catch (error) {
+            console.error('Master-style scene generation failed:', error);
+            const message = error instanceof Error ? error.message : '씬 분해에 실패했습니다.';
+            showToast(message, 'error');
+        } finally {
+            setIsManualSceneParsing(false);
+        }
+    };
+
     const handleParseScenes = () => {
         if (activeTab === 'manual') {
             handleManualSceneGeneration();
             return;
         }
-        if (!validateIdentityLock()) return;
-        const parsed = parseScenes(scriptInput);
-        const withPrompts = parsed.map(scene => ({
-            ...scene,
-            prompt: generatePrompt(scene.text)
-        }));
-        setScenes(normalizeSceneNumbers(withPrompts));
-        setActiveTab('preview');
+        handleMasterStyleSceneGeneration();
     };
 
     const handleRegeneratePrompts = () => {
@@ -4336,17 +4917,14 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 : undefined;
             const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
 
-            // ShortsLab lightweight prompt generation with genre guide override
-            const prompt = buildLabScriptPrompt({
+            // 대본 전용 프롬프트 생성
+            const prompt = buildLabScriptOnlyPrompt({
                 topic: aiTopic,
                 genre: aiGenre,
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
                 legacyGenrePrompt,
-                enableWinterAccessories: enableWinterAccessories,
-                useRandomOutfits,
-                allowedOutfitCategories,
                 characterSlotMode: scriptCharacterMode
             });
 
@@ -4361,7 +4939,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     service: selectedService,  // ← AI 서비스 선택 추가
                     prompt,
                     maxTokens: 2000,
-                    temperature: 0.9
+                    temperature: 0.9,
+                    skipFolderCreation: true
                 })
             });
 
@@ -4372,15 +4951,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             const data = await response.json();
             const generatedText = data.rawResponse || data.text || data.result || '';
 
-            // 스토리 폴더명 저장 (기존 시스템 호환)
-            if (data._folderName) {
-                setCurrentFolderName(data._folderName);
-                console.log(`[ShortsLab] Story folder assigned: ${data._folderName}`);
-            }
+            // 1단계 대본 생성은 임시 단계이므로 폴더를 만들지 않고 기존 앵커도 제거
+            setCurrentFolderName(null);
 
-            // 결과에서 대본 및 scenes 추출
-            let finalScript = '';  // [FIX] 빈 문자열로 초기화 (JSON 전체가 들어가는 것 방지)
-            let extractedScenes: Scene[] = [];
+            // 결과에서 대본만 추출
+            let finalScript = '';
 
             try {
                 // 1. JSON 클리닝 로직 강화: "JSON" 접두사, 마크다운 등 제거
@@ -4390,115 +4965,46 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     jsonClean = jsonClean.replace(/^```(json)?/, "").replace(/```$/, "").trim();
                 }
 
-                const parsed = parseJsonFromText<any>(jsonClean, ["script", "scriptBody", "scriptLine", "shortPrompt", "shortPromptKo", "longPrompt", "longPromptKo", "hook", "punchline", "twist", "title"]);
+                const parsed = parseJsonFromText<any>(jsonClean, [
+                    "script",
+                    "scriptBody",
+                    "scriptLines",
+                    "openingLine",
+                    "hook",
+                    "punchline",
+                    "twist",
+                    "title"
+                ]);
                 if (!parsed) {
                     throw new Error('JSON parse failed');
                 }
 
+                const normalizeScriptOnlyLines = (value: unknown): string[] => {
+                    if (Array.isArray(value)) {
+                        return value
+                            .map((line) => (typeof line === 'string' ? line.trim() : ''))
+                            .filter(Boolean);
+                    }
+                    if (typeof value === 'string') {
+                        return value
+                            .split('\n')
+                            .map((line) => line.trim())
+                            .filter(Boolean);
+                    }
+                    return [];
+                };
+
                 // 쇼츠 생성기 호환 구조 (scriptBody) 또는 기존 구조 (scripts[0].script)
                 const scriptData = parsed.scripts?.[0] || parsed;
-                const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || "";
+                const normalizedScriptLines = normalizeScriptOnlyLines(scriptData.scriptLines || parsed.scriptLines);
+                const rawScript = normalizedScriptLines.length > 0
+                    ? normalizedScriptLines.join('\n')
+                    : (scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || "");
 
                 if (rawScript) {
                     // --- 구분자가 포함되어 있다면 본문만 추출 시도
                     const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
                     finalScript = scriptMatch ? scriptMatch[1].trim() : rawScript.trim();
-                }
-
-                // scenes 배열 추출 + 후처리 적용
-                const scenesSource = scriptData.scenes || parsed.scenes;
-                if (scenesSource && Array.isArray(scenesSource)) {
-                    if (Array.isArray(scriptData.characters)) {
-                        scriptData.characters = scriptData.characters.map((character: any) => {
-                            const id = String(character?.id || '').trim();
-                            if (id.toLowerCase().startsWith('man') && typeof character.identity === 'string') {
-                                const fixedIdentity = character.identity.replace(/\bin her\b/gi, 'in his');
-                                return { ...character, identity: fixedIdentity };
-                            }
-                            return character;
-                        });
-                    }
-                    // [FIX] 후처리 적용: 한국인 정체성, 의상, no text 태그 등
-                    const lockedOutfits = scriptData.lockedOutfits || parsed.lockedOutfits;
-                    const preferredFemaleOutfit = lockedOutfits?.womanA || settings.selectedOutfit || undefined;
-                    const preferredMaleOutfit = lockedOutfits?.manA || undefined;
-
-                    const processedScenes = postProcessAiScenes(scenesSource, {
-                        femaleOutfit: preferredFemaleOutfit,
-                        maleOutfit: preferredMaleOutfit,
-                        targetAgeLabel: aiTargetAge,
-                        gender: settings.koreanGender,
-                        characters: scriptData.characters || parsed.characters, // 캐릭터 정보 전달
-                        genre: aiGenre,                    // v3.6: 장르 정보 전달
-                        totalScenes: scenesSource.length,   // v3.6: 전체 장면 수 전달
-                        enableWinterAccessories,
-                        useGenderGuard: settings.useGenderGuard, // 성별 가드 전달
-                        postProcessConfig: selectedGenreData?.postProcessConfig
-                    });
-
-                    processedScenes.forEach((scene: any, idx: number) => {
-                        const rawScene = scenesSource[idx] || {};
-                        const sceneNo = scene.sceneNumber || idx + 1;
-                        console.log(`[ShortsLab] PostProcess Scene ${sceneNo}`);
-                        console.log('LLM longPrompt:', rawScene.longPrompt || rawScene.shortPrompt || rawScene.prompt || '');
-                        console.log('POST longPrompt:', scene.longPrompt || scene.shortPrompt || scene.prompt || '');
-                    });
-
-                    try {
-                        const diffReport = buildPromptDiffReport(scenesSource, processedScenes, {
-                            title: aiTopic?.trim() || 'ShortsLab',
-                            folderName: data._folderName,
-                            service: selectedService
-                        });
-                        await fetch('http://localhost:3002/api/save-story', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                title: `${aiTopic?.trim() || 'ShortsLab'}_prompt_diff`,
-                                content: diffReport,
-                                service: 'ShortsLab',
-                                folderName: data._folderName
-                            })
-                        });
-                    } catch (e) {
-                        console.warn('[ShortsLab] Failed to save prompt diff report:', e);
-                    }
-
-                    extractedScenes = processedScenes.map((scene: any, idx: number) => {
-                        const sceneText = scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`;
-                        const narrationText = typeof scene.narration === 'string'
-                            ? scene.narration
-                            : scene.narration?.text || '';
-                        const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
-                        const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
-
-                        return {
-                            number: scene.sceneNumber || idx + 1,
-                            text: sceneText,
-                            prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || '',
-                            imageUrl: undefined,
-                            shortPromptKo: scene.shortPromptKo || '',
-                            longPromptKo: scene.longPromptKo || '',
-                            summary: scene.summary || sceneText,
-                            camera: scene.camera || '',
-                            shotType: scene.shotType || '',
-                            age: scene.age || '',
-                            outfit: scene.outfit || '',
-                            isSelected: true,
-                            videoPrompt: scene.videoPrompt || '',
-                            dialogue: scene.dialogue || lipSyncLine || '',
-                            voiceType,
-                            narrationText: narrationText || sceneText,
-                            narrationEmotion: scene.narration?.emotion || '',
-                            narrationSpeed: scene.narration?.speed || 'normal',
-                            lipSyncSpeaker: scene.lipSync?.speaker || '',
-                            lipSyncSpeakerName: scene.lipSync?.speakerName || '',
-                            lipSyncLine: lipSyncLine || '',
-                            lipSyncEmotion: scene.lipSync?.emotion || '',
-                            lipSyncTiming: scene.lipSync?.timing || undefined
-                        };
-                    });
-                    console.log(`[ShortsLab] Extracted and post-processed ${extractedScenes.length} scenes`);
                 }
             } catch (e) {
                 console.warn('[ShortsLab] JSON parsing failed, using regex fallback:', e);
@@ -4520,20 +5026,14 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             }
 
             // 결과 유효성 체크 및 상태 업데이트
-            if (!finalScript && extractedScenes.length === 0) {
+            if (!finalScript) {
                 throw new Error('대본을 추출할 수 없습니다. AI 응답 형식이 올바르지 않습니다.');
             }
 
-            if (finalScript) setScriptInput(finalScript.trim());
-
-            if (extractedScenes.length > 0) {
-                setScenes(extractedScenes);
-                setActiveTab('preview');
-
-                // 사용자 피드백: 생성 완료
-                const selectedService = targetService || 'GEMINI';
-                showToast(`✅ ${selectedService} AI로 대본이 생성되었습니다! (${extractedScenes.length}개 씬)`, 'success');
-            }
+            setScriptInput(finalScript.trim());
+            setScenes([]);
+            setActiveTab('input');
+            showToast(`✅ ${selectedService} AI로 대본이 생성되었습니다. 입력란에서 수정 후 씬 분해를 진행하세요.`, 'success');
 
         } catch (error) {
             console.error('AI 대본 생성 실패:', error);
@@ -4635,13 +5135,52 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 jsonClean = jsonClean.replace(/^```(json)?/, '').replace(/```$/, '').trim();
             }
 
-            const parsed = parseJsonFromText<{ scriptBody: string; scenes: any[] }>(
+            const parsed = parseJsonFromText<{
+                title?: string;
+                titleOptions?: string[];
+                openingCaption?: string;
+                openingLine?: string;
+                scriptBody?: string | string[];
+                scriptLines?: string[];
+                closingPunch?: string;
+                commentTrigger?: string;
+                scenes: any[];
+            }>(
                 jsonClean,
-                ['scriptBody', 'scenes']
+                ['scriptBody', 'scriptLines', 'openingCaption', 'openingLine', 'closingPunch', 'commentTrigger', 'scenes']
             );
 
-            if (!parsed || !parsed.scriptBody || !Array.isArray(parsed.scenes)) {
+            const normalizeScriptLines = (value: unknown): string[] => {
+                if (Array.isArray(value)) {
+                    return value
+                        .map((line) => (typeof line === 'string' ? line.trim() : ''))
+                        .filter(Boolean);
+                }
+                if (typeof value === 'string') {
+                    return value
+                        .split('\n')
+                        .map((line) => line.trim())
+                        .filter(Boolean);
+                }
+                return [];
+            };
+
+            const scriptLines = normalizeScriptLines(parsed?.scriptLines);
+            const bodyLines = normalizeScriptLines(parsed?.scriptBody);
+            const normalizedLines = scriptLines.length > 0 ? scriptLines : bodyLines;
+            const normalizedScriptBody = normalizedLines.join('\n');
+            const openingLine = typeof parsed?.openingLine === 'string' ? parsed.openingLine.trim() : '';
+            const closingPunch = typeof parsed?.closingPunch === 'string' ? parsed.closingPunch.trim() : '';
+
+            if (!parsed || !normalizedScriptBody || !Array.isArray(parsed.scenes)) {
                 throw new Error('LLM 응답 JSON 파싱 실패');
+            }
+
+            if (openingLine && normalizedLines[0] && openingLine !== normalizedLines[0]) {
+                console.warn('[AI Master] openingLine does not match first script line. Using script line as source of truth.');
+            }
+            if (closingPunch && normalizedLines.length > 0 && closingPunch !== normalizedLines[normalizedLines.length - 1]) {
+                console.warn('[AI Master] closingPunch does not match last script line. Using script line as source of truth.');
             }
 
             const rebalancedScenes = rebalanceMasterSceneCharacterMix(
@@ -4661,11 +5200,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.log('[AI Master] Available outfits:', allOutfits.length);
 
             const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
-            const outfitMap = assignOutfitsToCharacters({
+            const fallbackOutfitMap = assignOutfitsToCharacters({
                 characterIds: Array.from(allCharacterIds),
                 genre: aiGenre,
                 outfitsData: allOutfits,
                 topic: aiTopic
+            });
+            const llmDerivedOutfitMap = deriveOutfitMapFromScenePrompts(rebalancedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+            const outfitMap = new Map(fallbackOutfitMap);
+            llmDerivedOutfitMap.forEach((value, key) => {
+                outfitMap.set(key, value);
             });
 
             console.log('[AI Master] Outfit map created:', outfitMap);
@@ -4687,10 +5231,15 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                 const profile = {
                     slotId,
+                    characterId: undefined,
                     name: characterInfo.name || slotId,
                     identity: characterInfo.identity || '',
+                    face: characterInfo.face || '',
                     hair: characterInfo.hair || '',
                     body: characterInfo.body || '',
+                    style: characterInfo.style || '',
+                    skinTone: characterInfo.skinTone || '',
+                    signatureFeatures: characterInfo.signatureFeatures || '',
                     outfit: outfit?.name || '의상 미선택',
                     outfitPrompt: outfit?.prompt || ''
                 };
@@ -4710,7 +5259,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             }
 
             // 8. 대본 설정
-            setScriptInput(parsed.scriptBody);
+            setScriptInput(normalizedScriptBody);
 
             // 9. 씬 데이터 저장 (프롬프트는 아직 생성하지 않음 - 버튼 클릭 시 생성)
             const extractedScenes = rebalancedScenes.map((scene: any, index: number) => ({
@@ -4720,13 +5269,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 cameraAngle: scene.cameraAngle || 'full body wide shot',
                 background: scene.background || '',
                 action: scene.action || 'standing naturally',
-                prompt: '',  // 빈 상태 (버튼 클릭 전)
+                prompt: scene.longPrompt || scene.prompt || scene.shortPrompt || '',
                 characterProfilesApplied: false,
                 imageUrl: undefined,
                 isSelected: true,
                 shotType: getShotTypeByCharacterCount((scene.characterIds || []).length),
                 age: aiTargetAge,
-                outfit: '',
+                outfit: scene.outfit || '',
                 summary: scene.summary || '',
                 camera: scene.cameraAngle || '',
                 videoPrompt: '',
@@ -4740,8 +5289,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 lipSyncLine: '',
                 lipSyncEmotion: '',
                 lipSyncTiming: undefined,
-                shortPromptKo: '',
-                longPromptKo: ''
+                shortPromptKo: scene.shortPromptKo || '',
+                longPromptKo: scene.longPromptKo || ''
             }));
 
             console.log('[AI Master] Scenes created:', extractedScenes.length);
@@ -4779,14 +5328,38 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
         // 2. If outfit, update masterOutfitMap
         if (field === 'outfit') {
-            const selectedOutfit = outfitPool.find(o => o.name === value || o.prompt === value);
-            if (selectedOutfit) {
-                setMasterOutfitMap(prev => {
-                    const newMap = new Map(prev);
+            const selectedOutfit = resolveOutfitEntry(value);
+            setMasterOutfitMap(prev => {
+                const newMap = new Map(prev);
+                if (!selectedOutfit) {
+                    newMap.delete(slotId);
+                } else {
                     newMap.set(slotId, { name: selectedOutfit.name, prompt: selectedOutfit.prompt || selectedOutfit.name });
-                    return newMap;
+                }
+                return newMap;
+            });
+        }
+
+        if (field === 'hair' || field === 'body') {
+            setCharacterCastings((prev) => {
+                const existing = prev.get(slotId);
+                if (!existing) return prev;
+                const next = new Map(prev);
+                const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
+                const summary = [
+                    profile?.face || profile?.identity,
+                    field === 'hair' ? value : profile?.hair,
+                    field === 'body' ? value : profile?.body,
+                    profile?.skinTone,
+                    profile?.signatureFeatures,
+                    profile?.style,
+                ].filter(Boolean).join(', ');
+                next.set(slotId, {
+                    ...existing,
+                    identitySummary: summary || existing.identitySummary,
                 });
-            }
+                return next;
+            });
         }
 
         // 3. Sync to Global Rules
@@ -4797,6 +5370,117 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.error('Failed to sync character rule:', e);
         }
     };
+
+    const loadSavedCharacters = useCallback(async () => {
+        try {
+            const chars = await fetchCharacters();
+            setSavedCharacters(chars);
+            return chars;
+        } catch (error) {
+            console.error('Failed to load saved characters:', error);
+            return [] as CharacterItem[];
+        }
+    }, []);
+
+    const syncSavedCharactersToMasterProfiles = useCallback((characters: CharacterItem[]) => {
+        setSavedCharacters(characters);
+        setMasterCharacterProfiles((prev) => prev.map((profile) => {
+            const matched = characters.find((character) => character.id === profile.characterId);
+            if (!matched) return profile;
+            return {
+                ...profile,
+                name: matched.name || profile.name,
+                identity: matched.face || matched.identitySpec?.faceShape || profile.identity,
+                face: matched.face || matched.identitySpec?.faceShape || profile.face,
+                hair: matched.hair || matched.identitySpec?.hairDescription || profile.hair,
+                body: matched.body || matched.identitySpec?.bodyType || profile.body,
+                style: matched.style || matched.identitySpec?.styleCore || profile.style,
+                skinTone: matched.identitySpec?.skinTone || profile.skinTone,
+                signatureFeatures: matched.identitySpec?.signatureFeatures || profile.signatureFeatures
+            };
+        }));
+        setCharacterCastings((prev) => {
+            const next = new Map(prev);
+            Array.from(next.entries()).forEach(([slotId, casting]) => {
+                const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
+                const matched = characters.find((character) => character.id === profile?.characterId);
+                if (!matched) return;
+                next.set(slotId, {
+                    ...casting,
+                    characterId: matched.id,
+                    name: matched.name || casting.name,
+                    identitySummary: buildCastingIdentitySummary(matched) || casting.identitySummary,
+                });
+            });
+            return next;
+        });
+    }, [buildCastingIdentitySummary, masterCharacterProfiles]);
+
+    const blobToDataUrl = useCallback(async (blobId?: string) => {
+        if (!blobId) return '';
+        const blob = await getBlob(blobId);
+        if (!blob) return '';
+        return await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(blob);
+        });
+    }, []);
+
+    async function applyCharacterToMasterProfile(slotId: string, char: CharacterItem) {
+        await shortsLabCharacterRulesManager.importCharacter(char, slotId);
+
+        try {
+            const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
+            const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
+            const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
+            const referenceImageUrl = frontUrl || angle45Url || backUrl;
+
+            if (referenceImageUrl) {
+                setCharacterCastings((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(slotId, {
+                        characterId: char.id,
+                        referenceImageUrl,
+                        referenceImageUrls: {
+                            front: frontUrl || undefined,
+                            angle45: angle45Url || undefined,
+                            back: backUrl || undefined,
+                        },
+                        referenceViewPreference: char.referencePreference?.defaultView || 'front',
+                        identitySummary: buildCastingIdentitySummary(char),
+                        name: char.name,
+                    });
+                    return newMap;
+                });
+            }
+        } catch (imageError) {
+            console.warn('Failed to attach character reference image to master profile:', imageError);
+        }
+
+        setMasterCharacterProfiles((prev) => prev.map((profile) => {
+            if (profile.slotId !== slotId) return profile;
+            return {
+                ...profile,
+                characterId: char.id,
+                name: char.name || profile.name,
+                identity: char.face || char.identitySpec?.faceShape || profile.identity,
+                face: char.face || char.identitySpec?.faceShape || profile.face,
+                hair: char.hair || char.identitySpec?.hairDescription || profile.hair,
+                body: char.body || char.identitySpec?.bodyType || profile.body,
+                style: char.style || char.identitySpec?.styleCore || profile.style,
+                skinTone: char.identitySpec?.skinTone || profile.skinTone,
+                signatureFeatures: char.identitySpec?.signatureFeatures || profile.signatureFeatures,
+            };
+        }));
+    }
+
+    useEffect(() => {
+        if (activeTab === 'preview' && masterCharacterProfiles.length > 0 && savedCharacters.length === 0) {
+            void loadSavedCharacters();
+        }
+    }, [activeTab, loadSavedCharacters, masterCharacterProfiles.length, savedCharacters.length]);
 
     // ============================================
     // [신규] 캐릭터 정보 적용 버튼 핸들러
@@ -4859,10 +5543,23 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 targetAge: aiTargetAge
             });
 
-            console.log('[Apply Character] Updated scenes:', updatedScenes.length);
-            console.log('[Apply Character] First scene prompt:', updatedScenes[0]?.prompt);
+            const displayScenes = settings.imagePromptLanguage === 'ko'
+                ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
+                    const translatedKo = scene.prompt
+                        ? await translateScenePromptToKorean(scene.prompt)
+                        : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
+                    return {
+                        ...scene,
+                        longPromptKo: translatedKo,
+                        shortPromptKo: translatedKo
+                    };
+                }))
+                : updatedScenes;
 
-            setScenes(updatedScenes);
+            console.log('[Apply Character] Updated scenes:', displayScenes.length);
+            console.log('[Apply Character] First scene prompt:', displayScenes[0]?.prompt);
+
+            setScenes(displayScenes);
             try {
                 const storyId = getEffectiveStoryId();
                 const titleBase = aiTopic?.trim() || 'ShortsLab';
@@ -4871,17 +5568,18 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     `GeneratedAt: ${new Date().toISOString()}`,
                     `StoryId: ${storyId}`,
                     `Title: ${titleBase}`,
-                    `TotalScenes: ${updatedScenes.length}`,
+                    `TotalScenes: ${displayScenes.length}`,
                     ''
                 ];
 
-                updatedScenes.forEach((scene: any) => {
+                displayScenes.forEach((scene: any) => {
                     promptReportLines.push(`--- Scene ${scene.number} ---`);
                     promptReportLines.push(`scriptLine: ${scene.text || scene.summary || ''}`);
                     promptReportLines.push(`characterIds: ${(scene.characterIds || []).join(', ')}`);
                     promptReportLines.push(`cameraAngle: ${scene.cameraAngle || scene.camera || ''}`);
                     promptReportLines.push(`background: ${scene.background || ''}`);
                     promptReportLines.push(`action: ${scene.action || ''}`);
+                    promptReportLines.push(`promptKo: ${scene.longPromptKo || scene.shortPromptKo || ''}`);
                     promptReportLines.push('prompt:');
                     promptReportLines.push(scene.prompt || '');
                     promptReportLines.push('');
@@ -4908,7 +5606,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 showToast('프롬프트 저장에 실패했습니다.', 'warning');
             }
 
-            showToast(`✓ 모든 씬에 캐릭터 정보가 적용되었습니다! (${updatedScenes.length}개 씬)`, 'success');
+            showToast(`✓ 모든 씬에 캐릭터 정보가 적용되었습니다! (${displayScenes.length}개 씬)`, 'success');
         } catch (error) {
             console.error('[Apply Character] 실패:', error);
             showToast('캐릭터 정보 적용에 실패했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'), 'error');
@@ -5488,12 +6186,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             pass1Result.lockedCharacters.forEach(ch => {
                 const existing = masterMap.get(ch.slotId);
                 if (!existing) return;
-                const gender = existing.gender;
-                let outfit = ch.outfit || existing.outfit;
-                // 겨울 의상 변환 적용
-                if (enableWinterAccessories && gender === 'female' && outfit) {
-                    outfit = convertToTightLongSleeveWithShoulderLine(outfit);
-                }
+                const outfit = ch.outfit || existing.outfit;
                 masterMap.set(ch.slotId, {
                     ...existing,
                     identity: ch.identity || existing.identity,
@@ -5544,6 +6237,14 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             // 씬 빌드
             const styleDNA = buildStyleDNAString(pass1Result.visualStyleDNA);
             const extractedScenes = buildScenesFromData(pass2Scenes, masterMap, slotMap, hasCaddy, accessoryMap, styleDNA);
+            const lockedOutfitMap = buildOutfitMapFromLockedCharacters(pass1Result.lockedCharacters);
+            const lockedProfiles = buildProfilesFromLockedCharacters(pass1Result.lockedCharacters, characterRules);
+            setMasterCharacterProfiles(lockedProfiles);
+            setMasterOutfitMap(lockedOutfitMap);
+            if (pass1FolderName) {
+                setAppStorageValue(getMasterProfilesStorageKey(pass1FolderName), lockedProfiles);
+                setAppStorageValue(getMasterOutfitsStorageKey(pass1FolderName), serializeMasterOutfitMap(lockedOutfitMap));
+            }
 
             // ============================================
             // [검증] validateProfileConsistency
@@ -5706,6 +6407,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
                         prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
                         imageUrl: undefined,
+                        shortPrompt: scene.shortPrompt || '',
+                        longPrompt: scene.longPrompt || scene.prompt || scene.imagePrompt || '',
                         shortPromptKo: scene.shortPromptKo || '',
                         longPromptKo: scene.longPromptKo || '',
                         summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
@@ -5743,11 +6446,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                 text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
                                 prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
                                 imageUrl: undefined,
+                                shortPrompt: scene.shortPrompt || '',
+                                longPrompt: scene.longPrompt || scene.prompt || scene.imagePrompt || '',
                                 shortPromptKo: scene.shortPromptKo || '',
                                 longPromptKo: scene.longPromptKo || '',
                                 summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
                                 camera: scene.camera || scene.cameraAngle || '',
                                 shotType: scene.shotType || '',
+                                age: scene.age || '',
+                                outfit: scene.outfit || '',
+                                videoPrompt: scene.videoPrompt || '',
                                 isSelected: true,
                                 characterIds: normalizeLoadedSceneCharacterIds(scene),
                                 cameraAngle: scene.cameraAngle || scene.camera || '',
@@ -5788,6 +6496,37 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             }
 
             await loadMasterDataForFolder(folderName);
+            if (loadedScenes.length > 0) {
+                const derivedFolderOutfitMap = deriveOutfitMapFromScenePrompts(loadedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+                if (derivedFolderOutfitMap.size > 0) {
+                    const characterRules = getCharacterRules();
+                    const derivedProfiles = buildProfilesFromLockedCharacters(
+                        Array.from(derivedFolderOutfitMap.entries()).map(([slotId, outfit]) => ({ slotId, outfit: outfit.prompt })),
+                        characterRules
+                    );
+
+                    setMasterOutfitMap((prev) => {
+                        const merged = new Map(prev);
+                        derivedFolderOutfitMap.forEach((value, key) => merged.set(key, value));
+                        return merged;
+                    });
+
+                    setMasterCharacterProfiles((prev) => {
+                        if (!Array.isArray(prev) || prev.length === 0) {
+                            return derivedProfiles;
+                        }
+                        return prev.map((profile) => {
+                            const derived = derivedFolderOutfitMap.get(profile.slotId);
+                            if (!derived) return profile;
+                            return {
+                                ...profile,
+                                outfit: derived.name || profile.outfit,
+                                outfitPrompt: derived.prompt || profile.outfitPrompt,
+                            };
+                        });
+                    });
+                }
+            }
 
             // 2. 이미지 로드
             const imagesResponse = await fetch(`http://localhost:3002/api/images/by-story/${encodeURIComponent(folderName)}`);
@@ -6432,6 +7171,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                 <CharacterPanel
                                     selectedSlot={settings.selectedSlot}
                                     onCharacterAdded={handleCharacterAddedToRules}
+                                    onCharactersSaved={syncSavedCharactersToMasterProfiles}
                                     onCharacterSelect={(char, slot) => {
                                         if (char) {
                                             const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
@@ -6558,6 +7298,35 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                     ? '* GenSpark은 브라우저 자동화를 통해 이미지를 생성하며 캡처 성공률이 다를 수 있습니다.' 
                                     : '* Gemini는 구글의 이미지 생성 모델을 사용하여 가장 안정적입니다.'}
                             </p>
+
+                            <div className="mt-4 pt-4 border-t border-slate-800">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-semibold text-slate-300">이미지 생성 프롬프트 언어</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    {([
+                                        { id: 'en', label: '영어로 생성' },
+                                        { id: 'ko', label: '한글 편집 후 생성' }
+                                    ] as const).map((option) => (
+                                        <button
+                                            key={option.id}
+                                            onClick={() => updateSetting('imagePromptLanguage', option.id)}
+                                            className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                                                settings.imagePromptLanguage === option.id
+                                                    ? 'bg-emerald-600 border-emerald-500 text-white'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                            }`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-slate-500 mt-2">
+                                    {settings.imagePromptLanguage === 'ko'
+                                        ? '* 한국어 프롬프트를 우선 사용하고, 생성 직전에 영어로 자동 번역해서 모델에 전달합니다.'
+                                        : '* 영어 프롬프트를 그대로 사용해 생성합니다.'}
+                                </p>
+                            </div>
 
                             {/* [NEW] Seed Control UI */}
                             <div className="mt-4 pt-4 border-t border-slate-800">
@@ -6783,6 +7552,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             <ToggleItem checked={settings.useOutfitKeywords} onChange={(v) => updateSetting('useOutfitKeywords', v)} label="의상 스타일 추가" />
                             {settings.useOutfitKeywords && (
                                 <select value={settings.selectedOutfit} onChange={(e) => updateSetting('selectedOutfit', e.target.value)} className="ml-6 mt-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm w-full max-w-md">
+                                    <option value="">LLM 기본 의상 유지</option>
                                     {OUTFIT_KEYWORDS.map(outfit => <option key={outfit} value={outfit}>{outfit}</option>)}
                                 </select>
                             )}
@@ -6864,7 +7634,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                             <img
                                                                                 src={selectedOutfitImageUrl}
                                                                                 alt={selectedOutfitItem?.translation || selectedOutfitItem?.name || '의상 썸네일'}
-                                                                                className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0"
+                                                                                className="w-7 h-7 rounded object-cover border border-slate-600 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setSelectedImageForView(selectedOutfitImageUrl);
+                                                                                }}
                                                                             />
                                                                         ) : (
                                                                             <span className="w-7 h-7 rounded border border-dashed border-slate-600 flex items-center justify-center text-slate-500 flex-shrink-0">
@@ -6922,7 +7696,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                                                                             <img
                                                                                                                 src={imageUrl}
                                                                                                                 alt={item.translation || item.name}
-                                                                                                                className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0"
+                                                                                                                className="w-7 h-7 rounded object-cover border border-slate-700 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
+                                                                                                                onClick={(e) => {
+                                                                                                                    e.stopPropagation();
+                                                                                                                    setSelectedImageForView(imageUrl);
+                                                                                                                }}
                                                                                                             />
                                                                                                         ) : (
                                                                                                             <span className="w-7 h-7 rounded border border-dashed border-slate-700 flex items-center justify-center text-slate-500 flex-shrink-0">
@@ -6948,17 +7726,41 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                 {/* 헤어 (Hair) + 악세서리 (Accessory) */}
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
-                                                        <span className="text-[10px] text-slate-500 block mb-1">헤어 (Hair)</span>
+                                                        <span className="text-[10px] text-slate-500 block mb-1">캐릭터 (Character)</span>
                                                         <select
-                                                            value={profile.hair}
-                                                            onChange={(e) => handleUpdateMasterProfile(profile.slotId, 'hair', e.target.value)}
+                                                            value={profile.characterId || ''}
+                                                            onChange={async (e) => {
+                                                                const selectedId = e.target.value;
+                                                                if (!selectedId) return;
+                                                                const selectedCharacter = savedCharacters.find((char) => char.id === selectedId);
+                                                                if (!selectedCharacter) {
+                                                                    showToast('선택한 캐릭터 정보를 찾을 수 없습니다.', 'warning');
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    await applyCharacterToMasterProfile(profile.slotId, selectedCharacter);
+                                                                    showToast(`${profile.slotId} 슬롯에 ${selectedCharacter.name} 캐릭터를 적용했습니다.`, 'success');
+                                                                } catch (error) {
+                                                                    console.error('Failed to apply character to profile:', error);
+                                                                    showToast('캐릭터 적용에 실패했습니다.', 'error');
+                                                                }
+                                                            }}
                                                             className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500/50"
                                                         >
-                                                            <option value="">헤어 선택</option>
-                                                            {HAIR_PRESETS.map(h => (
-                                                                <option key={h.id} value={h.prompt}>{h.name}</option>
-                                                            ))}
+                                                            <option value="">캐릭터 선택</option>
+                                                            {savedCharacters
+                                                                .filter((char) => profile.slotId.startsWith('Woman') ? char.gender === 'female' : char.gender === 'male')
+                                                                .map((char) => (
+                                                                    <option key={char.id} value={char.id}>{char.name || char.id}</option>
+                                                                ))}
                                                         </select>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void loadSavedCharacters()}
+                                                            className="mt-1 text-[10px] text-emerald-400 hover:text-emerald-300"
+                                                        >
+                                                            저장 캐릭터 새로고침
+                                                        </button>
                                                     </div>
 
                                                     {/* [NEW] 악세서리 (Accessory) - 겨울용/그외용 분류 */}
@@ -6983,6 +7785,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                         </select>
                                                     </div>
                                                 </div>
+
+                                                <div className="rounded-md border border-slate-800 bg-slate-950/60 p-2 space-y-1">
+                                                    <div className="text-[10px] font-semibold text-slate-400">캐릭터 상세</div>
+                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">얼굴:</span> {profile.face || profile.identity || '미설정'}</div>
+                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">몸매:</span> {profile.body || '미설정'}</div>
+                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">헤어:</span> {profile.hair || '미설정'}</div>
+                                                    {profile.style && <div className="text-[11px] text-slate-300"><span className="text-slate-500">스타일:</span> {profile.style}</div>}
+                                                    {profile.skinTone && <div className="text-[11px] text-slate-300"><span className="text-slate-500">피부톤:</span> {profile.skinTone}</div>}
+                                                    {profile.signatureFeatures && <div className="text-[11px] text-slate-300"><span className="text-slate-500">시그니처:</span> {profile.signatureFeatures}</div>}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -6992,6 +7804,39 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                 </p>
                             </div>
                         )}
+
+                        <div className="flex items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
+                            <div>
+                                <div className="text-sm font-semibold text-slate-200">이미지 생성 언어 기준</div>
+                                <div className="text-[11px] text-slate-500 mt-1">
+                                    {settings.imagePromptLanguage === 'ko'
+                                        ? '한국어 프롬프트를 먼저 보고 수정한 뒤, 생성할 때 영어로 자동 번역해서 보냅니다.'
+                                        : '영어 프롬프트를 그대로 사용해 생성합니다.'}
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => updateSetting('imagePromptLanguage', 'ko')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                        settings.imagePromptLanguage === 'ko'
+                                            ? 'bg-emerald-600 border-emerald-500 text-white'
+                                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                    }`}
+                                >
+                                    한글 기준
+                                </button>
+                                <button
+                                    onClick={() => updateSetting('imagePromptLanguage', 'en')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                        settings.imagePromptLanguage === 'en'
+                                            ? 'bg-emerald-600 border-emerald-500 text-white'
+                                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                    }`}
+                                >
+                                    영어 기준
+                                </button>
+                            </div>
+                        </div>
 
                         {scenes.length === 0 ? (
                             <div className="text-center py-12 text-slate-400">
@@ -8030,6 +8875,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [characterRulesBackupEditText, setCharacterRulesBackupEditText] = useState('');
     const [characterRulesBackupEditError, setCharacterRulesBackupEditError] = useState<string | null>(null);
     const [characterRulesBackupEdits, setCharacterRulesBackupEdits] = useState<Record<string, string>>({});
+    const [dirtyCharacterIds, setDirtyCharacterIds] = useState<Set<string>>(new Set());
 
     // 아코디언 상태 (펼쳐진 캐릭터 ID들)
     const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
@@ -8096,6 +8942,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
                 })),
                 common: characterRules.common || { negativePrompt: '', qualityTags: '' }
             });
+            setDirtyCharacterIds(new Set());
         }
     }, [characterRules, characterRulesDirty]);
 
@@ -8738,6 +9585,24 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const handleImportCharacter = useCallback(async (char: CharacterItem) => {
         try {
             await shortsLabCharacterRulesManager.importCharacter(char, importTargetSlotId);
+            const refreshedRules = getCharacterRules();
+            setCharacterRulesState({
+                females: (refreshedRules.females || []).map((item) => ({
+                    ...item,
+                    name: typeof item.name === 'string' ? item.name : '',
+                    id: typeof item.id === 'string'
+                        ? item.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                        : item.id
+                })),
+                males: (refreshedRules.males || []).map((item) => ({
+                    ...item,
+                    name: typeof item.name === 'string' ? item.name : '',
+                    id: typeof item.id === 'string'
+                        ? item.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                        : item.id
+                })),
+                common: refreshedRules.common || { negativePrompt: '', qualityTags: '' }
+            });
             showToast(`${char.name} 캐릭터를 가져왔습니다.`, 'success');
             setShowImportModal(false);
         } catch (err) {
@@ -8754,6 +9619,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             await onCharacterRulesSave(characterRulesState);
             setCharacterRulesDirty(false);
             setCharacterRulesEditError(null);
+            setDirtyCharacterIds(new Set());
+            showToast('캐릭터 설정이 저장되었습니다.', 'success');
         } catch (err) {
             console.error('Failed to save character rules:', err);
             setCharacterRulesEditError('의상 규칙 저장에 실패했습니다.');
@@ -8767,6 +9634,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             await onCharacterRulesReset();
             setCharacterRulesDirty(false);
             setCharacterRulesEditError(null);
+            setDirtyCharacterIds(new Set());
+            showToast('캐릭터 설정을 기본값으로 초기화했습니다.', 'info');
         } catch (err) {
             console.error('Failed to reset character rules:', err);
             alert('의상 규칙 초기화에 실패했습니다.');
@@ -8825,7 +9694,18 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             )
         }));
         setCharacterRulesDirty(true);
+        setDirtyCharacterIds(prev => new Set(prev).add(id));
         setCharacterRulesEditError(null);
+    };
+
+    const handleSingleCharacterSave = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        await handleCharacterRulesSave();
+        setDirtyCharacterIds(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
     };
 
     const toggleCharacterExpand = (id: string) => {
@@ -10189,6 +11069,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.females.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
+                                        const isDirty = dirtyCharacterIds.has(char.id);
                                         return (
                                             <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
                                                 <div
@@ -10203,6 +11084,9 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                             {formatSlotLabel(char.id, idx, 'female', char.name)}
                                                             {char.id === 'WomanD' && (
                                                                 <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
+                                                            )}
+                                                            {isDirty && (
+                                                                <span className="ml-2 text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded">저장 필요</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -10236,6 +11120,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                                 삭제
                                                             </button>
                                                         )}
+                                                        <button
+                                                            onClick={(e) => handleSingleCharacterSave(e, char.id)}
+                                                            className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors"
+                                                        >
+                                                            캐릭터 저장
+                                                        </button>
                                                     </div>
                                                 </div>
                                                 {isExpanded && (
@@ -10382,6 +11272,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                         <div className="px-4 pb-4 space-y-3">
                                     {characterRulesState.males.map((char, idx) => {
                                         const isExpanded = expandedCharacters.has(char.id);
+                                        const isDirty = dirtyCharacterIds.has(char.id);
                                         return (
                                             <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
                                                 <div
@@ -10394,6 +11285,9 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
                                                             {formatSlotLabel(char.id, idx, 'male', char.name)}
+                                                            {isDirty && (
+                                                                <span className="ml-2 text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded">저장 필요</span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
@@ -10423,6 +11317,12 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         >
                                                             <Trash2 className="w-3 h-3" />
                                                             삭제
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleSingleCharacterSave(e, char.id)}
+                                                            className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-[10px] font-semibold transition-colors"
+                                                        >
+                                                            캐릭터 저장
                                                         </button>
                                                     </div>
                                                 </div>
@@ -10511,6 +11411,10 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     ...prev,
                                                     common: { ...prev.common, negativePrompt: e.target.value }
                                                 }))}
+                                                onBlur={() => {
+                                                    setCharacterRulesDirty(true);
+                                                    setCharacterRulesEditError(null);
+                                                }}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 placeholder="NOT cartoon, NOT anime..."
@@ -10524,6 +11428,10 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     ...prev,
                                                     common: { ...prev.common, qualityTags: e.target.value }
                                                 }))}
+                                                onBlur={() => {
+                                                    setCharacterRulesDirty(true);
+                                                    setCharacterRulesEditError(null);
+                                                }}
                                                 rows={3}
                                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                                 placeholder="photorealistic, 8k resolution..."
@@ -10553,7 +11461,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                             onClick={handleCharacterRulesSave}
                                             className="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold"
                                         >
-                                            저장
+                                            전체 저장
                                         </button>
                                     </div>
                                     <button
@@ -10562,7 +11470,7 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     >
                                         기본값으로 초기화
                                     </button>
-                                    <div className="text-[11px] text-slate-500">저장 후 즉시 적용됩니다.</div>
+                                    <div className="text-[11px] text-slate-500">개별 캐릭터 저장 또는 전체 저장 후 즉시 적용됩니다.</div>
                                     {characterRulesEditError && (
                                         <div className="text-xs text-rose-400">{characterRulesEditError}</div>
                                     )}
@@ -11157,6 +12065,11 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                     <div className="text-xs text-slate-500 mt-1">
                                                         {char.age} · {char.gender === 'female' ? '여성' : '남성'}
                                                     </div>
+                                                    {char.sourceType === 'ai-studio' && (
+                                                        <div className="text-[10px] text-cyan-400 mt-1">
+                                                            AI Studio 저장 캐릭터
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <Download className="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors" />
                                             </div>

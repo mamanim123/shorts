@@ -1640,8 +1640,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         selectedSlot: '',
         useBodyKeywords: true,
         selectedBody: BODY_KEYWORDS[0],
-        useOutfitKeywords: true,
-        selectedOutfit: OUTFIT_KEYWORDS[0],
+        useOutfitKeywords: false,
+        selectedOutfit: '',
         useEthnicityKeywords: true,
         selectedEthnicity: ETHNICITY_KEYWORDS[0],
         useStylePreset: true,
@@ -1744,6 +1744,132 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const updateSetting = useCallback(<K extends keyof PromptSettings>(key: K, value: PromptSettings[K]) => {
         setSettings(prev => ({ ...prev, [key]: value }));
     }, []);
+
+    const resolveOutfitEntry = useCallback((value?: string) => {
+        const normalized = String(value || '').trim();
+        if (!normalized) return null;
+        const localOutfitPool = buildOutfitPool(UNIFIED_OUTFIT_LIST as OutfitPoolItem[]);
+        const matched = localOutfitPool.find((item) => {
+            const promptValue = String(item.prompt || item.name || '').trim();
+            const nameValue = String(item.name || '').trim();
+            return promptValue === normalized || nameValue === normalized;
+        });
+        if (matched) {
+            return {
+                name: matched.name,
+                prompt: matched.prompt || matched.name
+            };
+        }
+        return {
+            name: normalized,
+            prompt: normalized
+        };
+    }, []);
+
+    const buildCastingIdentitySummary = useCallback((character: Partial<CharacterItem>) => {
+        return [
+            character.face || character.identitySpec?.faceShape,
+            character.hair || character.identitySpec?.hairDescription,
+            character.body || character.identitySpec?.bodyType,
+            character.identitySpec?.skinTone,
+            character.identitySpec?.signatureFeatures,
+            character.style || character.identitySpec?.styleCore,
+        ].filter(Boolean).join(', ');
+    }, []);
+
+    const extractLlmOutfitTextFromPromptBlock = useCallback((block: string) => {
+        const matched = block.match(/wearing\s+([^,\]]+)/i);
+        return matched?.[1]?.trim() || '';
+    }, []);
+
+    const deriveOutfitMapFromScenePrompts = useCallback((scenesInput: Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>) => {
+        const derived = new Map<string, { name: string; prompt: string }>();
+        const candidateMap = new Map<string, Map<string, { outfit: { name: string; prompt: string }; count: number }>>();
+
+        scenesInput.forEach((scene) => {
+            const longPrompt = String(scene.longPrompt || scene.prompt || '').trim();
+            const characterIds = Array.isArray(scene.characterIds) ? scene.characterIds : [];
+            if (!longPrompt || characterIds.length === 0) return;
+
+            const personBlocks = new Map<number, string>();
+            const personRegex = /\[Person\s*(\d+)\s*:\s*([^\]]*)\]/gi;
+            let match: RegExpExecArray | null = null;
+            while ((match = personRegex.exec(longPrompt)) !== null) {
+                const personNumber = Number(match[1]);
+                const blockText = String(match[2] || '').trim();
+                if (!Number.isFinite(personNumber) || !blockText) continue;
+                personBlocks.set(personNumber, blockText);
+            }
+
+            characterIds.forEach((slotId, index) => {
+                if (!slotId) return;
+
+                const personBlock = personBlocks.get(index + 1) || '';
+                const extracted = extractLlmOutfitTextFromPromptBlock(personBlock);
+                const resolved = resolveOutfitEntry(extracted);
+
+                if (resolved) {
+                    const key = resolved.prompt || resolved.name;
+                    const slotCandidates = candidateMap.get(slotId) || new Map<string, { outfit: { name: string; prompt: string }; count: number }>();
+                    const existing = slotCandidates.get(key);
+                    slotCandidates.set(key, {
+                        outfit: resolved,
+                        count: (existing?.count || 0) + 1
+                    });
+                    candidateMap.set(slotId, slotCandidates);
+                }
+            });
+        });
+
+        candidateMap.forEach((slotCandidates, slotId) => {
+            const selected = Array.from(slotCandidates.values()).sort((a, b) => b.count - a.count)[0];
+            if (selected?.outfit) {
+                derived.set(slotId, selected.outfit);
+            }
+        });
+
+        return derived;
+    }, [extractLlmOutfitTextFromPromptBlock, resolveOutfitEntry]);
+
+    const buildOutfitMapFromLockedCharacters = useCallback((lockedCharacters: Array<{ slotId: string; outfit?: string }>) => {
+        const map = new Map<string, { name: string; prompt: string }>();
+        lockedCharacters.forEach((character) => {
+            const outfit = resolveOutfitEntry(character.outfit);
+            if (!outfit) return;
+            map.set(character.slotId, outfit);
+        });
+        return map;
+    }, [resolveOutfitEntry]);
+
+    const buildProfilesFromLockedCharacters = useCallback((lockedCharacters: Array<{
+        slotId: string;
+        identity?: string;
+        hair?: string;
+        body?: string;
+        outfit?: string;
+    }>, rulesInput: ReturnType<typeof getCharacterRules>) => {
+        return lockedCharacters.map((character) => {
+            const slotId = character.slotId;
+            const baseInfo = slotId.startsWith('Woman')
+                ? rulesInput.females.find((item: any) => item.id === slotId) || {}
+                : rulesInput.males.find((item: any) => item.id === slotId) || {};
+            const outfit = resolveOutfitEntry(character.outfit);
+            return {
+                slotId,
+                characterId: undefined,
+                name: baseInfo.name || slotId,
+                identity: character.identity || baseInfo.identity || '',
+                face: baseInfo.face || '',
+                hair: character.hair || baseInfo.hair || '',
+                body: character.body || baseInfo.body || '',
+                style: baseInfo.style || '',
+                skinTone: baseInfo.skinTone || '',
+                signatureFeatures: baseInfo.signatureFeatures || '',
+                outfit: outfit?.name || character.outfit || '의상 미선택',
+                outfitPrompt: outfit?.prompt || character.outfit || ''
+            };
+        });
+    }, [resolveOutfitEntry]);
 
     /**
      * [NEW] Location Bank 핸들러
@@ -3354,6 +3480,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
+            const llmLockedOutfits = parsedResult.lockedOutfits || {};
             const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
@@ -3398,6 +3525,20 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             // 5단계: 캐릭터 맵 생성
             const characterIds = characterList.map(item => item.id);
             let autoCharacterMap = buildAutoCharacterMap(characterIds, aiTargetAge, false);
+
+            // [v3.5.3 fix] LLM이 선택한 의상(lockedOutfits)을 autoCharacterMap에 덮어씌우기
+            // buildAutoCharacterMap은 랜덤 의상을 생성하므로, LLM 선택 의상이 있으면 반드시 우선 적용
+            if (Object.keys(llmLockedOutfits).length > 0) {
+                const updatedWithLlm = new Map<string, ManualCharacterPrompt>(autoCharacterMap);
+                Object.entries(llmLockedOutfits).forEach(([slotId, outfit]) => {
+                    const existing = updatedWithLlm.get(slotId);
+                    if (existing && outfit) {
+                        updatedWithLlm.set(slotId, { ...existing, outfit: String(outfit) });
+                    }
+                });
+                autoCharacterMap = updatedWithLlm;
+            }
+
             if (enableWinterAccessories) {
                 const winterAccessoryMap = buildWinterAccessoryMap(characterIds);
                 const updated = new Map<string, ManualCharacterPrompt>();
@@ -3783,6 +3924,7 @@ ${scriptInput}
             const sceneData = await sceneResponse.json();
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
+            const llmLockedOutfitsMaster = parsedResult.lockedOutfits || {};
             const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
@@ -3855,7 +3997,12 @@ ${scriptInput}
                     cameraAngle: scene.cameraAngle || '',
                     background: scene.background || '',
                     action: scene.action || '',
-                    summary: scene.summary || ''
+                    summary: scene.summary || '',
+                    shortPrompt: scene.shortPrompt || '',
+                    longPrompt: scene.longPrompt || scene.prompt || '',
+                    shortPromptKo: scene.shortPromptKo || '',
+                    longPromptKo: scene.longPromptKo || '',
+                    outfit: scene.outfit || ''
                 };
             });
 
@@ -3873,12 +4020,26 @@ ${scriptInput}
             const outfitsData = await outfitsResponse.json();
             const allOutfits = outfitsData.outfits || [];
             const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
-            const outfitMap = assignOutfitsToCharacters({
+            const fallbackOutfitMap = assignOutfitsToCharacters({
                 characterIds: Array.from(allCharacterIds),
                 genre: aiGenre,
                 outfitsData: allOutfits,
                 topic: aiTopic || finalScript
             });
+            const llmDerivedOutfitMap = deriveOutfitMapFromScenePrompts(scenesSource as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+            const outfitMap = new Map(fallbackOutfitMap);
+            llmDerivedOutfitMap.forEach((value, key) => {
+                outfitMap.set(key, value);
+            });
+
+            // [v3.5.3 fix] LLM이 lockedOutfits에 명시한 의상을 최우선으로 적용
+            if (Object.keys(llmLockedOutfitsMaster).length > 0) {
+                Object.entries(llmLockedOutfitsMaster).forEach(([slotId, outfitName]) => {
+                    if (outfitName) {
+                        outfitMap.set(slotId, { name: String(outfitName), prompt: String(outfitName) });
+                    }
+                });
+            }
 
             const characterRules = getCharacterRules();
             const profiles = Array.from(allCharacterIds).map((slotId) => {
@@ -5064,11 +5225,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.log('[AI Master] Available outfits:', allOutfits.length);
 
             const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
-            const outfitMap = assignOutfitsToCharacters({
+            const fallbackOutfitMap = assignOutfitsToCharacters({
                 characterIds: Array.from(allCharacterIds),
                 genre: aiGenre,
                 outfitsData: allOutfits,
                 topic: aiTopic
+            });
+            const llmDerivedOutfitMap = deriveOutfitMapFromScenePrompts(rebalancedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+            const outfitMap = new Map(fallbackOutfitMap);
+            llmDerivedOutfitMap.forEach((value, key) => {
+                outfitMap.set(key, value);
             });
 
             console.log('[AI Master] Outfit map created:', outfitMap);
@@ -5128,13 +5294,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 cameraAngle: scene.cameraAngle || 'full body wide shot',
                 background: scene.background || '',
                 action: scene.action || 'standing naturally',
-                prompt: '',  // 빈 상태 (버튼 클릭 전)
+                prompt: scene.longPrompt || scene.prompt || scene.shortPrompt || '',
                 characterProfilesApplied: false,
                 imageUrl: undefined,
                 isSelected: true,
                 shotType: getShotTypeByCharacterCount((scene.characterIds || []).length),
                 age: aiTargetAge,
-                outfit: '',
+                outfit: scene.outfit || '',
                 summary: scene.summary || '',
                 camera: scene.cameraAngle || '',
                 videoPrompt: '',
@@ -5148,8 +5314,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 lipSyncLine: '',
                 lipSyncEmotion: '',
                 lipSyncTiming: undefined,
-                shortPromptKo: '',
-                longPromptKo: ''
+                shortPromptKo: scene.shortPromptKo || '',
+                longPromptKo: scene.longPromptKo || ''
             }));
 
             console.log('[AI Master] Scenes created:', extractedScenes.length);
@@ -5187,14 +5353,38 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
         // 2. If outfit, update masterOutfitMap
         if (field === 'outfit') {
-            const selectedOutfit = outfitPool.find(o => o.name === value || o.prompt === value);
-            if (selectedOutfit) {
-                setMasterOutfitMap(prev => {
-                    const newMap = new Map(prev);
+            const selectedOutfit = resolveOutfitEntry(value);
+            setMasterOutfitMap(prev => {
+                const newMap = new Map(prev);
+                if (!selectedOutfit) {
+                    newMap.delete(slotId);
+                } else {
                     newMap.set(slotId, { name: selectedOutfit.name, prompt: selectedOutfit.prompt || selectedOutfit.name });
-                    return newMap;
+                }
+                return newMap;
+            });
+        }
+
+        if (field === 'hair' || field === 'body') {
+            setCharacterCastings((prev) => {
+                const existing = prev.get(slotId);
+                if (!existing) return prev;
+                const next = new Map(prev);
+                const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
+                const summary = [
+                    profile?.face || profile?.identity,
+                    field === 'hair' ? value : profile?.hair,
+                    field === 'body' ? value : profile?.body,
+                    profile?.skinTone,
+                    profile?.signatureFeatures,
+                    profile?.style,
+                ].filter(Boolean).join(', ');
+                next.set(slotId, {
+                    ...existing,
+                    identitySummary: summary || existing.identitySummary,
                 });
-            }
+                return next;
+            });
         }
 
         // 3. Sync to Global Rules
@@ -5216,6 +5406,40 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             return [] as CharacterItem[];
         }
     }, []);
+
+    const syncSavedCharactersToMasterProfiles = useCallback((characters: CharacterItem[]) => {
+        setSavedCharacters(characters);
+        setMasterCharacterProfiles((prev) => prev.map((profile) => {
+            const matched = characters.find((character) => character.id === profile.characterId);
+            if (!matched) return profile;
+            return {
+                ...profile,
+                name: matched.name || profile.name,
+                identity: matched.face || matched.identitySpec?.faceShape || profile.identity,
+                face: matched.face || matched.identitySpec?.faceShape || profile.face,
+                hair: matched.hair || matched.identitySpec?.hairDescription || profile.hair,
+                body: matched.body || matched.identitySpec?.bodyType || profile.body,
+                style: matched.style || matched.identitySpec?.styleCore || profile.style,
+                skinTone: matched.identitySpec?.skinTone || profile.skinTone,
+                signatureFeatures: matched.identitySpec?.signatureFeatures || profile.signatureFeatures
+            };
+        }));
+        setCharacterCastings((prev) => {
+            const next = new Map(prev);
+            Array.from(next.entries()).forEach(([slotId, casting]) => {
+                const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
+                const matched = characters.find((character) => character.id === profile?.characterId);
+                if (!matched) return;
+                next.set(slotId, {
+                    ...casting,
+                    characterId: matched.id,
+                    name: matched.name || casting.name,
+                    identitySummary: buildCastingIdentitySummary(matched) || casting.identitySummary,
+                });
+            });
+            return next;
+        });
+    }, [buildCastingIdentitySummary, masterCharacterProfiles]);
 
     const blobToDataUrl = useCallback(async (blobId?: string) => {
         if (!blobId) return '';
@@ -5242,7 +5466,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 setCharacterCastings((prev) => {
                     const newMap = new Map(prev);
                     newMap.set(slotId, {
-                        characterId: slotId,
+                        characterId: char.id,
                         referenceImageUrl,
                         referenceImageUrls: {
                             front: frontUrl || undefined,
@@ -5250,14 +5474,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             back: backUrl || undefined,
                         },
                         referenceViewPreference: char.referencePreference?.defaultView || 'front',
-                        identitySummary: [
-                            char.face || char.identitySpec?.faceShape,
-                            char.hair || char.identitySpec?.hairDescription,
-                            char.body || char.identitySpec?.bodyType,
-                            char.identitySpec?.skinTone,
-                            char.identitySpec?.signatureFeatures,
-                            char.style || char.identitySpec?.styleCore,
-                        ].filter(Boolean).join(', '),
+                        identitySummary: buildCastingIdentitySummary(char),
                         name: char.name,
                     });
                     return newMap;
@@ -5994,12 +6211,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             pass1Result.lockedCharacters.forEach(ch => {
                 const existing = masterMap.get(ch.slotId);
                 if (!existing) return;
-                const gender = existing.gender;
-                let outfit = ch.outfit || existing.outfit;
-                // 겨울 의상 변환 적용
-                if (enableWinterAccessories && gender === 'female' && outfit) {
-                    outfit = convertToTightLongSleeveWithShoulderLine(outfit);
-                }
+                const outfit = ch.outfit || existing.outfit;
                 masterMap.set(ch.slotId, {
                     ...existing,
                     identity: ch.identity || existing.identity,
@@ -6050,6 +6262,14 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             // 씬 빌드
             const styleDNA = buildStyleDNAString(pass1Result.visualStyleDNA);
             const extractedScenes = buildScenesFromData(pass2Scenes, masterMap, slotMap, hasCaddy, accessoryMap, styleDNA);
+            const lockedOutfitMap = buildOutfitMapFromLockedCharacters(pass1Result.lockedCharacters);
+            const lockedProfiles = buildProfilesFromLockedCharacters(pass1Result.lockedCharacters, characterRules);
+            setMasterCharacterProfiles(lockedProfiles);
+            setMasterOutfitMap(lockedOutfitMap);
+            if (pass1FolderName) {
+                setAppStorageValue(getMasterProfilesStorageKey(pass1FolderName), lockedProfiles);
+                setAppStorageValue(getMasterOutfitsStorageKey(pass1FolderName), serializeMasterOutfitMap(lockedOutfitMap));
+            }
 
             // ============================================
             // [검증] validateProfileConsistency
@@ -6212,6 +6432,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
                         prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
                         imageUrl: undefined,
+                        shortPrompt: scene.shortPrompt || '',
+                        longPrompt: scene.longPrompt || scene.prompt || scene.imagePrompt || '',
                         shortPromptKo: scene.shortPromptKo || '',
                         longPromptKo: scene.longPromptKo || '',
                         summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
@@ -6249,11 +6471,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                 text: scene.scriptLine || scene.summary || scene.text || `장면 ${idx + 1}`,
                                 prompt: scene.longPrompt || scene.shortPrompt || scene.prompt || scene.imagePrompt || '',
                                 imageUrl: undefined,
+                                shortPrompt: scene.shortPrompt || '',
+                                longPrompt: scene.longPrompt || scene.prompt || scene.imagePrompt || '',
                                 shortPromptKo: scene.shortPromptKo || '',
                                 longPromptKo: scene.longPromptKo || '',
                                 summary: scene.summary || scene.scriptLine || `장면 ${idx + 1}`,
                                 camera: scene.camera || scene.cameraAngle || '',
                                 shotType: scene.shotType || '',
+                                age: scene.age || '',
+                                outfit: scene.outfit || '',
+                                videoPrompt: scene.videoPrompt || '',
                                 isSelected: true,
                                 characterIds: normalizeLoadedSceneCharacterIds(scene),
                                 cameraAngle: scene.cameraAngle || scene.camera || '',
@@ -6294,6 +6521,37 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             }
 
             await loadMasterDataForFolder(folderName);
+            if (loadedScenes.length > 0) {
+                const derivedFolderOutfitMap = deriveOutfitMapFromScenePrompts(loadedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+                if (derivedFolderOutfitMap.size > 0) {
+                    const characterRules = getCharacterRules();
+                    const derivedProfiles = buildProfilesFromLockedCharacters(
+                        Array.from(derivedFolderOutfitMap.entries()).map(([slotId, outfit]) => ({ slotId, outfit: outfit.prompt })),
+                        characterRules
+                    );
+
+                    setMasterOutfitMap((prev) => {
+                        const merged = new Map(prev);
+                        derivedFolderOutfitMap.forEach((value, key) => merged.set(key, value));
+                        return merged;
+                    });
+
+                    setMasterCharacterProfiles((prev) => {
+                        if (!Array.isArray(prev) || prev.length === 0) {
+                            return derivedProfiles;
+                        }
+                        return prev.map((profile) => {
+                            const derived = derivedFolderOutfitMap.get(profile.slotId);
+                            if (!derived) return profile;
+                            return {
+                                ...profile,
+                                outfit: derived.name || profile.outfit,
+                                outfitPrompt: derived.prompt || profile.outfitPrompt,
+                            };
+                        });
+                    });
+                }
+            }
 
             // 2. 이미지 로드
             const imagesResponse = await fetch(`http://localhost:3002/api/images/by-story/${encodeURIComponent(folderName)}`);
@@ -6938,6 +7196,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                 <CharacterPanel
                                     selectedSlot={settings.selectedSlot}
                                     onCharacterAdded={handleCharacterAddedToRules}
+                                    onCharactersSaved={syncSavedCharactersToMasterProfiles}
                                     onCharacterSelect={(char, slot) => {
                                         if (char) {
                                             const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
@@ -7318,6 +7577,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             <ToggleItem checked={settings.useOutfitKeywords} onChange={(v) => updateSetting('useOutfitKeywords', v)} label="의상 스타일 추가" />
                             {settings.useOutfitKeywords && (
                                 <select value={settings.selectedOutfit} onChange={(e) => updateSetting('selectedOutfit', e.target.value)} className="ml-6 mt-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm w-full max-w-md">
+                                    <option value="">LLM 기본 의상 유지</option>
                                     {OUTFIT_KEYWORDS.map(outfit => <option key={outfit} value={outfit}>{outfit}</option>)}
                                 </select>
                             )}

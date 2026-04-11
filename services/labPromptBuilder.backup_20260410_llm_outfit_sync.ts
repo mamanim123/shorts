@@ -2098,10 +2098,7 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 3) **WomanA/WomanB/WomanD/ManA/ManB는 서로 다른 의상**을 선택해야 합니다. (중복 금지)
 4) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
 5) 의상 명칭은 한 글자도 바꾸지 말고 리스트의 원문 그대로 사용하세요.
-6) 여성 캐릭터 의상은 최대한 여성스럽고 아름답고 세련된 방향으로 선택하세요.
-7) 타겟 연령대가 높아도 관리가 잘 된 탄탄한 몸매를 바탕으로 짧고 타이트한 의상도 품위 있게 소화하는 인물로 보이게 선택하세요.
-8) 노골적이거나 저급한 느낌보다 refined, elegant, polished, flattering silhouette를 우선하세요.
-9) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
+6) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
 
   const outfitRulesSection = promptSections.outfitRulesSection?.trim() || defaultOutfitRulesSection;
   const rawHairSection = promptSections.hairstyleSection?.trim() || defaultHairSection;
@@ -2901,12 +2898,6 @@ ${characterSection}
 - WomanD: ${womanDOutfit}
 - ManA: ${manAOutfit}
 - ManB: ${manBOutfit}
-
-## 👠 여성 의상 선택 우선순위
-- 여성 캐릭터 의상은 최대한 여성스럽고 아름답고 세련된 방향으로 선택하세요.
-- 타겟 연령대가 높아도 꾸준한 운동과 자기관리로 탄탄한 몸매를 유지해 짧고 타이트한 의상도 우아하게 소화하는 분위기로 선택하세요.
-- cheap, vulgar, tacky 느낌은 피하고 refined, elegant, polished, luxurious, flattering silhouette를 우선하세요.
-- 과도한 노출 자체보다 몸매 라인을 아름답게 정리해주는 세련된 핏을 우선하세요.
 
 ## 💇 헤어스타일 (고정값 - 변경 금지)
 - WomanA: long soft-wave hairstyle

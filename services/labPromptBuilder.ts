@@ -128,7 +128,7 @@ const formatSlotDisplay = (slotId: string, nameMap: Record<string, string>) => {
 // 겨울 테마 및 럭셔리 컬렉션 (v3.8.0)
 // ============================================
 
-const WINTER_KEYWORDS = ['눈', '겨울', 'snow', 'winter', '스키', 'ski', '썰매', 'sled', 'ice', '빙판', '얼음', 'snowy'];
+const WINTER_KEYWORDS = ['겨울', 'snow', 'winter', '스키', 'ski', '썰매', 'sled', 'ice', '빙판', '얼음', 'snowy', '첫눈', '폭설', '함박눈', '눈보라'];
 
 export const isWinterTopic = (topic: string): boolean =>
   WINTER_KEYWORDS.some((keyword) => topic.toLowerCase().includes(keyword.toLowerCase()));

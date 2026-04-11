@@ -1,1 +1,1 @@
-﻿ 폴더 불러오기 시 원본 lockedOutfits 정보 복구 로직 추가
+﻿🐛 isWinterTopic에서 '눈'(eye)을 겨울 배경으로 오탐지하는 버그 수정

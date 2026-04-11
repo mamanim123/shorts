@@ -7,7 +7,7 @@ export const primeAppStorageCache = async (): Promise<void> => {
   if (cachePromise) return cachePromise;
   cachePromise = (async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/app-storage`);
+      const response = await fetch(`${API_BASE}/api/app-storage`, { cache: 'no-store' });
       if (!response.ok) throw new Error('failed');
       const payload = (await response.json()) as { storage?: Record<string, unknown> };
       storageCache = payload.storage || {};
@@ -42,7 +42,7 @@ export const getAppStorageCachedValue = <T,>(key: string, fallback: T): T => {
 
 export const getAppStorageValue = async <T,>(key: string, fallback: T): Promise<T> => {
   try {
-    const response = await fetch(`${API_BASE}/api/app-storage?key=${encodeURIComponent(key)}`);
+    const response = await fetch(`${API_BASE}/api/app-storage?key=${encodeURIComponent(key)}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('failed');
     const payload = (await response.json()) as { value?: T };
     if (payload && 'value' in payload) {

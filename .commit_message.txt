@@ -1,1 +1,1 @@
-﻿ LLM 응답 원본(RAW JSON) 자동 폴더 저장 기능 복구
+﻿ 폴더 불러오기 시 원본 lockedOutfits 정보 복구 로직 추가

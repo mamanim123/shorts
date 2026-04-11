@@ -6442,6 +6442,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         setIsLoadingFolder(true);
         try {
             let loadedScenes: Scene[] = [];
+            let explicitLockedOutfits: Record<string, string> | null = null;
             const normalizeLoadedSceneCharacterIds = (scene: any): string[] => {
                 const rawIds = Array.isArray(scene?.characterIds)
                     ? scene.characterIds
@@ -6547,6 +6548,12 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             const candidate = jsonClean.substring(firstOpen, lastClose + 1);
                             const parsed = JSON.parse(candidate);
                             const scriptObj = parsed.scripts?.[0] || parsed;
+                            
+                            // [v3.5.3] Extract lockedOutfits exactly as saved
+                            if (scriptObj.lockedOutfits || parsed.lockedOutfits) {
+                                explicitLockedOutfits = scriptObj.lockedOutfits || parsed.lockedOutfits;
+                            }
+                            
                             const rawScript = scriptObj.scriptBody || scriptObj.script || '';
                             if (rawScript) {
                                 const scriptMatch = rawScript.match(/---\s*([\s\S]*?)\s*---/);
@@ -6566,6 +6573,19 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             await loadMasterDataForFolder(folderName);
             if (loadedScenes.length > 0) {
                 const derivedFolderOutfitMap = deriveOutfitMapFromScenePrompts(loadedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
+                
+                // [v3.5.3] 명시적으로 저장된 의상 설정이 있으면 프롬프트 기반 유추 결과를 우선 덮어쓰기
+                if (explicitLockedOutfits && Object.keys(explicitLockedOutfits).length > 0) {
+                    Object.entries(explicitLockedOutfits).forEach(([slotId, outfitStr]) => {
+                        if (outfitStr) {
+                            derivedFolderOutfitMap.set(slotId, {
+                                name: String(outfitStr),
+                                prompt: String(outfitStr)
+                            });
+                        }
+                    });
+                }
+                
                 if (derivedFolderOutfitMap.size > 0) {
                     const characterRules = getCharacterRules();
                     const derivedProfiles = buildProfilesFromLockedCharacters(

@@ -163,13 +163,10 @@ const readStoredRules = (): ShortsLabCharacterRules => {
   return stored ? normalizeRules(stored) : DEFAULT_CHARACTER_RULES;
 };
 
-const writeStoredRules = async (rules: ShortsLabCharacterRules): Promise<void> => {
-  try {
-    await setAppStorageValue(STORAGE_KEY, rules);
-  } catch (error) {
-    console.error('[shortsLabCharacterRulesManager] Failed to save rules:', error);
-    throw error;
-  }
+const writeStoredRules = (rules: ShortsLabCharacterRules) => {
+  setAppStorageValue(STORAGE_KEY, rules).catch((error) => {
+    console.warn('[shortsLabCharacterRulesManager] Failed to save rules:', error);
+  });
 };
 
 const readStoredBackups = async (): Promise<ShortsLabCharacterRulesBackup[]> => {
@@ -247,7 +244,7 @@ export const shortsLabCharacterRulesManager = {
     const stored = await getAppStorageValue<ShortsLabCharacterRules | null>(STORAGE_KEY, null);
     cachedRules = stored ? normalizeRules(stored) : readStoredRules();
     if (stored && hasLegacyIds(cachedRules)) {
-      await writeStoredRules(cachedRules);
+      writeStoredRules(cachedRules);
     }
     notifyRulesListeners(cachedRules);
     return cachedRules;
@@ -259,17 +256,16 @@ export const shortsLabCharacterRulesManager = {
   },
   updateRules: async (rulesInput: unknown): Promise<ShortsLabCharacterRules> => {
     const normalized = normalizeRules(rulesInput as Partial<ShortsLabCharacterRules>);
-    await writeStoredRules(normalized);
     cachedRules = normalized;
+    writeStoredRules(normalized);
     notifyRulesListeners(normalized);
     return normalized;
   },
   resetRules: async (): Promise<ShortsLabCharacterRules> => {
-    const defaultRules = DEFAULT_CHARACTER_RULES;
-    await writeStoredRules(defaultRules);
-    cachedRules = defaultRules;
-    notifyRulesListeners(defaultRules);
-    return defaultRules;
+    cachedRules = DEFAULT_CHARACTER_RULES;
+    writeStoredRules(cachedRules);
+    notifyRulesListeners(cachedRules);
+    return cachedRules;
   },
 
   // ===== 캐릭터 추가/삭제 기능 =====
@@ -293,8 +289,8 @@ export const shortsLabCharacterRulesManager = {
       females: [...rules.females, newCharacter]
     };
 
-    await writeStoredRules(updated);
     cachedRules = updated;
+    writeStoredRules(updated);
     notifyRulesListeners(updated);
     return updated;
   },
@@ -319,8 +315,8 @@ export const shortsLabCharacterRulesManager = {
       males: [...rules.males, newCharacter]
     };
 
-    await writeStoredRules(updated);
     cachedRules = updated;
+    writeStoredRules(updated);
     notifyRulesListeners(updated);
     return updated;
   },
@@ -343,8 +339,8 @@ export const shortsLabCharacterRulesManager = {
       females: rules.females.filter(char => char.id !== id)
     };
 
-    await writeStoredRules(updated);
     cachedRules = updated;
+    writeStoredRules(updated);
     notifyRulesListeners(updated);
     return updated;
   },
@@ -362,8 +358,8 @@ export const shortsLabCharacterRulesManager = {
       males: rules.males.filter(char => char.id !== id)
     };
 
-    await writeStoredRules(updated);
     cachedRules = updated;
+    writeStoredRules(updated);
     notifyRulesListeners(updated);
     return updated;
   },
@@ -385,8 +381,8 @@ export const shortsLabCharacterRulesManager = {
           )
         };
 
-    await writeStoredRules(updated);
     cachedRules = updated;
+    writeStoredRules(updated);
     notifyRulesListeners(updated);
     return updated;
   },
@@ -414,8 +410,8 @@ export const shortsLabCharacterRulesManager = {
           )
         };
 
-    await writeStoredRules(updated);
     cachedRules = updated;
+    writeStoredRules(updated);
     notifyRulesListeners(updated);
     return updated;
   },
@@ -452,8 +448,8 @@ export const shortsLabCharacterRulesManager = {
       throw new Error('백업을 찾을 수 없습니다.');
     }
     const restored = normalizeRules(target.rules);
-    await writeStoredRules(restored);
     cachedRules = restored;
+    writeStoredRules(restored);
     notifyRulesListeners(restored);
     return restored;
   },

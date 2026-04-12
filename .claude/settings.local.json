@@ -1,9 +1,9 @@
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
-    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_AUTH_TOKEN": "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",
     "ANTHROPIC_API_KEY": "",
-    "ANTHROPIC_MODEL": "z-ai/glm-4.5-air:free"
+    "ANTHROPIC_MODEL": "google/gemma-4-31b-it:free"
   },
   "permissions": {
     "allow": ["WebFetch", "WebSearch"]

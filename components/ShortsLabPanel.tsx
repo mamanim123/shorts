@@ -1791,6 +1791,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     if (rule) {
                         return {
                             ...profile,
+                            characterId: rule.characterId || profile.characterId,
                             name: rule.name || profile.name,
                             identity: rule.identity || profile.identity,
                             face: rule.face || profile.face,
@@ -1809,6 +1810,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     if (!profiles.find(p => p.slotId === rule.id)) {
                         profiles.push({
                             slotId: rule.id,
+                            characterId: rule.characterId,
                             name: rule.name || '',
                             identity: rule.identity || '',
                             face: rule.face || '',
@@ -4222,6 +4224,7 @@ ${scriptInput}
 
                 return {
                     slotId,
+                    characterId: characterInfo.characterId,
                     name: characterInfo.name || slotId,
                     identity: characterInfo.identity || '',
                     hair: characterInfo.hair || '',
@@ -5436,7 +5439,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                 const profile = {
                     slotId,
-                    characterId: undefined,
+                    characterId: characterInfo.characterId,
                     name: characterInfo.name || slotId,
                     identity: characterInfo.identity || '',
                     face: characterInfo.face || '',

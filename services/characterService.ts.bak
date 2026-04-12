@@ -122,36 +122,32 @@ export const saveCharacters = async (characters: CharacterItem[]): Promise<boole
   const serverCharacters = characters.filter((character) => character.sourceType !== 'ai-studio');
 
   const existingAiStudioCollections = getStorageValue<CharacterCollection[]>('characterCollection', []);
-  
-  // [FIX] 유지해야 할 aistudio 캐릭터의 id 맵 생성 (접두사 제외)
-  const validAiStudioIds = new Set(
-    aiStudioCharacters.map(c => c.id.replace(/^aistudio-/, ''))
+  const aiStudioCollectionMap = new Map(
+    existingAiStudioCollections.map((collection) => [collection.id, collection])
   );
 
-  // [FIX] 기존 컬렉션 중 지워진 항목을 필터링하고 업데이트
-  const updatedAiStudioCollections = existingAiStudioCollections
-    .filter(collection => validAiStudioIds.has(collection.id))
-    .map(collection => {
-      const updateChar = aiStudioCharacters.find(c => c.id.replace(/^aistudio-/, '') === collection.id);
-      if (!updateChar) return collection;
-      return {
-        ...collection,
-        name: updateChar.name,
-        description: updateChar.style || updateChar.face || collection.description,
-        age: updateChar.age,
-        gender: updateChar.gender,
-        face: updateChar.face,
-        hair: updateChar.hair,
-        body: updateChar.body,
-        style: updateChar.style,
-        bodyTuning: updateChar.bodyTuning,
-        identitySpec: updateChar.identitySpec,
-        referencePreference: updateChar.referencePreference,
-        wardrobeProfile: updateChar.wardrobeProfile,
-      };
+  aiStudioCharacters.forEach((character) => {
+    const collectionId = character.id.replace(/^aistudio-/, '');
+    const existing = aiStudioCollectionMap.get(collectionId);
+    if (!existing) return;
+    aiStudioCollectionMap.set(collectionId, {
+      ...existing,
+      name: character.name,
+      description: character.style || character.face || existing.description,
+      age: character.age,
+      gender: character.gender,
+      face: character.face,
+      hair: character.hair,
+      body: character.body,
+      style: character.style,
+      bodyTuning: character.bodyTuning,
+      identitySpec: character.identitySpec,
+      referencePreference: character.referencePreference,
+      wardrobeProfile: character.wardrobeProfile,
     });
+  });
 
-  await setAppStorageValue('characterCollection', updatedAiStudioCollections);
+  await setAppStorageValue('characterCollection', Array.from(aiStudioCollectionMap.values()));
 
   try {
     const response = await fetch('http://localhost:3002/api/characters', {

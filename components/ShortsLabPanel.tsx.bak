@@ -37,7 +37,7 @@ import { getAppStorageValue, removeAppStorageValue, setAppStorageValue } from '.
 import { buildOutfitPool, fetchOutfitCatalog, fetchOutfitPreviewMap } from '../services/outfitService';
 import type { OutfitCatalog, OutfitCategory, OutfitPoolItem } from '../services/outfitService';
 import { UNIFIED_OUTFIT_LIST, ACCESSORY_PRESETS } from '../constants';
-import { fetchCharacters } from '../services/characterService';
+import { fetchCharacters, saveCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
 import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, ElementAnalysis, getProblemExplanation } from '../utils/promptHighlightSystem';
@@ -1259,6 +1259,27 @@ interface IdentityCharacter {
     accessories: string[];
 }
 
+type MasterProfileEditableField =
+    | 'name'
+    | 'face'
+    | 'hair'
+    | 'body'
+    | 'style'
+    | 'skinTone'
+    | 'signatureFeatures'
+    | 'outfit'
+    | 'accessory';
+
+interface MasterProfileDraft {
+    name: string;
+    face: string;
+    hair: string;
+    body: string;
+    style: string;
+    skinTone: string;
+    signatureFeatures: string;
+}
+
 const escapeCleanupPattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const applyCleanupPatterns = (prompt: string, patterns: string[]) => {
@@ -1612,6 +1633,17 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         accessory?: string; // [NEW] 악세서리 추가
     }>>([]);
     const [masterOutfitMap, setMasterOutfitMap] = useState<Map<string, { name: string; prompt: string }>>(new Map());
+    const [editingMasterProfileSlotId, setEditingMasterProfileSlotId] = useState<string | null>(null);
+    const [masterProfileDraft, setMasterProfileDraft] = useState<MasterProfileDraft>({
+        name: '',
+        face: '',
+        hair: '',
+        body: '',
+        style: '',
+        skinTone: '',
+        signatureFeatures: ''
+    });
+    const [isSavingMasterProfile, setIsSavingMasterProfile] = useState(false);
 
     const [isManualSceneParsing, setIsManualSceneParsing] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
@@ -1724,12 +1756,75 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 outfit: string;
                 outfitPrompt: string;
                 accessory?: string;
+                face?: string;
+                style?: string;
+                skinTone?: string;
+                signatureFeatures?: string;
             }> | null>(getMasterProfilesStorageKey(folderName), null);
             const storedOutfits = await getAppStorageValue<Array<[string, { name: string; prompt: string }]> | null>(
                 getMasterOutfitsStorageKey(folderName),
                 null
             );
-            setMasterCharacterProfiles(Array.isArray(storedProfiles) ? storedProfiles : []);
+
+            let profiles = Array.isArray(storedProfiles) ? storedProfiles : [];
+
+            // [NEW] 의상 규칙(characterRules) 정보를 불러온 프로필에 강제 병합
+            const currentRules = getCharacterRules(); // 실시간으로 최신 규칙 가져오기
+            if (currentRules) {
+                const normalizedFemales = (currentRules.females || []).map((char) => ({
+                    ...char,
+                    id: typeof char.id === 'string'
+                        ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                        : char.id
+                }));
+                const normalizedMales = (currentRules.males || []).map((char) => ({
+                    ...char,
+                    id: typeof char.id === 'string'
+                        ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                        : char.id
+                }));
+                const allNormalized = [...normalizedFemales, ...normalizedMales];
+
+                // 슬롯 ID가 일치하는 경우 의상 규칙의 데이터로 업데이트
+                profiles = profiles.map(profile => {
+                    const rule = allNormalized.find(r => r.id === profile.slotId);
+                    if (rule) {
+                        return {
+                            ...profile,
+                            name: rule.name || profile.name,
+                            identity: rule.identity || profile.identity,
+                            face: rule.face || profile.face,
+                            hair: rule.hair || profile.hair,
+                            body: rule.body || profile.body,
+                            style: rule.style || profile.style,
+                            skinTone: rule.skinTone || profile.skinTone,
+                            signatureFeatures: rule.signatureFeatures || profile.signatureFeatures
+                        };
+                    }
+                    return profile;
+                });
+
+                // 만약 마스터 프로필에 없는 슬롯이 의상 규칙에 있다면 새로 추가 (기본 6개 슬롯 보장)
+                allNormalized.forEach(rule => {
+                    if (!profiles.find(p => p.slotId === rule.id)) {
+                        profiles.push({
+                            slotId: rule.id,
+                            name: rule.name || '',
+                            identity: rule.identity || '',
+                            face: rule.face || '',
+                            hair: rule.hair || '',
+                            body: rule.body || '',
+                            outfit: '',
+                            outfitPrompt: '',
+                            style: rule.style || '',
+                            skinTone: rule.skinTone || '',
+                            signatureFeatures: rule.signatureFeatures || ''
+                        });
+                    }
+                });
+            }
+
+            setMasterCharacterProfiles(profiles);
             setMasterOutfitMap(Array.isArray(storedOutfits) ? new Map(storedOutfits) : new Map());
         } catch (error) {
             console.warn('[ShortsLab] Failed to load master data from storage:', error);
@@ -1939,8 +2034,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     const getScenePromptForGeneration = useCallback(async (scene?: Scene | null) => {
         if (!scene) return '';
-        const koreanPrompt = scene.longPromptKo || scene.shortPromptKo || scene.text || '';
-        const englishPrompt = scene.prompt || '';
+        const koreanPrompt = scene.longPromptKo || scene.shortPromptKo || '';
+        const englishPrompt = scene.prompt || scene.longPrompt || scene.shortPrompt || '';
         if (settings.imagePromptLanguage === 'ko') {
             if (!koreanPrompt.trim()) {
                 return englishPrompt.trim();
@@ -2407,6 +2502,47 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [recentVideos, setRecentVideos] = useState<any[]>([]);
     const [pickingSceneNumber, setPickingSceneNumber] = useState<number | null>(null);
     const [isImportingSpecific, setIsImportingSpecific] = useState(false);
+
+    // [NEW] 의상 규칙(characterRules)과 마스터 프로필(masterCharacterProfiles) 동기화
+    React.useEffect(() => {
+        if (!characterRules) return;
+
+        const normalizedFemales = (characterRules.females || []).map((char) => ({
+            ...char,
+            id: typeof char.id === 'string'
+                ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                : char.id
+        }));
+        const normalizedMales = (characterRules.males || []).map((char) => ({
+            ...char,
+            id: typeof char.id === 'string'
+                ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                : char.id
+        }));
+        const allNormalized = [...normalizedFemales, ...normalizedMales];
+
+        setMasterCharacterProfiles(prev => {
+            let changed = false;
+            const next = prev.map(profile => {
+                const rule = allNormalized.find(r => r.id === profile.slotId);
+                // 규칙에 이름이 있고, 현재 프로필의 이름과 다르다면 업데이트
+                if (rule && rule.name && rule.name !== profile.name) {
+                    changed = true;
+                    return {
+                        ...profile,
+                        name: rule.name,
+                        identity: rule.identity || profile.identity,
+                        face: rule.face || profile.face,
+                        hair: rule.hair || profile.hair,
+                        body: rule.body || profile.body,
+                        style: rule.style || profile.style
+                    };
+                }
+                return profile;
+            });
+            return changed ? next : prev;
+        });
+    }, [characterRules]);
 
     // Gemini 서비스 초기화
     React.useEffect(() => {
@@ -4179,9 +4315,10 @@ ${scriptInput}
                 // 한국어 프롬프트 설정에 따른 번역 처리
                 const displayScenes = settings.imagePromptLanguage === 'ko'
                     ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
-                        const translatedKo = scene.prompt
-                            ? await translateScenePromptToKorean(scene.prompt)
-                            : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
+                        const sourcePromptForTranslation = scene.prompt || scene.longPrompt || scene.shortPrompt || '';
+                        const translatedKo = sourcePromptForTranslation
+                            ? await translateScenePromptToKorean(sourcePromptForTranslation)
+                            : (scene.longPromptKo || scene.shortPromptKo || '');
                         return {
                             ...scene,
                             longPromptKo: translatedKo,
@@ -5384,7 +5521,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     // ============================================
     // [신규] 캐릭터 프로필 업데이트 핸들러
     // ============================================
-    const handleUpdateMasterProfile = async (slotId: string, field: 'outfit' | 'hair' | 'body' | 'accessory', value: string) => {
+    const handleUpdateMasterProfile = async (slotId: string, field: MasterProfileEditableField, value: string) => {
         // 1. Update local state (UI immediate feedback)
         setMasterCharacterProfiles(prev => prev.map(p => {
             if (p.slotId !== slotId) return p;
@@ -5408,22 +5545,23 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             });
         }
 
-        if (field === 'hair' || field === 'body') {
+        if (field === 'name' || field === 'face' || field === 'hair' || field === 'body' || field === 'style' || field === 'skinTone' || field === 'signatureFeatures') {
             setCharacterCastings((prev) => {
                 const existing = prev.get(slotId);
                 if (!existing) return prev;
                 const next = new Map(prev);
                 const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
                 const summary = [
-                    profile?.face || profile?.identity,
+                    field === 'face' ? value : (profile?.face || profile?.identity),
                     field === 'hair' ? value : profile?.hair,
                     field === 'body' ? value : profile?.body,
-                    profile?.skinTone,
-                    profile?.signatureFeatures,
-                    profile?.style,
+                    field === 'skinTone' ? value : profile?.skinTone,
+                    field === 'signatureFeatures' ? value : profile?.signatureFeatures,
+                    field === 'style' ? value : profile?.style,
                 ].filter(Boolean).join(', ');
                 next.set(slotId, {
                     ...existing,
+                    name: field === 'name' ? value : existing.name,
                     identitySummary: summary || existing.identitySummary,
                 });
                 return next;
@@ -5439,6 +5577,94 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         }
     };
 
+    const openMasterProfileEditor = useCallback((profile: typeof masterCharacterProfiles[number]) => {
+        const currentRules = getCharacterRules();
+        const allRules = [...(currentRules?.females || []), ...(currentRules?.males || [])];
+        const matchedRule = allRules.find((rule) => rule.id === profile.slotId);
+        setEditingMasterProfileSlotId(profile.slotId);
+        setMasterProfileDraft({
+            name: matchedRule?.name || profile.name || '',
+            face: matchedRule?.face || profile.face || profile.identity || '',
+            hair: matchedRule?.hair || profile.hair || '',
+            body: matchedRule?.body || profile.body || '',
+            style: matchedRule?.style || profile.style || '',
+            skinTone: matchedRule?.skinTone || profile.skinTone || '',
+            signatureFeatures: matchedRule?.signatureFeatures || profile.signatureFeatures || ''
+        });
+    }, [masterCharacterProfiles]);
+
+    const handleSaveMasterProfileDetails = useCallback(async () => {
+        if (!editingMasterProfileSlotId) return;
+        setIsSavingMasterProfile(true);
+        try {
+            const slotId = editingMasterProfileSlotId;
+            const patch = {
+                name: masterProfileDraft.name.trim(),
+                face: masterProfileDraft.face.trim(),
+                hair: masterProfileDraft.hair.trim(),
+                body: masterProfileDraft.body.trim(),
+                style: masterProfileDraft.style.trim(),
+                skinTone: masterProfileDraft.skinTone.trim(),
+                signatureFeatures: masterProfileDraft.signatureFeatures.trim()
+            };
+
+            setMasterCharacterProfiles((prev) => prev.map((profile) => (
+                profile.slotId !== slotId
+                    ? profile
+                    : {
+                        ...profile,
+                        ...patch,
+                        identity: patch.face || profile.identity
+                    }
+            )));
+
+            const gender = slotId.startsWith('Woman') ? 'female' : 'male';
+            await updateCharacter(gender, slotId, {
+                name: patch.name,
+                face: patch.face,
+                hair: patch.hair,
+                body: patch.body,
+                style: patch.style,
+                skinTone: patch.skinTone,
+                signatureFeatures: patch.signatureFeatures
+            });
+
+            const linkedCharacterId = masterCharacterProfiles.find((profile) => profile.slotId === slotId)?.characterId;
+            if (linkedCharacterId) {
+                const updatedCharacters = savedCharacters.map((character) => {
+                    if (character.id !== linkedCharacterId) return character;
+                    return {
+                        ...character,
+                        name: patch.name || character.name,
+                        face: patch.face || character.face,
+                        hair: patch.hair || character.hair,
+                        body: patch.body || character.body,
+                        style: patch.style || character.style,
+                        identitySpec: {
+                            ...character.identitySpec,
+                            faceShape: patch.face || character.identitySpec?.faceShape,
+                            hairDescription: patch.hair || character.identitySpec?.hairDescription,
+                            bodyType: patch.body || character.identitySpec?.bodyType,
+                            styleCore: patch.style || character.identitySpec?.styleCore,
+                            skinTone: patch.skinTone || character.identitySpec?.skinTone,
+                            signatureFeatures: patch.signatureFeatures || character.identitySpec?.signatureFeatures
+                        }
+                    };
+                });
+                setSavedCharacters(updatedCharacters);
+                await saveCharacters(updatedCharacters);
+            }
+
+            setEditingMasterProfileSlotId(null);
+            showToast(`${slotId} 상세 정보가 저장되었습니다.`, 'success');
+        } catch (error) {
+            console.error('Failed to save master profile details:', error);
+            showToast('상세 정보 저장에 실패했습니다.', 'error');
+        } finally {
+            setIsSavingMasterProfile(false);
+        }
+    }, [editingMasterProfileSlotId, masterCharacterProfiles, masterProfileDraft, savedCharacters, updateCharacter]);
+
     const loadSavedCharacters = useCallback(async () => {
         try {
             const chars = await fetchCharacters();
@@ -5452,6 +5678,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
     const syncSavedCharactersToMasterProfiles = useCallback((characters: CharacterItem[]) => {
         setSavedCharacters(characters);
+        
+        // 1. 마스터 프로필(미리보기) 업데이트
         setMasterCharacterProfiles((prev) => prev.map((profile) => {
             const matched = characters.find((character) => character.id === profile.characterId);
             if (!matched) return profile;
@@ -5467,6 +5695,46 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 signatureFeatures: matched.identitySpec?.signatureFeatures || profile.signatureFeatures
             };
         }));
+
+        // 2. 의상 규칙(장르 매니저)에도 최신 정보 반영
+        try {
+            const currentRules = getCharacterRules();
+            if (currentRules) {
+                const updateRuleList = (rules: CharacterSlotRule[]) => rules.map(rule => {
+                    // 1순위: characterId로 매칭, 2순위: 이름으로 매칭 (최초 링크용)
+                    const matched = characters.find(c => 
+                        (rule.characterId && c.id === rule.characterId) || 
+                        (!rule.characterId && c.name && c.name === rule.name)
+                    );
+                    if (!matched) return rule;
+                    return {
+                        ...rule,
+                        characterId: matched.id, // [LINK] ID 저장
+                        name: matched.name || rule.name,
+                        identity: matched.face || matched.identitySpec?.faceShape || rule.identity,
+                        face: matched.face || matched.identitySpec?.faceShape || rule.face,
+                        hair: matched.hair || matched.identitySpec?.hairDescription || rule.hair,
+                        body: matched.body || matched.identitySpec?.bodyType || rule.body,
+                        style: matched.style || matched.identitySpec?.styleCore || rule.style,
+                        skinTone: matched.identitySpec?.skinTone || rule.skinTone,
+                        signatureFeatures: matched.identitySpec?.signatureFeatures || rule.signatureFeatures
+                    };
+                });
+
+                const updatedFemales = updateRuleList(currentRules.females || []);
+                const updatedMales = updateRuleList(currentRules.males || []);
+                
+                updateCharacterRules({
+                    ...currentRules,
+                    females: updatedFemales,
+                    males: updatedMales
+                });
+            }
+        } catch (e) {
+            console.error('[ShortsLab] Failed to sync character rules from server:', e);
+        }
+
+        // 3. 캐스팅 정보 업데이트
         setCharacterCastings((prev) => {
             const next = new Map(prev);
             Array.from(next.entries()).forEach(([slotId, casting]) => {
@@ -5482,7 +5750,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             });
             return next;
         });
-    }, [buildCastingIdentitySummary, masterCharacterProfiles]);
+    }, [buildCastingIdentitySummary, masterCharacterProfiles, updateCharacterRules]);
 
     const blobToDataUrl = useCallback(async (blobId?: string) => {
         if (!blobId) return '';
@@ -5545,10 +5813,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     }
 
     useEffect(() => {
-        if (activeTab === 'preview' && masterCharacterProfiles.length > 0 && savedCharacters.length === 0) {
+        // [FIX] Always reload on preview tab entry (was: only loaded once when length===0)
+        if (activeTab === 'preview') {
             void loadSavedCharacters();
         }
-    }, [activeTab, loadSavedCharacters, masterCharacterProfiles.length, savedCharacters.length]);
+    }, [activeTab, loadSavedCharacters]);
 
     // ============================================
     // [신규] 캐릭터 정보 적용 버튼 핸들러
@@ -5613,9 +5882,10 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
             const displayScenes = settings.imagePromptLanguage === 'ko'
                 ? await Promise.all(updatedScenes.map(async (scene: Scene) => {
-                    const translatedKo = scene.prompt
-                        ? await translateScenePromptToKorean(scene.prompt)
-                        : (scene.longPromptKo || scene.shortPromptKo || scene.text || '');
+                    const sourcePromptForTranslation = scene.prompt || scene.longPrompt || scene.shortPrompt || '';
+                    const translatedKo = sourcePromptForTranslation
+                        ? await translateScenePromptToKorean(sourcePromptForTranslation)
+                        : (scene.longPromptKo || scene.shortPromptKo || '');
                     return {
                         ...scene,
                         longPromptKo: translatedKo,
@@ -7686,14 +7956,59 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {masterCharacterProfiles.map(profile => (
-                                        <div key={profile.slotId} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-sm font-bold text-emerald-400">{profile.slotId}</span>
-                                                <span className="text-xs text-slate-400">({profile.name})</span>
-                                            </div>
-                                            <div className="flex flex-col gap-2 mt-2">
-                                                {/* 의상 (Costume) */}
+                                    {masterCharacterProfiles.map(profile => {
+                                        // [NEW] 장르 매니저(의상 규칙)에서 최신 정보를 1순위로 가져오기
+                                        const currentRules = getCharacterRules();
+                                        const allRules = [...(currentRules?.females || []), ...(currentRules?.males || [])];
+                                        const matchedRule = allRules.find(r => r.id === profile.slotId);
+
+                                        // 표시용 데이터 결정 (장르 매니저 데이터 우선)
+                                        const displayName = matchedRule?.name || profile.name;
+                                        const displayFace = matchedRule?.face || profile.face || matchedRule?.identity || profile.identity;
+                                        const displayBody = matchedRule?.body || profile.body;
+                                        const displayHair = matchedRule?.hair || profile.hair;
+                                        const displayStyle = matchedRule?.style || profile.style;
+
+                                        return (
+                                            <div key={profile.slotId} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-sm font-bold text-emerald-400">{profile.slotId}</span>
+                                                    <span className="text-xs text-slate-200">({displayName})</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openMasterProfileEditor({ ...profile, name: displayName, face: displayFace, body: displayBody, hair: displayHair, style: displayStyle })}
+                                                    className="relative z-20 mb-2 w-full rounded-lg border border-indigo-500/50 bg-indigo-500/15 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/25 cursor-pointer"
+                                                >
+                                                    상세 수정
+                                                </button>
+
+                                                {/* 캐릭터 상세 정보 - 장르 매니저 실시간 연동 */}
+                                                <div className="mb-2 p-1.5 bg-slate-800/40 rounded border border-slate-700/50">
+                                                    <div className="flex flex-col gap-0.5 text-[9px]">
+                                                        {displayFace && (
+                                                            <div className="flex gap-1">
+                                                                <span className="text-slate-500 flex-shrink-0">얼굴:</span>
+                                                                <span className="text-slate-400 truncate">{displayFace}</span>
+                                                            </div>
+                                                        )}
+                                                        {displayBody && (
+                                                            <div className="flex gap-1">
+                                                                <span className="text-slate-500 flex-shrink-0">몸매:</span>
+                                                                <span className="text-slate-400 truncate">{displayBody}</span>
+                                                            </div>
+                                                        )}
+                                                        {displayHair && (
+                                                            <div className="flex gap-1">
+                                                                <span className="text-slate-500 flex-shrink-0">헤어:</span>
+                                                                <span className="text-slate-400 truncate">{displayHair}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col gap-2 mt-2">
+                                                    {/* 의상 (Costume) */}
                                                 <div className="relative">
                                                     <span className="text-[10px] text-slate-500 block mb-1">의상 (Costume)</span>
                                                     {(() => {
@@ -7876,16 +8191,17 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                                                 <div className="rounded-md border border-slate-800 bg-slate-950/60 p-2 space-y-1">
                                                     <div className="text-[10px] font-semibold text-slate-400">캐릭터 상세</div>
-                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">얼굴:</span> {profile.face || profile.identity || '미설정'}</div>
-                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">몸매:</span> {profile.body || '미설정'}</div>
-                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">헤어:</span> {profile.hair || '미설정'}</div>
-                                                    {profile.style && <div className="text-[11px] text-slate-300"><span className="text-slate-500">스타일:</span> {profile.style}</div>}
+                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">얼굴:</span> {displayFace || '미설정'}</div>
+                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">몸매:</span> {displayBody || '미설정'}</div>
+                                                    <div className="text-[11px] text-slate-300"><span className="text-slate-500">헤어:</span> {displayHair || '미설정'}</div>
+                                                    {(displayStyle || profile.style) && <div className="text-[11px] text-slate-300"><span className="text-slate-500">스타일:</span> {displayStyle || profile.style}</div>}
                                                     {profile.skinTone && <div className="text-[11px] text-slate-300"><span className="text-slate-500">피부톤:</span> {profile.skinTone}</div>}
                                                     {profile.signatureFeatures && <div className="text-[11px] text-slate-300"><span className="text-slate-500">시그니처:</span> {profile.signatureFeatures}</div>}
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                    );
+                                })}
                                 </div>
                                 <p className="text-xs text-indigo-300 mt-3">
                                     💡 <strong>"캐릭터 정보 적용"</strong> 버튼을 클릭하면 모든 씬에 캐릭터 정보가 자동으로 치환됩니다. (100% 일관성 보장)
@@ -7980,7 +8296,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                     <span className="text-[10px] font-medium uppercase tracking-wider opacity-40">이미지 없음</span>
                                                 </div>
                                             )}
-
                                             {/* 액션 버튼 오버레이 */}
                                             <div className="absolute bottom-2 left-2 right-2 flex gap-1">
                                                 <button onClick={() => handleGenerateImage(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={generatingId === `scene-${scene.number}`} className="flex-1 py-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50">
@@ -8574,8 +8889,76 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     characterRules={characterRules}
                     characterRulesBackups={characterRulesBackups}
                     onCharacterRulesSave={async (rulesInput) => {
-                        await updateCharacterRules(rulesInput);
-                        showToast('의상 규칙이 저장되었습니다.', 'success');
+                        const updatedRules = await updateCharacterRules(rulesInput);
+                        
+                        // [FORCE SYNC] 의상 규칙의 상세 정보를 마스터 프로필(미리보기)에 즉시 강제 주입
+                        const allCharacterRules = [...(updatedRules.females || []), ...(updatedRules.males || [])];
+                        
+                        setMasterCharacterProfiles(prev => {
+                            const next = prev.map(profile => {
+                                const rule = allCharacterRules.find(r => 
+                                    (r.characterId && r.characterId === profile.characterId) || 
+                                    (r.id === profile.slotId) ||
+                                    (r.name && r.name === profile.name)
+                                );
+                                
+                                if (!rule) return profile;
+
+                                // 모든 상세 필드를 의상 규칙의 최신 값으로 덮어씀
+                                return {
+                                    ...profile,
+                                    name: rule.name || profile.name,
+                                    identity: rule.identity || profile.identity,
+                                    face: rule.face || profile.face,
+                                    hair: rule.hair || profile.hair,
+                                    body: rule.body || profile.body,
+                                    style: rule.style || profile.style,
+                                    skinTone: rule.skinTone || profile.skinTone,
+                                    signatureFeatures: rule.signatureFeatures || profile.signatureFeatures
+                                };
+                            });
+                            return next;
+                        });
+
+                        // [SERVER SYNC] 서버의 캐릭터 정보(AI Studio 연동 데이터)도 상세 명세 업데이트
+                        try {
+                            const currentCharacters = await fetchCharacters();
+                            const updatedCharacters = currentCharacters.map(char => {
+                                const matchedRule = allCharacterRules.find(r => 
+                                    (char.id && r.characterId === char.id) || 
+                                    (char.name && r.name === char.name)
+                                );
+                                
+                                if (!matchedRule) return char;
+
+                                // 서버 데이터의 identitySpec을 의상 규칙의 상세 정보로 업데이트
+                                return {
+                                    ...char,
+                                    name: matchedRule.name || char.name,
+                                    face: matchedRule.face || char.face,
+                                    hair: matchedRule.hair || char.hair,
+                                    body: matchedRule.body || char.body,
+                                    style: matchedRule.style || char.style,
+                                    identitySpec: {
+                                        ...char.identitySpec,
+                                        faceShape: matchedRule.face || char.identitySpec?.faceShape,
+                                        hairDescription: matchedRule.hair || char.identitySpec?.hairDescription,
+                                        bodyType: matchedRule.body || char.identitySpec?.bodyType,
+                                        styleCore: matchedRule.style || char.identitySpec?.styleCore,
+                                        skinTone: matchedRule.skinTone || char.identitySpec?.skinTone,
+                                        signatureFeatures: matchedRule.signatureFeatures || char.identitySpec?.signatureFeatures
+                                    }
+                                };
+                            });
+                            await saveCharacters(updatedCharacters);
+                            
+                            // 로컬 상태(savedCharacters)도 즉시 업데이트하여 오른쪽 패널 반영
+                            setSavedCharacters(updatedCharacters);
+                        } catch (err) {
+                            console.error('[ShortsLab] Failed to sync detailed character rules to server:', err);
+                        }
+
+                        showToast('의상 규칙 및 캐릭터 상세 정보가 저장되었습니다.', 'success');
                     }}
                     onCharacterRulesReset={async () => {
                         await resetCharacterRules();
@@ -8627,6 +9010,60 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 onDetailedAnalyze={handleDetailedAnalysis}
                 onApplyStyle={handleApplyStyle}
             />
+
+            {editingMasterProfileSlotId && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={() => setEditingMasterProfileSlotId(null)}>
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+                            <div>
+                                <div className="text-sm font-bold text-white">{editingMasterProfileSlotId} 상세 수정</div>
+                                <div className="text-[11px] text-slate-400">저장하면 미리보기와 이미지 생성 기준 정보가 같이 갱신됩니다.</div>
+                            </div>
+                            <button onClick={() => setEditingMasterProfileSlotId(null)} className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 px-5 py-4">
+                            <label className="text-xs text-slate-300">
+                                이름
+                                <input value={masterProfileDraft.name} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, name: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                            </label>
+                            <label className="text-xs text-slate-300">
+                                얼굴
+                                <textarea value={masterProfileDraft.face} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, face: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none resize-none" />
+                            </label>
+                            <label className="text-xs text-slate-300">
+                                헤어
+                                <textarea value={masterProfileDraft.hair} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, hair: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none resize-none" />
+                            </label>
+                            <label className="text-xs text-slate-300">
+                                몸매
+                                <textarea value={masterProfileDraft.body} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, body: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none resize-none" />
+                            </label>
+                            <label className="text-xs text-slate-300">
+                                스타일
+                                <textarea value={masterProfileDraft.style} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, style: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none resize-none" />
+                            </label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <label className="text-xs text-slate-300">
+                                    피부톤
+                                    <input value={masterProfileDraft.skinTone} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, skinTone: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                                </label>
+                                <label className="text-xs text-slate-300">
+                                    시그니처 특징
+                                    <input value={masterProfileDraft.signatureFeatures} onChange={(e) => setMasterProfileDraft((prev) => ({ ...prev, signatureFeatures: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                                </label>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t border-slate-800 px-5 py-4">
+                            <button onClick={() => setEditingMasterProfileSlotId(null)} className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600">취소</button>
+                            <button onClick={() => void handleSaveMasterProfileDetails()} disabled={isSavingMasterProfile} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:bg-slate-700">
+                                {isSavingMasterProfile ? '저장 중...' : '저장'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
@@ -9013,21 +9450,24 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     React.useEffect(() => {
         if (characterRulesDirty) return;
         if (characterRules) {
+            const normalizedFemales = (characterRules.females || []).map((char) => ({
+                ...char,
+                name: typeof char.name === 'string' ? char.name : '',
+                id: typeof char.id === 'string'
+                    ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                    : char.id
+            }));
+            const normalizedMales = (characterRules.males || []).map((char) => ({
+                ...char,
+                name: typeof char.name === 'string' ? char.name : '',
+                id: typeof char.id === 'string'
+                    ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
+                    : char.id
+            }));
+
             setCharacterRulesState({
-                females: (characterRules.females || []).map((char) => ({
-                    ...char,
-                    name: typeof char.name === 'string' ? char.name : '',
-                    id: typeof char.id === 'string'
-                        ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
-                        : char.id
-                })),
-                males: (characterRules.males || []).map((char) => ({
-                    ...char,
-                    name: typeof char.name === 'string' ? char.name : '',
-                    id: typeof char.id === 'string'
-                        ? char.id.replace(/^female/i, 'Woman').replace(/^male/i, 'Man').replace(/^(Woman|Man)([a-z])/, (_, prefix, letter) => prefix + letter.toUpperCase())
-                        : char.id
-                })),
+                females: normalizedFemales,
+                males: normalizedMales,
                 common: characterRules.common || { negativePrompt: '', qualityTags: '' }
             });
             setDirtyCharacterIds(new Set());

@@ -1,0 +1,222 @@
+/**
+ * API 클라이언트 - 모든 API 호출을 추상화합니다
+ */
+
+import { DEFAULT_CONFIG, API_ENDPOINTS, HTTP_STATUS } from './constants';
+import { ApiError, ErrorHandler, ApiResponse, createSuccessResponse } from './errorHandler';
+import Logger from './logger';
+
+export interface RequestConfig {
+    timeout?: number;
+    retries?: number;
+    retryDelay?: number;
+    headers?: Record<string, string>;
+}
+
+export class ApiClient {
+    private baseURL: string;
+    private defaultTimeout: number;
+    private defaultRetries: number;
+    private defaultRetryDelay: number;
+
+    constructor(baseURL: string = DEFAULT_CONFIG.API_BASE_URL) {
+        this.baseURL = baseURL;
+        this.defaultTimeout = DEFAULT_CONFIG.API_TIMEOUT;
+        this.defaultRetries = DEFAULT_CONFIG.MAX_RETRIES;
+        this.defaultRetryDelay = DEFAULT_CONFIG.RETRY_DELAY;
+    }
+
+    /**
+     * 재시도 로직이 포함된 fetch
+     */
+    private async fetchWithRetry(
+        url: string,
+        options: RequestInit,
+        config: RequestConfig
+    ): Promise<Response> {
+        const retries = config.retries ?? this.defaultRetries;
+        const retryDelay = config.retryDelay ?? this.defaultRetryDelay;
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeout = config.timeout ?? this.defaultTimeout;
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                const isLastAttempt = attempt === retries;
+
+                if (isLastAttempt) {
+                    throw error;
+                }
+
+                Logger.warn(`Request failed (attempt ${attempt + 1}/${retries + 1}), retrying...`, error);
+                await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+            }
+        }
+
+        throw new Error('Max retries exceeded');
+    }
+
+    /**
+     * 응답 처리
+     */
+    private async handleResponse<T>(response: Response): Promise<T> {
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData: any;
+
+            try {
+                errorData = JSON.parse(errorText);
+            } catch {
+                errorData = { message: errorText };
+            }
+
+            throw new ApiError(
+                errorData.error || errorData.message || `HTTP ${response.status}`,
+                response.status,
+                errorData.details
+            );
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+            return response.json();
+        }
+
+        return response.text() as any;
+    }
+
+    /**
+     * GET 요청
+     */
+    async get<T = any>(
+        endpoint: string,
+        config: RequestConfig = {}
+    ): Promise<T> {
+        Logger.debug(`[API GET] ${endpoint}`);
+
+        try {
+            const response = await this.fetchWithRetry(
+                `${this.baseURL}${endpoint}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...config.headers
+                    }
+                },
+                config
+            );
+
+            return this.handleResponse<T>(response);
+        } catch (error) {
+            ErrorHandler.logError(error, { endpoint, method: 'GET' });
+            throw error;
+        }
+    }
+
+    /**
+     * POST 요청
+     */
+    async post<T = any>(
+        endpoint: string,
+        data?: any,
+        config: RequestConfig = {}
+    ): Promise<T> {
+        Logger.debug(`[API POST] ${endpoint}`, data);
+
+        try {
+            const response = await this.fetchWithRetry(
+                `${this.baseURL}${endpoint}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...config.headers
+                    },
+                    body: data ? JSON.stringify(data) : undefined
+                },
+                config
+            );
+
+            return this.handleResponse<T>(response);
+        } catch (error) {
+            ErrorHandler.logError(error, { endpoint, method: 'POST', data });
+            throw error;
+        }
+    }
+
+    /**
+     * PUT 요청
+     */
+    async put<T = any>(
+        endpoint: string,
+        data?: any,
+        config: RequestConfig = {}
+    ): Promise<T> {
+        Logger.debug(`[API PUT] ${endpoint}`, data);
+
+        try {
+            const response = await this.fetchWithRetry(
+                `${this.baseURL}${endpoint}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...config.headers
+                    },
+                    body: data ? JSON.stringify(data) : undefined
+                },
+                config
+            );
+
+            return this.handleResponse<T>(response);
+        } catch (error) {
+            ErrorHandler.logError(error, { endpoint, method: 'PUT', data });
+            throw error;
+        }
+    }
+
+    /**
+     * DELETE 요청
+     */
+    async delete<T = any>(
+        endpoint: string,
+        config: RequestConfig = {}
+    ): Promise<T> {
+        Logger.debug(`[API DELETE] ${endpoint}`);
+
+        try {
+            const response = await this.fetchWithRetry(
+                `${this.baseURL}${endpoint}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...config.headers
+                    }
+                },
+                config
+            );
+
+            return this.handleResponse<T>(response);
+        } catch (error) {
+            ErrorHandler.logError(error, { endpoint, method: 'DELETE' });
+            throw error;
+        }
+    }
+}
+
+// 싱글톤 인스턴스 및 상수 재수출
+export { API_ENDPOINTS } from './constants';
+export const apiClient = new ApiClient();
+
+export default apiClient;

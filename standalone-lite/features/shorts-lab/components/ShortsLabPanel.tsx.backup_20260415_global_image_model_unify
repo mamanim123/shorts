@@ -45,7 +45,6 @@ import { usePromptEditModal } from '../hooks/usePromptEditModal';
 import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
 import { fetchPromptEnhancementSettings } from '../services/promptEnhancementUtils';
 
-const GLOBAL_IMAGE_MODEL_STORAGE_KEY = 'shorts-lab-global-image-model';
 
 // ============================================
 // 고정 문구 데이터 (기존 코드에서 추출)
@@ -1651,9 +1650,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
 
     // 이미지 생성 상태 (신규!)
-    const [imageModel, setImageModel] = useState<string>(() =>
-        localStorage.getItem(GLOBAL_IMAGE_MODEL_STORAGE_KEY) || 'gemini-2.5-flash-image'
-    );
+    const [imageModel] = useState<string>('gemini-2.5-flash-image');
     const [generatingId, setGeneratingId] = useState<string | null>(null);
     const [aiForwardingId, setAiForwardingId] = useState<string | null>(null);
     const [gensparkForwardingId, setGensparkForwardingId] = useState<string | null>(null);
@@ -1664,19 +1661,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const aiForwardAbortRef = useRef<AbortController | null>(null);
     const gensparkForwardAbortRef = useRef<AbortController | null>(null);
     const [noGuard] = useState<boolean>(false);
-
-    useEffect(() => {
-        localStorage.setItem(GLOBAL_IMAGE_MODEL_STORAGE_KEY, imageModel);
-    }, [imageModel]);
-
-    useEffect(() => {
-        const onStorage = (event: StorageEvent) => {
-            if (event.key !== GLOBAL_IMAGE_MODEL_STORAGE_KEY || !event.newValue) return;
-            setImageModel(event.newValue);
-        };
-        window.addEventListener('storage', onStorage);
-        return () => window.removeEventListener('storage', onStorage);
-    }, []);
 
     // 프롬프트 설정 상태
     const [settings, setSettings] = useState<PromptSettings>({

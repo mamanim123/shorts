@@ -1,114 +1,171 @@
- 마마님, 2026-04-13 기준으로 보면 http://localhost:3000/standalone-lite/는 Tube Factory의 “전체 복제본” 단계는 아니고,
-  현재는 Tube Factory 스타일의 축약 스튜디오 단계입니다.
+ 나는 나혼자 사용할거니깐 폴저장이 맞아 그리고 캐릭터 저장이 캐릭터 시트와 같은거야? 여기서 만든 캐릭터를 가지고 이미
+  지를 만드는거야? 그럼 이미지만들때 여기서 만든 캐릭터의 어느것을 활용하는거야? 첨부한 이미지? 아니면 이미지를 프롬프
+  트화해서 텍스트로 이미지를 만드는거야? 이걸 확실히 해야되 일관성있는 이미지를 만들기위해서 캐릭터를 만드는거잖아? 첨
+  부 텍스트 파일 다시 확인해봐
 
-  한줄 결론
-  tubefactory.kr 내부 스튜디오 기준으로 보면,
 
-  - 메뉴 껍데기 이식은 대략 45% 전후
-  - 실제로 화면과 로직이 함께 붙은 기능은 대략 25~30%
-  - 고급 기능 상당수는 저장소 안에는 코드가 있는데 standalone-lite 경로엔 아직 연결되지 않음
-    상태입니다.
 
-  지금 standalone-lite에 실제로 옮겨진 것
-  현재 엔트리는 standalone-lite/App.tsx:2에서 오직 standalone-lite/features/shorts-lab/components/
-  TubeFactoryPanel.tsx:21만 렌더합니다.
-  여기서 실제 구현된 축은 이 정도입니다.
+• Explored
+  └ Search assignedCharacter|referenceImage|TODO|generateImageWithImagen|finalPrompt =|char\.style|imageParts|editImage|
+same
+           person|identity in TubeFactoryPanel.tsx
+• Context compacted
 
-  - 사이드바 스튜디오 구조: 프로젝트/스타일/대본/TTS/캐릭터/이미지·영상/타임라인/내보내기 메뉴 셸이 있음. standalone-
-    lite/features/shorts-lab/components/TubeFactoryPanel.tsx:54
-  - 스타일 선택 화면: 스타일 카드, 태그, 선택 상태 UI 있음. standalone-lite/features/shorts-lab/components/
-    TubeFactoryPanel.tsx:266
-  - 대본 생성 흐름: 주제 입력 → 줄거리 생성 → 줄거리 선택 → 씬 배열 생성 흐름이 있음. standalone-lite/features/shorts-
-    lab/components/TubeFactoryPanel.tsx:69, standalone-lite/features/shorts-lab/components/TubeFactoryPanel.tsx:342
-  - JSON 대본 불러오기: 씬 배열 import UI 있음. standalone-lite/features/shorts-lab/components/TubeFactoryPanel.tsx:446
-  - TTS 생성: 장면별/전체 생성, 음성 선택, 속도 조절, 오디오 재생 UI 있음. standalone-lite/features/shorts-lab/
-    components/TubeFactoryPanel.tsx:199, standalone-lite/features/shorts-lab/components/TubeFactoryPanel.tsx:490
-  - 캐릭터 일관성: 고정 캐릭터 카드 2개를 보여주는 기본 UI 있음. 다만 편집형은 아님. standalone-lite/features/shorts-
-    lab/components/TubeFactoryPanel.tsx:41, standalone-lite/features/shorts-lab/components/TubeFactoryPanel.tsx:585
-  - 이미지 생성: 씬별/일괄 이미지 생성 버튼과 결과 표시 UI 있음. standalone-lite/features/shorts-lab/components/
-    TubeFactoryPanel.tsx:163, standalone-lite/features/shorts-lab/components/TubeFactoryPanel.tsx:627
+• Context compacted
 
-  아직 안 옮겨졌거나, 이름만 있고 비어 있는 것
-  standalone-lite에서 project-list, edit, export는 실제로 누르면 전부 “다음 기능을 준비 중입니다...”만 나옵니다.
-  standalone-lite/features/shorts-lab/components/TubeFactoryPanel.tsx:670
+• 마마님, 지금 질문은 핵심이 “캐릭터 일관성에 실제로 어떤 데이터가 쓰이느냐”라서, 먼저 첨부하신 텍스트 파일 2개를 다시
+  확인하고 현재 코드 경로(캐릭터 디자인 → 이미지 생성)에 실제로 어떤 입력이 들어가는지 정확히 대조해서 정리하겠습니다.
 
-  원본 내부 스튜디오는 메뉴 정의상 더 많습니다. 제가 확인한 원본 측 기능 축은 대략:
+• Explored
+  └ Read 영상 제작 시간 90% 줄이는 미친 자동화 시스템 만들었습니다.txt, 유튜버라면 무조건 써야 함 Google Flow(오토플로
+우) 완
+         전 자동화 툴 무료 배포.txt
 
-  - 프로젝트 목록
-  - 영상 스타일
-  - 대본
-  - TTS 생성
-  - 추가 TTS 생성
-  - 캐릭터 디자인
-  - 이미지&영상 생성
-  - 이미지 효과
-  - 추가 이미지 생성
-  - 타임라인 편집
-  - 자막 스타일
-  - 썸네일
-  - SEO / 메타
-  - 내보내기
-  - 튜브플로우 자동화 도구
-  - 영상 대본 분석기
-  - 추천 제작 채널
-  - 관리자용 썸네일 도구
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-  그런데 standalone-lite에는 이 중
+• 마마님, 텍스트 파일 재확인 완료했습니다. 이제 코드 기준으로 “캐릭터 저장 위치”와 “이미지 생성 시 실제로 어떤 캐릭터 정
+  보가 쓰이는지”를 정확히 짚어서 답 드리겠습니다.
 
-  - 추가 TTS
-  - 이미지 효과
-  - 추가 이미지 생성
-  - 자막 스타일
-  - 썸네일
-  - SEO / 메타
-  - 튜브플로우
-  - 영상 대본 분석기
-  - 추천 제작 채널
-  - 관리자 도구
-    가 아예 메뉴에도 없습니다.
+• Explored
+  └ Search tubefactory-character-library-v1|handleSaveCharacterLibrary|handleLoadCharacterLibrary|downloadFile\(|
+           handleGenerateCharacterImage|referenceImage|캐릭터|imageParts|selectedImageModel|shorts-lab-global-image-
+model in
+           TubeFactoryPanel.tsx
+    Read TubeFactoryPanel.tsx
 
-  중요한 포인트: 코드가 없는 게 아니라, standalone-lite에 안 붙어 있음
-  저장소 안의 standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:1는 훨씬 원본에 가깝습니다. 여긴
-  standalone-lite 현재 화면보다 훨씬 많이 들어 있습니다.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-  이미 코드상 확인된 것만 해도:
+  지금 코드 기준으로 라이브러리 저장/불러오기는 두 군데에 저장됩니다.
 
-  - 비디오 프롬프트 정제 standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:4444
-  - 비디오 생성/URL 저장 standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:4500
-  - 저장된 스토리/폴더/이미지/영상 불러오기 standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:6736,
-    standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:6798, standalone-lite/features/shorts-lab/
-    components/ShortsLabPanel.tsx:6952
-  - 영상 미리보기/재생성 UI standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:8515
-  - 프롬프트 분석/스타일 변환/번역 API standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:2012,
-    standalone-lite/features/shorts-lab/components/ShortsLabPanel.tsx:2190, standalone-lite/features/shorts-lab/
-    components/ShortsLabPanel.tsx:2233
-  - SRT/CapCut export 서비스 standalone-lite/features/shorts-lab/services/exportService.ts:20, standalone-lite/features/
-    shorts-lab/services/exportService.ts:49
+  1. 브라우저 localStorage (tubefactory-character-library-v1)
+  2. 저장 시 JSON 파일 자동 다운로드 (tubefactory_character_library_*.json)
+  그리고 질문하신 “캐릭터 시트와 이미지 생성 관계”는 현재 이렇게 동작합니다.
 
-  즉, 마마님 프로젝트는
+  - 캐릭터 시트 = 캐릭터 카드 데이터 묶음(이름/성별/나이/스타일 설명/참조이미지URL 등)
+  - 현재 TubeFactory 이미지 생성에서 직접 쓰는 것: 캐릭터의 텍스트 정보(성별/나이/스타일) + 씬 프롬프트
+  - 현재 TubeFactory 이미지 생성에서 직접 안 쓰는 것: 참조 이미지 자체
+      - 코드에 TODO로 남아 있고, 지금은 참조 이미지를 API에 직접 넘기지 않습니다.
+  - 다만 참조 이미지를 업로드한 뒤 “이미지 기반 자동 묘사”를 하면, 그 결과 텍스트가 시트에 반영되어 간접적으로 영향을 줍
+    니다.
 
-  - standalone-lite 현재 화면: 간단 복제판
-  - standalone-lite 내부 큰 패널 코드: 원본급 기능 후보
-    로 이원화돼 있습니다.
+  첨부하신 텍스트 파일 내용도 이 구조를 뒷받침합니다.
 
-  현재 막히는 부분
-  실행 확인 중 콘솔에서 http://localhost:3002/api/app-storage 연결 실패가 났습니다. 즉 프런트만 띄우면 화면은 보이지만,
-  판정
-  마마님이 “어디까지 옮겨왔냐”만 딱 묻는다면:
+  - 원본 운영 흐름: 캐릭터 생성 후 씬별 매칭/체크로 일관성 강화
+  - 보조 흐름: 캐릭터 없이도 텍스트만으로 어느 정도 일관성 유지
+  - 즉, 최고 일관성은 “참조 이미지 직접 주입” 방식이 맞습니다.
 
-  - Tube Factory의 디자인 톤과 기본 제작 플로우 뼈대는 옮겨왔습니다.
-  - 하지만 standalone-lite는 아직 원본 전체 기능 복제가 아니라 핵심 1차 흐름만 얹은 라이트 셸입니다.
-  - 진짜 원본에 가까운 기능은 이미 ShortsLabPanel 쪽에 상당량 들어와 있지만, 현재 라우트에 연결되지 않아 사용자는 못 쓰
-    는 상태입니다.
+  결론: 마마님이 원하는 “진짜 일관성” 기준이면, 현재 TubeFactory 화면은 아직 100% 아닙니다. 지금 단계는 텍스트 기반 캐릭
+  터 일관성이고, **이미지 참조 직접 주입(ShortsLab 쪽처럼 imageParts/identity lock 방식)**을 붙여야 완성됩니다.
 
-  원하시면 다음 턴에 마마님 기준으로
 
-  1. 기능별 이식률 표
-  2. 현재 보이는 기능 / 숨어 있는 기능 / 완전 미구현 기능
-  3. 원본 메뉴 하나씩 대응표
-     형태로 더 촘촘하게 정리해드리겠습니다.
+› 그러면 캐릭터 디자인에서 캐릭터를 만들때 이미지를 첨부해서 캐릭터스트를 만들고 프롬프트도 만들어서 같이 저장한다음 이
+  미지생성할때 같이 주입하면 되는거야? 그럼 저장방식도 바꿔야하고 캐릭터 불러올때 캐릭터를 불러오면 그케릭터의 이미지도
+  같이 오게 해야겠지? 내가 맞아? 아니면 더 좋은 방식이 있으면 소개해줘
 
-  출처:
 
-  - 원본 사이트 공개 페이지: https://tubefactory.kr/
-  - 로컬 구현 확인 경로: http://127.0.0.1:3000/standalone-lite/ (분석 시점 임시 실행)
+• 맞습니다 마마님. 방향 정확합니다.
+
+  지금 마마님이 말한 구조가 일관성 기준으로 정답에 가깝고, 제가 권장하는 최적안은 이겁니다.
+
+  1. 캐릭터 저장을 텍스트+이미지 세트로 저장
+
+  - 캐릭터 JSON(이름/설명/최적화 프롬프트/부정 프롬프트/태그)
+  - 참조 이미지 파일(원본)
+
+  2. 저장 위치를 프로젝트 폴더 기반으로 변경
+
+  - 예: generated_scripts/<project>/characters/<charId>/manifest.json
+  - 불러오기 시 JSON 읽고 이미지도 같이 복원
+
+  3. 이미지 생성 시 주입 우선순위 고정
+
+  - 1순위: 참조 이미지(imageParts/adapter)
+  - 2순위: 캐릭터 프롬프트(외형 고정 문장)
+  - 3순위: 씬 프롬프트(행동/배경/구도)
+    이 순서로 넣어야 캐릭터 드리프트가 줄어듭니다.
+
+  4. 추가로 꼭 넣을 것
+
+  - 캐릭터별 identity_seed 고정
+  - 캐릭터별 네거티브 프롬프트 고정
+  - 씬에서 캐릭터 슬롯 매핑(누가 등장하는지 체크)
+
+  즉, 마마님 말대로 “불러오면 이미지도 같이 와야” 하고, 단순 localStorage만으로는 부족합니다.
+  더 좋은 방식은 프로젝트 폴더에 캐릭터 자산을 파일로 관리 + JSON manifest로 참조하는 방식입니다. 이걸로 가면 백업/이식/
+  재현성이 모두 좋아집니다.
+
+
+› 그러면 캐릭터 만들때 내가 첨부한 이미지를 가지고 캐릭터 시트를 만드는 기능도 있어야겠내? 첨부한 이미지로 앞/뒤/옆/얼
+  굴클로즈업 이렇게 한이미지에 만들어야하나?
+
+
+• 맞습니다 마마님. 그 기능이 있으면 품질이 크게 올라갑니다.
+  정리하면, “한 장 콜라주”보다 분리 저장이 더 좋습니다.
+
+  - 권장 입력 슬롯
+
+  3. side 또는 back (옆/뒤 중 최소 1개)
+  4. face_closeup (얼굴 클로즈업)
+
+  - 자동 캐릭터 시트 기능
+
+  1. 첨부 이미지 분석해서 구조화(성별/연령대/헤어/의상/체형/특징)
+  2. 캐릭터 설명 프롬프트 + 네거티브 프롬프트 자동 생성
+  3. 필요하면 누락 뷰(예: back)만 보완 생성
+  4. 최종 저장 시 이미지 슬롯 + 시트 JSON 같이 저장
+  도 보여주면서 수정할 수 있게도 해줘 그래야 내가 원하는대로 이미지를 수정할 수 있겠지?
+
+
+• 마마님, 요청하신 범위(캐릭터 생성 기능 확장 + 이미지생성 화면에서 캐릭터/프롬프트 함께 노출·수정)를 바로 반영하겠습니
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• 마마님, 구조 확인 결과 현재는 참조 이미지를 실제 생성 입력으로 거의 못 쓰고 텍스트 위주입니다. 지금부터 캐릭터에 멀티
+  참조이미지(정면/45도/측면/클로즈업)와 캐릭터 시트 프롬프트를 추가하고, 이미지 생성 화면에서 같은 정보를 바로 보고 수정
+  가능하게 붙이겠습니다.
+
+• Explored
+  └ Search export async function generateImage\(|function generateImage\(|generateImage\(prompt|
+generateImageWithImagen\( in
+• Ran ls -1 features/shorts-lab/components/TubeFactoryPanel.tsx.backup_* 2>/dev/null | tail -n 10
+  └ features/shorts-lab/components/TubeFactoryPanel.tsx.backup_20260415_character_library_file_export
+    features/shorts-lab/components/TubeFactoryPanel.tsx.backup_20260415_character_toolbar_library
+generateImageWithImagen\( in
+           geminiService.ts
+    Search export const generateImage\s*=|export async function generateImage|generateImageWithImagen in
+geminiService.ts
+    Read geminiService.ts
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• 마마님, 이제 TubeFactoryPanel.tsx 백업을 먼저 만들고(사용자 요청 준수), 같은 파일 백업은 2개만 남기도록 정리한 뒤 코드
+  수정 들어가겠습니다.
+
+• Ran cp features/shorts-lab/components/TubeFactoryPanel.tsx features/shorts-lab/components/
+  │ TubeFactoryPanel.tsx.backup_20260415_character_sheet_multiref
+  └ (no output)
+
+• Explored
+  └ List TubeFactoryPanel.tsx.backup_*
+
+• Ran rm features/shorts-lab/components/TubeFactoryPanel.tsx.backup_20260415_character_toolbar_library
+  └ (no output)
+
+• Explored
+  └ Read TubeFactoryPanel.tsx
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• 마마님, 이제 코드 수정 들어갑니다. 1차로 캐릭터 멀티 이미지 슬롯/시트 프롬프트를 저장할 수 있는 데이터 구조와 공용 헬
+  퍼를 추가하겠습니다.
+
+• Edited features/shorts-lab/components/TubeFactoryPanel.tsx (+8 -0)
+    45  const CHARACTER_LIBRARY_STORAGE_KEY = 'tubefactory-character-library-v1';
+    46 +const CHARACTER_REFERENCE_SLOTS = ['front', 'angle45', 'side', 'faceCloseup'] as const;
+    47 +type CharacterReferenceSlot = (typeof CHARACTER_REFERENCE_SLOTS)[number];
+    48 +const CHARACTER_REFERENCE_SLOT_LABEL: Record<CharacterReferenceSlot, string> = {
+    49 +  front: '정면',
+    50 +  angle45: '45도',
+    51 +  side: '측면/뒤',
+    52 +  faceCloseup: '얼굴 클로즈업',
+    53 +};
+    54

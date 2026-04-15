@@ -1,0 +1,155 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: T
+      - generic [ref=e8]:
+        - text: Tube
+        - text: Factory
+    - navigation [ref=e9]:
+      - generic [ref=e10]:
+        - heading "시스템" [level=3] [ref=e11]
+        - button "작업 현황판" [ref=e12] [cursor=pointer]:
+          - img [ref=e13]
+          - text: 작업 현황판
+      - generic [ref=e16]:
+        - heading "관리" [level=3] [ref=e17]
+        - button "프로젝트 목록" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+          - text: 프로젝트 목록
+      - generic [ref=e24]:
+        - heading "기획" [level=3] [ref=e25]
+        - button "영상 스타일" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+          - text: 영상 스타일
+        - button "대본 생성" [active] [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+          - text: 대본 생성
+      - generic [ref=e34]:
+        - heading "음성" [level=3] [ref=e35]
+        - button "TTS 음성" [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+          - text: TTS 음성
+      - generic [ref=e41]:
+        - heading "제작" [level=3] [ref=e42]
+        - button "캐릭터 디자인" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+          - text: 캐릭터 디자인
+        - button "이미지/영상 생성" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - text: 이미지/영상 생성
+        - button "이미지 효과" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+          - text: 이미지 효과
+      - generic [ref=e58]:
+        - heading "편집" [level=3] [ref=e59]
+        - button "타임라인 편집" [ref=e60] [cursor=pointer]:
+          - img [ref=e61]
+          - text: 타임라인 편집
+        - button "자막 스타일" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+          - text: 자막 스타일
+      - generic [ref=e70]:
+        - heading "완성" [level=3] [ref=e71]
+        - button "SEO/메타데이터" [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+          - text: SEO/메타데이터
+        - button "내보내기" [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+          - text: 내보내기
+      - generic [ref=e80]:
+        - heading "도구" [level=3] [ref=e81]
+        - button "튜브플로우" [ref=e82] [cursor=pointer]:
+          - img [ref=e83]
+          - text: 튜브플로우
+  - generic [ref=e85]:
+    - banner [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]: "PROJECT: UNTITLED"
+        - generic [ref=e89]: 실사풍
+      - generic [ref=e90]:
+        - generic [ref=e91]: M
+        - generic [ref=e92]: 마마님
+    - main [ref=e93]:
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - heading "대본 생성" [level=2] [ref=e198]
+          - img [ref=e199] [cursor=pointer]
+          - generic [ref=e201]: 이용방법
+        - generic [ref=e105]:
+          - button "✍️ 자유작성" [ref=e202] [cursor=pointer]:
+            - generic [ref=e203]: ✍️
+            - text: 자유작성
+          - button "🤖 자동작성" [ref=e204] [cursor=pointer]:
+            - generic [ref=e205]: 🤖
+            - text: 자동작성
+        - generic [ref=e185]:
+          - button "클릭방식 트렌드수집 지금 주제에서 바이럴 훅만 다시 뽑습니다." [ref=e206] [cursor=pointer]:
+            - generic [ref=e207]: 클릭방식
+            - generic [ref=e208]: 트렌드수집
+            - generic [ref=e209]: 지금 주제에서 바이럴 훅만 다시 뽑습니다.
+          - button "클릭방식 영상참고 10주제 설명서/자막 원문을 분석해 파생 줄거리를 만듭니다." [ref=e210] [cursor=pointer]:
+            - generic [ref=e211]: 클릭방식
+            - generic [ref=e212]: 영상참고 10주제
+            - generic [ref=e213]: 설명서/자막 원문을 분석해 파생 줄거리를 만듭니다.
+          - button "클릭방식 외부 음성+SRT 자막/SRT 원문을 넣어 재구성 기획에 활용합니다." [ref=e214] [cursor=pointer]:
+            - generic [ref=e215]: 클릭방식
+            - generic [ref=e216]: 외부 음성+SRT
+            - generic [ref=e217]: 자막/SRT 원문을 넣어 재구성 기획에 활용합니다.
+          - button "클릭방식 대본+이미지 프롬프트 대본과 장면 프롬프트를 한 번에 생성합니다." [ref=e218] [cursor=pointer]:
+            - generic [ref=e219]: 클릭방식
+            - generic [ref=e220]: 대본+이미지 프롬프트
+            - generic [ref=e221]: 대본과 장면 프롬프트를 한 번에 생성합니다.
+        - generic [ref=e222]:
+          - heading "기본 언어" [level=3] [ref=e223]
+          - generic [ref=e224]:
+            - button "KR 한국어" [ref=e225] [cursor=pointer]:
+              - generic [ref=e226]: KR
+              - text: 한국어
+            - button "US 영어" [ref=e227] [cursor=pointer]:
+              - generic [ref=e228]: US
+              - text: 영어
+            - button "JP 일본어" [ref=e229] [cursor=pointer]:
+              - generic [ref=e230]: JP
+              - text: 일본어
+        - generic [ref=e231]:
+          - heading "씬 구성 방식" [level=3] [ref=e232]
+          - generic [ref=e233]:
+            - generic [ref=e234] [cursor=pointer]:
+              - generic [ref=e235]: 자동씬구성
+              - paragraph [ref=e236]: AI가 자동으로 씬을 나눕니다.
+            - generic [ref=e237] [cursor=pointer]:
+              - generic [ref=e238]: 1문장당 1씬
+              - paragraph [ref=e239]: 문장 하나를 하나의 씬으로 고정.
+            - generic [ref=e240] [cursor=pointer]:
+              - generic [ref=e241]: 2문장당 1씬
+              - paragraph [ref=e242]: 문장 두 개씩 묶어 씬 구성.
+            - generic [ref=e243] [cursor=pointer]:
+              - generic [ref=e244]: 직접입력
+              - paragraph [ref=e245]: 원하는 문장 수만큼 묶음.
+        - generic [ref=e246]:
+          - generic [ref=e247]:
+            - heading "자동 작성" [level=3] [ref=e248]
+            - generic [ref=e249]:
+              - button "쇼츠 (9:16)" [ref=e250] [cursor=pointer]
+              - button "롱폼 (16:9)" [ref=e251] [cursor=pointer]
+              - button "30초" [ref=e252] [cursor=pointer]
+              - button "1분" [ref=e253] [cursor=pointer]
+              - button "2분" [ref=e254] [cursor=pointer]
+              - button "3분" [ref=e255] [cursor=pointer]
+              - textbox [ref=e256]: "0.5"
+              - generic [ref=e257]: 씬
+            - generic [ref=e258]:
+              - button "내레이션만" [ref=e259] [cursor=pointer]
+              - button "내레이션 + 대화" [ref=e260] [cursor=pointer]
+          - heading "대본 생성 입력" [level=3] [ref=e261]
+          - generic [ref=e262]:
+            - generic [ref=e263]:
+              - text: 제작할 주제
+              - 'textbox "제작하고 싶은 영상의 주제나 방향을 입력하세요. 예: 무시당하던 사람이 마지막에 판을 뒤집는 사연" [ref=e264]'
+            - generic [ref=e265]:
+              - text: 벤치마킹 설명서 / 자막 / 분석 원문
+              - textbox "벤치마킹할 영상의 설명, 자막, 페이지 소개 문구를 붙여 넣으면 후킹 방식과 전개 구조를 분석해 새 줄거리로 바꿉니다." [ref=e266]
+              - paragraph [ref=e267]: 원문 문장을 그대로 복사하지 않고, 후킹 방식과 전개 구조만 추출해서 새 줄거리를 생성합니다.
+            - generic [ref=e268]:
+              - button "대본 분석" [ref=e269] [cursor=pointer]
+              - button "줄거리 생성" [ref=e270] [cursor=pointer]

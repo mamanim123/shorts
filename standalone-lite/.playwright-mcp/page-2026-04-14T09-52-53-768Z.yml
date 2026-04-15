@@ -1,0 +1,51 @@
+- generic [ref=e1]:
+  - link "Sign in" [ref=e6] [cursor=pointer]:
+    - /url: https://accounts.google.com/ServiceLogin?passive=1209600&continue=https://gemini.google.com/app&followup=https://gemini.google.com/app&ec=GAZAkgU
+  - main [ref=e8]:
+    - button "Main menu" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]: menu
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - heading "Conversation with Gemini" [level=1] [ref=e27]
+        - generic [ref=e33]:
+          - heading "Meet Gemini, your personal AI assistant" [level=1] [ref=e40]
+          - generic [ref=e45]:
+            - button "Write, button, tap to use tool" [ref=e47] [cursor=pointer]:
+              - generic [ref=e48]: Write
+            - button "Plan, button, tap to use tool" [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: Plan
+            - button "Research, button, tap to use tool" [ref=e53] [cursor=pointer]:
+              - generic [ref=e54]: Research
+            - button "Learn, button, tap to use tool" [ref=e56] [cursor=pointer]:
+              - generic [ref=e57]: Learn
+      - generic [ref=e58]:
+        - group [ref=e59]:
+          - generic [ref=e62]:
+            - textbox "Enter a prompt for Gemini" [active] [ref=e67]:
+              - text: Ask Gemini
+              - paragraph [ref=e68]
+            - generic [ref=e70]:
+              - group [ref=e73]:
+                - button "Open mode picker" [ref=e74]:
+                  - generic [ref=e76]:
+                    - generic [ref=e77]: Fast
+                    - img [ref=e78]: keyboard_arrow_down
+              - generic [ref=e81]:
+                - button "Microphone" [ref=e84] [cursor=pointer]:
+                  - img [ref=e86]: mic
+                - text: send
+        - paragraph [ref=e91]:
+          - link "Google Terms Opens in a new window" [ref=e92] [cursor=pointer]:
+            - /url: https://policies.google.com/terms
+            - text: Google Terms
+            - generic [ref=e93]: Opens in a new window
+          - text: and the
+          - link "Privacy Policy Opens in a new window" [ref=e94] [cursor=pointer]:
+            - /url: https://policies.google.com/privacy
+            - text: Privacy Policy
+            - generic [ref=e95]: Opens in a new window
+          - text: apply. Gemini is AI and can make mistakes, including about people.
+          - link "Your privacy & Gemini Opens in a new window" [ref=e96] [cursor=pointer]:
+            - /url: https://support.google.com/gemini/answer/13594961#signed_out&zippy=%2Chow-does-google-handle-my-data-when-i-use-gemini-apps-while-signed-out
+            - text: Your privacy & Gemini
+            - generic [ref=e97]: Opens in a new window

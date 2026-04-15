@@ -5,21 +5,15 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
-import { launchBrowser, closeBrowser, generateContent, generateSimpleText } from './puppeteerHandler.js';
+import { launchBrowser, closeBrowser, generateContent, generateSimpleText } from '../../server/puppeteerHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
 const parentRootDir = path.join(rootDir, '..');
 
-// 로컬 .env 우선 로드, 없으면 부모 .env로 폴백
-const localEnvResult = dotenv.config({ path: path.join(rootDir, '.env') });
-if (localEnvResult.error) {
-  dotenv.config({ path: path.join(parentRootDir, '.env') });
-  console.log('[standalone-lite] .env not found locally, using parent .env');
-} else {
-  console.log('[standalone-lite] Loaded local .env');
-}
+dotenv.config({ path: path.join(parentRootDir, '.env') });
+dotenv.config({ path: path.join(rootDir, '.env'), override: true });
 
 const app = express();
 const PORT = 3002;
@@ -409,124 +403,41 @@ app.post('/api/save-story', (req, res) => {
     };
 
     writeJson(path.join(storyDir, 'story.json'), payload);
-    fs.writeFileSync(path.join(storyDir, 'script.txt'), finalScriptBody || payload.content || '', 'utf8');
-
-    res.json({ success: true, folderName: safeStoryId });
+    res.json({ success: true, folderName: safeStoryId, story: payload });
   } catch (error) {
-    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to save story' });
+    res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed to save story' });
   }
 });
 
-app.get('/api/images/by-story/:storyId', (req, res) => {
-  const safeStoryId = sanitizeName(req.params.storyId || '');
-  const imageDir = path.join(generatedStoryDir, safeStoryId, 'images');
-  if (!fs.existsSync(imageDir)) {
-    res.json([]);
-    return;
-  }
-  const files = fs.readdirSync(imageDir)
-    .filter((name) => /\.(png|jpe?g|webp|gif)$/i.test(name))
-    .map((filename) => ({
-      filename: `대본폴더/${safeStoryId}/images/${filename}`,
-      prompt: filename,
-      isUnifiedPath: true,
-    }));
-  res.json(files);
-});
-
-app.post('/api/save-image', (req, res) => {
+app.get('/api/files', (req, res) => {
   try {
-    const { imageData, prompt, storyId, sceneNumber, storyTitle } = req.body || {};
-    const { buffer, ext } = decodeBase64Image(imageData);
-    const safeStoryId = sanitizeName(storyId || storyTitle || 'images');
-    const baseName = sanitizeName(prompt || `image_${sceneNumber || 'item'}`);
-    const filename = `${baseName}_${Date.now()}.${ext}`;
-
-    let relativePath = `images/${filename}`;
-    let targetDir = generatedImagesDir;
-
-    if (safeStoryId && safeStoryId !== 'images') {
-      targetDir = path.join(generatedStoryDir, safeStoryId, 'images');
-      ensureDir(targetDir);
-      relativePath = `대본폴더/${safeStoryId}/images/${filename}`;
+    const resolved = resolveGeneratedPath(req.query.path || '');
+    if (!fs.existsSync(resolved)) {
+      res.status(404).json({ error: 'File not found' });
+      return;
     }
-
-    const filePath = path.join(targetDir, filename);
-    fs.writeFileSync(filePath, buffer);
-
-    res.json({
-      success: true,
-      filename: relativePath,
-      url: `/generated_scripts/${relativePath}`,
-      storyId: safeStoryId || undefined,
-      sceneNumber: typeof sceneNumber === 'number' ? sceneNumber : undefined,
-    });
+    res.sendFile(resolved);
   } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed to save image' });
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid file path' });
   }
 });
 
-// App Storage API
-app.get('/api/app-storage', (req, res) => {
-  try {
-    const { key } = req.query;
-    const data = readJson(appStorageFile, defaultAppStorage);
-    if (key) {
-      res.json({ value: data.storage?.[key] });
-    } else {
-      res.json(data);
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to read storage' });
-  }
+app.post('/api/prompt-enhancement-settings', (req, res) => {
+  const next = req.body && typeof req.body === 'object' ? req.body : defaultPromptEnhancementStore;
+  writeJson(promptEnhancementFile, next);
+  res.json({ success: true, ...next });
+});
+
+app.get('/api/app-storage', (_req, res) => {
+  res.json(readJson(appStorageFile, defaultAppStorage));
 });
 
 app.post('/api/app-storage', (req, res) => {
-  try {
-    const { key, value, entries } = req.body || {};
-    const data = readJson(appStorageFile, defaultAppStorage);
-    if (!data.storage) data.storage = {};
-
-    if (entries) {
-      Object.assign(data.storage, entries);
-    } else if (key) {
-      data.storage[key] = value;
-    }
-
-    writeJson(appStorageFile, data);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to save storage' });
-  }
+  const payload = { storage: req.body?.storage && typeof req.body.storage === 'object' ? req.body.storage : {} };
+  writeJson(appStorageFile, payload);
+  res.json({ success: true, ...payload });
 });
 
-app.delete('/api/app-storage', (req, res) => {
-  try {
-    const { key } = req.body || {};
-    const data = readJson(appStorageFile, defaultAppStorage);
-    if (key && data.storage) {
-      delete data.storage[key];
-      writeJson(appStorageFile, data);
-    }
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete from storage' });
-  }
-});
-
-app.post('/api/delete-file', (req, res) => {
-  try {
-    const filePath = resolveGeneratedPath(req.body?.filename || '');
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-    res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed to delete file' });
-  }
-});
-
-// [신규 추가] 501 에러 해결: Gemini API를 이용한 라이트 대본 생성 로직
 app.post('/api/generate/raw', async (req, res) => {
   console.log('[standalone-lite] POST /api/generate/raw 호출됨');
   const { prompt } = req.body;
@@ -554,86 +465,15 @@ app.post('/api/generate/raw', async (req, res) => {
         rawResponse = response.text || '';
     }
 
-    // JSON 텍스트 파싱을 위해 클라이언트에서 처리하도록 raw 문자열을 보냅니다.
-    // 폴더 생성 로직은 일단 스킵하고 (Lite 버전), 프론트에서 렌더링되게 만듭니다.
     res.json({
       success: true,
       rawResponse: rawResponse,
       service: 'GEMINI',
-      _folderName: `lite_story_${Date.now()}` // 가상의 폴더명 부여
+      _folderName: `lite_story_${Date.now()}`
     });
   } catch (error) {
     console.error('[standalone-lite] Gemini 생성 오류:', error);
     res.status(500).json({ error: 'Gemini 생성 중 오류 발생', details: error.message });
-  }
-});
-
-// [신규 추가] 캐릭터 이미지 분석 (Vision AI)
-app.post('/api/describe-character-full', async (req, res) => {
-  console.log('[standalone-lite] POST /api/describe-character-full 호출됨');
-  const { image } = req.body;
-  
-  if (!image) {
-    return res.status(400).json({ error: 'image(base64) is required' });
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
-  }
-
-  try {
-    const ai = new GoogleGenAI(apiKey);
-    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    // Base64 데이터에서 헤더 제거 (data:image/png;base64, 부분)
-    const base64Str = image.includes(',') ? image.split(',')[1] : image;
-
-    const prompt = `
-      Analyze the person in this photo in extreme detail to establish a "Visual DNA" for consistent AI generation.
-      You must return ONLY a JSON object. No markdown, no conversational text.
-      
-      The JSON fields must be exactly:
-      {
-        "gender": "string (여성 or 남성)",
-        "age": "string (approximate age, e.g., 20대)",
-        "hairStyle": "string (detailed hair style description in English)",
-        "hairColor": "string (detailed hair color in English)",
-        "faceType": "string (face shape description in English)",
-        "eyeColor": "string (eye color in English)",
-        "bodyType": "string (body build/silhouette description in English)",
-        "uniqueFeatures": "string (any distinguishing marks, glasses, etc. in English)",
-        "outfitStyle": "string (current outfit description in English)",
-        "style": "string (a combined comprehensive descriptive prompt for stable diffusion generation in English)"
-      }
-    `;
-
-    const imageParts = [
-      {
-        inlineData: {
-          data: base64Str,
-          mimeType: 'image/png' // MIME 타입은 데이터에 따라 다를 수 있지만 일단 png로 통칭
-        }
-      }
-    ];
-
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const response = await result.response;
-    const text = response.text();
-    
-    // JSON 추출
-    const extracted = extractValidJson(text);
-    const parsed = extracted ? safeJsonParse(extracted) : safeJsonParse(text);
-
-    if (!parsed) {
-      console.error('[standalone-lite] Vision analysis failed to return valid JSON:', text);
-      return res.status(500).json({ error: '분석 결과가 유효한 JSON이 아닙니다.', raw: text });
-    }
-
-    res.json(parsed);
-  } catch (error) {
-    console.error('[standalone-lite] Vision analysis error:', error);
-    res.status(500).json({ error: '이미지 분석 중 오류 발생', details: error.message });
   }
 });
 
@@ -647,12 +487,6 @@ app.post('/api/zinius-chat', (_req, res) => {
 
 app.listen(PORT, async () => {
   console.log(`[standalone-lite] server listening on http://localhost:${PORT}`);
-  const shouldAutoLaunchBrowser = process.env.PUPPETEER_AUTO_START === 'true';
-  if (!shouldAutoLaunchBrowser) {
-    console.log('[standalone-lite] Puppeteer auto-start disabled. Set PUPPETEER_AUTO_START=true to enable.');
-    return;
-  }
-
   try {
     await launchBrowser();
     console.log('[standalone-lite] Puppeteer browser launched at startup');

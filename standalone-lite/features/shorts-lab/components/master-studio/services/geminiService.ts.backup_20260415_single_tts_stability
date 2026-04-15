@@ -763,28 +763,6 @@ export const generateMultiSpeakerAudio = async (speakers: [Speaker, Speaker]): P
     }), '멀티스피커 오디오 생성');
 };
 
-export const generateSingleSpeakerAudio = async (
-    voiceName: string,
-    text: string
-): Promise<GenerateContentResponse> => {
-    await initGeminiService();
-    const ai = getClient();
-    const prompt = `TTS the following text: ${text}`;
-
-    return withRetry(() => ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-                voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName }
-                }
-            }
-        }
-    }), '싱글스피커 오디오 생성');
-};
-
 // [NEW] Unified Safe Glamour Logic
 export const enhancePromptWithSafeGlamour = (prompt: string): string => {
     if (!prompt) return "";

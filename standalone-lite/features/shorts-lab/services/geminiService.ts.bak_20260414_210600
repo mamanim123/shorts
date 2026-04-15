@@ -2666,29 +2666,3 @@ export const injectCharacterConsistency = (
 
   return enhancedPrompt.replace(/,\s*,/g, ', ').trim();
 };
-
-/**
- * 캐릭터 이미지로부터 신체적 특징을 추출하는 Vision AI 브릿지
- * @param imageBase64 
- * @returns 
- */
-export const describeCharacterFromImage = async (imageBase64: string) => {
-  try {
-    const response = await fetch('http://localhost:3002/api/describe-character-full', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageBase64 }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error in describeCharacterFromImage:', error);
-    throw error;
-  }
-};

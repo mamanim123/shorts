@@ -1,0 +1,83 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: T
+      - generic [ref=e8]:
+        - text: Tube
+        - text: Factory
+    - navigation [ref=e9]:
+      - generic [ref=e10]:
+        - heading "시스템" [level=3] [ref=e11]
+        - button "작업 현황판" [ref=e12] [cursor=pointer]:
+          - img [ref=e13]
+          - text: 작업 현황판
+      - generic [ref=e16]:
+        - heading "관리" [level=3] [ref=e17]
+        - button "프로젝트 목록" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+          - text: 프로젝트 목록
+      - generic [ref=e24]:
+        - heading "기획" [level=3] [ref=e25]
+        - button "영상 스타일" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+          - text: 영상 스타일
+        - button "대본 생성" [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+          - text: 대본 생성
+      - generic [ref=e34]:
+        - heading "음성" [level=3] [ref=e35]
+        - button "TTS 음성" [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+          - text: TTS 음성
+      - generic [ref=e41]:
+        - heading "제작" [level=3] [ref=e42]
+        - button "캐릭터 디자인" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+          - text: 캐릭터 디자인
+        - button "이미지/영상 생성" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+          - text: 이미지/영상 생성
+        - button "이미지 효과" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+          - text: 이미지 효과
+      - generic [ref=e58]:
+        - heading "편집" [level=3] [ref=e59]
+        - button "타임라인 편집" [ref=e60] [cursor=pointer]:
+          - img [ref=e61]
+          - text: 타임라인 편집
+        - button "자막 스타일" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+          - text: 자막 스타일
+      - generic [ref=e70]:
+        - heading "완성" [level=3] [ref=e71]
+        - button "SEO/메타데이터" [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+          - text: SEO/메타데이터
+        - button "내보내기" [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+          - text: 내보내기
+      - generic [ref=e80]:
+        - heading "도구" [level=3] [ref=e81]
+        - button "튜브플로우" [ref=e82] [cursor=pointer]:
+          - img [ref=e83]
+          - text: 튜브플로우
+  - generic [ref=e85]:
+    - banner [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]: "PROJECT: 무시당하던 사람이 마지막에 판을 뒤집는 사연"
+        - generic [ref=e89]: 실사풍
+      - generic [ref=e90]:
+        - generic [ref=e91]: M
+        - generic [ref=e92]: 마마님
+    - main [ref=e93]:
+      - generic [ref=e94]:
+        - heading "줄거리 선택 (1개)" [level=2] [ref=e271]:
+          - text: 줄거리 선택
+          - generic [ref=e272]: (1개)
+        - generic [ref=e273] [cursor=pointer]:
+          - heading "시스템 오류" [level=3] [ref=e274]
+          - paragraph [ref=e275]: AI 응답이 지연되었습니다. 잠시 후 다시 시도해주세요.
+        - generic [ref=e222]:
+          - generic [ref=e276]: 줄거리 (편집 가능)
+          - textbox "카드를 선택하면 줄거리 초안을 여기서 다듬을 수 있습니다." [ref=e277]: AI 응답이 지연되었습니다. 잠시 후 다시 시도해주세요.
+          - button "대본 생성" [ref=e278] [cursor=pointer]

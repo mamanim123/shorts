@@ -875,6 +875,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [generatedHairImage, setGeneratedHairImage] = useState<string | null>(null);
   const [generatedBodyImage, setGeneratedBodyImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [aiForwardingType, setAiForwardingType] = useState<'outfit' | 'face' | 'hair' | 'body' | null>(null);
   const aiForwardAbortRef = useRef<AbortController | null>(null);
 
@@ -896,6 +898,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [lastBodyImageData, setLastBodyImageData] = useState<string | null>(null);
   const [isExtractionCacheLoaded, setIsExtractionCacheLoaded] = useState(false);
   const [isResettingExtractionCache, setIsResettingExtractionCache] = useState(false);
+  const [isDescribingFull, setIsDescribingFull] = useState(false);
   const extractionCacheSaveTimer = useRef<NodeJS.Timeout | null>(null);
 
   // 복사 상태
@@ -1328,56 +1331,80 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   }, []);
 
-  const handleExtractBody = useCallback(async (file: File | null, imageData?: string) => {
-    setIsExtractingBody(true);
-    setExtractedBody(null);
-    setGeneratedBodyImage(null);
+    const handleExtractBody = useCallback(async (file: File | null, imageData?: string) => {
+    // ... existing code ...
+  }, []);
 
+  const handleDescribeCharacterFull = useCallback(async (file: File) => {
+    setIsDescribingFull(true);
     try {
-      let base64Image = imageData;
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const base64Image = await base64Promise;
 
-      if (file) {
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        base64Image = await base64Promise;
-        const storedFilename = await saveExtractionImage(base64Image, 'body');
-        setLastBodyImageData(storedFilename || base64Image);
-      }
-
-      if (!base64Image) {
-        throw new Error('이미지 데이터가 없습니다.');
-      }
-      if (!file && imageData && imageData.startsWith('data:image')) {
-        const storedFilename = await saveExtractionImage(imageData, 'body');
-        if (storedFilename) setLastBodyImageData(storedFilename);
-      }
-
-      const response = await fetch('http://localhost:3002/api/extract-body', {
+      const response = await fetch('http://localhost:3002/api/describe-character-full', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageData: base64Image })
       });
 
       const result = await response.json();
-      if (result.success && result.prompt) {
-        const promptData = typeof result.prompt === 'string'
-          ? { en: result.prompt, ko: "분석된 체형 특징입니다." }
-          : result.prompt;
+      if (result.success && result.data) {
+        const d = result.data;
+        
+        // 연령 매핑 (예: "20s" -> "20대")
+        let ageLabel = '30대';
+        if (d.age) {
+          if (d.age.includes('20')) ageLabel = '20대';
+          else if (d.age.includes('30')) ageLabel = '30대';
+          else if (d.age.includes('40')) ageLabel = '40대';
+          else if (d.age.includes('50')) ageLabel = '50대';
+          else if (d.age.includes('60')) ageLabel = '60대';
+        }
 
-        setExtractedBody(promptData);
-        setNewCharacter(prev => ({ ...prev, body: promptData.en }));
-        showToast('체형 특징 분석이 완료되었습니다.', 'success');
+        const hairPrompt = `${d.hairStyle || ''}${d.hairStyle && d.hairColor ? ', ' : ''}${d.hairColor || ''}`;
+
+        // 1. 캐릭터 기본 상태 업데이트
+        setNewCharacter(prev => ({
+          ...prev,
+          gender: d.gender === 'male' ? 'male' : 'female',
+          age: ageLabel,
+          face: d.faceType || prev.face,
+          hair: hairPrompt || prev.hair,
+          body: d.bodyType || prev.body,
+          style: d.style || prev.style
+        }));
+
+        // 2. 개별 추출 결과 상태 업데이트 (UI 표시용)
+        if (d.faceType) {
+          setExtractedFace({ en: d.faceType, ko: "이미지 분석을 통해 추출된 얼굴 특징입니다." });
+        }
+        if (hairPrompt) {
+          setExtractedHair({ en: hairPrompt, ko: "이미지 분석을 통해 추출된 헤어 스타일입니다." });
+        }
+        if (d.bodyType) {
+          setExtractedBody({ en: d.bodyType, ko: "이미지 분석을 통해 추출된 체형 특징입니다." });
+        }
+        if (d.outfitStyle) {
+          setExtractedOutfit({ 
+            name: '분석된 의상', 
+            en: d.outfitStyle, 
+            ko: "이미지에서 분석된 의상 정보입니다." 
+          });
+        }
+
+        showToast('이미지 분석으로 캐릭터 시트를 완성했습니다!', 'success');
       } else {
-        throw new Error(result.error || '분석 결과가 없습니다.');
+        throw new Error(result.error || '분석 실패');
       }
     } catch (error: any) {
-      console.error('체형 추출 실패:', error);
-      showToast(error.message || '체형 분석에 실패했습니다.', 'error');
+      console.error('캐릭터 전체 분석 실패:', error);
+      showToast(error.message || '이미지 분석에 실패했습니다.', 'error');
     } finally {
-      setIsExtractingBody(false);
+      setIsDescribingFull(false);
     }
   }, []);
 
@@ -1434,6 +1461,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         if (type === 'face') setGeneratedFaceImage(imageUrl);
         if (type === 'hair') setGeneratedHairImage(imageUrl);
         if (type === 'body') setGeneratedBodyImage(imageUrl);
+        
+        // 생성 완료 상태 업데이트
+        setGeneratedImages(prev => [...prev, imageUrl].slice(0, 4));
+        if (generatedImages.length + 1 === 4) {
+          setIsGenerated(true);
+        }
+
         showToast('이미지가 생성되고 저장되었습니다.', 'success');
       } else {
         throw new Error(saveResult.error || '이미지 저장 실패');
@@ -2575,9 +2609,45 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           </div>
         )}
 
-        {/* 캐릭터관리 탭 */}
+                {/* 캐릭터관리 탭 */}
         {activeTab === 'manage' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* 원클릭 캐릭터 생성 (AI 자동 분석) */}
+            <div className="bg-gradient-to-br from-purple-900/40 to-indigo-900/40 p-4 rounded-xl border border-purple-500/30 space-y-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-purple-400 animate-pulse" />
+                  <span className="text-[11px] font-bold text-purple-200">원클릭 캐릭터 생성</span>
+                </div>
+                <div className="text-[10px] text-purple-400 font-medium">이미지 1장으로 모든 정보 자동 채우기</div>
+              </div>
+              
+              <label className={`flex flex-col items-center justify-center py-5 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:bg-purple-500/5 ${isDescribingFull ? 'border-purple-400 bg-purple-500/10' : 'border-purple-700/50 hover:border-purple-500'}`}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleDescribeCharacterFull(file);
+                    e.target.value = '';
+                  }}
+                  disabled={isDescribingFull}
+                />
+                {isDescribingFull ? (
+                  <>
+                    <Loader2 size={24} className="text-purple-400 animate-spin mb-2" />
+                    <span className="text-[11px] font-bold text-purple-400">캐릭터 전체 분석 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon size={24} className="text-purple-400/70 mb-2" />
+                    <span className="text-[11px] font-bold text-slate-400">이미지 업로드하여 한 번에 만들기</span>
+                  </>
+                )}
+              </label>
+            </div>
+
             {/* 기본 정보 */}
             <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/50 space-y-3">
               <input
@@ -2878,9 +2948,38 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* 헤어 섹션 */}
+                                    {/* 헤어 섹션 */}
                   <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
                     <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">💇 헤어스타일</div>
+                    
+                    {extractedHair && (
+                      <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
+                        <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 헤어 분석 결과</div>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">한글 설명</label>
+                            <textarea
+                              value={extractedHair.ko}
+                              onChange={e => handleHairKoChange(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-xs text-slate-200 outline-none resize-none h-12"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트</label>
+                            <textarea
+                              value={extractedHair.en}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setExtractedHair(prev => prev ? { ...prev, en: val } : null);
+                                setNewCharacter(prev => ({ ...prev, hair: val }));
+                              }}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-[10px] text-slate-400 outline-none resize-none h-14 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2">
                       {HAIR_PRESETS.map(preset => (
                         <button

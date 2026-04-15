@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -643,6 +643,69 @@ app.get('/api/usage-stats', (_req, res) => {
 
 app.post('/api/zinius-chat', (_req, res) => {
   res.status(501).json({ success: false, error: 'zinius-chat is not implemented in standalone-lite server yet.' });
+});
+
+
+// ── 캐릭터 라이브러리 저장/불러오기 API ──
+const CHARACTERS_DIR = path.join(rootDir, 'characters');
+if (!fs.existsSync(CHARACTERS_DIR)) {
+  fs.mkdirSync(CHARACTERS_DIR, { recursive: true });
+}
+
+// 저장된 캐릭터 파일 목록 조회
+app.get('/api/characters/list', (_req, res) => {
+  try {
+    const files = fs.readdirSync(CHARACTERS_DIR)
+      .filter(f => f.endsWith('.json'))
+      .map(f => {
+        const stat = fs.statSync(path.join(CHARACTERS_DIR, f));
+        return { name: f, savedAt: stat.mtime.toISOString(), size: stat.size };
+      })
+      .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+    res.json({ success: true, files });
+  } catch(e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 캐릭터 저장
+app.post('/api/characters/save', (req, res) => {
+  try {
+    const { fileName, data } = req.body;
+    if (!fileName || !data) return res.status(400).json({ success: false, error: '파일명과 데이터가 필요합니다.' });
+    const safeName = fileName.replace(/[^a-zA-Z0-9가-힣_\-]/g, '_');
+    const filePath = path.join(CHARACTERS_DIR, `${safeName}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    res.json({ success: true, fileName: `${safeName}.json`, path: filePath });
+  } catch(e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 캐릭터 불러오기
+app.get('/api/characters/load/:fileName', (req, res) => {
+  try {
+    const safeName = req.params.fileName.replace(/[^a-zA-Z0-9가-힣_\-\.]/g, '_');
+    const filePath = path.join(CHARACTERS_DIR, safeName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: '파일을 찾을 수 없습니다.' });
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    res.json({ success: true, data });
+  } catch(e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 캐릭터 삭제
+app.delete('/api/characters/delete/:fileName', (req, res) => {
+  try {
+    const safeName = req.params.fileName.replace(/[^a-zA-Z0-9가-힣_\-\.]/g, '_');
+    const filePath = path.join(CHARACTERS_DIR, safeName);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: '파일을 찾을 수 없습니다.' });
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 app.listen(PORT, async () => {

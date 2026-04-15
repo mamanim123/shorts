@@ -1,0 +1,4114 @@
+/**
+ * CharacterPanel.tsx
+ * 캐릭터 및 의상 관리 패널
+ * 
+ * 기능:
+ * - 캐릭터선택: 저장된 캐릭터 목록에서 슬롯에 할당
+ * - 캐릭터관리: 얼굴/헤어/체형 설정으로 새 캐릭터 생성
+ * - 의상추출: 이미지에서 AI로 의상 프롬프트 추출 + 의상 리스트 관리
+ * - 드래그 앤 드롭: 이미지 업로드 지원
+ */
+
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { User, Users, Shirt, Plus, Trash2, Upload, Sparkles, Save, ChevronDown, X, Loader2, Copy, Check, Pencil } from 'lucide-react';
+import { showToast } from './Toast';
+
+import { generateImage, generateImageWithImagen } from './master-studio/services/geminiService';
+import { HarmCategory, HarmBlockThreshold } from '@google/genai';
+import { Bot, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import Lightbox from './master-studio/Lightbox';
+import { getBlob } from './master-studio/services/dbService';
+import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS } from '../constants';
+import { applyBaseOverrides, fetchOutfitCatalog, fetchOutfitPreviewMap, getOutfitBaseOverrides, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap, setOutfitBaseOverrides } from '../services/outfitService';
+import type { OutfitBaseOverrides, OutfitCategory, OutfitItem } from '../services/outfitService';
+import { fetchCharacters, saveCharacters } from '../services/characterService';
+import { getAppStorageCachedValue, setAppStorageValue } from '../services/appStorageService';
+import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
+import type { ExtractedOutfit, ExtractedFeature } from '../services/extractionCacheService';
+import type { CharacterItem } from '../services/characterService';
+
+// ============================================
+// 타입 정의
+// ============================================
+
+type Character = CharacterItem;
+type Outfit = OutfitItem;
+
+// UNIFIED_OUTFIT_LIST 아이템 타입
+interface BaseOutfitItem {
+  id: string;
+  name: string;
+  translation: string;
+  categories: string[];
+  prompt?: string;
+  isHidden?: boolean;
+}
+
+interface CharacterPanelProps {
+  onCharacterSelect?: (character: Character | null, slot: string) => void;
+  onOutfitSelect?: (outfit: Outfit | null) => void;
+  onCharactersSaved?: (characters: Character[]) => void;
+  onCharacterAdded?: (character: Character) => void;
+  selectedSlot?: string;
+}
+
+// ============================================
+// 프리셋 데이터
+// ============================================
+
+const DEFAULT_OUTFITS: Outfit[] = [];
+
+const SLOT_OPTIONS = [
+  { id: 'woman-a', name: 'Woman A', gender: 'female' as const },
+  { id: 'woman-b', name: 'Woman B', gender: 'female' as const },
+  { id: 'man-a', name: 'Man A', gender: 'male' as const },
+  { id: 'man-b', name: 'Man B', gender: 'male' as const },
+];
+
+// 의상 카테고리 (대본 생성에 사용되는 실제 카테고리)
+const DEFAULT_OUTFIT_CATEGORIES: OutfitCategory[] = [
+  { id: 'ROYAL', name: 'ROYAL', emoji: '👗', description: '로얄/우아한 의상', gender: 'female' },
+  { id: 'YOGA', name: 'YOGA', emoji: '🧘', description: '요가/애슬레저', gender: 'female' },
+  { id: 'GOLF LUXURY', name: 'GOLF LUXURY', emoji: '🏌️', description: '골프/럭셔리 스포츠웨어', gender: 'female' },
+  { id: 'SEXY', name: 'SEXY', emoji: '💋', description: '섹시/매혹적인 의상', gender: 'female' },
+  { id: 'MALE', name: 'MALE', emoji: '🕺', description: '남성 의상', gender: 'male' },
+];
+const DEFAULT_CATEGORY_IDS = new Set(DEFAULT_OUTFIT_CATEGORIES.map(category => category.id));
+
+// ============================================
+// 메인 컴포넌트
+// ============================================
+
+const CharacterPanel: React.FC<CharacterPanelProps> = ({
+  onCharacterSelect,
+  onOutfitSelect,
+  onCharactersSaved,
+  onCharacterAdded,
+  selectedSlot = 'woman-a'
+}) => {
+  // 탭 상태
+  const [activeTab, setActiveTab] = useState<'select' | 'manage' | 'outfit'>('select');
+
+  // 데이터 상태
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [outfits, setOutfits] = useState<Outfit[]>(DEFAULT_OUTFITS);
+  const [outfitCategories, setOutfitCategories] = useState<OutfitCategory[]>(DEFAULT_OUTFIT_CATEGORIES);
+  const [isLoading, setIsLoading] = useState(false);
+  const [baseOutfitOverrides, setBaseOutfitOverridesState] = useState<OutfitBaseOverrides>(() => getOutfitBaseOverrides());
+  const [showHiddenBaseOutfits, setShowHiddenBaseOutfits] = useState(false);
+  const [showHiddenUserOutfits, setShowHiddenUserOutfits] = useState(false);
+
+  // 선택 상태
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [selectedCharacterPreviewUrls, setSelectedCharacterPreviewUrls] = useState<{
+    representative: string | null;
+    front: string | null;
+    angle45: string | null;
+    back: string | null;
+  }>({
+    representative: null,
+    front: null,
+    angle45: null,
+    back: null,
+  });
+  const [selectedOutfitId, setSelectedOutfitId] = useState<string | null>(null);
+  const [selectedBaseOutfitId, setSelectedBaseOutfitId] = useState<string | null>(null);
+  const [showOutfitEditModal, setShowOutfitEditModal] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+  const [isModalDragging, setIsModalDragging] = useState(false);
+  const [modalDragOffset, setModalDragOffset] = useState({ x: 0, y: 0 });
+  const [editingOutfitName, setEditingOutfitName] = useState('');
+  const [editingOutfitPrompt, setEditingOutfitPrompt] = useState('');
+  const [editingOutfitCategory, setEditingOutfitCategory] = useState('');
+  const [editingBaseOutfitName, setEditingBaseOutfitName] = useState('');
+  const [editingBaseOutfitPrompt, setEditingBaseOutfitPrompt] = useState('');
+  const [editingBaseOutfitCategory, setEditingBaseOutfitCategory] = useState('');
+  const [isGeneratingOutfitPreview, setIsGeneratingOutfitPreview] = useState(false);
+  const [isGeneratingBaseOutfitPreview, setIsGeneratingBaseOutfitPreview] = useState(false);
+  const [isGeneratingOutfitPreviewAI, setIsGeneratingOutfitPreviewAI] = useState(false);
+  const [isGeneratingBaseOutfitPreviewAI, setIsGeneratingBaseOutfitPreviewAI] = useState(false);
+  const [isBatchGeneratingOutfitPreviews, setIsBatchGeneratingOutfitPreviews] = useState(false);
+  const [batchTotalOutfits, setBatchTotalOutfits] = useState(0);
+  const [batchCompletedOutfits, setBatchCompletedOutfits] = useState(0);
+  const [batchFailedOutfitIds, setBatchFailedOutfitIds] = useState<string[]>([]);
+  const [baseOutfitPreviewMap, setBaseOutfitPreviewMap] = useState<Record<string, string>>({});
+  const [includeBaseOutfitsInBatch, setIncludeBaseOutfitsInBatch] = useState(false);
+
+  // 의상 추가 상태
+  const [showAddOutfit, setShowAddOutfit] = useState(false);
+  const [newOutfitName, setNewOutfitName] = useState('');
+  const [newOutfitPrompt, setNewOutfitPrompt] = useState('');
+  const [newOutfitCategory, setNewOutfitCategory] = useState(DEFAULT_OUTFIT_CATEGORIES[0]?.id || 'ROYAL');
+
+  // 카테고리 추가 상태
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryGender, setNewCategoryGender] = useState<OutfitCategory['gender']>('female');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [editingCategoryGender, setEditingCategoryGender] = useState<OutfitCategory['gender']>('female');
+
+  // 카테고리 드롭다운 상태
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  // 캐릭터 관리 상태 (서브탭: face, body 2개로 통합)
+  const [manageSubTab, setManageSubTab] = useState<'face' | 'body'>('face');
+  const [newCharacter, setNewCharacter] = useState({
+    name: '',
+    age: '30대',
+    gender: 'female' as 'female' | 'male',
+    face: '',
+    hair: '',
+    body: '',
+    style: ''
+  });
+
+  type BodyTuning = {
+    overall: number;
+    shoulderWidth: number;
+    legLength: number;
+    bustFront: number;
+    bustHeight: number;
+    pelvisWidth: number;
+    buttProjection: number;
+    buttLift: number;
+  };
+
+  const DEFAULT_BODY_TUNING: BodyTuning = {
+    overall: 55,
+    shoulderWidth: 50,
+    legLength: 60,
+    bustFront: 55,
+    bustHeight: 52,
+    pelvisWidth: 55,
+    buttProjection: 60,
+    buttLift: 52
+  };
+
+  const [bodyTuning, setBodyTuning] = useState<BodyTuning>({ ...DEFAULT_BODY_TUNING });
+  const [bodyTuningPreview, setBodyTuningPreview] = useState('');
+  const [showBodyTuningModal, setShowBodyTuningModal] = useState(false);
+  const [bodyPreviewView, setBodyPreviewView] = useState<'front' | 'side' | 'back'>('side');
+  const [bodyPreviewAngle, setBodyPreviewAngle] = useState(90);
+  const [isBodyPreviewDragging, setIsBodyPreviewDragging] = useState(false);
+  const [bodyPresetName, setBodyPresetName] = useState('');
+  const [bodyTuningPresets, setBodyTuningPresets] = useState<Array<{ id: string; name: string; tuning: BodyTuning }>>([]);
+  const BODY_TUNING_PRESET_KEY = 'character-body-tuning-presets';
+  const bodyPreviewDragRef = useRef<{ x: number; angle: number } | null>(null);
+
+  const toSizeLabel = (value: number, scale: string[]) => {
+    if (value <= 25) return scale[0];
+    if (value <= 50) return scale[1];
+    if (value <= 75) return scale[2];
+    return scale[3];
+  };
+
+  const buildBodyFromTuning = useCallback((tuning: BodyTuning, gender: 'female' | 'male') => {
+    const overall = toSizeLabel(tuning.overall, ['slim', 'balanced', 'curvy', 'voluminous']);
+    const shoulders = toSizeLabel(tuning.shoulderWidth, ['narrow shoulders', 'balanced shoulders', 'broad shoulders', 'very broad shoulders']);
+    const leg = toSizeLabel(tuning.legLength, ['short legs', 'average leg length', 'long legs', 'extra-long legs']);
+    const bustFront = toSizeLabel(tuning.bustFront, ['subtle', 'moderate', 'full', 'very full']);
+    const bustHeight = toSizeLabel(tuning.bustHeight, ['low-set bust line', 'natural bust line', 'lifted bust line', 'high bust line']);
+    const pelvisWidth = toSizeLabel(tuning.pelvisWidth, ['narrow pelvis', 'balanced pelvis', 'wide pelvis', 'very wide pelvis']);
+    const buttProjection = toSizeLabel(tuning.buttProjection, ['subtle projection', 'moderate projection', 'full projection', 'very full projection']);
+    const buttLift = toSizeLabel(tuning.buttLift, ['low hip line', 'natural hip line', 'lifted hip line', 'high hip line']);
+
+    const core = gender === 'female'
+      ? `overall ${overall} body proportions, ${shoulders}, ${leg}, bust volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`
+      : `overall ${overall} body proportions, ${shoulders}, ${leg}, chest volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`;
+
+    return `${core}, natural anatomy, balanced posture, well-proportioned silhouette`;
+  }, []);
+
+  React.useEffect(() => {
+    const preview = buildBodyFromTuning(bodyTuning, newCharacter.gender);
+    setBodyTuningPreview(preview);
+  }, [bodyTuning, newCharacter.gender, buildBodyFromTuning]);
+
+  React.useEffect(() => {
+    const stored = getAppStorageCachedValue<Array<{ id: string; name: string; tuning: BodyTuning }>>(
+      BODY_TUNING_PRESET_KEY,
+      []
+    );
+    if (Array.isArray(stored) && stored.length > 0) {
+      setBodyTuningPresets(stored);
+    }
+  }, []);
+
+  const saveBodyPresets = useCallback((next: Array<{ id: string; name: string; tuning: BodyTuning }>) => {
+    setBodyTuningPresets(next);
+    setAppStorageValue(BODY_TUNING_PRESET_KEY, next).catch((error) => {
+      console.warn('body tuning preset save failed:', error);
+    });
+  }, []);
+
+  const getBodyPreviewMetrics = (tuning: BodyTuning) => {
+    const scale = (v: number, range = 22) => ((v - 50) / 50) * range;
+    const baseWidth = 88 + scale(tuning.overall, 22);
+    const shoulderWidth = baseWidth + scale(tuning.shoulderWidth, 28);
+    const bustFront = baseWidth + scale(tuning.bustFront, 26);
+    const bustBack = baseWidth + scale(tuning.buttProjection, 12);
+    const bustUpper = baseWidth - 10 + scale(tuning.bustHeight, 10);
+    const bustLower = baseWidth - 4 + scale(tuning.bustFront, 12);
+    const hipsFront = baseWidth + scale(tuning.pelvisWidth, 28);
+    const hipsBack = baseWidth + scale(tuning.buttProjection, 26);
+    const hipsUpper = baseWidth - 6 + scale(tuning.buttLift, 18);
+    const hipsLower = baseWidth + scale(tuning.pelvisWidth, 18);
+    const leg = 110 + scale(tuning.legLength, 40);
+    return {
+      baseWidth,
+      shoulderWidth,
+      bustFront,
+      bustBack,
+      bustUpper,
+      bustLower,
+      hipsFront,
+      hipsBack,
+      hipsUpper,
+      hipsLower,
+      leg
+    };
+  };
+
+  const renderBodyPreviewSvg = (tuning: BodyTuning, view: 'front' | 'side' | 'back', angle: number) => {
+    const metrics = getBodyPreviewMetrics(tuning);
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+    const cx = 150;
+    const top = 36;
+    const headSize = 30;
+    const neckW = 20;
+    const neckH = 16;
+    const shoulderW = clamp(metrics.shoulderWidth + 30, 86, 178);
+    const waistW = clamp(metrics.baseWidth - 28, 54, 118);
+    const bustUpperW = clamp(metrics.bustUpper, 65, 160);
+    const bustLowerWBase = view === 'front' ? metrics.bustFront : view === 'back' ? metrics.bustBack : (metrics.bustFront + metrics.bustBack) / 2;
+    const bustLowerW = clamp(bustLowerWBase, 70, 170);
+    const hipsUpperWBase = view === 'front' ? metrics.hipsFront : view === 'back' ? metrics.hipsBack : (metrics.hipsFront + metrics.hipsBack) / 2;
+    const hipsUpperW = clamp(hipsUpperWBase - 6, 70, 180);
+    const hipsLowerW = clamp(metrics.hipsLower, 75, 190);
+    const thighW = clamp((hipsLowerW + waistW) / 2, 64, 158);
+    const kneeW = clamp(thighW - 22, 42, 120);
+    const ankleW = clamp(kneeW - 14, 26, 100);
+    const legHeight = clamp(metrics.leg, 90, 170);
+    const torsoStartY = top + headSize + 12;
+    const segments = [
+      { y: torsoStartY + 6, half: shoulderW / 2 },
+      { y: torsoStartY + 36, half: bustUpperW / 2 },
+      { y: torsoStartY + 72, half: bustLowerW / 2 },
+      { y: torsoStartY + 110, half: waistW / 2 },
+      { y: torsoStartY + 148, half: hipsUpperW / 2 },
+      { y: torsoStartY + 188, half: hipsLowerW / 2 },
+      { y: torsoStartY + 220, half: thighW / 2 },
+      { y: torsoStartY + 220 + legHeight * 0.55, half: kneeW / 2 },
+      { y: torsoStartY + 220 + legHeight, half: ankleW / 2 }
+    ];
+
+    const buildSymmetricPath = () => {
+      let d = `M ${cx - segments[0].half} ${segments[0].y}`;
+      for (let i = 1; i < segments.length; i += 1) {
+        const prev = segments[i - 1];
+        const curr = segments[i];
+        const midY = (prev.y + curr.y) / 2;
+        d += ` Q ${cx - prev.half} ${midY} ${cx - curr.half} ${curr.y}`;
+      }
+      const last = segments[segments.length - 1];
+      d += ` L ${cx + last.half} ${last.y}`;
+      for (let i = segments.length - 2; i >= 0; i -= 1) {
+        const next = segments[i + 1];
+        const curr = segments[i];
+        const midY = (next.y + curr.y) / 2;
+        d += ` Q ${cx + next.half} ${midY} ${cx + curr.half} ${curr.y}`;
+      }
+      d += ' Z';
+      return d;
+    };
+
+    const buildSidePath = () => {
+      const norm = (value: number) => (value - 50) / 50;
+      const baseDepth = clamp(metrics.baseWidth * 0.5, 40, 95);
+      const frontDepth = (value: number) => baseDepth * (0.9 + norm(value) * 0.25);
+      const backDepth = (value: number) => baseDepth * (0.85 + norm(value) * 0.2);
+
+      const sideSegments = [
+        { y: segments[0].y, left: backDepth(metrics.bustBack), right: frontDepth(metrics.bustFront) },
+        { y: segments[1].y, left: backDepth(metrics.bustBack), right: frontDepth(metrics.bustFront) },
+        { y: segments[2].y, left: backDepth(metrics.bustBack), right: frontDepth(metrics.bustFront) },
+        { y: segments[3].y, left: backDepth(metrics.baseWidth), right: frontDepth(metrics.baseWidth) },
+        { y: segments[4].y, left: backDepth(metrics.hipsBack), right: frontDepth(metrics.hipsFront) },
+        { y: segments[5].y, left: backDepth(metrics.hipsBack), right: frontDepth(metrics.hipsFront) },
+        { y: segments[6].y, left: backDepth(metrics.hipsBack * 0.85), right: frontDepth(metrics.hipsFront * 0.85) },
+        { y: segments[7].y, left: backDepth(metrics.hipsBack * 0.7), right: frontDepth(metrics.hipsFront * 0.7) },
+        { y: segments[8].y, left: backDepth(metrics.hipsBack * 0.55), right: frontDepth(metrics.hipsFront * 0.55) }
+      ];
+
+      let d = `M ${cx - sideSegments[0].left} ${sideSegments[0].y}`;
+      for (let i = 1; i < sideSegments.length; i += 1) {
+        const prev = sideSegments[i - 1];
+        const curr = sideSegments[i];
+        const midY = (prev.y + curr.y) / 2;
+        d += ` Q ${cx - prev.left} ${midY} ${cx - curr.left} ${curr.y}`;
+      }
+      const last = sideSegments[sideSegments.length - 1];
+      d += ` L ${cx + last.right} ${last.y}`;
+      for (let i = sideSegments.length - 2; i >= 0; i -= 1) {
+        const next = sideSegments[i + 1];
+        const curr = sideSegments[i];
+        const midY = (next.y + curr.y) / 2;
+        d += ` Q ${cx + next.right} ${midY} ${cx + curr.right} ${curr.y}`;
+      }
+      d += ' Z';
+      return d;
+    };
+
+    const bodyPath = view === 'side' ? buildSidePath() : buildSymmetricPath();
+    const scaleX = 0.75 + (Math.abs(angle - 90) / 90) * 0.25;
+    const viewLabel = view === 'front' ? 'front' : view === 'back' ? 'back' : 'side';
+    const highlightShift = ((angle - 90) / 90) * 18;
+    const shoulderY = segments[0].y;
+    const hipY = segments[5].y - 6;
+    const kneeY = segments[7].y;
+    const ankleY = segments[8].y;
+    const armLength = 90 + (metrics.baseWidth * 0.2);
+    const armWidth = clamp(20 + (metrics.baseWidth - 88) * 0.2, 18, 30);
+    const legWidth = clamp(26 + (metrics.baseWidth - 88) * 0.25, 22, 36);
+    const legGap = view === 'side' ? 6 : 14;
+    const forearmWidth = clamp(armWidth - 6, 12, 24);
+    const calfWidth = clamp(legWidth - 8, 14, 28);
+    const innerLegGap = view === 'side' ? 4 : clamp(8 + ((100 - tuning.pelvisWidth) / 100) * 10, 8, 18);
+    const handRadius = clamp(forearmWidth * 0.34, 6, 10);
+    const footWidth = view === 'side' ? 34 : 28;
+    const chestY = segments[2].y - 4;
+    const waistY = segments[3].y + 2;
+    const pelvisY = segments[5].y - 6;
+
+    const buildArmPath = (side: 'left' | 'right') => {
+      const direction = side === 'left' ? -1 : 1;
+      const shoulderX = cx + direction * (shoulderW / 2 - 6);
+      const elbowX = shoulderX + direction * (10 + armWidth * 0.25);
+      const handX = elbowX + direction * 2;
+      const shoulderTop = shoulderY + 10;
+      const elbowY = shoulderTop + armLength * 0.48;
+      const handY = shoulderTop + armLength;
+      return [
+        `M ${shoulderX} ${shoulderTop}`,
+        `Q ${shoulderX + direction * armWidth * 0.65} ${shoulderTop + 16} ${elbowX + direction * forearmWidth * 0.6} ${elbowY}`,
+        `Q ${handX + direction * forearmWidth * 0.45} ${handY - 10} ${handX} ${handY}`,
+        `Q ${handX - direction * forearmWidth * 0.75} ${handY - 2} ${elbowX - direction * forearmWidth * 0.55} ${elbowY}`,
+        `Q ${shoulderX - direction * armWidth * 0.55} ${shoulderTop + 18} ${shoulderX} ${shoulderTop}`,
+        'Z',
+      ].join(' ');
+    };
+
+    const buildSideArmPath = () => {
+      const shoulderX = cx + shoulderW / 2 - armWidth - 4;
+      const elbowX = shoulderX + 6;
+      const shoulderTop = shoulderY + 12;
+      const elbowY = shoulderTop + armLength * 0.52;
+      const handY = shoulderTop + armLength * 0.96;
+      return [
+        `M ${shoulderX} ${shoulderTop}`,
+        `Q ${shoulderX + armWidth * 0.8} ${shoulderTop + 20} ${elbowX + forearmWidth} ${elbowY}`,
+        `Q ${elbowX + forearmWidth * 0.85} ${handY - 8} ${elbowX + forearmWidth * 0.3} ${handY}`,
+        `Q ${elbowX - forearmWidth * 0.6} ${handY - 4} ${elbowX - forearmWidth * 0.4} ${elbowY}`,
+        `Q ${shoulderX - armWidth * 0.35} ${shoulderTop + 18} ${shoulderX} ${shoulderTop}`,
+        'Z',
+      ].join(' ');
+    };
+
+    const buildLegPath = (side: 'left' | 'right') => {
+      const direction = side === 'left' ? -1 : 1;
+      const thighOuterX = cx + direction * (innerLegGap + legWidth);
+      const thighInnerX = cx + direction * innerLegGap;
+      const calfOuterX = cx + direction * (innerLegGap + calfWidth);
+      const calfInnerX = cx + direction * (innerLegGap - 1);
+      const footTipX = cx + direction * (innerLegGap + footWidth);
+      return [
+        `M ${thighInnerX} ${hipY + 8}`,
+        `Q ${thighOuterX} ${hipY + 18} ${thighOuterX - direction * 4} ${kneeY - 8}`,
+        `Q ${calfOuterX} ${kneeY + 34} ${calfOuterX - direction * 2} ${ankleY}`,
+        `Q ${footTipX} ${ankleY + 10} ${footTipX - direction * 10} ${ankleY + 16}`,
+        `L ${calfInnerX} ${ankleY + 4}`,
+        `Q ${thighInnerX + direction * 2} ${kneeY + 30} ${thighInnerX} ${hipY + 8}`,
+        'Z',
+      ].join(' ');
+    };
+
+    const buildSideLegPath = () => {
+      const startX = cx + 3;
+      const outerX = startX + legWidth;
+      const calfX = startX + calfWidth;
+      return [
+        `M ${startX} ${hipY + 10}`,
+        `Q ${outerX} ${hipY + 18} ${outerX - 4} ${kneeY - 10}`,
+        `Q ${calfX + 8} ${kneeY + 36} ${calfX} ${ankleY}`,
+        `Q ${calfX + 18} ${ankleY + 10} ${calfX + 6} ${ankleY + 16}`,
+        `L ${startX - 2} ${ankleY + 6}`,
+        `Q ${startX + 2} ${kneeY + 28} ${startX} ${hipY + 10}`,
+        'Z',
+      ].join(' ');
+    };
+
+    return (
+      <svg viewBox="0 0 300 520" className="w-full h-full">
+        <defs>
+          <radialGradient id={`bgGlow-${viewLabel}`} cx="50%" cy="35%" r="60%">
+            <stop offset="0%" stopColor="rgba(99,102,241,0.18)" />
+            <stop offset="100%" stopColor="rgba(15,23,42,0.0)" />
+          </radialGradient>
+          <linearGradient id={`bodyGradient-${viewLabel}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f4d7c4" />
+            <stop offset="45%" stopColor="#e6b79a" />
+            <stop offset="100%" stopColor="#bf8769" />
+          </linearGradient>
+          <radialGradient id={`skinHighlight-${viewLabel}`} cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+          <linearGradient id={`hairGradient-${viewLabel}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3a2a22" />
+            <stop offset="100%" stopColor="#1f1713" />
+          </linearGradient>
+          <linearGradient id={`bodyShadow-${viewLabel}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(0,0,0,0.24)" />
+            <stop offset="60%" stopColor="rgba(0,0,0,0.05)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
+          </linearGradient>
+          <linearGradient id={`bodyGlow-${viewLabel}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+          <filter id={`softShadow-${viewLabel}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="rgba(0,0,0,0.45)" />
+          </filter>
+        </defs>
+        <rect x="12" y="12" width="276" height="496" rx="26" fill="rgba(10,15,28,0.85)" stroke="rgba(148,163,184,0.2)" />
+        <rect x="12" y="12" width="276" height="496" rx="26" fill={`url(#bgGlow-${viewLabel})`} />
+        <g transform={`translate(${cx} 0) scale(${scaleX} 1) translate(${-cx} 0)`}>
+          <ellipse cx={cx} cy={top + headSize / 2 - 2} rx={headSize * 0.72} ry={headSize * 0.86} fill={`url(#hairGradient-${viewLabel})`} opacity={0.95} />
+          <ellipse cx={cx} cy={top + headSize / 2} rx={headSize * 0.55} ry={headSize * 0.7} fill={`url(#bodyGradient-${viewLabel})`} filter={`url(#softShadow-${viewLabel})`} />
+          <rect
+            x={cx - neckW / 2}
+            y={top + headSize - 6}
+            width={neckW}
+            height={neckH}
+            rx={neckW / 2}
+            fill={`url(#bodyGradient-${viewLabel})`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#bodyGradient-${viewLabel})`}
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth="1.2"
+            filter={`url(#softShadow-${viewLabel})`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#bodyGlow-${viewLabel})`}
+            opacity="0.2"
+            transform={`translate(${highlightShift} 0)`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#bodyShadow-${viewLabel})`}
+            opacity="0.35"
+            transform={`translate(${-highlightShift * 0.6} 0)`}
+          />
+          <path
+            d={bodyPath}
+            fill={`url(#skinHighlight-${viewLabel})`}
+            opacity="0.35"
+            transform={`translate(${highlightShift * 0.35} -2)`}
+          />
+          {view !== 'back' && (
+            <circle cx={cx + (view === 'side' ? 16 : 0)} cy={segments[2].y - 8} r={view === 'side' ? 8 : 10} fill="rgba(255,255,255,0.2)" />
+          )}
+          <ellipse cx={cx + (view === 'side' ? 14 : 0)} cy={segments[5].y - 2} rx={view === 'side' ? 11 : 18} ry={view === 'side' ? 10 : 14} fill="rgba(255,255,255,0.12)" />
+          {view !== 'back' && (
+            <>
+              <ellipse cx={cx} cy={chestY} rx={view === 'side' ? 10 : 18} ry={view === 'side' ? 7 : 11} fill="rgba(255,255,255,0.08)" />
+              <ellipse cx={cx} cy={pelvisY} rx={view === 'side' ? 12 : 24} ry={view === 'side' ? 8 : 13} fill="rgba(255,255,255,0.06)" />
+            </>
+          )}
+          <path
+            d={`M ${cx - 8} ${chestY + 6} Q ${cx} ${waistY - 6} ${cx - 5} ${pelvisY + 6}`}
+            stroke="rgba(255,255,255,0.12)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            fill="none"
+            opacity={view === 'side' ? 0.28 : 0.4}
+          />
+          {view !== 'side' && (
+            <>
+              <path d={buildArmPath('left')} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.88} />
+              <path d={buildArmPath('right')} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.88} />
+              <circle cx={cx - shoulderW / 2 - 14} cy={shoulderY + armLength + 8} r={handRadius} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.92} />
+              <circle cx={cx + shoulderW / 2 + 14} cy={shoulderY + armLength + 8} r={handRadius} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.92} />
+            </>
+          )}
+          {view === 'side' && (
+            <>
+              <path d={buildSideArmPath()} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.82} />
+              <circle cx={cx + shoulderW / 2 - 2} cy={shoulderY + armLength + 2} r={handRadius} fill={`url(#bodyGradient-${viewLabel})`} opacity={0.9} />
+            </>
+          )}
+          {view !== 'side' ? (
+            <>
+              <path d={buildLegPath('left')} fill={`url(#bodyGradient-${viewLabel})`} />
+              <path d={buildLegPath('right')} fill={`url(#bodyGradient-${viewLabel})`} />
+            </>
+          ) : (
+            <path d={buildSideLegPath()} fill={`url(#bodyGradient-${viewLabel})`} />
+          )}
+          {view !== 'side' ? (
+            <>
+              <ellipse cx={cx - innerLegGap - 12} cy={ankleY + 16} rx={12} ry={5} fill="rgba(25,30,45,0.85)" />
+              <ellipse cx={cx + innerLegGap + 12} cy={ankleY + 16} rx={12} ry={5} fill="rgba(25,30,45,0.85)" />
+            </>
+          ) : (
+            <ellipse cx={cx + 18} cy={ankleY + 16} rx={16} ry={5} fill="rgba(25,30,45,0.85)" />
+          )}
+          <circle cx={cx} cy={shoulderY + 8} r={4} fill="rgba(255,255,255,0.22)" />
+          <circle cx={cx} cy={segments[3].y - 8} r={4} fill="rgba(255,255,255,0.22)" />
+          <circle cx={cx} cy={segments[5].y + 2} r={4} fill="rgba(255,255,255,0.22)" />
+          <circle cx={cx} cy={kneeY} r={4} fill="rgba(255,255,255,0.22)" />
+        </g>
+        <ellipse cx={cx} cy={ankleY + 22} rx={60} ry={10} fill="rgba(0,0,0,0.4)" />
+      </svg>
+    );
+  };
+
+  const BODY_TUNING_CONTROLS: Array<{ key: keyof BodyTuning; label: string; hint: string }> = [
+    { key: 'overall', label: '전체 체형', hint: '전체 크기' },
+    { key: 'shoulderWidth', label: '어깨 넓이', hint: '좁음 ↔ 넓음' },
+    { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
+    { key: 'bustHeight', label: '가슴 위', hint: '가슴 라인 위/아래' },
+    { key: 'bustFront', label: '가슴 앞', hint: '앞으로 작음 ↔ 큼' },
+    { key: 'pelvisWidth', label: '골반 크기', hint: '좁음 ↔ 넓음' },
+    { key: 'buttProjection', label: '엉덩이 뒤', hint: '뒤로 작음 ↔ 큼' },
+    { key: 'buttLift', label: '엉덩이 위', hint: '아래 ↔ 위' }
+  ];
+  const BASIC_BODY_KEYS: Array<keyof BodyTuning> = ['overall', 'shoulderWidth', 'legLength'];
+
+  const applyBodyTuningToCharacter = useCallback(() => {
+    const prompt = buildBodyFromTuning(bodyTuning, newCharacter.gender);
+    setNewCharacter(prev => ({ ...prev, body: prompt }));
+    setExtractedBody(prev => (prev ? { ...prev, en: prompt } : prev));
+  }, [bodyTuning, buildBodyFromTuning, newCharacter.gender]);
+
+  const clampAngle = (value: number) => Math.max(0, Math.min(180, value));
+
+  const syncViewFromAngle = useCallback((angle: number) => {
+    if (angle < 45) return 'front';
+    if (angle < 135) return 'side';
+    return 'back';
+  }, []);
+
+  const selectedCharacter = useMemo(
+    () => characters.find((char) => char.id === selectedCharacterId) || null,
+    [characters, selectedCharacterId]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    const objectUrls: string[] = [];
+
+    const loadSelectedCharacterPreviews = async () => {
+      if (!selectedCharacter) {
+        setSelectedCharacterPreviewUrls({
+          representative: null,
+          front: null,
+          angle45: null,
+          back: null,
+        });
+        return;
+      }
+
+      const blobToUrl = async (blobId?: string) => {
+        if (!blobId) return null;
+        try {
+          const blob = await getBlob(blobId);
+          if (!blob) return null;
+          const url = URL.createObjectURL(blob);
+          objectUrls.push(url);
+          return url;
+        } catch {
+          return null;
+        }
+      };
+
+      const representativeId = selectedCharacter.generatedImageId || selectedCharacter.turnaroundImageIds?.front;
+      const [representative, front, angle45, back] = await Promise.all([
+        blobToUrl(representativeId),
+        blobToUrl(selectedCharacter.turnaroundImageIds?.front),
+        blobToUrl(selectedCharacter.turnaroundImageIds?.angle45),
+        blobToUrl(selectedCharacter.turnaroundImageIds?.back),
+      ]);
+
+      if (!isMounted) {
+        objectUrls.forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+
+      setSelectedCharacterPreviewUrls({
+        representative,
+        front,
+        angle45,
+        back,
+      });
+    };
+
+    loadSelectedCharacterPreviews();
+
+    return () => {
+      isMounted = false;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [selectedCharacter]);
+
+  useEffect(() => {
+    setBodyPreviewView(syncViewFromAngle(bodyPreviewAngle));
+  }, [bodyPreviewAngle, syncViewFromAngle]);
+
+  const activeBodyReferencePreview = useMemo(() => {
+    if (bodyPreviewView === 'front') return selectedCharacterPreviewUrls.front || selectedCharacterPreviewUrls.representative;
+    if (bodyPreviewView === 'back') return selectedCharacterPreviewUrls.back || selectedCharacterPreviewUrls.representative;
+    return selectedCharacterPreviewUrls.angle45 || selectedCharacterPreviewUrls.front || selectedCharacterPreviewUrls.representative;
+  }, [bodyPreviewView, selectedCharacterPreviewUrls]);
+
+  const renderImageBasedBodyPreview = () => {
+    if (!activeBodyReferencePreview) return null;
+
+    const overallScale = 0.92 + bodyTuning.overall / 500;
+    const shoulderScaleX = 0.9 + bodyTuning.shoulderWidth / 300;
+    const chestScaleX = 0.88 + bodyTuning.bustFront / 220;
+    const chestScaleY = 0.94 + bodyTuning.bustHeight / 700;
+    const chestTranslateY = (50 - bodyTuning.bustHeight) * 0.18;
+    const waistScaleX = 0.92 + (bodyTuning.overall - 50) / 700;
+    const pelvisScaleX = 0.9 + bodyTuning.pelvisWidth / 220;
+    const buttScaleX = 0.9 + bodyTuning.buttProjection / 240;
+    const buttTranslateX = bodyPreviewView === 'back'
+      ? 0
+      : bodyPreviewView === 'side'
+        ? (bodyTuning.buttProjection - 50) * 0.14
+        : (bodyTuning.pelvisWidth - 50) * 0.05;
+    const buttTranslateY = (50 - bodyTuning.buttLift) * 0.18;
+    const pelvisTranslateY = (50 - bodyTuning.buttLift) * 0.1;
+    const legScaleY = 0.88 + bodyTuning.legLength / 250;
+    const sideShift = bodyPreviewView === 'side' ? 6 : 0;
+
+    const overlayClassName = 'absolute inset-0 w-full h-full object-contain select-none pointer-events-none';
+    const withMask = (radial: string, linear?: string) => ({
+      WebkitMaskImage: linear ? `${radial}, ${linear}` : radial,
+      maskImage: linear ? `${radial}, ${linear}` : radial,
+      WebkitMaskRepeat: 'no-repeat',
+      maskRepeat: 'no-repeat',
+      WebkitMaskComposite: 'source-in',
+      maskComposite: 'intersect',
+    } as React.CSSProperties);
+
+    return (
+      <div className="absolute inset-0">
+        <img
+          src={activeBodyReferencePreview}
+          alt="캐릭터 체형 기준 프리뷰"
+          className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none opacity-90"
+          style={{ transform: `scale(${overallScale})` }}
+        />
+
+        <img
+          src={activeBodyReferencePreview}
+          alt=""
+          aria-hidden="true"
+          className={overlayClassName}
+          style={{
+            ...withMask(
+              'radial-gradient(ellipse 28% 18% at 50% 31%, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(to bottom, transparent 10%, black 22%, black 46%, transparent 58%)'
+            ),
+            transform: `translate(${sideShift}px, ${chestTranslateY}px) scale(${chestScaleX}, ${chestScaleY})`,
+            transformOrigin: '50% 31%',
+            opacity: 0.95,
+            filter: 'drop-shadow(0 0 14px rgba(139, 92, 246, 0.22))',
+          }}
+        />
+
+        <img
+          src={activeBodyReferencePreview}
+          alt=""
+          aria-hidden="true"
+          className={overlayClassName}
+          style={{
+            ...withMask(
+              'radial-gradient(ellipse 22% 16% at 50% 46%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(to bottom, transparent 26%, black 38%, black 58%, transparent 70%)'
+            ),
+            transform: `scale(${waistScaleX}, 1.02)`,
+            transformOrigin: '50% 48%',
+            opacity: 0.86,
+          }}
+        />
+
+        <img
+          src={activeBodyReferencePreview}
+          alt=""
+          aria-hidden="true"
+          className={overlayClassName}
+          style={{
+            ...withMask(
+              'radial-gradient(ellipse 34% 20% at 50% 58%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(to bottom, transparent 38%, black 48%, black 74%, transparent 86%)'
+            ),
+            transform: `translate(${sideShift * 0.4}px, ${pelvisTranslateY}px) scale(${pelvisScaleX}, 1.03)`,
+            transformOrigin: '50% 58%',
+            opacity: 0.9,
+          }}
+        />
+
+        <img
+          src={activeBodyReferencePreview}
+          alt=""
+          aria-hidden="true"
+          className={overlayClassName}
+          style={{
+            ...withMask(
+              bodyPreviewView === 'side'
+                ? 'radial-gradient(ellipse 26% 18% at 58% 60%, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%)'
+                : 'radial-gradient(ellipse 28% 18% at 50% 60%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(to bottom, transparent 42%, black 52%, black 76%, transparent 88%)'
+            ),
+            transform: `translate(${sideShift * 0.7 + buttTranslateX}px, ${buttTranslateY}px) scale(${buttScaleX}, 1.02)`,
+            transformOrigin: '50% 58%',
+            opacity: 0.94,
+            filter: 'drop-shadow(0 0 16px rgba(59, 130, 246, 0.16))',
+          }}
+        />
+
+        <img
+          src={activeBodyReferencePreview}
+          alt=""
+          aria-hidden="true"
+          className={overlayClassName}
+          style={{
+            ...withMask(
+              'radial-gradient(ellipse 28% 34% at 50% 79%, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(to bottom, transparent 56%, black 64%, black 100%)'
+            ),
+            transform: `translateY(${((legScaleY - 1) * 20).toFixed(1)}px) scale(1.02, ${legScaleY})`,
+            transformOrigin: '50% 58%',
+            opacity: 0.93,
+          }}
+        />
+
+        <img
+          src={activeBodyReferencePreview}
+          alt=""
+          aria-hidden="true"
+          className={overlayClassName}
+          style={{
+            ...withMask(
+              'radial-gradient(ellipse 34% 12% at 50% 22%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(to bottom, transparent 8%, black 16%, black 30%, transparent 40%)'
+            ),
+            transform: `scale(${shoulderScaleX}, 1)`,
+            transformOrigin: '50% 22%',
+            opacity: 0.88,
+          }}
+        />
+
+        <div className="absolute inset-x-6 top-4 rounded-lg border border-slate-700/70 bg-slate-950/75 px-3 py-2 backdrop-blur-sm">
+          <div className="text-[10px] font-bold text-slate-200">AI 3면도 기반 체형 프리뷰</div>
+          <div className="text-[10px] text-slate-400 mt-1">어깨, 가슴 위치/볼륨, 골반, 엉덩이, 다리 길이를 실제 캐릭터 이미지 기준으로 부드럽게 변형합니다.</div>
+        </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    if (!showBodyTuningModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showBodyTuningModal]);
+
+  useEffect(() => {
+    if (!showBodyTuningModal) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBodyTuningModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showBodyTuningModal]);
+
+  // 의상 추출 상태 (서버 캐시에서 복원)
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedOutfit, setExtractedOutfit] = useState<ExtractedOutfit | null>(null);
+
+  // 얼굴 추출 상태 (서버 캐시에서 복원)
+  const [isExtractingFace, setIsExtractingFace] = useState(false);
+  const [extractedFace, setExtractedFace] = useState<ExtractedFeature | null>(null);
+
+  // 헤어 추출 상태 (서버 캐시에서 복원)
+  const [isExtractingHair, setIsExtractingHair] = useState(false);
+  const [extractedHair, setExtractedHair] = useState<ExtractedFeature | null>(null);
+
+  // 체형 추출 상태 (서버 캐시에서 복원)
+  const [isExtractingBody, setIsExtractingBody] = useState(false);
+  const [extractedBody, setExtractedBody] = useState<ExtractedFeature | null>(null);
+
+  // 자동 번역 상태
+  const [isTranslatingOutfit, setIsTranslatingOutfit] = useState(false);
+  const [isTranslatingFace, setIsTranslatingFace] = useState(false);
+  const [isTranslatingHair, setIsTranslatingHair] = useState(false);
+  const [isTranslatingBody, setIsTranslatingBody] = useState(false);
+  const outfitTranslateTimer = useRef<NodeJS.Timeout | null>(null);
+  const faceTranslateTimer = useRef<NodeJS.Timeout | null>(null);
+  const hairTranslateTimer = useRef<NodeJS.Timeout | null>(null);
+  const bodyTranslateTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // 이미지 생성 상태 (서버 캐시에서 복원)
+  const [generatedOutfitImage, setGeneratedOutfitImage] = useState<string | null>(null);
+  const [generatedFaceImage, setGeneratedFaceImage] = useState<string | null>(null);
+  const [generatedHairImage, setGeneratedHairImage] = useState<string | null>(null);
+  const [generatedBodyImage, setGeneratedBodyImage] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [aiForwardingType, setAiForwardingType] = useState<'outfit' | 'face' | 'hair' | 'body' | null>(null);
+  const aiForwardAbortRef = useRef<AbortController | null>(null);
+
+  // Lightbox 상태
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // 드래그 앤 드롭 상태
+  const [isDraggingFace, setIsDraggingFace] = useState(false);
+  const [isDraggingOutfit, setIsDraggingOutfit] = useState(false);
+  const [isDraggingHair, setIsDraggingHair] = useState(false);
+  const [isDraggingBody, setIsDraggingBody] = useState(false);
+
+  // 마지막 업로드 파일 저장 (재분석용)
+  const [lastFaceFile, setLastFaceFile] = useState<File | null>(null);
+  const [lastOutfitFile, setLastOutfitFile] = useState<File | null>(null);
+  const [lastOutfitImageData, setLastOutfitImageData] = useState<string | null>(null);
+  const [lastFaceImageData, setLastFaceImageData] = useState<string | null>(null);
+  const [lastHairImageData, setLastHairImageData] = useState<string | null>(null);
+  const [lastBodyImageData, setLastBodyImageData] = useState<string | null>(null);
+  const [isExtractionCacheLoaded, setIsExtractionCacheLoaded] = useState(false);
+  const [isResettingExtractionCache, setIsResettingExtractionCache] = useState(false);
+  const extractionCacheSaveTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // 복사 상태
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+
+  // ---------------------------------------------------------
+  // 데이터 로드
+  // ---------------------------------------------------------
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [loadedCharacters, outfitCatalog, previewMap] = await Promise.all([
+          fetchCharacters(),
+          fetchOutfitCatalog(),
+          fetchOutfitPreviewMap()
+        ]);
+
+        if (loadedCharacters.length > 0) setCharacters(loadedCharacters);
+
+        if (outfitCatalog.outfits.length > 0) {
+          setOutfits(outfitCatalog.outfits);
+        }
+
+        if (outfitCatalog.categories.length > 0) {
+          setOutfitCategories(outfitCatalog.categories);
+          setNewOutfitCategory(outfitCatalog.categories[0].id);
+        }
+        setBaseOutfitPreviewMap(previewMap);
+      } catch (error) {
+        console.error('데이터 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // ---------------------------------------------------------
+  // 추출 결과 서버 캐시 로드/저장
+  // ---------------------------------------------------------
+  useEffect(() => {
+    let isMounted = true;
+    const loadCache = async () => {
+      const cache = await fetchExtractionCache();
+      if (!isMounted) return;
+      setExtractedOutfit(cache.extractedOutfit ?? null);
+      setExtractedFace(cache.extractedFace ?? null);
+      setExtractedHair(cache.extractedHair ?? null);
+      setExtractedBody(cache.extractedBody ?? null);
+      setGeneratedOutfitImage(cache.generatedOutfitImage ?? null);
+      setGeneratedFaceImage(cache.generatedFaceImage ?? null);
+      setGeneratedHairImage(cache.generatedHairImage ?? null);
+      setGeneratedBodyImage(cache.generatedBodyImage ?? null);
+      setLastOutfitImageData(cache.lastOutfitImageData ?? null);
+      setLastFaceImageData(cache.lastFaceImageData ?? null);
+      setLastHairImageData(cache.lastHairImageData ?? null);
+      setLastBodyImageData(cache.lastBodyImageData ?? null);
+      setIsExtractionCacheLoaded(true);
+    };
+    loadCache();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isExtractionCacheLoaded) return;
+    if (extractionCacheSaveTimer.current) {
+      clearTimeout(extractionCacheSaveTimer.current);
+    }
+    extractionCacheSaveTimer.current = setTimeout(() => {
+      saveExtractionCache({
+        extractedOutfit,
+        extractedFace,
+        extractedHair,
+        extractedBody,
+        generatedOutfitImage,
+        generatedFaceImage,
+        generatedHairImage,
+        generatedBodyImage,
+        lastOutfitImageData,
+        lastFaceImageData,
+        lastHairImageData,
+        lastBodyImageData
+      }).catch(() => {
+        // 저장 실패는 UI 흐름을 막지 않음
+        console.warn('추출 캐시 저장 실패');
+      });
+    }, 350);
+    return () => {
+      if (extractionCacheSaveTimer.current) {
+        clearTimeout(extractionCacheSaveTimer.current);
+      }
+    };
+  }, [
+    isExtractionCacheLoaded,
+    extractedOutfit,
+    extractedFace,
+    extractedHair,
+    extractedBody,
+    generatedOutfitImage,
+    generatedFaceImage,
+    generatedHairImage,
+    generatedBodyImage,
+    lastOutfitImageData,
+    lastFaceImageData,
+    lastHairImageData,
+    lastBodyImageData
+  ]);
+
+  // ---------------------------------------------------------
+  // 저장 헬퍼
+  // ---------------------------------------------------------
+  const saveOutfitsToBE = async (newOutfits: Outfit[], categories = outfitCategories) => {
+    try {
+      await saveOutfitCatalog(newOutfits, categories);
+    } catch (error) {
+      console.error('의상 저장 실패:', error);
+    }
+  };
+
+  const saveCharactersToBE = async (newChars: Character[]) => {
+    try {
+      await saveCharacters(newChars);
+      onCharactersSaved?.(newChars);
+    } catch (error) {
+      console.error('캐릭터 저장 실패:', error);
+    }
+  };
+
+  const handleDeleteCharacter = useCallback(async (id: string) => {
+    const target = characters.find((char) => char.id === id);
+    if (!target) return;
+    if (!window.confirm(`"${target.name}" 캐릭터를 삭제할까요?`)) return;
+    const updated = characters.filter((char) => char.id !== id);
+    setCharacters(updated);
+    await saveCharactersToBE(updated);
+    if (selectedCharacterId === id) {
+      setSelectedCharacterId(null);
+      onCharacterSelect?.(null, selectedSlot);
+    }
+    showToast('캐릭터가 삭제되었습니다.', 'success');
+  }, [characters, onCharacterSelect, saveCharactersToBE, selectedCharacterId, selectedSlot]);
+
+  // ---------------------------------------------------------
+  // 프롬프트 복사 핸들러
+  // ---------------------------------------------------------
+  const handleCopyPrompt = useCallback((prompt: string, id: string) => {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopiedPromptId(id);
+      showToast('프롬프트가 복사되었습니다.', 'success');
+      setTimeout(() => setCopiedPromptId(null), 2000);
+    }).catch(() => {
+      showToast('복사에 실패했습니다.', 'error');
+    });
+  }, []);
+
+  // ---------------------------------------------------------
+  // 한글 → 영문 자동 번역 함수
+  // ---------------------------------------------------------
+  const translateToEnglish = useCallback(async (koreanText: string, type: 'outfit' | 'face' | 'hair' | 'body') => {
+    if (!koreanText.trim()) return;
+
+    try {
+      if (type === 'outfit') setIsTranslatingOutfit(true);
+      if (type === 'face') setIsTranslatingFace(true);
+      if (type === 'hair') setIsTranslatingHair(true);
+      if (type === 'body') setIsTranslatingBody(true);
+
+      const response = await fetch('http://localhost:3002/api/translate-to-english', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: koreanText, type })
+      });
+
+      const result = await response.json();
+      if (result.success && result.translated) {
+        if (type === 'outfit') {
+          setExtractedOutfit(prev => prev ? { ...prev, en: result.translated } : null);
+        }
+        if (type === 'face') {
+          setExtractedFace(prev => prev ? { ...prev, en: result.translated } : null);
+        }
+        if (type === 'hair') {
+          setExtractedHair(prev => prev ? { ...prev, en: result.translated } : null);
+        }
+        if (type === 'body') {
+          setExtractedBody(prev => prev ? { ...prev, en: result.translated } : null);
+          // newCharacter.body에도 동기화
+          setNewCharacter(prev => ({ ...prev, body: result.translated }));
+        }
+        showToast('영문 프롬프트가 자동 번역되었습니다.', 'success');
+      }
+    } catch (error) {
+      console.error('번역 실패:', error);
+    } finally {
+      if (type === 'outfit') setIsTranslatingOutfit(false);
+      if (type === 'face') setIsTranslatingFace(false);
+      if (type === 'hair') setIsTranslatingHair(false);
+      if (type === 'body') setIsTranslatingBody(false);
+    }
+  }, []);
+
+  // 한글 수정 시 debounce 번역 (의상)
+  const handleOutfitKoChange = useCallback((newKo: string) => {
+    setExtractedOutfit(prev => prev ? { ...prev, ko: newKo } : null);
+
+    // 기존 타이머 취소
+    if (outfitTranslateTimer.current) {
+      clearTimeout(outfitTranslateTimer.current);
+    }
+
+    // 1초 후 자동 번역
+    outfitTranslateTimer.current = setTimeout(() => {
+      translateToEnglish(newKo, 'outfit');
+    }, 1000);
+  }, [translateToEnglish]);
+
+  // 한글 수정 시 debounce 번역 (얼굴)
+  const handleFaceKoChange = useCallback((newKo: string) => {
+    setExtractedFace(prev => prev ? { ...prev, ko: newKo } : null);
+
+    // 기존 타이머 취소
+    if (faceTranslateTimer.current) {
+      clearTimeout(faceTranslateTimer.current);
+    }
+
+    // 1초 후 자동 번역
+    faceTranslateTimer.current = setTimeout(() => {
+      translateToEnglish(newKo, 'face');
+    }, 1000);
+  }, [translateToEnglish]);
+
+  const handleHairKoChange = useCallback((newKo: string) => {
+    setExtractedHair(prev => prev ? { ...prev, ko: newKo } : null);
+
+    if (hairTranslateTimer.current) {
+      clearTimeout(hairTranslateTimer.current);
+    }
+
+    hairTranslateTimer.current = setTimeout(() => {
+      translateToEnglish(newKo, 'hair');
+    }, 1000);
+  }, [translateToEnglish]);
+
+  const handleBodyKoChange = useCallback((newKo: string) => {
+    setExtractedBody(prev => prev ? { ...prev, ko: newKo } : null);
+
+    if (bodyTranslateTimer.current) {
+      clearTimeout(bodyTranslateTimer.current);
+    }
+
+    bodyTranslateTimer.current = setTimeout(() => {
+      translateToEnglish(newKo, 'body');
+    }, 1000);
+  }, [translateToEnglish]);
+
+  // ---------------------------------------------------------
+  // 핸들러 (useCallback으로 메모이제이션)
+  // ---------------------------------------------------------
+  const handleExtractOutfit = useCallback(async (file: File | null, imageData?: string) => {
+  setIsExtracting(true);
+  setExtractedOutfit(null);
+  setGeneratedOutfitImage(null);
+
+  try {
+    let base64Image = imageData;
+
+    // ★★★ 핵심 수정: 파일이 있으면 무조건 새로 읽기 ★★★
+    if (file) {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      base64Image = await base64Promise;
+      
+      // 새 파일이면 이전 데이터 초기화 후 새 데이터 저장
+      setLastOutfitFile(file);
+      const storedFilename = await saveExtractionImage(base64Image, 'outfit');
+      setLastOutfitImageData(storedFilename || base64Image);
+    }
+
+    // imageData만 있는 경우 (재분석)
+    if (!base64Image) {
+      throw new Error('이미지 데이터가 없습니다.');
+    }
+    if (!file && imageData && imageData.startsWith('data:image')) {
+      const storedFilename = await saveExtractionImage(imageData, 'outfit');
+      if (storedFilename) setLastOutfitImageData(storedFilename);
+    }
+
+    const response = await fetch('http://localhost:3002/api/extract-outfit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageData: base64Image })
+    });
+
+      const result = await response.json();
+      if (result.success && result.prompt) {
+        const promptData = typeof result.prompt === 'string'
+          ? { name: '추출된 의상', en: result.prompt, ko: "분석된 의상입니다." }
+          : {
+              name: result.prompt.name || '추출된 의상',
+              en: result.prompt.en || result.prompt,
+              ko: result.prompt.ko || "분석된 의상입니다."
+            };
+
+        setExtractedOutfit(promptData);
+        showToast('의상 분석이 완료되었습니다.', 'success');
+      } else {
+        throw new Error(result.error || '분석 결과가 없습니다.');
+      }
+    } catch (error: any) {
+      console.error('의상 추출 실패:', error);
+      showToast(error.message || '이미지 분석에 실패했습니다.', 'error');
+    } finally {
+      setIsExtracting(false);
+    }
+  }, []);
+
+  const handleExtractFace = useCallback(async (file: File | null, imageData?: string) => {
+    setIsExtractingFace(true);
+    setExtractedFace(null);
+    setGeneratedFaceImage(null);
+
+    try {
+      let base64Image = imageData;
+
+      if (!base64Image && file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        base64Image = await base64Promise;
+      }
+
+      if (!base64Image) {
+        throw new Error('이미지 데이터가 없습니다.');
+      }
+
+      if (file) {
+        setLastFaceFile(file);
+        const storedFilename = await saveExtractionImage(base64Image, 'face');
+        setLastFaceImageData(storedFilename || base64Image);
+      }
+      if (!file && imageData && imageData.startsWith('data:image')) {
+        const storedFilename = await saveExtractionImage(imageData, 'face');
+        if (storedFilename) setLastFaceImageData(storedFilename);
+      }
+
+      const response = await fetch('http://localhost:3002/api/extract-face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64Image })
+      });
+
+      const result = await response.json();
+      if (result.success && result.prompt) {
+        const promptData = typeof result.prompt === 'string'
+          ? { en: result.prompt, ko: "분석된 얼굴 특징입니다." }
+          : result.prompt;
+
+        setExtractedFace(promptData);
+        setNewCharacter(prev => ({ ...prev, face: promptData.en }));
+        showToast('얼굴 특징 분석이 완료되었습니다.', 'success');
+      } else {
+        throw new Error(result.error || '분석 결과가 없습니다.');
+      }
+    } catch (error: any) {
+      console.error('얼굴 추출 실패:', error);
+      showToast(error.message || '얼굴 분석에 실패했습니다.', 'error');
+    } finally {
+      setIsExtractingFace(false);
+    }
+  }, []);
+
+  const handleExtractHair = useCallback(async (file: File | null, imageData?: string) => {
+    setIsExtractingHair(true);
+    setExtractedHair(null);
+    setGeneratedHairImage(null);
+
+    try {
+      let base64Image = imageData;
+
+      if (file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        base64Image = await base64Promise;
+        const storedFilename = await saveExtractionImage(base64Image, 'hair');
+        setLastHairImageData(storedFilename || base64Image);
+      }
+
+      if (!base64Image) {
+        throw new Error('이미지 데이터가 없습니다.');
+      }
+      if (!file && imageData && imageData.startsWith('data:image')) {
+        const storedFilename = await saveExtractionImage(imageData, 'hair');
+        if (storedFilename) setLastHairImageData(storedFilename);
+      }
+
+      const response = await fetch('http://localhost:3002/api/extract-hair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64Image })
+      });
+
+      const result = await response.json();
+      if (result.success && result.prompt) {
+        const promptData = typeof result.prompt === 'string'
+          ? { en: result.prompt, ko: "분석된 헤어 특징입니다." }
+          : result.prompt;
+
+        setExtractedHair(promptData);
+        setNewCharacter(prev => ({ ...prev, hair: promptData.en }));
+        showToast('헤어 특징 분석이 완료되었습니다.', 'success');
+      } else {
+        throw new Error(result.error || '분석 결과가 없습니다.');
+      }
+    } catch (error: any) {
+      console.error('헤어 추출 실패:', error);
+      showToast(error.message || '헤어 분석에 실패했습니다.', 'error');
+    } finally {
+      setIsExtractingHair(false);
+    }
+  }, []);
+
+  const handleExtractBody = useCallback(async (file: File | null, imageData?: string) => {
+    setIsExtractingBody(true);
+    setExtractedBody(null);
+    setGeneratedBodyImage(null);
+
+    try {
+      let base64Image = imageData;
+
+      if (file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        base64Image = await base64Promise;
+        const storedFilename = await saveExtractionImage(base64Image, 'body');
+        setLastBodyImageData(storedFilename || base64Image);
+      }
+
+      if (!base64Image) {
+        throw new Error('이미지 데이터가 없습니다.');
+      }
+      if (!file && imageData && imageData.startsWith('data:image')) {
+        const storedFilename = await saveExtractionImage(imageData, 'body');
+        if (storedFilename) setLastBodyImageData(storedFilename);
+      }
+
+      const response = await fetch('http://localhost:3002/api/extract-body', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64Image })
+      });
+
+      const result = await response.json();
+      if (result.success && result.prompt) {
+        const promptData = typeof result.prompt === 'string'
+          ? { en: result.prompt, ko: "분석된 체형 특징입니다." }
+          : result.prompt;
+
+        setExtractedBody(promptData);
+        setNewCharacter(prev => ({ ...prev, body: promptData.en }));
+        showToast('체형 특징 분석이 완료되었습니다.', 'success');
+      } else {
+        throw new Error(result.error || '분석 결과가 없습니다.');
+      }
+    } catch (error: any) {
+      console.error('체형 추출 실패:', error);
+      showToast(error.message || '체형 분석에 실패했습니다.', 'error');
+    } finally {
+      setIsExtractingBody(false);
+    }
+  }, []);
+
+  const handleGenerateCharacterImage = useCallback(async (prompt: string, type: 'outfit' | 'face' | 'hair' | 'body') => {
+    if (isGeneratingImage) return;
+    setIsGeneratingImage(true);
+
+    try {
+    const finalPrompt = type === 'body'
+      ? `${prompt}, full bust, pronounced bustline, strong bust-to-waist contrast, fitted ribbed top accentuating the bust, photorealistic human body, realistic skin texture, natural anatomy, not mannequin, not doll, not CGI, not illustration, not anime`
+      : prompt;
+      const safetySettings = [
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      ];
+
+      const result: any = await generateImageWithImagen(
+        finalPrompt,
+        "",
+        { aspectRatio: "1:1", model: "imagen-4.0-generate-001" },
+        safetySettings
+      );
+
+      let base64Image: string | null = null;
+      if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+        const generatedImage = result.generatedImages[0];
+        if (generatedImage?.image?.imageBytes) {
+          base64Image = generatedImage.image.imageBytes;
+        } else if (generatedImage?.imageBytes) {
+          base64Image = generatedImage.imageBytes;
+        }
+      } else if (result && result.images && result.images.length > 0) {
+        base64Image = result.images[0];
+      }
+
+      if (!base64Image) throw new Error("이미지 생성에 실패했습니다.");
+
+      const saveResponse = await fetch('http://localhost:3002/api/save-character-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: `data:image/png;base64,${base64Image}`,
+          prompt: finalPrompt,
+          type
+        })
+      });
+
+      const saveResult = await saveResponse.json();
+      if (saveResult.success) {
+        const imageUrl = `http://localhost:3002${saveResult.url}`;
+        if (type === 'outfit') setGeneratedOutfitImage(imageUrl);
+        if (type === 'face') setGeneratedFaceImage(imageUrl);
+        if (type === 'hair') setGeneratedHairImage(imageUrl);
+        if (type === 'body') setGeneratedBodyImage(imageUrl);
+        showToast('이미지가 생성되고 저장되었습니다.', 'success');
+      } else {
+        throw new Error(saveResult.error || '이미지 저장 실패');
+      }
+
+    } catch (error: any) {
+      console.error('이미지 생성 실패:', error);
+      showToast(error.message || '이미지 생성 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }, [isGeneratingImage]);
+
+  const persistOutfitPreviewEntry = useCallback(async (outfitId: string, imageUrl: string) => {
+    const updatedMap = {
+      ...baseOutfitPreviewMap,
+      [outfitId]: imageUrl
+    };
+    setBaseOutfitPreviewMap(updatedMap);
+    await saveOutfitPreviewMap(updatedMap);
+  }, [baseOutfitPreviewMap, saveOutfitPreviewMap]);
+
+  const persistUserOutfitPreview = useCallback(async (outfitId: string, imageUrl: string) => {
+    const updated = outfits.map(item => (
+      item.id === outfitId ? { ...item, imageUrl } : item
+    ));
+    setOutfits(updated);
+    await persistOutfitPreviewEntry(outfitId, imageUrl);
+    await saveOutfitsToBE(updated, outfitCategories);
+  }, [outfitCategories, outfits, persistOutfitPreviewEntry, saveOutfitsToBE]);
+
+  const persistBaseOutfitPreview = useCallback(async (outfitId: string, imageUrl: string) => {
+    await persistOutfitPreviewEntry(outfitId, imageUrl);
+  }, [persistOutfitPreviewEntry]);
+
+  const createOutfitPreview = useCallback(async (prompt: string, id: string) => {
+    if (!prompt?.trim()) {
+      showToast('프롬프트가 없어 이미지를 생성할 수 없습니다.', 'warning');
+      return null;
+    }
+    const safetySettings = [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+    ];
+
+    const result: any = await generateImage(
+      prompt.trim(),
+      { aspectRatio: '9:16', model: 'gemini-2.5-flash-image' },
+      safetySettings
+    );
+
+    let base64Image: string | null = null;
+    if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
+      const generatedImage = result.generatedImages[0];
+      if (generatedImage?.image?.imageBytes) {
+        base64Image = generatedImage.image.imageBytes;
+      } else if (generatedImage?.imageBytes) {
+        base64Image = generatedImage.imageBytes;
+      }
+    } else if (result && result.images && result.images.length > 0) {
+      base64Image = result.images[0];
+    } else if (result && result.candidates) {
+      const inlineData = result.candidates?.[0]?.content?.parts?.find((part: { inlineData?: { data?: string } }) => part.inlineData)?.inlineData;
+      if (inlineData?.data) {
+        base64Image = inlineData.data;
+      }
+    }
+
+    if (!base64Image) {
+      throw new Error('의상 썸네일 이미지 생성에 실패했습니다.');
+    }
+
+    const dataUrl = `data:image/png;base64,${base64Image}`;
+    const savedUrl = await saveOutfitPreviewImage(dataUrl, id, prompt);
+    return savedUrl || null;
+  }, []);
+
+  // Gemini API 직접 호출로 의상 미리보기 생성 (브라우저 자동화 아님)
+  const handleGenerateOutfitPreviewWithGeminiAPI = useCallback(async (outfit: Outfit) => {
+    if (isGeneratingOutfitPreview) return;
+    setIsGeneratingOutfitPreview(true);
+    try {
+      const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const resolvedUrl = `http://localhost:3002${savedUrl}`;
+      await persistUserOutfitPreview(outfit.id, resolvedUrl);
+      setLightboxImage(resolvedUrl);
+      showToast('의상 미리보기가 생성되었습니다.', 'success');
+
+    } catch (error: any) {
+      console.error('의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingOutfitPreview(false);
+    }
+  }, [createOutfitPreview, isGeneratingOutfitPreview, persistUserOutfitPreview]);
+
+  const handleGenerateOutfitPreview = useCallback(async (outfit: Outfit) => {
+    if (isGeneratingOutfitPreview) return;
+    setIsGeneratingOutfitPreview(true);
+    try {
+      const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const resolvedUrl = `http://localhost:3002${savedUrl}`;
+      await persistUserOutfitPreview(outfit.id, resolvedUrl);
+      setLightboxImage(resolvedUrl);
+      showToast('의상 미리보기가 생성되었습니다.', 'success');
+    } catch (error: any) {
+      console.error('의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingOutfitPreview(false);
+    }
+  }, [createOutfitPreview, isGeneratingOutfitPreview, persistUserOutfitPreview]);
+
+  const handleRefreshOutfitPreviewMap = useCallback(async () => {
+    try {
+      const map = await fetchOutfitPreviewMap();
+      setBaseOutfitPreviewMap(map || {});
+      showToast('의상 썸네일이 새로고침되었습니다.', 'success');
+    } catch (error) {
+      console.error('의상 썸네일 새로고침 실패:', error);
+      showToast('의상 썸네일 새로고침에 실패했습니다.', 'error');
+    }
+  }, []);
+
+  // Gemini API 직접 호출로 기본 의상 미리보기 생성 (브라우저 자동화 아님)
+  const handleGenerateBaseOutfitPreviewWithGeminiAPI = useCallback(async (item: BaseOutfitItem) => {
+    if (isGeneratingBaseOutfitPreview) return;
+    setIsGeneratingBaseOutfitPreview(true);
+    try {
+      const prompt = (editingBaseOutfitPrompt.trim() || item.prompt || item.name).trim();
+      const savedUrl = await createOutfitPreview(prompt, item.id);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const resolvedUrl = `http://localhost:3002${savedUrl}`;
+      await persistBaseOutfitPreview(item.id, resolvedUrl);
+      setLightboxImage(resolvedUrl);
+      showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
+
+    } catch (error: any) {
+      console.error('기본 의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingBaseOutfitPreview(false);
+    }
+  }, [createOutfitPreview, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, persistBaseOutfitPreview]);
+
+  const handleGenerateBaseOutfitPreview = useCallback(async (item: BaseOutfitItem) => {
+    if (isGeneratingBaseOutfitPreview) return;
+    setIsGeneratingBaseOutfitPreview(true);
+    try {
+      const prompt = editingBaseOutfitPrompt.trim() || item.prompt || item.name;
+      const savedUrl = await createOutfitPreview(prompt, item.id);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const resolvedUrl = `http://localhost:3002${savedUrl}`;
+      await persistBaseOutfitPreview(item.id, resolvedUrl);
+      setLightboxImage(resolvedUrl);
+      showToast('기본 의상 미리보기가 생성되었습니다.', 'success');
+    } catch (error: any) {
+      console.error('기본 의상 미리보기 생성 실패:', error);
+      showToast(error.message || '이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingBaseOutfitPreview(false);
+    }
+  }, [createOutfitPreview, editingBaseOutfitPrompt, isGeneratingBaseOutfitPreview, persistBaseOutfitPreview]);
+
+  const readBlobAsDataUrl = useCallback((blob: Blob) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('이미지 읽기에 실패했습니다.'));
+      reader.readAsDataURL(blob);
+    });
+  }, []);
+
+  const handleGenerateOutfitPreviewWithAI = useCallback(async (prompt: string, id: string, kind: 'user' | 'base') => {
+    if (!prompt || !prompt.trim()) {
+      showToast('프롬프트가 없어 이미지를 생성할 수 없습니다.', 'warning');
+      return;
+    }
+
+    if (kind === 'user' ? isGeneratingOutfitPreviewAI : isGeneratingBaseOutfitPreviewAI) return;
+    kind === 'user' ? setIsGeneratingOutfitPreviewAI(true) : setIsGeneratingBaseOutfitPreviewAI(true);
+
+    try {
+      const response = await fetch('http://localhost:3002/api/image/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          storyId: 'outfit_previews',
+          sceneNumber: 1,
+          service: 'GEMINI',
+          autoCapture: true,
+          title: 'OutfitPreview'
+        })
+      });
+
+      if (!response.ok) {
+        let message = 'AI 이미지 생성에 실패했습니다.';
+        try {
+          const errorData = await response.json();
+          if (errorData?.error) message = errorData.error;
+        } catch {
+          // ignore
+        }
+        throw new Error(message);
+      }
+
+      const payload = await response.json();
+      const rawUrl = payload?.url ? `http://localhost:3002${payload.url}` : null;
+      if (!rawUrl) throw new Error('AI 이미지 URL을 받지 못했습니다.');
+
+      const imageResponse = await fetch(rawUrl);
+      if (!imageResponse.ok) throw new Error('AI 이미지 다운로드에 실패했습니다.');
+      const blob = await imageResponse.blob();
+      const dataUrl = await readBlobAsDataUrl(blob);
+
+      const savedUrl = await saveOutfitPreviewImage(dataUrl, id, prompt);
+      if (!savedUrl) throw new Error('이미지 저장 실패');
+      const resolvedUrl = `http://localhost:3002${savedUrl}`;
+
+      if (kind === 'user') {
+        const updated = outfits.map(item => (
+          item.id === id ? { ...item, imageUrl: resolvedUrl } : item
+        ));
+        setOutfits(updated);
+        saveOutfitsToBE(updated, outfitCategories);
+      } else {
+        const updatedMap = {
+          ...baseOutfitPreviewMap,
+          [id]: resolvedUrl
+        };
+        setBaseOutfitPreviewMap(updatedMap);
+        saveOutfitPreviewMap(updatedMap);
+      }
+
+      setLightboxImage(resolvedUrl);
+      showToast('AI로 의상 미리보기가 생성되었습니다.', 'success');
+    } catch (error: any) {
+      console.error('AI 의상 미리보기 생성 실패:', error);
+      showToast(error.message || 'AI 이미지 생성에 실패했습니다.', 'error');
+    } finally {
+      kind === 'user' ? setIsGeneratingOutfitPreviewAI(false) : setIsGeneratingBaseOutfitPreviewAI(false);
+    }
+  }, [baseOutfitPreviewMap, isGeneratingBaseOutfitPreviewAI, isGeneratingOutfitPreviewAI, outfitCategories, outfits, readBlobAsDataUrl, saveOutfitPreviewMap, saveOutfitsToBE]);
+
+  type OutfitPreviewTarget = {
+    id: string;
+    prompt: string;
+    kind: 'user' | 'base';
+  };
+
+  const handleBatchGenerateOutfitPreviews = useCallback(async (targets: OutfitPreviewTarget[]) => {
+    if (isBatchGeneratingOutfitPreviews) return;
+    if (targets.length === 0) {
+      showToast('미리보기가 필요한 의상이 없습니다.', 'info');
+      return;
+    }
+    setIsBatchGeneratingOutfitPreviews(true);
+    setBatchTotalOutfits(targets.length);
+    setBatchCompletedOutfits(0);
+    setBatchFailedOutfitIds([]);
+
+    const failedIds: string[] = [];
+    const updatedOutfits = [...outfits];
+    const updatedBaseMap = { ...baseOutfitPreviewMap };
+
+    for (let i = 0; i < targets.length; i++) {
+      const outfit = targets[i];
+      try {
+        const savedUrl = await createOutfitPreview(outfit.prompt, outfit.id);
+        if (!savedUrl) throw new Error('이미지 저장 실패');
+        const resolvedUrl = `http://localhost:3002${savedUrl}`;
+        updatedBaseMap[outfit.id] = resolvedUrl;
+        if (outfit.kind === 'user') {
+          const index = updatedOutfits.findIndex(item => item.id === outfit.id);
+          if (index >= 0) {
+            updatedOutfits[index] = {
+              ...updatedOutfits[index],
+              imageUrl: resolvedUrl
+            };
+          }
+        }
+      } catch (error) {
+        failedIds.push(outfit.id);
+      } finally {
+        setBatchCompletedOutfits(prev => prev + 1);
+      }
+    }
+
+    setOutfits(updatedOutfits);
+    setBaseOutfitPreviewMap(updatedBaseMap);
+    saveOutfitsToBE(updatedOutfits, outfitCategories);
+    saveOutfitPreviewMap(updatedBaseMap);
+    setBatchFailedOutfitIds(failedIds);
+    if (failedIds.length === 0) {
+      showToast('전체 의상 미리보기가 생성되었습니다.', 'success');
+    } else {
+      showToast(`${failedIds.length}개 의상 미리보기 생성에 실패했습니다.`, 'warning');
+    }
+    setIsBatchGeneratingOutfitPreviews(false);
+  }, [baseOutfitPreviewMap, createOutfitPreview, isBatchGeneratingOutfitPreviews, outfitCategories, outfits, saveOutfitPreviewMap, saveOutfitsToBE]);
+
+  const cancelAiForwarding = useCallback(() => {
+    if (aiForwardAbortRef.current) {
+      try {
+        aiForwardAbortRef.current.abort();
+      } catch (err) {
+        console.warn('AI 생성 중단 실패:', err);
+      }
+      aiForwardAbortRef.current = null;
+    }
+    setAiForwardingType(null);
+  }, []);
+
+  const handleForwardPromptToImageAI = useCallback(async (prompt: string, type: 'outfit' | 'face' | 'hair' | 'body') => {
+    if (aiForwardingType === type) {
+      cancelAiForwarding();
+      showToast('AI 생성 요청을 취소했습니다.', 'info');
+      return;
+    }
+    if (!prompt || !prompt.trim()) {
+      showToast('전송할 프롬프트가 없습니다.', 'warning');
+      return;
+    }
+
+    const finalPrompt = type === 'body'
+      ? `${prompt}, full bust, pronounced bustline, strong bust-to-waist contrast, fitted ribbed top accentuating the bust, photorealistic human body, realistic skin texture, natural anatomy, not mannequin, not doll, not CGI, not illustration, not anime`
+      : prompt;
+
+    setAiForwardingType(type);
+
+    try {
+      if (aiForwardAbortRef.current) {
+        aiForwardAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      aiForwardAbortRef.current = controller;
+
+      const sceneMap: Record<typeof type, number> = {
+        face: 1,
+        hair: 2,
+        body: 3,
+        outfit: 4
+      };
+
+      const response = await fetch('http://localhost:3002/api/image/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: finalPrompt,
+          storyId: 'character_assets',
+          sceneNumber: sceneMap[type],
+          service: 'GEMINI',
+          autoCapture: true,
+          title: 'CharacterPanel'
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        let message = 'AI 서비스 전송에 실패했습니다.';
+        try {
+          const errorData = await response.json();
+          if (errorData?.error) message = errorData.error;
+        } catch (err) {
+          console.warn('AI 생성 오류 파싱 실패:', err);
+        }
+        throw new Error(message);
+      }
+
+      const payload = await response.json();
+      const infoDetails: string[] = [];
+      if (payload?.imagePath) infoDetails.push(`경로 ${payload.imagePath}`);
+      if (typeof payload?.bytes === 'number') {
+        const kb = (payload.bytes / 1024).toFixed(1);
+        infoDetails.push(`용량 ${kb}KB`);
+      }
+      const infoMessage = infoDetails.length > 0
+        ? ` - ${infoDetails.join(' / ')}`
+        : (payload?.message ? ` - ${payload.message}` : '');
+      showToast(`AI 서비스(${payload?.service || 'GEMINI'})로 프롬프트를 전송했습니다.${infoMessage}`, 'success');
+
+      if (payload?.success) {
+        const resolvedStoryId = payload.storyId || 'character_assets';
+        const imageUrl = payload.url
+          ? `http://localhost:3002${payload.url}`
+          : `http://localhost:3002/generated_scripts/대본폴더/${resolvedStoryId}/images/${payload.filename}`;
+        if (type === 'face') setGeneratedFaceImage(imageUrl);
+        if (type === 'hair') setGeneratedHairImage(imageUrl);
+        if (type === 'body') setGeneratedBodyImage(imageUrl);
+        if (type === 'outfit') setGeneratedOutfitImage(imageUrl);
+      }
+    } catch (error) {
+      console.error('AI 생성 전송 실패:', error);
+      if (error instanceof Error && error.message.includes('Waiting failed')) {
+        showToast('이미지를 찾지 못했습니다. 프롬프트 전송 후 새 이미지가 생성되는지 확인해주세요.', 'warning');
+      } else {
+        showToast(error instanceof Error ? error.message : 'AI 서비스 전송 오류가 발생했습니다.', 'error');
+      }
+    } finally {
+      setAiForwardingType(null);
+      if (aiForwardAbortRef.current) {
+        aiForwardAbortRef.current = null;
+      }
+    }
+  }, [aiForwardingType, cancelAiForwarding]);
+
+  // ---------------------------------------------------------
+  // 드래그 앤 드롭 핸들러
+  // ---------------------------------------------------------
+  const handleDragOver = useCallback((e: React.DragEvent, type: 'face' | 'outfit' | 'hair' | 'body') => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === 'face') setIsDraggingFace(true);
+    if (type === 'outfit') setIsDraggingOutfit(true);
+    if (type === 'hair') setIsDraggingHair(true);
+    if (type === 'body') setIsDraggingBody(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent, type: 'face' | 'outfit' | 'hair' | 'body') => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLElement;
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && target.contains(relatedTarget)) return;
+
+    if (type === 'face') setIsDraggingFace(false);
+    if (type === 'outfit') setIsDraggingOutfit(false);
+    if (type === 'hair') setIsDraggingHair(false);
+    if (type === 'body') setIsDraggingBody(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, type: 'face' | 'outfit' | 'hair' | 'body') => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (type === 'face') setIsDraggingFace(false);
+    if (type === 'outfit') setIsDraggingOutfit(false);
+    if (type === 'hair') setIsDraggingHair(false);
+    if (type === 'body') setIsDraggingBody(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) {
+      showToast('파일을 찾을 수 없습니다.', 'error');
+      return;
+    }
+
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      showToast('10MB 이하 이미지만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showToast('이미지 파일만 업로드 가능합니다.', 'error');
+      return;
+    }
+
+    if (type === 'face') handleExtractFace(file);
+    if (type === 'outfit') handleExtractOutfit(file);
+    if (type === 'hair') handleExtractHair(file);
+    if (type === 'body') handleExtractBody(file);
+  }, [handleExtractFace, handleExtractOutfit, handleExtractHair, handleExtractBody]);
+
+  const updateBaseOutfitOverrides = useCallback((next: OutfitBaseOverrides) => {
+    setBaseOutfitOverridesState(next);
+    setOutfitBaseOverrides(next);
+  }, []);
+
+  const handleMoveBaseOutfitCategory = useCallback((id: string, categoryId: string) => {
+    const next: OutfitBaseOverrides = {
+      hiddenBaseIds: baseOutfitOverrides.hiddenBaseIds || [],
+      categoryOverrides: { ...(baseOutfitOverrides.categoryOverrides || {}), [id]: categoryId }
+    };
+    updateBaseOutfitOverrides(next);
+    showToast('기본 의상 카테고리가 변경되었습니다.', 'success');
+  }, [baseOutfitOverrides, updateBaseOutfitOverrides]);
+
+  const handleToggleBaseOutfitHidden = useCallback((id: string) => {
+    const hidden = new Set(baseOutfitOverrides.hiddenBaseIds || []);
+    if (hidden.has(id)) {
+      hidden.delete(id);
+      showToast('기본 의상 숨김이 해제되었습니다.', 'success');
+    } else {
+      hidden.add(id);
+      showToast('기본 의상이 숨김 처리되었습니다.', 'success');
+    }
+    const next: OutfitBaseOverrides = {
+      hiddenBaseIds: Array.from(hidden),
+      categoryOverrides: { ...(baseOutfitOverrides.categoryOverrides || {}) }
+    };
+    updateBaseOutfitOverrides(next);
+  }, [baseOutfitOverrides, updateBaseOutfitOverrides]);
+
+  const handleAddCategory = useCallback(() => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    const exists = outfitCategories.some(category => category.id.toLowerCase() === name.toLowerCase());
+    if (exists) {
+      showToast('이미 존재하는 카테고리입니다.', 'warning');
+      return;
+    }
+
+    const newCategory: OutfitCategory = {
+      id: name,
+      name,
+      emoji: '✨',
+      description: '사용자 추가 카테고리',
+      gender: newCategoryGender
+    };
+
+    const updated = [...outfitCategories, newCategory];
+    setOutfitCategories(updated);
+    setNewOutfitCategory(name);
+    setNewCategoryName('');
+    setShowAddCategory(false);
+    setEditingCategoryId(null);
+    saveOutfitsToBE(outfits, updated);
+    showToast(`'${name}' 카테고리가 추가되었습니다.`, 'success');
+  }, [newCategoryName, newCategoryGender, outfitCategories, outfits, saveOutfitsToBE]);
+
+  const handleStartEditCategory = useCallback((category: OutfitCategory) => {
+    setEditingCategoryId(category.id);
+    setEditingCategoryName(category.name);
+    setEditingCategoryGender(category.gender || 'female');
+    setShowAddCategory(false);
+  }, []);
+
+  const handleUpdateCategory = useCallback(() => {
+    if (!editingCategoryId) return;
+    const name = editingCategoryName.trim();
+    if (!name) return;
+
+    const updated = outfitCategories.map(category => (
+      category.id === editingCategoryId
+        ? { ...category, name, gender: editingCategoryGender }
+        : category
+    ));
+
+    setOutfitCategories(updated);
+    saveOutfitsToBE(outfits, updated);
+    setEditingCategoryId(null);
+    setEditingCategoryName('');
+    showToast('카테고리가 수정되었습니다.', 'success');
+  }, [editingCategoryId, editingCategoryName, editingCategoryGender, outfitCategories, outfits, saveOutfitsToBE]);
+
+  const handleDeleteCategory = useCallback((categoryId: string) => {
+    if (DEFAULT_CATEGORY_IDS.has(categoryId)) {
+      showToast('기본 카테고리는 삭제할 수 없습니다.', 'warning');
+      return;
+    }
+
+    const removeCount = outfits.filter(outfit => outfit.category === categoryId).length;
+    const confirmed = window.confirm(`'${categoryId}' 카테고리를 삭제할까요? (의상 ${removeCount}개 포함)`);
+    if (!confirmed) return;
+
+    const updatedCategories = outfitCategories.filter(category => category.id !== categoryId);
+    const updatedOutfits = outfits.filter(outfit => outfit.category !== categoryId);
+
+    setOutfitCategories(updatedCategories);
+    setOutfits(updatedOutfits);
+    saveOutfitsToBE(updatedOutfits, updatedCategories);
+    setExpandedCategories(prev => {
+      const next = { ...prev };
+      delete next[categoryId];
+      return next;
+    });
+    if (newOutfitCategory === categoryId) {
+      setNewOutfitCategory(updatedCategories[0]?.id || 'ROYAL');
+    }
+    showToast('카테고리가 삭제되었습니다.', 'success');
+  }, [outfits, outfitCategories, newOutfitCategory, saveOutfitsToBE]);
+
+  const handleAddOutfit = useCallback(() => {
+    if (!newOutfitName.trim() || !newOutfitPrompt.trim()) return;
+
+    const newOutfit: Outfit = {
+      id: `outfit-${Date.now()}`,
+      name: newOutfitName.trim(),
+      prompt: newOutfitPrompt.trim(),
+      category: newOutfitCategory,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...outfits, newOutfit];
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    setNewOutfitName('');
+    setNewOutfitPrompt('');
+    setNewOutfitCategory(outfitCategories[0]?.id || 'ROYAL');
+    setShowAddOutfit(false);
+    setExpandedCategories({ [newOutfitCategory]: true });
+    showToast(`'${newOutfit.name}' 의상이 ${newOutfitCategory} 카테고리에 추가되었습니다.`, 'success');
+  }, [newOutfitName, newOutfitPrompt, newOutfitCategory, outfits, outfitCategories, saveOutfitsToBE]);
+
+  const toggleCategory = useCallback((categoryId: string) => {
+    setExpandedCategories(prev => (prev[categoryId] ? {} : { [categoryId]: true }));
+  }, []);
+
+  const baseOutfitsWithOverrides = useMemo(() => {
+    const baseItems = UNIFIED_OUTFIT_LIST as BaseOutfitItem[];
+    const overrides = baseOutfitOverrides;
+    const hiddenSet = new Set(overrides.hiddenBaseIds || []);
+    const applied = applyBaseOverrides(baseItems as any, overrides, { includeHidden: true }) as BaseOutfitItem[];
+    return applied.map((item) => ({
+      ...item,
+      isHidden: hiddenSet.has(item.id)
+    }));
+  }, [baseOutfitOverrides]);
+
+  const visibleBaseOutfits = useMemo(() => (
+    showHiddenBaseOutfits
+      ? baseOutfitsWithOverrides
+      : baseOutfitsWithOverrides.filter((item) => !item.isHidden)
+  ), [baseOutfitsWithOverrides, showHiddenBaseOutfits]);
+
+  // UNIFIED_OUTFIT_LIST에서 카테고리별 의상 가져오기
+  const getBaseOutfitsByCategory = useMemo(() => {
+    const categoryMap: Record<string, BaseOutfitItem[]> = {};
+    outfitCategories.forEach(cat => {
+      categoryMap[cat.id] = visibleBaseOutfits.filter(
+        item => (item.categories?.[0] || '') === cat.id
+      );
+    });
+    return categoryMap;
+  }, [outfitCategories, visibleBaseOutfits]);
+
+  const getOutfitsByCategory = useCallback((categoryId: string) => {
+    const userOutfits = outfits.filter(outfit => {
+      if (outfit.category !== categoryId) return false;
+      if (showHiddenUserOutfits) return true;
+      return !outfit.hidden;
+    });
+    return userOutfits;
+  }, [outfits, showHiddenUserOutfits]);
+
+  const getCategoryCount = useCallback((categoryId: string) => {
+    const baseCount = getBaseOutfitsByCategory[categoryId]?.length || 0;
+    const userCount = outfits.filter(o => o.category === categoryId).length;
+    return baseCount + userCount;
+  }, [getBaseOutfitsByCategory, outfits]);
+
+  const outfitsMissingPreview = useMemo(() => (
+    outfits.filter(outfit => !outfit.imageUrl)
+  ), [outfits]);
+
+  const baseOutfitsMissingPreview = useMemo(() => {
+    const allBase = visibleBaseOutfits.filter(item => (item.prompt || item.name));
+    return allBase.filter(item => !baseOutfitPreviewMap[item.id]);
+  }, [baseOutfitPreviewMap, visibleBaseOutfits]);
+
+  const handleDeleteOutfit = useCallback((id: string) => {
+    const target = outfits.find(o => o.id === id);
+    if (!target) return;
+    const confirmed = window.confirm(`'${target.name}' 의상을 정말 삭제할까요?`);
+    if (!confirmed) return;
+    const updated = outfits.filter(o => o.id !== id);
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    if (selectedOutfitId === id) {
+      setSelectedOutfitId(null);
+      onOutfitSelect?.(null);
+    }
+  }, [outfits, selectedOutfitId, onOutfitSelect, outfitCategories, saveOutfitsToBE]);
+
+  const selectedOutfit = useMemo(() => {
+    if (!selectedOutfitId) return null;
+    return outfits.find(outfit => outfit.id === selectedOutfitId) || null;
+  }, [outfits, selectedOutfitId]);
+
+  const selectedBaseOutfit = useMemo(() => {
+    if (!selectedBaseOutfitId) return null;
+    return baseOutfitsWithOverrides.find(item => item.id === selectedBaseOutfitId) || null;
+  }, [baseOutfitsWithOverrides, selectedBaseOutfitId]);
+
+  const isSelectedBaseOutfitHidden = useMemo(() => {
+    if (!selectedBaseOutfit) return false;
+    return (baseOutfitOverrides.hiddenBaseIds || []).includes(selectedBaseOutfit.id);
+  }, [baseOutfitOverrides.hiddenBaseIds, selectedBaseOutfit]);
+
+  const handleUpdateOutfit = useCallback(() => {
+    if (!selectedOutfit) return;
+    if (!editingOutfitName.trim() || !editingOutfitPrompt.trim()) {
+      showToast('의상 이름과 프롬프트를 입력해주세요.', 'warning');
+      return;
+    }
+    const updated = outfits.map(outfit => (
+      outfit.id === selectedOutfit.id
+        ? { ...outfit, name: editingOutfitName.trim(), prompt: editingOutfitPrompt.trim(), category: editingOutfitCategory || outfit.category }
+        : outfit
+    ));
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    showToast('의상 정보가 수정되었습니다.', 'success');
+  }, [editingOutfitCategory, editingOutfitName, editingOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
+
+  const handleToggleUserOutfitHidden = useCallback(() => {
+    if (!selectedOutfit) return;
+    const updated = outfits.map((outfit) => (
+      outfit.id === selectedOutfit.id
+        ? { ...outfit, hidden: !outfit.hidden }
+        : outfit
+    ));
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    showToast(selectedOutfit.hidden ? '숨김이 해제되었습니다.' : '의상이 숨김 처리되었습니다.', 'success');
+  }, [outfitCategories, outfits, saveOutfitsToBE, selectedOutfit]);
+
+  const handleSaveBaseOutfitAsCustom = useCallback(() => {
+    if (!selectedBaseOutfit) return;
+    if (!editingBaseOutfitName.trim() || !editingBaseOutfitPrompt.trim()) {
+      showToast('의상 이름과 프롬프트를 입력해주세요.', 'warning');
+      return;
+    }
+    const categoryId = editingBaseOutfitCategory || selectedBaseOutfit.categories?.[0] || 'ROYAL';
+    const newOutfit: Outfit = {
+      id: `outfit-${Date.now()}`,
+      name: editingBaseOutfitName.trim(),
+      prompt: editingBaseOutfitPrompt.trim(),
+      category: categoryId,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...outfits, newOutfit];
+    setOutfits(updated);
+    saveOutfitsToBE(updated, outfitCategories);
+    setSelectedOutfitId(newOutfit.id);
+    setSelectedBaseOutfitId(null);
+    showToast('의상이 사용자 목록에 저장되었습니다.', 'success');
+  }, [editingBaseOutfitName, editingBaseOutfitPrompt, outfitCategories, outfits, saveOutfitsToBE, selectedBaseOutfit]);
+
+  const openOutfitEditModal = useCallback((outfit?: any) => {
+    setShowOutfitEditModal(true);
+  }, []);
+
+  const handleSelectOutfit = useCallback((outfit: Outfit) => {
+    setSelectedOutfitId(outfit.id);
+    setSelectedBaseOutfitId(null);
+    onOutfitSelect?.(outfit);
+    openOutfitEditModal(outfit);
+  }, [onOutfitSelect, openOutfitEditModal]);
+
+  const closeOutfitEditModal = useCallback(() => {
+    setShowOutfitEditModal(false);
+  }, []);
+
+  const handleModalMouseDown = (e: React.MouseEvent) => {
+    setIsModalDragging(true);
+    setModalDragOffset({
+      x: e.clientX - modalPosition.x,
+      y: e.clientY - modalPosition.y
+    });
+  };
+
+  useEffect(() => {
+    if (!isModalDragging) return;
+    const handleMove = (e: MouseEvent) => {
+      setModalPosition({
+        x: e.clientX - modalDragOffset.x,
+        y: e.clientY - modalDragOffset.y
+      });
+    };
+    const handleUp = () => {
+      setIsModalDragging(false);
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [isModalDragging, modalDragOffset.x, modalDragOffset.y]);
+
+  useEffect(() => {
+    if (selectedOutfit) {
+      setEditingOutfitName(selectedOutfit.name);
+      setEditingOutfitPrompt(selectedOutfit.prompt);
+      setEditingOutfitCategory(selectedOutfit.category);
+    } else {
+      setEditingOutfitName('');
+      setEditingOutfitPrompt('');
+      setEditingOutfitCategory('');
+    }
+  }, [selectedOutfit]);
+
+  useEffect(() => {
+    if (selectedBaseOutfit) {
+      setEditingBaseOutfitName(selectedBaseOutfit.translation || selectedBaseOutfit.name);
+      setEditingBaseOutfitPrompt(selectedBaseOutfit.prompt || selectedBaseOutfit.name);
+      const overrideCategory = baseOutfitOverrides.categoryOverrides?.[selectedBaseOutfit.id];
+      setEditingBaseOutfitCategory(overrideCategory || selectedBaseOutfit.categories?.[0] || 'ROYAL');
+    } else {
+      setEditingBaseOutfitName('');
+      setEditingBaseOutfitPrompt('');
+      setEditingBaseOutfitCategory('');
+    }
+  }, [baseOutfitOverrides.categoryOverrides, selectedBaseOutfit]);
+
+  // 기본 의상 선택 핸들러 (프롬프트 포함)
+  const handleSelectBaseOutfit = useCallback((item: BaseOutfitItem) => {
+    setSelectedBaseOutfitId(item.id);
+    setSelectedOutfitId(null);
+    
+    // Outfit 형태로 변환하여 콜백 호출
+    const outfitData: Outfit = {
+      id: item.id,
+      name: item.translation || item.name,
+      prompt: item.prompt || item.name, // prompt가 없으면 name 사용
+      category: item.categories[0] || 'ROYAL',
+      createdAt: ''
+    };
+    
+    onOutfitSelect?.(outfitData);
+    
+    const tempOutfit: any = {
+        id: item.id,
+        name: item.name,
+        prompt: item.prompt || item.name,
+        imageUrl: '',
+        createdAt: new Date().toISOString()
+    };
+    openOutfitEditModal(tempOutfit);
+    
+    showToast(`'${item.translation}' 의상이 선택되었습니다.`, 'success');
+  }, [onOutfitSelect, openOutfitEditModal]);
+
+  // body 기반 style 자동 생성 함수
+  const generateStyleFromBody = useCallback((body: string, gender: 'female' | 'male'): string => {
+    if (!body) {
+      return gender === 'female'
+        ? 'perfectly managed sophisticated look'
+        : 'dandy and refined presence';
+    }
+    // body 키워드에 따라 style 생성
+    const bodyLower = body.toLowerCase();
+    if (gender === 'female') {
+      if (bodyLower.includes('athletic') || bodyLower.includes('toned')) {
+        return 'confident athletic presence, energetic and vibrant aura';
+      } else if (bodyLower.includes('glamour') || bodyLower.includes('voluminous')) {
+        return 'glamorous and alluring presence, captivating charm';
+      } else if (bodyLower.includes('petite')) {
+        return 'delicate and elegant presence, graceful charm';
+      } else if (bodyLower.includes('hourglass') || bodyLower.includes('slim')) {
+        return 'perfectly managed sophisticated look, confident presence';
+      }
+      return 'elegant and refined presence, graceful demeanor';
+    } else {
+      if (bodyLower.includes('athletic') || bodyLower.includes('muscular')) {
+        return 'strong and confident presence, masculine charm';
+      } else if (bodyLower.includes('slim') || bodyLower.includes('lean')) {
+        return 'sleek and refined presence, modern elegance';
+      }
+      return 'dandy and refined presence, well-groomed appearance';
+    }
+  }, []);
+
+  const handleSaveCharacter = useCallback(() => {
+    if (!newCharacter.name.trim()) return;
+
+    // body 기반으로 style 자동 생성
+    const autoStyle = generateStyleFromBody(newCharacter.body, newCharacter.gender);
+
+    if (selectedCharacterId) {
+      const target = characters.find((char) => char.id === selectedCharacterId);
+      if (!target) return;
+      const updatedCharacter: Character = {
+        ...target,
+        ...newCharacter,
+        style: newCharacter.style || autoStyle,
+        bodyTuning
+      };
+      const updated = characters.map((char) => (
+        char.id === selectedCharacterId ? updatedCharacter : char
+      ));
+      setCharacters(updated);
+      saveCharactersToBE(updated);
+      showToast(`${updatedCharacter.name} 캐릭터가 수정되었습니다.`, 'success');
+      return;
+    }
+
+    const character: Character = {
+      id: `char-${Date.now()}`,
+      ...newCharacter,
+      style: newCharacter.style || autoStyle,
+      bodyTuning,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...characters, character];
+    setCharacters(updated);
+    saveCharactersToBE(updated);
+    onCharacterAdded?.(character);
+    setNewCharacter({
+      name: '',
+      age: '30대',
+      gender: 'female',
+      face: '',
+      hair: '',
+      body: '',
+      style: ''
+    });
+    setBodyTuning({ ...DEFAULT_BODY_TUNING });
+    setActiveTab('select');
+    showToast(`${character.name} 캐릭터가 저장되었습니다.`, 'success');
+  }, [newCharacter, characters, generateStyleFromBody, selectedCharacterId, bodyTuning]);
+
+  const resolveExtractionImageData = useCallback(async (value: string | null) => {
+    if (!value) return null;
+    if (value.startsWith('data:image')) return value;
+    const fetched = await fetchExtractionImageData(value);
+    return fetched || null;
+  }, []);
+
+  const handleReExtractFace = useCallback(async () => {
+    if (!lastFaceImageData) {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
+    }
+    const resolved = await resolveExtractionImageData(lastFaceImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractFace(null, resolved);
+  }, [lastFaceImageData, handleExtractFace, resolveExtractionImageData]);
+
+  const handleReExtractOutfit = useCallback(async () => {
+    if (!lastOutfitImageData) {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
+    }
+    const resolved = await resolveExtractionImageData(lastOutfitImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractOutfit(null, resolved);
+  }, [lastOutfitImageData, handleExtractOutfit, resolveExtractionImageData]);
+
+  const handleReExtractHair = useCallback(async () => {
+    if (!lastHairImageData) {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
+    }
+    const resolved = await resolveExtractionImageData(lastHairImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractHair(null, resolved);
+  }, [lastHairImageData, handleExtractHair, resolveExtractionImageData]);
+
+  const handleReExtractBody = useCallback(async () => {
+    if (!lastBodyImageData) {
+      showToast('재분석할 이미지가 없습니다. 이미지를 다시 업로드해주세요.', 'warning');
+      return;
+    }
+    const resolved = await resolveExtractionImageData(lastBodyImageData);
+    if (!resolved) {
+      showToast('재분석 이미지를 불러오지 못했습니다.', 'error');
+      return;
+    }
+    handleExtractBody(null, resolved);
+  }, [lastBodyImageData, handleExtractBody, resolveExtractionImageData]);
+
+  const handleResetExtractionCache = useCallback(async () => {
+    if (isResettingExtractionCache) return;
+    setIsResettingExtractionCache(true);
+    const success = await resetExtractionCache();
+    if (success) {
+      setExtractedOutfit(null);
+      setExtractedFace(null);
+      setExtractedHair(null);
+      setExtractedBody(null);
+      setGeneratedOutfitImage(null);
+      setGeneratedFaceImage(null);
+      setGeneratedHairImage(null);
+      setGeneratedBodyImage(null);
+      setLastOutfitImageData(null);
+      setLastFaceImageData(null);
+      setLastHairImageData(null);
+      setLastBodyImageData(null);
+      setLastOutfitFile(null);
+      setLastFaceFile(null);
+      showToast('추출 캐시를 초기화했습니다.', 'success');
+    } else {
+      showToast('추출 캐시 초기화에 실패했습니다.', 'error');
+    }
+    setIsResettingExtractionCache(false);
+  }, [isResettingExtractionCache, resetExtractionCache]);
+
+  // ---------------------------------------------------------
+  // 렌더링
+  // ---------------------------------------------------------
+  return (
+    <div className="flex flex-col h-full bg-slate-900 rounded-xl border border-slate-700 shadow-xl overflow-hidden relative">
+      {/* 탭 헤더 */}
+      <div className="flex bg-slate-800/50 border-b border-slate-700">
+        <button
+          onClick={() => setActiveTab('select')}
+          className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'select'
+            ? 'bg-purple-600 text-white shadow-inner'
+            : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+            }`}
+        >
+          <Users size={14} />
+          캐릭터선택
+        </button>
+        <button
+          onClick={() => setActiveTab('manage')}
+          className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'manage'
+            ? 'bg-purple-600 text-white shadow-inner'
+            : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+            }`}
+        >
+          <User size={14} />
+          캐릭터관리
+        </button>
+        <button
+          onClick={() => setActiveTab('outfit')}
+          className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'outfit'
+            ? 'bg-purple-600 text-white shadow-inner'
+            : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'
+            }`}
+        >
+          <Shirt size={14} />
+          의상추출
+        </button>
+      </div>
+
+      {/* 탭 콘텐츠 */}
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className="flex justify-end pb-2">
+          <button
+            onClick={handleResetExtractionCache}
+            disabled={isResettingExtractionCache}
+            className="px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            title="추출 캐시 초기화"
+          >
+            {isResettingExtractionCache ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            캐시 초기화
+          </button>
+        </div>
+        {isLoading && (
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-purple-500" />
+          </div>
+        )}
+
+        {/* 캐릭터선택 탭 */}
+        {activeTab === 'select' && (
+          <div className="space-y-4">
+            <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+              <div className="text-[11px] font-bold text-slate-500 mb-3 uppercase tracking-wider">슬롯 할당</div>
+              <div className="grid grid-cols-2 gap-2">
+                {SLOT_OPTIONS.map(slot => (
+                  <button
+                    key={slot.id}
+                    className={`p-2.5 rounded-lg text-xs font-bold border transition-all ${selectedSlot === slot.id
+                      ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+                      : 'border-slate-700 bg-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                      }`}
+                  >
+                    {slot.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">저장된 캐릭터</div>
+              {characters.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-slate-800 rounded-xl text-slate-600">
+                  <User size={32} className="mb-2 opacity-20" />
+                  <p className="text-xs">저장된 캐릭터가 없습니다.</p>
+                  <p className="text-[10px] mt-1">캐릭터관리 탭에서 새로 만들어보세요!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {characters.map(char => (
+                    <div
+                      key={char.id}
+                      onClick={() => {
+                        setSelectedCharacterId(char.id);
+                        setNewCharacter({
+                          name: char.name,
+                          age: char.age || '30대',
+                          gender: char.gender,
+                          face: char.face || '',
+                          hair: char.hair || '',
+                          body: char.body || '',
+                          style: char.style || ''
+                        });
+                        setBodyTuning(char.bodyTuning ? { ...DEFAULT_BODY_TUNING, ...char.bodyTuning } : { ...DEFAULT_BODY_TUNING });
+                        setActiveTab('manage');
+                        const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
+                        onCharacterSelect?.(char, protagonistSlot);
+                      }}
+                      className={`group p-3 rounded-xl border cursor-pointer transition-all ${selectedCharacterId === char.id
+                        ? 'border-purple-500 bg-purple-600/10 shadow-lg'
+                        : 'border-slate-800 bg-slate-800/30 hover:border-slate-700 hover:bg-slate-800/50'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-bold text-slate-200 group-hover:text-purple-300 transition-colors">{char.name}</div>
+                            {char.sourceType === 'ai-studio' && (
+                              <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/30 text-[9px] font-bold text-cyan-300">
+                                AI Studio
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{char.age || '연령 미설정'} · {char.gender === 'female' ? '여성' : '남성'}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCharacter(char.id);
+                            }}
+                            className="p-1 rounded-md text-slate-500 hover:text-rose-400 hover:bg-slate-800/60 transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                          <div className={`w-2 h-2 rounded-full ${selectedCharacterId === char.id ? 'bg-purple-500 animate-pulse' : 'bg-slate-700'}`} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 캐릭터관리 탭 */}
+        {activeTab === 'manage' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* 기본 정보 */}
+            <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/50 space-y-3">
+              <input
+                type="text"
+                placeholder="캐릭터 이름 (예: 지영, 철수)"
+                value={newCharacter.name}
+                onChange={e => setNewCharacter(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+              />
+              <div className="flex gap-2">
+                <select
+                  value={newCharacter.age}
+                  onChange={e => setNewCharacter(prev => ({ ...prev, age: e.target.value }))}
+                  className="flex-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 outline-none focus:ring-2 focus:ring-purple-500/50"
+                >
+                  {['20대', '30대', '40대', '50대', '60대'].map(age => <option key={age} value={age}>{age}</option>)}
+                </select>
+                <select
+                  value={newCharacter.gender}
+                  onChange={e => setNewCharacter(prev => ({ ...prev, gender: e.target.value as 'female' | 'male' }))}
+                  className="flex-1 px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 outline-none focus:ring-2 focus:ring-purple-500/50"
+                >
+                  <option value="female">여성</option>
+                  <option value="male">남성</option>
+                </select>
+              </div>
+            </div>
+
+            {selectedCharacter && (
+              <div className="bg-slate-800/35 border border-slate-700/50 rounded-xl p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-bold text-slate-200">선택된 캐릭터 미리보기</div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      {selectedCharacter.sourceType === 'ai-studio'
+                        ? 'AI Studio에서 만든 캐릭터 3면도 세트입니다. 여기서 세부 체형과 문구를 보정한 뒤 저장할 수 있습니다.'
+                        : '현재 저장된 캐릭터 정보를 수정 중입니다.'}
+                    </div>
+                  </div>
+                  <div className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-bold text-slate-300">
+                    {selectedCharacter.sourceType === 'ai-studio' ? 'AI Studio 원본' : '쇼츠랩 캐릭터'}
+                  </div>
+                </div>
+
+                {selectedCharacterPreviewUrls.representative ? (
+                  <div className="grid grid-cols-[84px_1fr] gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxImage(selectedCharacterPreviewUrls.representative)}
+                      className="group relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950"
+                    >
+                      <img
+                        src={selectedCharacterPreviewUrls.representative}
+                        alt={`${selectedCharacter.name} 대표 이미지`}
+                        className="w-full h-full object-cover min-h-[112px]"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 px-2 py-1 text-[9px] font-bold text-white bg-gradient-to-t from-black/80 to-transparent">
+                        대표 이미지
+                      </div>
+                    </button>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { key: 'front', label: '정면', url: selectedCharacterPreviewUrls.front },
+                          { key: 'angle45', label: '45도', url: selectedCharacterPreviewUrls.angle45 },
+                          { key: 'back', label: '뒷모습', url: selectedCharacterPreviewUrls.back },
+                        ].map(item => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => item.url && setLightboxImage(item.url)}
+                            disabled={!item.url}
+                            className={`relative rounded-xl overflow-hidden border min-h-[84px] ${item.url
+                              ? 'border-slate-700 bg-slate-950 hover:border-purple-500/60'
+                              : 'border-dashed border-slate-700 bg-slate-900/60 text-slate-600'
+                              }`}
+                          >
+                            {item.url ? (
+                              <>
+                                <img src={item.url} alt={`${selectedCharacter.name} ${item.label}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-x-0 bottom-0 px-2 py-1 text-[9px] font-bold text-white bg-gradient-to-t from-black/80 to-transparent">
+                                  {item.label}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
+                                {item.label} 없음
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2">
+                        <div className="text-[10px] font-bold text-slate-300">현재 편집 상태</div>
+                        <div className="text-[10px] text-slate-500 mt-1">
+                          이름, 연령, 성별, 얼굴/헤어 문구, 체형 튜닝을 수정한 뒤 저장하면 이 캐릭터에 덮어씌워집니다.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 px-3 py-5 text-center text-[10px] text-slate-500">
+                    아직 연결된 대표 이미지가 없습니다.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 서브탭 (얼굴, 체형 2개 - 헤어는 체형 탭에 통합) */}
+            <div className="flex p-1 bg-slate-900/50 rounded-lg border border-slate-800">
+              {(['face', 'body'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setManageSubTab(tab)}
+                  className={`flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all ${manageSubTab === tab
+                    ? 'bg-slate-700 text-purple-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                  {tab === 'face' ? '얼굴' : '헤어/체형'}
+                </button>
+              ))}
+            </div>
+
+            {/* 서브탭 콘텐츠 */}
+            <div className="min-h-[160px] space-y-3">
+              {manageSubTab === 'face' && (
+                <div className="space-y-3 animate-in fade-in duration-300">
+                  {selectedCharacterPreviewUrls.representative && (
+                    <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
+                      <div className="text-[10px] font-bold text-slate-300 mb-2">현재 연결된 얼굴/대표 이미지</div>
+                      <button
+                        type="button"
+                        onClick={() => setLightboxImage(selectedCharacterPreviewUrls.representative)}
+                        className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950"
+                      >
+                        <img
+                          src={selectedCharacterPreviewUrls.representative}
+                          alt="현재 캐릭터 대표 이미지"
+                          className="w-full max-h-56 object-cover"
+                        />
+                      </button>
+                    </div>
+                  )}
+
+                  <label
+                    className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingFace
+                      ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
+                      : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
+                      }`}
+                    onDragOver={(e) => handleDragOver(e, 'face')}
+                    onDragLeave={(e) => handleDragLeave(e, 'face')}
+                    onDrop={(e) => handleDrop(e, 'face')}
+                  >
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleExtractFace(file);
+                      e.target.value = '';  // ← 추가
+                    }} />
+                    {isExtractingFace ? (
+                      <>
+                        <Loader2 size={24} className="text-purple-400 animate-spin mb-2" />
+                        <span className="text-[11px] font-bold text-purple-400">특징 분석 중...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={24} className={`${isDraggingFace ? 'text-purple-400 animate-bounce' : 'text-slate-600 group-hover:text-purple-400'} mb-2 transition-colors`} />
+                        <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-300">
+                          {isDraggingFace ? '여기에 놓으세요!' : '얼굴 사진 드래그 또는 클릭'}
+                        </span>
+                      </>
+                    )}
+                  </label>
+
+                  {extractedFace && (
+                    <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
+                      <div className="flex items-start gap-3">
+                        {generatedFaceImage && (
+                          <img
+                            src={generatedFaceImage}
+                            alt="Generated Face"
+                            className="w-16 h-16 rounded-lg object-cover border border-purple-500/30 cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                            onClick={() => setLightboxImage(generatedFaceImage)}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (한글 수정 시 자동 번역)</div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block flex items-center gap-1">
+                              한글 설명 (수정하면 영문 자동 번역)
+                              {isTranslatingFace && <Loader2 className="w-3 h-3 animate-spin text-purple-400" />}
+                            </label>
+                            <textarea
+                              value={extractedFace.ko}
+                              onChange={e => handleFaceKoChange(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-14"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
+                            <textarea
+                              value={extractedFace.en}
+                              onChange={e => setExtractedFace(prev => prev ? { ...prev, en: e.target.value } : null)}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-16 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleGenerateCharacterImage(extractedFace.en, 'face')}
+                          disabled={isGeneratingImage}
+                          className="flex-1 py-1.5 bg-purple-600/90 hover:bg-purple-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
+                        </button>
+                        <button
+                          onClick={() => handleForwardPromptToImageAI(extractedFace.en, 'face')}
+                          disabled={!!aiForwardingType && aiForwardingType !== 'face'}
+                          className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {aiForwardingType === 'face' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />} AI 생성
+                        </button>
+                        <button
+                          onClick={handleReExtractFace}
+                          disabled={isExtractingFace}
+                          className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all disabled:opacity-50"
+                          title="다시 분석"
+                        >
+                          {isExtractingFace ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <textarea
+                    placeholder="얼굴 특징 직접 입력 (영어 권장)"
+                    value={newCharacter.face}
+                    onChange={e => setNewCharacter(prev => ({ ...prev, face: e.target.value }))}
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-300 placeholder-slate-600 focus:ring-2 focus:ring-purple-500/50 outline-none resize-none h-24 transition-all"
+                  />
+                </div>
+              )}
+
+              {manageSubTab === 'body' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">핵심 체형 조절</div>
+                        <div className="text-[10px] text-slate-500 mt-1">가슴, 다리, 엉덩이는 여기서 바로 조절하고 더 세부적인 값은 전체 커스텀에서 다듬으세요.</div>
+                      </div>
+                      <button
+                        onClick={() => setShowBodyTuningModal(true)}
+                        className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-purple-500 bg-purple-900/40 text-purple-200 hover:border-purple-400 transition-all"
+                      >
+                        전체 체형 커스텀
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {[
+                        { key: 'shoulderWidth', label: '어깨 넓이', hint: '좁음 ↔ 넓음' },
+                        { key: 'bustHeight', label: '가슴 위', hint: '가슴 라인 위치' },
+                        { key: 'bustFront', label: newCharacter.gender === 'female' ? '가슴 앞' : '가슴 앞쪽 볼륨', hint: '앞으로 작음 ↔ 큼' },
+                        { key: 'pelvisWidth', label: '골반 크기', hint: '좁음 ↔ 넓음' },
+                        { key: 'buttProjection', label: '엉덩이 뒤', hint: '뒤로 작음 ↔ 큼' },
+                        { key: 'buttLift', label: '엉덩이 위', hint: '아래 ↔ 위' },
+                        { key: 'legLength', label: '다리 길이', hint: '짧음 ↔ 길음' },
+                        { key: 'overall', label: '전체 체형감', hint: '슬림 ↔ 볼륨감' },
+                      ].map(control => {
+                        const value = bodyTuning[control.key as keyof BodyTuning];
+                        const label = toSizeLabel(value, ['작음', '보통', '큼', '아주 큼']);
+                        return (
+                          <div key={control.key} className="rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2.5">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="text-[11px] font-bold text-slate-200">{control.label}</div>
+                                <div className="text-[10px] text-slate-500">{control.hint}</div>
+                              </div>
+                              <div className="text-[10px] font-bold text-purple-300">{value} / {label}</div>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={value}
+                              onChange={e => setBodyTuning(prev => ({ ...prev, [control.key]: Number(e.target.value) }))}
+                              className="w-full mt-2 accent-purple-500"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2">
+                      <div className="text-[10px] font-bold text-slate-300">체형 문구 자동 반영</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{bodyTuningPreview}</div>
+                    </div>
+                  </div>
+
+                  {/* 헤어 섹션 */}
+                  <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
+                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">💇 헤어스타일</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {HAIR_PRESETS.map(preset => (
+                        <button
+                          key={preset.id}
+                          onClick={() => setNewCharacter(prev => ({ ...prev, hair: preset.prompt }))}
+                          className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.hair === preset.prompt
+                            ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
+                            : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                            }`}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="헤어스타일 상세 정보"
+                      value={newCharacter.hair}
+                      onChange={e => setNewCharacter(prev => ({ ...prev, hair: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-300 outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-16 transition-all"
+                    />
+                  </div>
+
+                  {/* 체형 섹션 */}
+                  <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 space-y-3">
+                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">👤 체형</div>
+                    <label
+                      className={`flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingBody
+                        ? 'border-purple-400 bg-purple-500/10 scale-[1.02]'
+                        : 'border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5'
+                        }`}
+                      onDragOver={(e) => handleDragOver(e, 'body')}
+                      onDragLeave={(e) => handleDragLeave(e, 'body')}
+                      onDrop={(e) => handleDrop(e, 'body')}
+                    >
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleExtractBody(file);
+                        e.target.value = '';
+                      }} />
+                      {isExtractingBody ? (
+                        <>
+                          <Loader2 size={24} className="text-purple-400 animate-spin mb-2" />
+                          <span className="text-[11px] font-bold text-purple-400">체형 분석 중...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={24} className={`${isDraggingBody ? 'text-purple-400 animate-bounce' : 'text-slate-600 group-hover:text-purple-400'} mb-2 transition-colors`} />
+                          <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-300">
+                            {isDraggingBody ? '여기에 놓으세요!' : '체형 사진 드래그 또는 클릭'}
+                          </span>
+                        </>
+                      )}
+                    </label>
+
+                  {extractedBody && (
+                    <div className="p-3 bg-purple-950/20 border border-purple-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
+                      <div className="flex items-start gap-3">
+                        {generatedBodyImage && (
+                          <img
+                            src={generatedBodyImage}
+                            alt="Generated Body"
+                            className="w-16 h-16 rounded-lg object-cover border border-purple-500/30 cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all"
+                            onClick={() => setLightboxImage(generatedBodyImage)}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="text-[10px] font-bold text-purple-400 mb-1">✨ 분석 결과 (한글 수정 시 자동 번역)</div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block flex items-center gap-1">
+                              한글 설명 (수정하면 영문 자동 번역)
+                              {isTranslatingBody && <Loader2 className="w-3 h-3 animate-spin text-purple-400" />}
+                            </label>
+                            <textarea
+                              value={extractedBody.ko}
+                              onChange={e => handleBodyKoChange(e.target.value)}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-14"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-purple-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
+                            <textarea
+                              value={extractedBody.en}
+                              onChange={e => {
+                                const newValue = e.target.value;
+                                setExtractedBody(prev => prev ? { ...prev, en: newValue } : null);
+                                // newCharacter.body에도 동기화
+                                setNewCharacter(prev => ({ ...prev, body: newValue }));
+                              }}
+                              className="w-full px-2 py-1.5 bg-slate-900/80 border border-purple-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-purple-500/50 outline-none resize-none h-16 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            // 헤어 + 체형 프롬프트 결합
+                            const hairPrompt = newCharacter.hair ? `${newCharacter.hair}, ` : '';
+                            const fullPrompt = `${hairPrompt}${extractedBody.en}`;
+                            handleGenerateCharacterImage(fullPrompt, 'body');
+                          }}
+                          disabled={isGeneratingImage}
+                          className="flex-1 py-1.5 bg-purple-600/90 hover:bg-purple-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
+                        </button>
+                        <button
+                          onClick={() => {
+                            // 헤어 + 체형 프롬프트 결합
+                            const hairPrompt = newCharacter.hair ? `${newCharacter.hair}, ` : '';
+                            const fullPrompt = `${hairPrompt}${extractedBody.en}`;
+                            handleForwardPromptToImageAI(fullPrompt, 'body');
+                          }}
+                          disabled={!!aiForwardingType && aiForwardingType !== 'body'}
+                          className="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {aiForwardingType === 'body' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />} AI 생성
+                        </button>
+                        <button
+                          onClick={handleReExtractBody}
+                          disabled={isExtractingBody}
+                          className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all disabled:opacity-50"
+                          title="다시 분석"
+                        >
+                          {isExtractingBody ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {BODY_PRESETS.map(preset => (
+                        <button
+                          key={preset.id}
+                          onClick={() => {
+                            setNewCharacter(prev => ({ ...prev, body: preset.prompt }));
+                            setExtractedBody(prev => (prev ? { ...prev, en: preset.prompt } : prev));
+                          }}
+                          className={`px-3 py-2 text-[10px] font-bold rounded-lg border transition-all ${newCharacter.body === preset.prompt
+                            ? 'border-purple-500 bg-purple-600/20 text-purple-300 shadow-sm'
+                            : 'border-slate-800 bg-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                            }`}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="bg-slate-900/60 border border-slate-700 rounded-xl p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[10px] font-bold text-slate-300">체형 커스텀</div>
+                        <button
+                          onClick={() => setShowBodyTuningModal(true)}
+                          className="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-purple-500 bg-purple-900/40 text-purple-200 hover:border-purple-400 transition-all"
+                        >
+                          체형 커스텀 열기
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1">모달에서 상세 조절, 미리보기, 프리셋 저장까지 모두 가능합니다.</div>
+                    </div>
+                    <textarea
+                      placeholder="체형/포즈 상세 정보"
+                      value={newCharacter.body}
+                      onChange={e => setNewCharacter(prev => ({ ...prev, body: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-300 outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-16 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleSaveCharacter}
+              disabled={!newCharacter.name.trim()}
+              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              <Save size={16} />
+              {selectedCharacterId ? '캐릭터 업데이트 저장' : '새 캐릭터 저장'}
+            </button>
+          </div>
+        )}
+
+        {/* 의상추출 탭 */}
+        {activeTab === 'outfit' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* 의상 추출 영역 */}
+            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 space-y-3">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">AI 의상 추출</div>
+              <label
+                className={`flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-xl cursor-pointer transition-all group ${isDraggingOutfit
+                  ? 'border-emerald-400 bg-emerald-500/10 scale-[1.02]'
+                  : 'border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5'
+                  }`}
+                onDragOver={(e) => handleDragOver(e, 'outfit')}
+                onDragLeave={(e) => handleDragLeave(e, 'outfit')}
+                onDrop={(e) => handleDrop(e, 'outfit')}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleExtractOutfit(file);
+                    e.target.value = '';  // ← 추가
+                  }}
+                />
+                {isExtracting ? (
+                  <>
+                    <Loader2 size={32} className="text-emerald-500 animate-spin mb-2" />
+                    <span className="text-[11px] font-bold text-emerald-400">이미지 분석 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Shirt size={32} className={`${isDraggingOutfit ? 'text-emerald-400 animate-bounce' : 'text-slate-600 group-hover:text-emerald-400'} mb-2 transition-colors`} />
+                    <span className="text-[11px] font-bold text-slate-500 group-hover:text-slate-300">
+                      {isDraggingOutfit ? '여기에 놓으세요!' : '의상 사진 드래그 또는 클릭'}
+                    </span>
+                  </>
+                )}
+              </label>
+
+              {extractedOutfit && (
+                <div className="p-3 bg-emerald-950/20 border border-emerald-800/50 rounded-xl space-y-2 animate-in zoom-in-95 duration-300">
+                  <div className="flex items-start gap-3">
+                    {generatedOutfitImage && (
+                      <img
+                        src={generatedOutfitImage}
+                        alt="Generated Outfit"
+                        className="w-20 h-20 rounded-lg object-cover border border-emerald-500/30 cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all"
+                        onClick={() => setLightboxImage(generatedOutfitImage)}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="text-[10px] font-bold text-emerald-400">✨ 분석 결과 (한글 수정 시 자동 번역)</div>
+                      {/* 의상 이름 수정 */}
+                      <div>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block">👗 의상 이름</label>
+                        <input
+                          type="text"
+                          value={extractedOutfit.name}
+                          onChange={e => setExtractedOutfit(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-sm font-bold text-emerald-300 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none"
+                        />
+                      </div>
+                      {/* 한글 설명 수정 */}
+                      <div>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block flex items-center gap-1">
+                          한글 설명 (수정하면 영문 자동 번역)
+                          {isTranslatingOutfit && <Loader2 className="w-3 h-3 animate-spin text-emerald-400" />}
+                        </label>
+                        <textarea
+                          value={extractedOutfit.ko}
+                          onChange={e => handleOutfitKoChange(e.target.value)}
+                          className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-xs text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none resize-none h-14"
+                        />
+                      </div>
+                      {/* 영문 프롬프트 수정 */}
+                      <div>
+                        <label className="text-[9px] text-emerald-300 mb-0.5 block">영문 프롬프트 (자동 생성)</label>
+                        <textarea
+                          value={extractedOutfit.en}
+                          onChange={e => setExtractedOutfit(prev => prev ? { ...prev, en: e.target.value } : null)}
+                          className="w-full px-2 py-1.5 bg-slate-900/80 border border-emerald-700/50 rounded-lg text-[10px] text-slate-400 placeholder-slate-600 focus:ring-1 focus:ring-emerald-500/50 outline-none resize-none h-20 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => handleGenerateCharacterImage(extractedOutfit.en, 'outfit')}
+                      disabled={isGeneratingImage}
+                      className="flex-1 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
+                    </button>
+                    <button
+                      onClick={() => handleForwardPromptToImageAI(extractedOutfit.en, 'outfit')}
+                      disabled={!!aiForwardingType && aiForwardingType !== 'outfit'}
+                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {aiForwardingType === 'outfit' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />} AI 생성
+                    </button>
+                    <button
+                      onClick={() => handleCopyPrompt(extractedOutfit.en, 'extracted')}
+                      className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-all"
+                      title="프롬프트 복사"
+                    >
+                      {copiedPromptId === 'extracted' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                    <button
+                      onClick={handleReExtractOutfit}
+                      disabled={isExtracting}
+                      className="p-2 bg-purple-600/90 hover:bg-purple-500 text-white rounded-lg transition-all disabled:opacity-50"
+                      title="AI 재분석"
+                    >
+                      {isExtracting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      // 한글 이름과 영문 프롬프트 모두 설정
+                      setNewOutfitName(extractedOutfit.name || '추출된 의상');
+                      setNewOutfitPrompt(extractedOutfit.en);
+                      setShowAddOutfit(true);
+                      setExtractedOutfit(null);
+                      setGeneratedOutfitImage(null);
+                    }}
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg transition-all shadow-md mt-1"
+                  >
+                    리스트에 추가하기
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 의상 리스트 - 카테고리별 드롭다운 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">📋 의상 라이브러리</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const targets: OutfitPreviewTarget[] = outfitsMissingPreview.map(outfit => ({
+                        id: outfit.id,
+                        prompt: outfit.prompt,
+                        kind: 'user' as const
+                      }));
+                      if (includeBaseOutfitsInBatch) {
+                        baseOutfitsMissingPreview.forEach(item => {
+                          const prompt = item.prompt || item.name;
+                          if (prompt) {
+                            targets.push({
+                              id: item.id,
+                              prompt,
+                              kind: 'base' as const
+                            });
+                          }
+                        });
+                      }
+                      handleBatchGenerateOutfitPreviews(targets);
+                    }}
+                    disabled={isBatchGeneratingOutfitPreviews || (outfitsMissingPreview.length === 0 && (!includeBaseOutfitsInBatch || baseOutfitsMissingPreview.length === 0))}
+                    className="px-2 py-1 bg-emerald-700/70 hover:bg-emerald-600 text-[10px] font-bold text-emerald-100 rounded-lg transition-all disabled:opacity-40"
+                    title="미리보기 없는 의상 전체 생성"
+                  >
+                    전체 생성
+                  </button>
+                  <button
+                    onClick={handleRefreshOutfitPreviewMap}
+                    className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[10px] font-bold text-slate-200 rounded-lg transition-all"
+                    title="썸네일 새로고침"
+                  >
+                    새로고침
+                  </button>
+                  {batchFailedOutfitIds.length > 0 && (
+                    <button
+                      onClick={() => {
+                        const retryTargets = outfits
+                          .filter(outfit => batchFailedOutfitIds.includes(outfit.id))
+                          .map(outfit => ({
+                            id: outfit.id,
+                            prompt: outfit.prompt,
+                            kind: 'user' as const
+                          }));
+                        const retryBaseTargets = baseOutfitsMissingPreview
+                          .filter(item => batchFailedOutfitIds.includes(item.id))
+                          .map(item => ({
+                            id: item.id,
+                            prompt: item.prompt || item.name || '',
+                            kind: 'base' as const
+                          }));
+                        handleBatchGenerateOutfitPreviews([...retryTargets, ...retryBaseTargets]);
+                      }}
+                      disabled={isBatchGeneratingOutfitPreviews}
+                      className="px-2 py-1 bg-amber-700/70 hover:bg-amber-600 text-[10px] font-bold text-amber-100 rounded-lg transition-all disabled:opacity-40"
+                      title="실패 항목만 재시도"
+                    >
+                      실패 재시도
+                    </button>
+                  )}
+                  <label className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={includeBaseOutfitsInBatch}
+                      onChange={e => setIncludeBaseOutfitsInBatch(e.target.checked)}
+                      className="accent-emerald-500"
+                    />
+                    기본 의상 포함
+                  </label>
+                  <label className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={showHiddenBaseOutfits}
+                      onChange={e => setShowHiddenBaseOutfits(e.target.checked)}
+                      className="accent-emerald-500"
+                    />
+                    숨김 포함
+                  </label>
+                  <label className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={showHiddenUserOutfits}
+                      onChange={e => setShowHiddenUserOutfits(e.target.checked)}
+                      className="accent-emerald-500"
+                    />
+                    사용자 숨김 포함
+                  </label>
+                  <button
+                    onClick={() => setShowAddCategory(true)}
+                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 rounded-lg transition-all"
+                  >
+                    카테고리 추가
+                  </button>
+                  <button
+                    onClick={() => setShowAddOutfit(true)}
+                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-purple-400 rounded-lg transition-all"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+              {(isBatchGeneratingOutfitPreviews || batchTotalOutfits > 0) && (
+                <div className="px-1 text-[10px] text-slate-500 flex items-center gap-2">
+                  <span>미리보기 생성</span>
+                  <span className="text-emerald-400 font-bold">
+                    {batchCompletedOutfits}/{batchTotalOutfits}
+                  </span>
+                  {batchFailedOutfitIds.length > 0 && (
+                    <span className="text-amber-400">실패 {batchFailedOutfitIds.length}개</span>
+                  )}
+                </div>
+              )}
+
+              {showAddCategory && (
+                <div className="p-3 bg-slate-800 border border-emerald-500/30 rounded-xl space-y-3 shadow-xl animate-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-400">새 카테고리 추가</span>
+                    <button onClick={() => setShowAddCategory(false)} className="text-slate-500 hover:text-white"><X size={14} /></button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="카테고리 이름 (예: 캐주얼, 정장)"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                  />
+
+                  <div className="flex gap-2">
+                    <select
+                      value={newCategoryGender}
+                      onChange={e => setNewCategoryGender(e.target.value as OutfitCategory['gender'])}
+                      className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                    >
+                      <option value="female">여성용</option>
+                      <option value="male">남성용</option>
+                      <option value="unisex">공용</option>
+                    </select>
+                    <button
+                      onClick={handleAddCategory}
+                      disabled={!newCategoryName.trim()}
+                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                    >
+                      추가
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {editingCategoryId && (
+                <div className="p-3 bg-slate-800 border border-amber-500/30 rounded-xl space-y-3 shadow-xl animate-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-400">카테고리 수정</span>
+                    <button onClick={() => setEditingCategoryId(null)} className="text-slate-500 hover:text-white"><X size={14} /></button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="카테고리 이름"
+                    value={editingCategoryName}
+                    onChange={e => setEditingCategoryName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                  />
+
+                  <div className="flex gap-2">
+                    <select
+                      value={editingCategoryGender}
+                      onChange={e => setEditingCategoryGender(e.target.value as OutfitCategory['gender'])}
+                      className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                    >
+                      <option value="female">여성용</option>
+                      <option value="male">남성용</option>
+                      <option value="unisex">공용</option>
+                    </select>
+                    <button
+                      onClick={handleUpdateCategory}
+                      disabled={!editingCategoryName.trim()}
+                      className="px-3 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                    >
+                      수정
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 추가 폼 */}
+              {showAddOutfit && (
+                <div className="p-3 bg-slate-800 border border-purple-500/30 rounded-xl space-y-3 shadow-xl animate-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-400">새 의상 정보</span>
+                    <button onClick={() => setShowAddOutfit(false)} className="text-slate-500 hover:text-white"><X size={14} /></button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500">저장할 카테고리</label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {outfitCategories.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setNewOutfitCategory(cat.id)}
+                          className={`px-2 py-1.5 text-[10px] font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+                            newOutfitCategory === cat.id
+                              ? 'border-purple-500 bg-purple-600/20 text-purple-300'
+                              : 'border-slate-700 bg-slate-900 text-slate-500 hover:border-slate-600'
+                          }`}
+                        >
+                          <span>{cat.emoji}</span>
+                          <span>{cat.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="의상 이름 (한글, 예: 블랙 튜브탑 + 데님 쇼츠)"
+                    value={newOutfitName}
+                    onChange={e => setNewOutfitName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                  />
+                  <textarea
+                    placeholder="의상 프롬프트 (영어, 이미지 생성에 사용됨)"
+                    value={newOutfitPrompt}
+                    onChange={e => setNewOutfitPrompt(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                  />
+                  <button
+                    onClick={handleAddOutfit}
+                    disabled={!newOutfitName.trim() || !newOutfitPrompt.trim()}
+                    className="w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-[11px] font-bold rounded-lg transition-all shadow-md"
+                  >
+                    {outfitCategories.find(c => c.id === newOutfitCategory)?.emoji} {newOutfitCategory}에 저장하기
+                  </button>
+                </div>
+              )}
+
+              {showOutfitEditModal && (selectedOutfit || selectedBaseOutfit) && (
+                <div
+                  className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={closeOutfitEditModal}
+                >
+                  <div
+                    className="w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ transform: `translate(${modalPosition.x}px, ${modalPosition.y}px)` }}
+                  >
+                    <div
+                      className="flex items-center justify-between cursor-move select-none mb-3"
+                      onMouseDown={handleModalMouseDown}
+                    >
+                      <span className="text-sm font-bold text-emerald-400">
+                        {selectedOutfit ? '의상 편집' : '기본 의상 편집'}
+                      </span>
+                      <button
+                        onClick={closeOutfitEditModal}
+                        className="text-slate-500 hover:text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-4">
+                      <div className="space-y-3">
+                        {selectedOutfit ? (
+                          <>
+                        <input
+                          type="text"
+                          value={editingOutfitName}
+                          onChange={e => setEditingOutfitName(e.target.value)}
+                          placeholder="의상 이름"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                        />
+                        <textarea
+                          value={editingOutfitPrompt}
+                          onChange={e => setEditingOutfitPrompt(e.target.value)}
+                          placeholder="의상 프롬프트 (영어)"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                        />
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500">카테고리 이동</label>
+                          <select
+                            value={editingOutfitCategory}
+                            onChange={(e) => setEditingOutfitCategory(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                          >
+                            {outfitCategories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleUpdateOutfit}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            저장
+                          </button>
+                          <button
+                            onClick={() => handleGenerateOutfitPreviewWithGeminiAPI(selectedOutfit)}
+                            disabled={isGeneratingOutfitPreview}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingOutfitPreview ? '생성 중...' : '이미지생성'}
+                          </button>
+                          <button
+                            onClick={() => handleGenerateOutfitPreviewWithAI(editingOutfitPrompt.trim() || selectedOutfit.prompt, selectedOutfit.id, 'user')}
+                            disabled={isGeneratingOutfitPreviewAI}
+                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleToggleUserOutfitHidden}
+                          className={`w-full py-2 text-[11px] font-bold rounded-lg transition-all ${
+                            selectedOutfit.hidden
+                              ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                              : 'bg-rose-700/80 hover:bg-rose-600 text-white'
+                          }`}
+                        >
+                          {selectedOutfit.hidden ? '숨김 해제' : '숨김 처리'}
+                        </button>
+                          </>
+                        ) : selectedBaseOutfit ? (
+                          <>
+                        <input
+                          type="text"
+                          value={editingBaseOutfitName}
+                          onChange={e => setEditingBaseOutfitName(e.target.value)}
+                          placeholder="의상 이름"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                        />
+                        <textarea
+                          value={editingBaseOutfitPrompt}
+                          onChange={e => setEditingBaseOutfitPrompt(e.target.value)}
+                          placeholder="의상 프롬프트 (영어)"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-slate-300 outline-none resize-none h-20"
+                        />
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500">카테고리 이동</label>
+                          <select
+                            value={editingBaseOutfitCategory}
+                            onChange={(e) => setEditingBaseOutfitCategory(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 outline-none"
+                          >
+                            {outfitCategories.map((cat) => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveBaseOutfitAsCustom}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            사용자 의상으로 저장
+                          </button>
+                          <button
+                            onClick={() => handleMoveBaseOutfitCategory(selectedBaseOutfit.id, editingBaseOutfitCategory || selectedBaseOutfit.categories?.[0] || 'ROYAL')}
+                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            카테고리 변경
+                          </button>
+                          <button
+                            onClick={() => handleGenerateBaseOutfitPreviewWithGeminiAPI(selectedBaseOutfit)}
+                            disabled={isGeneratingBaseOutfitPreview}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingBaseOutfitPreview ? '생성 중...' : '이미지생성'}
+                          </button>
+                          <button
+                            onClick={() => handleGenerateOutfitPreviewWithAI(editingBaseOutfitPrompt.trim() || selectedBaseOutfit.prompt || selectedBaseOutfit.name, selectedBaseOutfit.id, 'base')}
+                            disabled={isGeneratingBaseOutfitPreviewAI}
+                            className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                          >
+                            {isGeneratingBaseOutfitPreviewAI ? 'AI 생성 중...' : 'AI 생성'}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleToggleBaseOutfitHidden(selectedBaseOutfit.id)}
+                          className={`w-full py-2 text-[11px] font-bold rounded-lg transition-all ${
+                            isSelectedBaseOutfitHidden
+                              ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                              : 'bg-rose-700/80 hover:bg-rose-600 text-white'
+                          }`}
+                        >
+                          {isSelectedBaseOutfitHidden ? '숨김 해제' : '숨김 처리'}
+                        </button>
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                        <div className="text-[10px] font-bold text-slate-400 mb-2">미리보기</div>
+                        {selectedOutfit?.imageUrl ? (
+                          <img
+                            src={selectedOutfit.imageUrl}
+                            alt={selectedOutfit.name}
+                            className="w-full h-auto max-h-[360px] object-contain rounded-lg border border-slate-700"
+                          />
+                        ) : selectedBaseOutfit && baseOutfitPreviewMap[selectedBaseOutfit.id] ? (
+                          <img
+                            src={baseOutfitPreviewMap[selectedBaseOutfit.id]}
+                            alt={selectedBaseOutfit.translation || selectedBaseOutfit.name}
+                            className="w-full h-auto max-h-[360px] object-contain rounded-lg border border-slate-700"
+                          />
+                        ) : (
+                          <div className="text-[11px] text-slate-500">미리보기 이미지가 없습니다.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 카테고리별 드롭다운 목록 */}
+              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                {outfitCategories.map(category => {
+                  const baseOutfits = getBaseOutfitsByCategory[category.id] || [];
+                  const userOutfits = getOutfitsByCategory(category.id);
+                  const totalCount = getCategoryCount(category.id);
+                  const isExpanded = expandedCategories[category.id];
+
+                  return (
+                    <div key={category.id} className="border border-slate-800 rounded-xl overflow-hidden">
+                      {/* 카테고리 헤더 */}
+                      <div
+                        className={`w-full flex items-center justify-between p-3 transition-all ${
+                          isExpanded
+                            ? 'bg-slate-800/80 border-b border-slate-700'
+                            : 'bg-slate-800/40 hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <button
+                          onClick={() => toggleCategory(category.id)}
+                          className="flex items-center gap-2 flex-1 text-left"
+                        >
+                          <span className="text-base">{category.emoji}</span>
+                          <span className="text-xs font-bold text-slate-300">{category.name}</span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-900/30 px-1.5 py-0.5 rounded-full font-bold">
+                            {totalCount}
+                          </span>
+                          {userOutfits.length > 0 && (
+                            <span className="text-[9px] text-purple-400">+{userOutfits.length} 추가됨</span>
+                          )}
+                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleStartEditCategory(category)}
+                            className="p-1 text-slate-500 hover:text-amber-300 transition-colors"
+                            title="카테고리 수정"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            disabled={DEFAULT_CATEGORY_IDS.has(category.id)}
+                            className="p-1 text-slate-500 hover:text-red-300 transition-colors disabled:opacity-40 disabled:hover:text-slate-500"
+                            title={DEFAULT_CATEGORY_IDS.has(category.id) ? '기본 카테고리는 삭제할 수 없습니다.' : '카테고리 삭제'}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                          <ChevronDown
+                            size={16}
+                            className={`text-slate-500 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* 카테고리 내 의상 목록 */}
+                      {isExpanded && (
+                        <div className="bg-slate-900/50 max-h-[300px] overflow-y-auto custom-scrollbar">
+                          {/* 사용자 정의 의상 (삭제 가능) */}
+                          {userOutfits.length > 0 && (
+                            <div className="border-b border-purple-500/20">
+                              <div className="px-2.5 py-1.5 bg-purple-900/20 text-[9px] font-bold text-purple-400">
+                                ✨ 사용자 추가 ({userOutfits.length})
+                              </div>
+                              {userOutfits.map(outfit => (
+                                <div
+                                  key={outfit.id}
+                                  onClick={() => handleSelectOutfit(outfit)}
+                                  className={`group flex items-center gap-2 p-2 cursor-pointer transition-all ${
+                                    selectedOutfitId === outfit.id
+                                      ? 'bg-emerald-500/10'
+                                      : 'hover:bg-slate-800/50'
+                                  }`}
+                                >
+                                  {outfit.imageUrl ? (
+                                    <img
+                                      src={outfit.imageUrl}
+                                      alt={outfit.name}
+                                      className="w-8 h-8 rounded object-cover border border-emerald-500/40 flex-shrink-0 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLightboxImage(outfit.imageUrl || null);
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
+                                      selectedOutfitId === outfit.id
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'bg-purple-800 text-purple-400'
+                                    }`}>
+                                      <Shirt size={10} />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                  <div className={`text-[10px] font-bold truncate ${
+                                    selectedOutfitId === outfit.id
+                                      ? 'text-emerald-400'
+                                      : 'text-slate-300'
+                                  }`}>
+                                    {outfit.name}
+                                    {outfit.hidden && (
+                                      <span className="ml-1 text-[9px] text-rose-400">숨김</span>
+                                    )}
+                                  </div>
+                                    {/* 프롬프트 미리보기 */}
+                                    <div className="text-[9px] text-slate-500 truncate mt-0.5">
+                                      {outfit.prompt.substring(0, 50)}...
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyPrompt(outfit.prompt, outfit.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-emerald-400 transition-all flex-shrink-0"
+                                    title="프롬프트 복사"
+                                  >
+                                    {copiedPromptId === outfit.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectOutfit(outfit);
+                                      openOutfitEditModal();
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-amber-300 transition-all flex-shrink-0"
+                                    title="수정"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteOutfit(outfit.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-red-400 transition-all flex-shrink-0"
+                                    title="삭제"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 기본 의상 (선택 가능, 프롬프트 포함) */}
+                          <div className="divide-y divide-slate-800/30">
+                            <div className="px-2.5 py-1.5 bg-slate-800/30 text-[9px] font-bold text-slate-500">
+                              📦 기본 의상 ({baseOutfits.length})
+                            </div>
+                            {baseOutfits.map(item => (
+                              <div
+                                key={item.id}
+                                onClick={() => handleSelectBaseOutfit(item)}
+                                className={`group flex items-center gap-2 p-2 cursor-pointer transition-all ${
+                                  selectedBaseOutfitId === item.id
+                                    ? 'bg-emerald-500/10'
+                                    : 'hover:bg-slate-800/30'
+                                } ${item.isHidden ? 'opacity-40' : ''}`}
+                              >
+                                {baseOutfitPreviewMap[item.id] ? (
+                                  <img
+                                    src={baseOutfitPreviewMap[item.id]}
+                                    alt={item.translation || item.name}
+                                    className="w-8 h-8 rounded object-cover border border-emerald-500/30 flex-shrink-0 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLightboxImage(baseOutfitPreviewMap[item.id]);
+                                    }}
+                                  />
+                                ) : (
+                                  <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
+                                    selectedBaseOutfitId === item.id
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-slate-800 text-slate-600'
+                                  }`}>
+                                    <Shirt size={10} />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-[10px] truncate ${
+                                    selectedBaseOutfitId === item.id
+                                      ? 'text-emerald-400 font-bold'
+                                      : 'text-slate-400'
+                                  }`}>
+                                    {item.translation || item.name}
+                                    {item.isHidden && (
+                                      <span className="ml-1 text-[9px] text-rose-400">숨김</span>
+                                    )}
+                                  </div>
+                                  {/* 프롬프트 미리보기 (있는 경우) */}
+                                  {item.prompt && (
+                                    <div className="text-[9px] text-slate-600 truncate mt-0.5">
+                                      {item.prompt.substring(0, 40)}...
+                                    </div>
+                                  )}
+                                </div>
+                                {item.prompt && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyPrompt(item.prompt!, item.id);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-emerald-400 transition-all flex-shrink-0"
+                                    title="프롬프트 복사"
+                                  >
+                                    {copiedPromptId === item.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBaseOutfitId(item.id);
+                                    setSelectedOutfitId(null);
+                                    openOutfitEditModal();
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-amber-300 transition-all flex-shrink-0"
+                                  title="수정"
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showBodyTuningModal && (
+        <div
+          className="fixed inset-0 z-[95] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowBodyTuningModal(false)}
+        >
+          <div
+            className="w-full max-w-5xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 md:p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-sm font-bold text-purple-300">체형 커스텀</div>
+                <div className="text-[10px] text-slate-500 mt-1">슬라이더를 움직이면 바로 옆 샘플 이미지가 즉시 변합니다.</div>
+              </div>
+              <button
+                onClick={() => setShowBodyTuningModal(false)}
+                className="text-slate-500 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4">
+              <div className="space-y-4">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-slate-300">슬라이더 (현재 값이 바로 반영됨)</div>
+                  <div className="text-[10px] text-slate-500 mt-1">작음 → 보통 → 큼 → 아주 큼으로 이해하면 됩니다.</div>
+                </div>
+
+                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">기본 체형</div>
+                  {BODY_TUNING_CONTROLS.filter(control => BASIC_BODY_KEYS.includes(control.key)).map(control => {
+                    const value = bodyTuning[control.key];
+                    const sizeLabel = toSizeLabel(value, ['작음', '보통', '큼', '아주 큼']);
+                    return (
+                      <div key={control.key} className="bg-slate-900/60 border border-slate-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-200">{control.label}</div>
+                            <div className="text-[10px] text-slate-500">{control.hint}</div>
+                          </div>
+                          <div className="text-[10px] font-bold text-purple-300">{value} / {sizeLabel}</div>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={value}
+                          onChange={e => setBodyTuning(prev => ({ ...prev, [control.key]: Number(e.target.value) }))}
+                          className="w-full mt-2 accent-purple-500"
+                        />
+                      </div>
+                    );
+                  })}
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-2">세부 부위</div>
+                  {BODY_TUNING_CONTROLS.filter(control => !BASIC_BODY_KEYS.includes(control.key)).map(control => {
+                    const value = bodyTuning[control.key];
+                    const sizeLabel = toSizeLabel(value, ['작음', '보통', '큼', '아주 큼']);
+                    return (
+                      <div key={control.key} className="bg-slate-900/60 border border-slate-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-200">{control.label}</div>
+                            <div className="text-[10px] text-slate-500">{control.hint}</div>
+                          </div>
+                          <div className="text-[10px] font-bold text-purple-300">{value} / {sizeLabel}</div>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={value}
+                          onChange={e => setBodyTuning(prev => ({ ...prev, [control.key]: Number(e.target.value) }))}
+                          className="w-full mt-2 accent-purple-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-200">체형 문구 미리보기</div>
+                  <textarea
+                    value={bodyTuningPreview}
+                    readOnly
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] text-slate-400 outline-none resize-none h-20 font-mono"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={applyBodyTuningToCharacter}
+                      className="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-all"
+                    >
+                      체형 문구로 적용
+                    </button>
+                    <button
+                      onClick={() => setBodyTuning({ ...DEFAULT_BODY_TUNING })}
+                      className="px-3 py-1.5 text-[10px] font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                    >
+                      기본값으로 초기화
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                  <div className="text-[11px] font-bold text-slate-200">프리셋 저장</div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="프리셋 이름 (예: 긴 다리 글래머)"
+                      value={bodyPresetName}
+                      onChange={e => setBodyPresetName(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] text-slate-200 outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!bodyPresetName.trim()) {
+                          showToast('프리셋 이름을 입력해주세요.', 'warning');
+                          return;
+                        }
+                        const next = [
+                          ...bodyTuningPresets,
+                          { id: `body-${Date.now()}`, name: bodyPresetName.trim(), tuning: { ...bodyTuning } }
+                        ];
+                        saveBodyPresets(next);
+                        setBodyPresetName('');
+                        showToast('체형 프리셋이 저장되었습니다.', 'success');
+                      }}
+                      className="px-3 py-2 text-[10px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                    >
+                      저장
+                    </button>
+                  </div>
+                  {bodyTuningPresets.length > 0 && (
+                    <div className="space-y-2">
+                      {bodyTuningPresets.map(preset => (
+                        <div key={preset.id} className="flex items-center justify-between gap-2 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-200">{preset.name}</div>
+                            <div className="text-[9px] text-slate-500">저장된 체형 세팅</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setBodyTuning({ ...DEFAULT_BODY_TUNING, ...preset.tuning })}
+                              className="px-2 py-1 text-[10px] font-bold rounded-md bg-purple-600/80 hover:bg-purple-500 text-white transition-all"
+                            >
+                              적용
+                            </button>
+                            <button
+                              onClick={() => {
+                                const next = bodyTuningPresets.filter(item => item.id !== preset.id);
+                                saveBodyPresets(next);
+                              }}
+                              className="px-2 py-1 text-[10px] font-bold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-slate-200 mb-2">샘플 이미지 (회전 가능)</div>
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    {[
+                      { id: 'front', label: '정면' },
+                      { id: 'side', label: '측면' },
+                      { id: 'back', label: '후면' }
+                    ].map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          const nextAngle = option.id === 'front' ? 0 : option.id === 'back' ? 180 : 90;
+                          setBodyPreviewAngle(nextAngle);
+                          setBodyPreviewView(option.id as 'front' | 'side' | 'back');
+                        }}
+                        className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
+                          bodyPreviewView === option.id
+                            ? 'border-purple-400 bg-purple-600/20 text-purple-200'
+                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    className={`relative w-full aspect-[3/5] rounded-xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-950/80 via-slate-900/90 to-slate-950 ${isBodyPreviewDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    onPointerDown={(event) => {
+                      setIsBodyPreviewDragging(true);
+                      bodyPreviewDragRef.current = { x: event.clientX, angle: bodyPreviewAngle };
+                      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                    }}
+                    onPointerMove={(event) => {
+                      if (!isBodyPreviewDragging || !bodyPreviewDragRef.current) return;
+                      const delta = event.clientX - bodyPreviewDragRef.current.x;
+                      const next = clampAngle(bodyPreviewDragRef.current.angle + delta * 0.6);
+                      setBodyPreviewAngle(next);
+                    }}
+                    onPointerUp={(event) => {
+                      setIsBodyPreviewDragging(false);
+                      bodyPreviewDragRef.current = null;
+                      (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+                    }}
+                    onPointerLeave={(event) => {
+                      if (!isBodyPreviewDragging) return;
+                      setIsBodyPreviewDragging(false);
+                      bodyPreviewDragRef.current = null;
+                      (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+                    }}
+                  >
+                    <div className="absolute top-3 left-3 text-[10px] text-slate-300 bg-slate-950/70 px-2 py-1 rounded-md border border-slate-800 pointer-events-none">
+                      드래그해서 회전
+                    </div>
+                    {activeBodyReferencePreview ? (
+                      renderImageBasedBodyPreview()
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 pointer-events-none">
+                          <div className="absolute left-[50%] top-[26%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                          <div className="absolute left-[50%] top-[39%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                          <div className="absolute left-[50%] top-[52%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                          <div className="absolute left-[50%] top-[67%] w-2.5 h-2.5 bg-purple-300 rounded-full shadow-[0_0_8px_rgba(196,181,253,0.8)] translate-x-[-50%]" />
+                        </div>
+                        {renderBodyPreviewSvg(bodyTuning, bodyPreviewView, bodyPreviewAngle)}
+                      </>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-2">드래그해서 회전하세요. 현재 각도: {Math.round(bodyPreviewAngle)}°</div>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-slate-200 mb-1">이렇게 이해하세요</div>
+                  <div className="text-[10px] text-slate-500">
+                    숫자가 커질수록 해당 부위가 커지고 길어집니다. 정면은 앞쪽 볼륨, 후면은 뒤쪽 볼륨, 측면은 앞·뒤 균형이 보입니다.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <Lightbox
+          imageUrl={lightboxImage}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default CharacterPanel;

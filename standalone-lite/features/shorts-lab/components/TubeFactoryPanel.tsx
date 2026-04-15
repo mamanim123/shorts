@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { 
   LayoutGrid, FileText, Mic2, Users, Image as ImageIcon, Sparkles, 
@@ -510,22 +510,24 @@ const TubeFactoryPanel: React.FC = () => {
   };
 
   const generateImageBySelectedModel = async (
-    prompt: string, 
-    negativePrompt?: string, 
-    referenceImages?: { inlineData: { data: string, mimeType: string } }[]
+    prompt: string,
+    negativePrompt?: string,
+    referenceImages?: { inlineData: { data: string, mimeType: string } }[],
+    aspectRatio: string = "9:16"
   ) => {
-    const isGeminiImageModel = selectedImageModel.startsWith('gemini-');
+    const isGeminiImageModel = selectedImageModel.startsWith("gemini-");
     if (isGeminiImageModel) {
-      const result = await generateImage(prompt, { aspectRatio: '9:16', model: selectedImageModel }, undefined, referenceImages);
+      const result = await generateImage(prompt, { aspectRatio, model: selectedImageModel }, undefined, referenceImages);
       return extractGeneratedImageBase64(result);
     }
-    const result = await generateImageWithImagen(prompt, negativePrompt || '', { aspectRatio: '9:16', model: selectedImageModel });
+    const result = await generateImageWithImagen(prompt, negativePrompt || "", { aspectRatio, model: selectedImageModel });
     return extractGeneratedImageBase64(result);
   };
 
   const handleGenerateCharacterImage = async (charId: string) => {
     const char = characters.find((item) => item.id === charId);
     if (!char || !char.isActive) return;
+    setIsGeneratingCharImage(charId);
     const promptParts = [
       `${char.gender || ''} ${char.age || ''}`,
       char.style || '',
@@ -571,9 +573,61 @@ const TubeFactoryPanel: React.FC = () => {
     } catch (error) {
       console.error(error);
       showToast(`${char.name} 이미지 생성 실패`, 'error');
+    } finally {
+      setIsGeneratingCharImage(null);
     }
   };
 
+
+  // 1장 업로드 -> 4장 생성 -> 슬롯 자동 배치
+  const handleGenerateCharacterSheet = async (charId: string, file: File) => {
+    setIsGeneratingCharImage(charId);
+    const char = characters.find((c) => c.id === charId);
+    try {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const base64Data = await base64Promise;
+      const mimeType = file.type || "image/png";
+      const base64Only = base64Data.split(",")[1];
+      const refImage = [{ inlineData: { data: base64Only, mimeType } }];
+      const charStyle = char?.style || "";
+      const charGender = char?.gender || "female";
+      const charAge = char?.age || "20대";
+      const baseDesc = [charGender, charAge, charStyle].filter(Boolean).join(", ");
+
+      // 한 장에 4가지 앵글을 모두 담는 캐릭터 시트 프롬프트
+      const sheetPrompt = `professional character reference sheet, white background, studio lighting,
+        TOP ROW left to right: full body front view, full body side view, full body back view,
+        BOTTOM ROW center: large face and upper body close-up portrait,
+        all views of EXACTLY the same person from reference image,
+        same face same hair same skin same outfit same shoes,
+        photorealistic, 4K, do NOT change anything about the person,
+        ${baseDesc}`;
+
+
+      const base64 = await generateImageBySelectedModel(sheetPrompt, "", refImage, "16:9");
+
+
+      if (base64) {
+        const url = `data:image/png;base64,${base64}`;
+        setCharacters(prev => prev.map(c => c.id === charId
+          ? { ...c, referenceImageUrl: url }
+          : c
+        ));
+        showToast("캐릭터 시트 생성 완료! (앞/옆/뒤/클로즈업 1장)", "success");
+      } else {
+        showToast("이미지 생성 결과가 없습니다.", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("캐릭터 시트 생성 실패", "error");
+    } finally {
+      setIsGeneratingCharImage(null);
+    }
+  };
   const handleGenerateAllCharacterImages = async () => {
     const activeCharacters = characters.filter((char) => char.isActive);
     if (activeCharacters.length === 0) {
@@ -643,21 +697,72 @@ const TubeFactoryPanel: React.FC = () => {
     handleUpdateCharacter(charId, 'referenceImage', file);
   };
 
-  const handleSaveCharacterLibrary = () => {
-    const serializable = characters.map((char) => {
-      // referenceSlots에서 URL만 직렬화 (File 객체는 저장 불가)
-      const serializedSlots: Partial<Record<CharacterReferenceSlot, { url: string | null }>> = {};
-      for (const slot of CHARACTER_REFERENCE_SLOTS) {
-        const slotData = char.referenceSlots?.[slot];
-        if (slotData?.url) {
-          serializedSlots[slot] = { url: slotData.url };
-        }
+  // ── IndexedDB 폴더 핸들 저장/복원 헬퍼 ──
+  const saveDirHandleToIDB = async (handle: FileSystemDirectoryHandle): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open("tubefactory-idb", 1);
+      req.onupgradeneeded = () => req.result.createObjectStore("handles");
+      req.onsuccess = () => {
+        const tx = req.result.transaction("handles", "readwrite");
+        tx.objectStore("handles").put(handle, "libraryDir");
+        tx.oncomplete = () => { req.result.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  };
+
+  const loadDirHandleFromIDB = async (): Promise<FileSystemDirectoryHandle | null> => {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open("tubefactory-idb", 1);
+      req.onupgradeneeded = () => req.result.createObjectStore("handles");
+      req.onsuccess = () => {
+        const tx = req.result.transaction("handles", "readonly");
+        const getReq = tx.objectStore("handles").get("libraryDir");
+        getReq.onsuccess = () => { req.result.close(); resolve(getReq.result ?? null); };
+        getReq.onerror = () => reject(getReq.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  };
+
+  const getOrPickDirHandle = async (): Promise<FileSystemDirectoryHandle> => {
+    // 1순위: 메모리에 있고 권한 있으면 바로 사용
+    if (libraryDirHandle) {
+      const perm = await libraryDirHandle.queryPermission({ mode: "readwrite" });
+      if (perm === "granted") return libraryDirHandle;
+      const req = await libraryDirHandle.requestPermission({ mode: "readwrite" });
+      if (req === "granted") return libraryDirHandle;
+    }
+    // 2순위: IndexedDB에서 복원
+    try {
+      const saved = await loadDirHandleFromIDB();
+      if (saved) {
+        const perm = await saved.queryPermission({ mode: "readwrite" });
+        if (perm === "granted") { setLibraryDirHandle(saved); return saved; }
+        const req = await saved.requestPermission({ mode: "readwrite" });
+        if (req === "granted") { setLibraryDirHandle(saved); return saved; }
       }
-      return {
+    } catch { /* IDB 실패시 폴더 선택으로 fallback */ }
+    // 3순위: 새로 폴더 선택
+    const picked = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+    setLibraryDirHandle(picked);
+    setLibraryDirName(picked.name);
+    localStorage.setItem("tubefactory-library-dir", picked.name);
+    await saveDirHandleToIDB(picked);
+    return picked;
+  };
+
+
+
+  const handleSaveCharacterLibrary = async () => {
+    try {
+      const fileName = prompt("저장할 파일 이름을 입력하세요:", `캐릭터_${new Date().toISOString().slice(0,10)}`);
+      if (!fileName) return;
+
+      const serializable = characters.map((char) => ({
         id: char.id,
         name: char.name,
-        referenceImageUrl: char.referenceImageUrl || null,
-        referenceSlots: serializedSlots,
         gender: char.gender,
         age: char.age,
         hairStyle: char.hairStyle,
@@ -669,65 +774,87 @@ const TubeFactoryPanel: React.FC = () => {
         outfitStyle: char.outfitStyle,
         style: char.style,
         aiOptimizedPrompt: char.aiOptimizedPrompt,
-        negativePrompt: char.negativePrompt || '',
+        negativePrompt: char.negativePrompt || "",
         isActive: char.isActive,
-      };
-    });
-    const payload = {
-      version: 1,
-      savedAt: new Date().toISOString(),
-      characters: serializable,
-    };
-    localStorage.setItem(CHARACTER_LIBRARY_STORAGE_KEY, JSON.stringify(payload));
-    downloadFile(
-      JSON.stringify(payload, null, 2),
-      `tubefactory_character_library_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`,
-      'application/json'
-    );
-    showToast(`캐릭터 라이브러리 저장 완료 (${serializable.length}개)`, 'success');
-  };
+        referenceImageUrl: char.referenceImageUrl || null,
+      }));
 
-  const applyLoadedCharacterLibrary = (raw: any[] | { characters?: any[] } | null | undefined) => {
-    const normalized = Array.isArray(raw) ? raw : Array.isArray((raw as any)?.characters) ? (raw as any).characters : [];
-    if (normalized.length === 0) {
-      showToast('불러올 캐릭터 데이터가 없습니다.', 'error');
-      return;
-    }
-    const loaded = normalized.map((char, index) => {
-      // referenceSlots 복원: URL만 있으므로 file은 null로
-      const restoredSlots: Partial<Record<CharacterReferenceSlot, { file: File | null; url: string | null }>> = {};
-      for (const slot of CHARACTER_REFERENCE_SLOTS) {
-        const slotData = char.referenceSlots?.[slot];
-        if (slotData?.url) {
-          restoredSlots[slot] = { file: null, url: slotData.url };
-        }
-      }
-      return {
-        ...createCharacter(index),
-        ...char,
-        id: char?.id || `char_slot_${index + 1}_${Date.now()}_${index}`,
-        referenceImage: null,
-        referenceSlots: restoredSlots,
-        negativePrompt: char.negativePrompt || '',
-      };
-    });
-    setCharacters(loaded);
-    showToast(`캐릭터 라이브러리 불러오기 완료 (${loaded.length}개)`, 'success');
-  };
+      const payload = { version: 3, savedAt: new Date().toISOString(), characters: serializable };
 
-  const handleLoadCharacterLibrary = () => {
-    const saved = localStorage.getItem(CHARACTER_LIBRARY_STORAGE_KEY);
-    if (saved) {
+      const res = await fetch('/api/characters/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, data: payload }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+
+      // localStorage 백업 (이미지 제외)
       try {
-        const parsed = JSON.parse(saved);
-        applyLoadedCharacterLibrary(parsed);
-        return;
-      } catch (error) {
-        console.warn('[TubeFactory] 캐릭터 라이브러리 파싱 실패:', error);
-      }
+        const lightPayload = { ...payload, characters: serializable.map(c => ({ ...c, referenceImageUrl: null })) };
+        localStorage.setItem(CHARACTER_LIBRARY_STORAGE_KEY, JSON.stringify(lightPayload));
+      } catch(e) { console.warn("localStorage 저장 실패:", e); }
+
+      showToast(`✅ "${result.fileName}" 저장 완료! (characters 폴더)`, "success");
+    } catch(err: any) {
+      showToast("저장 실패: " + err.message, "error");
     }
-    showToast('저장된 라이브러리가 없어 JSON 파일 선택창을 엽니다.', 'info');
-    characterLibraryInputRef.current?.click();
+  };
+
+  const handleLoadCharacterLibrary = async () => {
+    try {
+      // 서버에서 파일 목록 가져오기
+      const res = await fetch('/api/characters/list');
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error);
+
+      if (result.files.length === 0) {
+        showToast("저장된 캐릭터 파일이 없습니다.", "info");
+        return;
+      }
+
+      // 파일 선택 모달 표시 (간단한 선택창)
+      const fileNames = result.files.map((f: any, i: number) => `${i + 1}. ${f.name} (${new Date(f.savedAt).toLocaleString('ko-KR')})`).join('\n');
+      const input = prompt(`불러올 파일 번호를 입력하세요:\n\n${fileNames}`, "1");
+      if (!input) return;
+
+      const idx = parseInt(input) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= result.files.length) {
+        showToast("올바른 번호를 입력해주세요.", "error");
+        return;
+      }
+
+      const selectedFile = result.files[idx];
+      const loadRes = await fetch(`/api/characters/load/${encodeURIComponent(selectedFile.name)}`);
+      const loadResult = await loadRes.json();
+      if (!loadResult.success) throw new Error(loadResult.error);
+
+      const charList = loadResult.data?.characters ?? (Array.isArray(loadResult.data) ? loadResult.data : null);
+      if (!charList?.length) throw new Error("캐릭터 데이터가 없습니다.");
+
+      const restored = charList.map((c: any) => ({
+        ...createCharacter(0),
+        ...c,
+        referenceSlots: {},
+      }));
+
+      setCharacters(restored);
+      showToast(`✅ "${selectedFile.name}" 불러오기 완료! (${restored.length}명)`, "success");
+    } catch(err: any) {
+      showToast("불러오기 실패: " + err.message, "error");
+    }
+  };
+
+  const handleDuplicateCharacter = (charId: string) => {
+    const char = characters.find(c => c.id === charId);
+    if (!char) return;
+    const newChar = {
+      ...char,
+      id: `char_dup_${Date.now()}`,
+      name: `${char.name} (복사)`,
+    };
+    setCharacters(prev => [...prev, newChar]);
+    showToast(`"${char.name}" 캐릭터가 복사됐습니다.`, "success");
   };
 
   const [imageEffect, setImageEffect] = useState('none');
@@ -742,6 +869,13 @@ const TubeFactoryPanel: React.FC = () => {
 
   
   const [isOptimizingChar, setIsOptimizingChar] = useState<string | null>(null);
+  const [isGeneratingCharImage, setIsGeneratingCharImage] = useState<string | null>(null);
+  const [isDraggingSheet, setIsDraggingSheet] = useState<string | null>(null);
+  const [libraryDirHandle, setLibraryDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [libraryDirName, setLibraryDirName] = useState<string>(() => localStorage.getItem("tubefactory-library-dir") || "");
+  const [sheetUploadFile, setSheetUploadFile] = useState<Record<string, File | null>>({});
+  const [sheetUploadPreview, setSheetUploadPreview] = useState<Record<string, string | null>>({});
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [isOptimizingNegativeChar, setIsOptimizingNegativeChar] = useState<string | null>(null);
 
   const handleOptimizeNegativePrompt = async (charId: string) => {
@@ -787,36 +921,62 @@ Character Description: ${baseStyle}`;
   const handleOptimizeCharacter = async (charId: string) => {
     const char = characters.find(c => c.id === charId);
     if (!char) return;
-
-    // 상세 속성들을 조합하여 기본 스타일 묘사 생성 (묘사가 비어있는 경우)
-    let baseStyle = char.style;
-    if (!baseStyle.trim()) {
-      const traits = [
-        char.gender,
-        char.age,
-        char.bodyType,
-        char.faceType ? `${char.faceType} face` : '',
-        char.eyeColor ? `${char.eyeColor} eyes` : '',
-        char.hairStyle ? `${char.hairStyle} hair` : '',
-        char.hairColor ? `${char.hairColor} color` : '',
-        char.outfitStyle,
-        char.uniqueFeatures
-      ].filter(Boolean).join(', ');
-      baseStyle = traits;
-    }
-
-    if (!baseStyle.trim()) {
-      showToast('스타일 묘사나 상세 속성을 입력해주세요.', 'error');
-      return;
-    }
-
     setIsOptimizingChar(charId);
     try {
+      // 참조 이미지가 있으면 이미지 분석으로 프롬프트 생성
+      const previewUrl = sheetUploadPreview[charId];
+      if (previewUrl) {
+        try {
+          const res = await fetch(previewUrl);
+          const blob = await res.blob();
+          const reader = new FileReader();
+          const base64Data = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          const base64Only = base64Data.split(",")[1];
+          const mimeType = blob.type || "image/png";
+          const ai = new GoogleGenAI({ apiKey: getApiKey() });
+          const analyzeResult = await ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: [{
+              parts: [
+                { inlineData: { data: base64Only, mimeType } },
+                { text: `Analyze this person in the image and create a detailed English prompt for image generation. Focus on: face features (eye color, face shape, skin tone), hair (style, color, length), body type, outfit (clothing style, colors, accessories). Format: concise comma-separated descriptors suitable for image generation. Do NOT include any personal identification. Example format: "young woman, oval face, bright brown eyes, long wavy dark brown hair, slim build, wearing red one-shoulder mini dress, high heels"` }
+              ]
+            }]
+          });
+          const optimized = analyzeResult.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (!optimized) throw new Error("분석 결과 없음");
+          handleUpdateCharacter(charId, "aiOptimizedPrompt", optimized);
+          showToast("이미지 분석으로 프롬프트가 생성되었습니다.", "success");
+          return;
+        } catch(e) {
+          showToast("이미지 분석 실패, 텍스트 방식으로 시도합니다.", "warning");
+        }
+      }
+      // 참조 이미지 없으면 텍스트 기반으로 생성
+      let baseStyle = char.style;
+      if (!baseStyle.trim()) {
+        const traits = [
+          char.gender, char.age, char.bodyType,
+          char.faceType ? `${char.faceType} face` : "",
+          char.eyeColor ? `${char.eyeColor} eyes` : "",
+          char.hairStyle ? `${char.hairStyle} hair` : "",
+          char.hairColor ? `${char.hairColor} color` : "",
+          char.outfitStyle, char.uniqueFeatures
+        ].filter(Boolean).join(", ");
+        baseStyle = traits;
+      }
+      if (!baseStyle.trim()) {
+        showToast("스타일 묘사나 상세 속성을 입력해주세요.", "error");
+        return;
+      }
       const optimized = await optimizeCharacterPrompt(baseStyle);
-      handleUpdateCharacter(charId, 'aiOptimizedPrompt', optimized);
-      showToast('AI 최적화 프롬프트가 생성되었습니다.', 'success');
+      handleUpdateCharacter(charId, "aiOptimizedPrompt", optimized);
+      showToast("AI 최적화 프롬프트가 생성되었습니다.", "success");
     } catch (err) {
-      showToast('최적화 실패', 'error');
+      showToast("최적화 실패", "error");
     } finally {
       setIsOptimizingChar(null);
     }
@@ -916,10 +1076,40 @@ Character Description: ${baseStyle}`;
     negativePrompt: '',
     isActive: index === 0
   });
-  const [characters, setCharacters] = useState<any[]>([
-    createCharacter(0),
-    createCharacter(1),
-  ]);
+  const [characters, setCharacters] = useState<any[]>(() => {
+    try {
+      const autoSaved = localStorage.getItem("tubefactory-autosave");
+      if (autoSaved) {
+        const parsed = JSON.parse(autoSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: any) => ({
+            ...createCharacter(0),
+            ...c,
+            referenceImageUrl: null,
+            referenceSlots: {},
+          }));
+        }
+      }
+    } catch(e) { console.warn("자동 저장 복원 실패:", e); }
+    return [createCharacter(0), createCharacter(1)];
+  });
+
+  // 자동 저장 (characters 변경 시 localStorage에 텍스트 정보만 저장)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const autoSave = characters.map(c => ({
+          ...c,
+          referenceImageUrl: null,
+          referenceSlots: {},
+        }));
+        localStorage.setItem("tubefactory-autosave", JSON.stringify(autoSave));
+      } catch(e) { /* 저장 실패 무시 */ }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [characters]);
+
+
 
   // 4. TTS 및 이미지 생성 상태
   const [selectedTtsEngine, setSelectedTtsEngine] = useState('gemini');
@@ -2481,11 +2671,18 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
               <button onClick={handleGenerateAllCharacterImages} className="bg-lime-500 text-black px-4 py-2 rounded-xl text-sm font-black hover:bg-lime-400 transition-all">
                 전체 이미지 생성
               </button>
-              <button onClick={handleSaveCharacterLibrary} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-bold hover:bg-white/10 transition-all">
-                라이브러리 저장
+              <button onClick={handleSaveCharacterLibrary} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-bold hover:bg-white/10 transition-all flex items-center gap-2">
+                {libraryDirName ? <><span className="text-lime-400">📁</span><span>{libraryDirName}</span></> : <span>라이브러리 저장</span>}
               </button>
-              <button onClick={handleLoadCharacterLibrary} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-bold hover:bg-white/10 transition-all">
-                라이브러리에서 불러오기
+              <button onClick={handleLoadCharacterLibrary} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-bold hover:bg-white/10 transition-all flex items-center gap-2">
+                {libraryDirName ? <><span className="text-violet-400">📂</span><span>{libraryDirName}에서 불러오기</span></> : <span>라이브러리에서 불러오기</span>}
+              </button>
+              <button
+                onClick={() => { setLibraryDirHandle(null); setLibraryDirName(""); localStorage.removeItem("tubefactory-library-dir"); showToast("폴더 설정이 초기화됐습니다.", "info"); }}
+                className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-all text-slate-400"
+                title="저장 폴더 초기화"
+              >
+                📁 폴더 변경
               </button>
               <input
                 ref={characterLibraryInputRef}
@@ -2520,94 +2717,133 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
                           onChange={e => handleUpdateCharacter(char.id, 'name', e.target.value)} 
                         />
                      </div>
-                     <button 
-                        onClick={() => handleUpdateCharacter(char.id, 'isActive', !char.isActive as any)}
-                        className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all ${char.isActive ? 'bg-lime-500/10 border-lime-500/50 text-lime-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}
-                     >
-                        {char.isActive ? '활성화됨' : '사용안함'}
-                     </button>
+                     <div className="flex items-center gap-2">
+                       <button
+                         onClick={() => handleDuplicateCharacter(char.id)}
+                         className="text-xs font-bold px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/30 transition-all"
+                         title="캐릭터 복사"
+                       >
+                         복사
+                       </button>
+                       <button
+                         onClick={() => handleUpdateCharacter(char.id, "isActive", !char.isActive as any)}
+                         className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all ${char.isActive ? "bg-lime-500/10 border-lime-500/50 text-lime-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-white"}`}
+                       >
+                         {char.isActive ? "활성화됨" : "사용안함"}
+                       </button>
+                     </div>
                   </div>
 
                   <div className={`space-y-6 ${!char.isActive ? 'opacity-40 pointer-events-none' : ''}`}>
                      <div className="grid grid-cols-2 gap-6">
-                        {/* ── 멀티 참조 이미지 슬롯 (4슬롯) ── */}
-                        <div className="space-y-3">
-                           <div className="flex items-center justify-between">
-                              <label className="text-[10px] text-violet-400 font-black uppercase tracking-widest flex items-center gap-1">
-                                 <Camera size={12}/> 멀티 참조 이미지 (일관성 강화)
-                              </label>
-                              <span className="text-[10px] text-slate-500">
-                                {CHARACTER_REFERENCE_SLOTS.filter(s => char.referenceSlots?.[s]?.url).length}/{CHARACTER_REFERENCE_SLOTS.length} 등록됨
-                              </span>
-                           </div>
-                           <div className="grid grid-cols-2 gap-3">
-                              {CHARACTER_REFERENCE_SLOTS.map((slot) => {
-                                const slotData = char.referenceSlots?.[slot];
-                                const slotLabel = CHARACTER_REFERENCE_SLOT_LABEL[slot];
-                                return (
-                                  <div key={slot} className="space-y-1">
-                                    <div
-                                      onClick={() => {
-                                        const input = document.getElementById(`slot-input-${char.id}-${slot}`) as HTMLInputElement;
-                                        input?.click();
-                                      }}
-                                      className="relative aspect-square bg-black/40 border-2 border-dashed border-white/10 rounded-xl overflow-hidden group cursor-pointer hover:border-violet-500/50 transition-colors"
-                                    >
-                                      {slotData?.url ? (
-                                        <>
-                                          <img src={slotData.url} className="w-full h-full object-cover" alt={slotLabel} />
-                                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setCharacters(prev => prev.map(c => c.id === char.id
-                                                  ? { ...c, referenceSlots: { ...c.referenceSlots, [slot]: undefined } }
-                                                  : c
-                                                ));
-                                              }}
-                                              className="p-1.5 bg-red-500/80 rounded-lg hover:bg-red-500"
-                                            >
-                                              <Trash2 size={12}/>
-                                            </button>
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-2 text-center">
-                                          <Plus size={16} className="text-slate-600 group-hover:text-violet-400 transition-colors"/>
-                                          <span className="text-[9px] text-slate-500">{slotLabel}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <input
-                                      id={`slot-input-${char.id}-${slot}`}
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        const url = URL.createObjectURL(file);
-                                        setCharacters(prev => prev.map(c => c.id === char.id
-                                          ? { ...c, referenceSlots: { ...c.referenceSlots, [slot]: { file, url } } }
-                                          : c
-                                        ));
-                                      }}
-                                    />
-                                  </div>
-                                );
-                              })}
-                           </div>
-                           <p className="text-[10px] text-slate-600 pt-1">슬롯 이미지가 있으면 이미지 생성 시 자동 주입됩니다.</p>
-                           
-                           <div className="flex gap-2 pt-2">
-                             <button
-                               onClick={() => handleGenerateCharacterImage(char.id)}
-                               className="flex-1 h-9 rounded-lg bg-lime-500 text-black text-xs font-black hover:bg-lime-400"
-                             >
-                               캐릭터 제너레이터 열기
-                             </button>
-                           </div>
+                      {/* ── 1장 업로드 → 4장 자동 생성 ── */}
+                      {/* ── 1장 업로드 → 4장 자동 생성 ── */}
+                      <div className="bg-violet-500/10 border border-violet-500/30 rounded-2xl p-4 space-y-3 col-span-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles size={14} className="text-violet-400"/>
+                          <span className="text-[11px] font-black text-violet-300">참조 이미지 1장으로 캐릭터 시트 자동 생성</span>
                         </div>
+                        <p className="text-[10px] text-slate-500">이미지 1장을 업로드하면 AI가 정면/45도/측면/클로즈업 4장을 자동으로 만들어 슬롯에 채워줍니다.</p>
+                        <div className="flex gap-3 items-start">
+                          {/* 업로드 영역 */}
+                          <label
+                            className={`flex-1 flex items-center justify-center gap-2 h-16 rounded-xl border-2 border-dashed cursor-pointer transition-all ${isDraggingSheet === char.id ? "border-violet-400 bg-violet-500/20 scale-[1.02]" : "border-violet-500/40 hover:border-violet-400 hover:bg-violet-500/5"}`}
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingSheet(char.id); }}
+                            onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingSheet(null); }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsDraggingSheet(null);
+                              const f = e.dataTransfer.files?.[0];
+                              if (f && f.type.startsWith("image/")) {
+                                const url = URL.createObjectURL(f);
+                                setSheetUploadFile(prev => ({ ...prev, [char.id]: f }));
+                                setSheetUploadPreview(prev => ({ ...prev, [char.id]: url }));
+                              } else if (f) showToast("이미지 파일만 업로드 가능합니다.", "error");
+                            }}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  const url = URL.createObjectURL(f);
+                                  setSheetUploadFile(prev => ({ ...prev, [char.id]: f }));
+                                  setSheetUploadPreview(prev => ({ ...prev, [char.id]: url }));
+                                }
+                                e.target.value = "";
+                              }}
+                            />
+                            {isDraggingSheet === char.id ? (
+                              <><ImageIcon size={14} className="text-violet-300"/><span className="text-[11px] font-bold text-violet-300">여기에 놓으세요!</span></>
+                            ) : (
+                              <><Camera size={14} className="text-violet-400"/><span className="text-[11px] font-bold text-violet-300">클릭 또는 드래그로 업로드</span></>
+                            )}
+                          </label>
+                          {/* 미리보기 */}
+                          {sheetUploadPreview[char.id] && (
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-violet-500/40 flex-shrink-0 cursor-pointer group"
+                              onClick={() => setLightboxUrl(sheetUploadPreview[char.id]!)}
+                            >
+                              <img src={sheetUploadPreview[char.id]!} className="w-full h-full object-cover" alt="미리보기"/>
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 size={14} className="text-white"/>
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSheetUploadFile(prev => ({ ...prev, [char.id]: null })); setSheetUploadPreview(prev => ({ ...prev, [char.id]: null })); }}
+                                className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500/80 rounded-full flex items-center justify-center"
+                              >
+                                <X size={10} className="text-white"/>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {/* 생성 버튼 */}
+                        <button
+                          onClick={() => {
+                            const f = sheetUploadFile[char.id];
+                            if (!f) { showToast("먼저 이미지를 업로드해주세요.", "warning"); return; }
+                            handleGenerateCharacterSheet(char.id, f);
+                          }}
+                          disabled={isGeneratingCharImage === char.id || !sheetUploadFile[char.id]}
+                          className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black transition-all flex items-center justify-center gap-2"
+                        >
+                          {isGeneratingCharImage === char.id ? (
+                            <><Loader2 size={14} className="animate-spin"/><span>4장 생성 중... 잠시 기다려주세요</span></>
+                          ) : (
+                            <><Sparkles size={14}/><span>① 참조 이미지로 4장 자동 생성</span></>
+                          )}
+                        </button>
+                      </div>
+                         {/* ── 생성된 캐릭터 시트 ── */}
+                         <div className="space-y-3">
+                           {char.referenceImageUrl ? (
+                             <div className="space-y-2">
+                               <label className="text-[10px] text-lime-400 font-black uppercase tracking-widest">
+                                 {"생성된 캐릭터 시트"}
+                               </label>
+                               <div
+                                 className="relative w-full rounded-xl overflow-hidden border border-lime-500/30 cursor-pointer group"
+                                 onClick={() => setLightboxUrl(char.referenceImageUrl)}
+                               >
+                                 <img
+                                   src={char.referenceImageUrl}
+                                   alt={"생성된 캐릭터 시트"}
+                                   className="w-full object-cover rounded-xl"
+                                 />
+                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                   <span className="text-white text-xs font-bold">{"🔍 클릭하면 원본 크기로 보기"}</span>
+                                 </div>
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="w-full aspect-video bg-black/20 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center">
+                               <span className="text-[11px] text-slate-600">위에서 이미지를 업로드하고 생성 버튼을 눌러주세요</span>
+                             </div>
+                           )}
+                         </div>
 
                         {/* 상세 프롬프트 구역 */}
                         <div className="space-y-4">
@@ -3336,6 +3572,40 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fadeIn 0.5s ease-out forwards; }
       `}} />
+
+      {/* 라이트박스 모달 */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative flex items-center justify-center w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightboxUrl}
+              alt="원본 크기 보기"
+              style={{ maxWidth: "100%", maxHeight: "100vh", objectFit: "contain", imageRendering: "auto" }}
+              className="rounded-xl shadow-2xl"
+            />
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="absolute top-4 right-4 w-10 h-10 bg-black/70 hover:bg-black/90 rounded-full flex items-center justify-center transition-all border border-white/20"
+            >
+              <X size={18} className="text-white"/>
+            </button>
+            <a
+              href={lightboxUrl}
+              download="character_image.png"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute bottom-4 right-4 px-4 py-2 bg-lime-500 hover:bg-lime-400 text-black text-xs font-black rounded-xl transition-all flex items-center gap-2"
+            >
+              ⬇ 원본 다운로드
+            </a>
+            <div className="absolute bottom-4 left-4 text-[10px] text-slate-400 bg-black/50 px-3 py-1 rounded-lg">
+              클릭 외부 영역 또는 X 버튼으로 닫기
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

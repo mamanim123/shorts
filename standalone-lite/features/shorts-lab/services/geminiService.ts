@@ -2066,7 +2066,7 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
     - "scriptBody": Korean script text separated by "\\n" containing the narration/dialogue above.
     - "punchline": Final killer line in Korean.
     - "characters": [ ...as listed in the Character ID Map ... ].
-    - "scenes": exactly 8 objects, each with: sceneNumber, characterIds, shortPrompt, shortPromptKo, longPrompt, longPromptKo, soraPrompt, soraPromptKo.
+    - "scenes": 8~12 objects (matching the number of scriptBody sentences), each with: sceneNumber, characterIds, shortPrompt, shortPromptKo, longPrompt, longPromptKo, soraPrompt, soraPromptKo.
   - If you cannot provide characters + characterIds for all scenes, DO NOT answer with a story; instead return { "error": "missing characterIds" }.
   - Keep scene prompts concise but include the locked outfits verbatim and the character IDs.
   - Enforce the FEMALE OUTFIT RULES above in every scene (no slacks for women; use ultra-tight mini/micro silhouettes).

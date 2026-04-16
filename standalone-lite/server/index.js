@@ -375,6 +375,28 @@ app.get('/api/story/:storyId', (req, res) => {
   res.json(payload);
 });
 
+app.delete('/api/story/:storyId', (req, res) => {
+  try {
+    const storyId = req.params.storyId || '';
+    const storyDir = path.join(generatedStoryDir, storyId);
+    
+    console.log(`[standalone-lite] Attempting to delete folder: ${storyDir}`);
+
+    if (fs.existsSync(storyDir)) {
+      // 폴더와 내부 모든 파일 삭제
+      fs.rmSync(storyDir, { recursive: true, force: true });
+      console.log(`[standalone-lite] Successfully deleted: ${storyDir}`);
+      res.json({ success: true });
+    } else {
+      console.warn(`[standalone-lite] Delete failed: Folder not found at ${storyDir}`);
+      res.status(404).json({ error: 'Project folder not found' });
+    }
+  } catch (error) {
+    console.error(`[standalone-lite] Delete error:`, error);
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to delete story' });
+  }
+});
+
 app.post('/api/save-story', (req, res) => {
   try {
     const { title, content, scenes, storyId, folderName, scriptBody, metadata } = req.body || {};
@@ -466,6 +488,176 @@ app.post('/api/save-image', (req, res) => {
   }
 });
 
+// [신규 추가] ElevenLabs TTS 미리듣기 API
+app.post('/api/tts/preview/elevenlabs', async (req, res) => {
+  try {
+    const { voiceId, text, modelId, toneValue, speed } = req.body;
+    const styleValue = typeof toneValue === 'number' ? toneValue / 100 : 0.5;
+    const speedValue = typeof speed === 'number' ? speed : 1.0;
+
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+
+    if (!apiKey) {
+      console.error('[TTS Preview] Error: ELEVENLABS_API_KEY is missing');
+      return res.status(401).json({ success: false, error: 'API 키가 설정되지 않았습니다.' });
+    }
+
+    console.log(`[TTS Preview] Calling ElevenLabs API: voiceId=${voiceId}, modelId=${modelId}`);
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        text,
+        model_id: modelId || 'eleven_multilingual_v2', // 안정적인 v2 모델로 변경
+        voice_settings: {
+          stability: Math.max(0, 1 - styleValue),  // 톤 강할수록 stability 낮춤
+          similarity_boost: 0.75,
+          style: styleValue,                        // 감정 강도 (0~1)
+          speed: speedValue,                        // 재생 속도
+        },
+
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[TTS Preview] ElevenLabs API Error (${response.status}):`, errorText);
+      return res.status(response.status).json({ success: false, error: `API 오류: ${response.status}` });
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // 임시 미리듣기 파일 저장
+    const filename = `preview_${Date.now()}.mp3`;
+    const previewPath = path.join(generatedDir, 'previews');
+    if (!fs.existsSync(previewPath)) fs.mkdirSync(previewPath, { recursive: true });
+    
+    const filePath = path.join(previewPath, filename);
+    fs.writeFileSync(filePath, buffer);
+
+    console.log(`[TTS Preview] Success: ${filename}`);
+    res.json({ success: true, audioUrl: `/generated_scripts/previews/${filename}` });
+  } catch (error) {
+    console.error('[TTS Preview] Fatal Error:', error);
+    res.status(500).json({ success: false, error: '서버 내부 오류가 발생했습니다.' });
+  }
+});
+
+
+// ─── Typecast TTS API ───
+app.post('/api/tts/preview/typecast', async (req, res) => {
+  try {
+    const { actorId, text, speed, pitch } = req.body;
+    const apiKey = process.env.TYPECAST_API_KEY;
+
+    if (!apiKey) {
+      return res.status(401).json({ success: false, error: 'TYPECAST_API_KEY가 설정되지 않았습니다.' });
+    }
+
+    const speakRes = await fetch('https://typecast.ai/api/speak', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        lang: 'auto',
+        actor_id: actorId,
+        xapi_id: actorId,
+        model_version: 'latest',
+        xapi_hd: true,
+        codec: 'mp3',
+        speed_x: speed || 1.0,
+        pitch: pitch || 0,
+        style_label: 'normal',
+        style_label_version: 'latest',
+      }),
+    });
+
+    if (!speakRes.ok) {
+      const err = await speakRes.text();
+      console.error('[Typecast] 요청 실패:', err);
+      return res.status(speakRes.status).json({ success: false, error: `Typecast 오류: ${speakRes.status}` });
+    }
+
+    const speakData = await speakRes.json();
+    const speakUrl = speakData?.result?.speak_v2_url;
+
+    if (!speakUrl) {
+      return res.status(500).json({ success: false, error: 'speak_url을 받지 못했습니다.' });
+    }
+
+    let audioUrl = null;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const pollRes = await fetch(speakUrl, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+      });
+      const pollData = await pollRes.json();
+      const status = pollData?.result?.status;
+      if (status === 'done') {
+        audioUrl = pollData?.result?.audio_download_url;
+        break;
+      } else if (status === 'failed') {
+        return res.status(500).json({ success: false, error: 'Typecast 생성 실패' });
+      }
+    }
+
+    if (!audioUrl) {
+      return res.status(504).json({ success: false, error: '생성 시간 초과' });
+    }
+
+    const audioRes = await fetch(audioUrl);
+    const arrayBuffer = await audioRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const filename = `typecast_${Date.now()}.mp3`;
+    const previewPath = path.join(generatedDir, 'previews');
+    if (!fs.existsSync(previewPath)) fs.mkdirSync(previewPath, { recursive: true });
+    fs.writeFileSync(path.join(previewPath, filename), buffer);
+
+    console.log(`[Typecast] Success: ${filename}`);
+    res.json({ success: true, audioUrl: `/generated_scripts/previews/${filename}` });
+
+  } catch (error) {
+    console.error('[Typecast] Fatal Error:', error);
+    res.status(500).json({ success: false, error: '서버 내부 오류' });
+  }
+});
+
+app.get('/api/tts/voices/typecast', async (req, res) => {
+  try {
+    const apiKey = process.env.TYPECAST_API_KEY;
+    if (!apiKey) {
+      return res.status(401).json({ success: false, error: 'TYPECAST_API_KEY가 설정되지 않았습니다.' });
+    }
+    const response = await fetch('https://typecast.ai/api/actor?offset=0&count=100', {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+    if (!response.ok) {
+      return res.status(response.status).json({ success: false, error: '보이스 목록 조회 실패' });
+    }
+    const data = await response.json();
+    const voices = (data?.result || []).map((actor) => ({
+      id: actor.actor_id,
+      name: actor.name,
+      gender: actor.gender === 'female' ? '여성' : '남성',
+      language: actor.language?.includes('ko') ? 'ko' : actor.language?.includes('ja') ? 'ja' : 'en',
+      subtitle: `${actor.mood || '기본'} 스타일`,
+      popular: actor.is_popular || false,
+    }));
+    res.json({ success: true, voices });
+  } catch (error) {
+    res.status(500).json({ success: false, error: '서버 오류' });
+  }
+});
 // App Storage API
 app.get('/api/app-storage', (req, res) => {
   try {

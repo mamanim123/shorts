@@ -30,9 +30,9 @@ const DELIVERY_OPTIONS = [
   { id: 'dramatic', label: '드라마틱하게', prompt: 'Announce dramatically:' },
 ] as const;
 const TTS_ENGINES = [
-  { id: 'multilingual-v2', label: 'Multilingual v2', description: 'ElevenLabs 고품질 모델, 29개 언어 지원', available: false, credit: '500자당 1P', model: 'eleven_multilingual_v2' },
-  { id: 'elevenlabs', label: 'ElevenLabs Flash v2.5', description: '빠른 속도와 자연스러운 발음의 최신 엔진', available: false, credit: '1000자당 1P', model: 'eleven_flash_v2_5' },
-  { id: 'typecast', label: 'Typecast', description: '캐릭터형 보이스 합성, 준비 중', available: false, credit: '500자당 1.5P', model: 'typecast' },
+  { id: 'multilingual-v2', label: 'Multilingual v2', description: 'ElevenLabs 고품질 모델, 29개 언어 지원', available: true, credit: '500자당 1P', model: 'eleven_multilingual_v2' },
+  { id: 'elevenlabs', label: 'ElevenLabs Flash v2.5', description: '빠르고 자연스러운 최신 초고속 엔진', available: true, credit: '1000자당 1P', model: 'eleven_flash_v2_5' },
+  { id: 'typecast', label: 'Typecast', description: '한국어 특화 캐릭터형 보이스, API 키 필요', available: true, credit: '유료 플랜', model: 'typecast' },
   { id: 'gemini', label: 'Gemini TTS', description: 'Google AI Studio API 키 등록 후 무료 사용', available: true, credit: 'API 키 (0P)', model: 'gemini-2.5-flash-preview-tts' },
 ];
 type MediaModelOption = {
@@ -130,30 +130,27 @@ type VoiceRecommendationMeta = {
 // 출처: ElevenLabs API /v1/voices 또는 https://elevenlabs.io/voice-lab
 // API 키 연동 후 실제 voice_id 매핑 필요 (현재는 UI 미리보기용)
 const ELEVENLABS_VOICE_LIBRARY: VoiceLibraryItem[] = [
-  // ── 한국어 추천 (KR) ──
-  { id: 'hyuk',       name: 'hyuk',         subtitle: '남성, 중년, 신뢰감 나레이션',        language: 'ko', gender: '남성', ageGroup: '중년',   popular: true  },
-  { id: 'dohyun',    name: '도현',           subtitle: '남성, 중년, 차분한 전달력',          language: 'ko', gender: '남성', ageGroup: '중년',   popular: true  },
-  { id: 'brian',     name: '브라이언',        subtitle: '남성, 시니어, 중후한 목소리',        language: 'ko', gender: '남성', ageGroup: '시니어', popular: true  },
-  { id: 'yohan',     name: '요한',           subtitle: '남성, 중년, 편안한 나레이션',        language: 'ko', gender: '남성', ageGroup: '중년',   popular: false },
-  { id: 'seulgi',    name: '슬기',           subtitle: '여성, 중년, 한국어 강력 추천',       language: 'ko', gender: '여성', ageGroup: '중년',   popular: true  },
-  { id: 'ssini',     name: '씨니(시니어)',   subtitle: '여성, 시니어, 고급스러운 톤',        language: 'ko', gender: '여성', ageGroup: '시니어', popular: false },
-  { id: 'jiyeon',    name: '지연',           subtitle: '여성, 청년, 발랄하고 친근함',        language: 'ko', gender: '여성', ageGroup: '청년',   popular: false },
-  { id: 'ruach',     name: 'Ruach',          subtitle: '여성, 중년, 감성 오디오북 나레이터', language: 'ko', gender: '여성', ageGroup: '중년',   popular: true  },
-  { id: 'junhyuk',   name: '준혁',           subtitle: '남성, 청년, 생동감 있는 전달',       language: 'ko', gender: '남성', ageGroup: '청년',   popular: false },
-  { id: 'minjun',    name: '민준',           subtitle: '남성, 청년, 밝고 에너지 넘침',       language: 'ko', gender: '남성', ageGroup: '청년',   popular: false },
-  // ── 영어 (US) ──
-  { id: 'rachel',    name: 'Rachel',         subtitle: '여성, Young Adult, 클래식 나레이션', language: 'en', gender: '여성', ageGroup: '청년',   popular: true  },
-  { id: 'adam',      name: 'Adam',           subtitle: '남성, Middle Age, 딥하고 강렬함',   language: 'en', gender: '남성', ageGroup: '중년',   popular: true  },
-  { id: 'bella',     name: 'Bella',          subtitle: '여성, Young Adult, 부드럽고 감성적', language: 'en', gender: '여성', ageGroup: '청년',   popular: true  },
-  { id: 'josh',      name: 'Josh',           subtitle: '남성, Young Adult, 친근하고 캐주얼', language: 'en', gender: '남성', ageGroup: '청년',   popular: false },
-  { id: 'elli',      name: 'Elli',           subtitle: '여성, Young Adult, 신뢰감 있음',    language: 'en', gender: '여성', ageGroup: '청년',   popular: false },
-  { id: 'sam',       name: 'Sam',            subtitle: '남성, Young Adult, 라디오 톤',      language: 'en', gender: '남성', ageGroup: '청년',   popular: false },
-  { id: 'domi',      name: 'Domi',           subtitle: '여성, Young Adult, 강렬하고 열정적', language: 'en', gender: '여성', ageGroup: '청년',   popular: false },
-  { id: 'jeremy',    name: 'Jeremy',         subtitle: '남성, Young Adult, 미국식 캐주얼',  language: 'en', gender: '남성', ageGroup: '청년',   popular: false },
-  // ── 일본어 (JP) ──
-  { id: 'hana_jp',   name: 'はな (Hana)',     subtitle: '여성, 청년, 표준 일본어',           language: 'ja', gender: '여성', ageGroup: '청년',   popular: true  },
-  { id: 'kenji_jp',  name: 'けんじ (Kenji)', subtitle: '남성, 중년, 안정감 있는 나레이션',  language: 'ja', gender: '남성', ageGroup: '중년',   popular: true  },
-  { id: 'yuki_jp',   name: 'ゆき (Yuki)',    subtitle: '여성, 청년, 밝고 활기찬',           language: 'ja', gender: '여성', ageGroup: '청년',   popular: false },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah',   subtitle: '여성, 성숙하고 자신감 있는 톤',      language: 'ko', gender: '여성', ageGroup: '중년',   popular: true  },
+  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura',   subtitle: '여성, 열정적이고 개성 있는 톤',      language: 'ko', gender: '여성', ageGroup: '청년',   popular: true  },
+  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice',   subtitle: '여성, 명확하고 교육적인 나레이션',    language: 'ko', gender: '여성', ageGroup: '청년',   popular: true  },
+  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda', subtitle: '여성, 전문적이고 신뢰감 있는 톤',    language: 'ko', gender: '여성', ageGroup: '중년',   popular: false },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', subtitle: '여성, 발랄하고 따뜻한 쇼츠 톤',     language: 'ko', gender: '여성', ageGroup: '청년',   popular: true  },
+  { id: 'hpp4J3VqNfWAUOO0d1Us', name: 'Bella',   subtitle: '여성, 밝고 전문적인 내레이션',       language: 'ko', gender: '여성', ageGroup: '청년',   popular: true  },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily',    subtitle: '여성, 부드럽고 감성적인 배우 톤',    language: 'ko', gender: '여성', ageGroup: '청년',   popular: false },
+  { id: 'SAz9YHcvj6GT2YYXdXww', name: 'River',   subtitle: '중성, 차분하고 정보전달에 강한 톤',  language: 'ko', gender: '여성', ageGroup: '청년',   popular: false },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam',    subtitle: '남성, 강하고 단호한 대표 나레이션',  language: 'ko', gender: '남성', ageGroup: '청년',   popular: true  },
+  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian',   subtitle: '남성, 깊고 편안한 중후한 톤',        language: 'ko', gender: '남성', ageGroup: '중년',   popular: true  },
+  { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris',   subtitle: '남성, 친근하고 매력적인 쇼츠 톤',   language: 'ko', gender: '남성', ageGroup: '청년',   popular: true  },
+  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric',    subtitle: '남성, 부드럽고 신뢰감 있는 톤',     language: 'ko', gender: '남성', ageGroup: '청년',   popular: true  },
+  { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger',   subtitle: '남성, 여유롭고 캐주얼한 톤',        language: 'ko', gender: '남성', ageGroup: '청년',   popular: false },
+  { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie', subtitle: '남성, 깊고 에너지 넘치는 톤',       language: 'ko', gender: '남성', ageGroup: '청년',   popular: true  },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George',  subtitle: '남성, 따뜻한 스토리텔러 톤',        language: 'ko', gender: '남성', ageGroup: '중년',   popular: false },
+  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum',  subtitle: '남성, 허스키하고 독특한 캐릭터 톤', language: 'ko', gender: '남성', ageGroup: '청년',   popular: false },
+  { id: 'SOYHLrjzK2X1ezoPC6cr', name: 'Harry',   subtitle: '남성, 강렬하고 파워풀한 전사 톤',   language: 'ko', gender: '남성', ageGroup: '청년',   popular: false },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam',    subtitle: '남성, 에너지 넘치는 SNS 크리에이터', language: 'ko', gender: '남성', ageGroup: '청년',   popular: true  },
+  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will',    subtitle: '남성, 여유롭고 긍정적인 톤',        language: 'ko', gender: '남성', ageGroup: '청년',   popular: false },
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel',  subtitle: '남성, 안정적인 방송 아나운서 톤',   language: 'ko', gender: '남성', ageGroup: '중년',   popular: false },
+  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill',    subtitle: '남성, 지혜롭고 균형 잡힌 시니어 톤', language: 'ko', gender: '남성', ageGroup: '시니어', popular: false },
 ] as const;
 const LANGUAGE_OPTIONS = [
   { id: 'all', label: '전체', badge: 'ALL' },
@@ -216,21 +213,33 @@ const GEMINI_VOICE_LIBRARY: VoiceLibraryItem[] = [
 ] as const;
 
 const VOICE_RECOMMENDATION_META: Record<string, VoiceRecommendationMeta> = {
-  'elevenlabs:seulgi': { rank: 1, score: 98, useCase: '정보형 쇼츠, 여성 내레이션', recommendation: '한국어 전달력이 안정적이라 기본 추천' },
-  'elevenlabs:hyuk': { rank: 2, score: 95, useCase: '뉴스형 쇼츠, 남성 설명톤', recommendation: '신뢰감 있는 중저음이라 설명형 채널에 강함' },
-  'elevenlabs:ruach': { rank: 3, score: 93, useCase: '감성 썰, 오디오북 톤', recommendation: '서사형 콘텐츠에서 몰입감이 좋음' },
-  'elevenlabs:dohyun': { rank: 4, score: 91, useCase: '차분한 해설, 시사형', recommendation: '속도와 발음이 안정적이라 장문 전달에 유리' },
-  'elevenlabs:brian': { rank: 5, score: 89, useCase: '중후한 시니어 톤', recommendation: '권위감과 존재감이 필요한 기획에 적합' },
-  'elevenlabs:rachel': { rank: 1, score: 97, useCase: '영문 광고, 클래식 내레이션', recommendation: '대중성이 높고 범용성이 좋은 대표 보이스' },
-  'elevenlabs:adam': { rank: 2, score: 94, useCase: '강한 남성 톤, 하이라이트 컷', recommendation: '딥톤 전달력이 좋아 임팩트가 큼' },
-  'elevenlabs:hana_jp': { rank: 1, score: 96, useCase: '일본어 여성 쇼츠', recommendation: '표준 발음과 친화력이 좋아 시작점으로 적합' },
-  'elevenlabs:kenji_jp': { rank: 2, score: 92, useCase: '일본어 남성 내레이션', recommendation: '안정적인 중년톤이라 정보 전달에 강함' },
-  'gemini:Kore': { rank: 1, score: 95, useCase: '한국어 여성 기본 내레이션', recommendation: '현재 시스템에서 가장 무난한 기본값' },
+  'elevenlabs:EXAVITQu4vr4xnSDxMaL': { rank: 1, score: 98, useCase: '정보형 쇼츠, 여성 대표',       recommendation: '안정적이고 신뢰감 있는 표준 여성 나레이션' },
+  'elevenlabs:cgSgspJ2msm6clMCkdW9': { rank: 2, score: 97, useCase: '트렌디한 쇼츠, 발랄한 톤',     recommendation: '요즘 유튜브에서 가장 유행하는 밝고 친근한 여성톤' },
+  'elevenlabs:hpp4J3VqNfWAUOO0d1Us': { rank: 3, score: 96, useCase: '밝고 전문적인 나레이션',       recommendation: '깔끔하고 전문적인 여성 내레이션' },
+  'elevenlabs:FGY2WhTYpPnrIDTdsKH5': { rank: 4, score: 95, useCase: '개성 있는 여성 콘텐츠',       recommendation: '독특한 개성으로 채널 아이덴티티를 강화' },
+  'elevenlabs:Xb7hH8MSUJpSbSDYk0k2': { rank: 5, score: 94, useCase: '교육형 콘텐츠, 명확한 전달',  recommendation: '또렷하고 교육적인 톤으로 정보 전달에 최적' },
+  'elevenlabs:pNInz6obpgDQGcFmaJgB': { rank: 6, score: 93, useCase: '남성 나레이션, 강한 임팩트',   recommendation: '깊고 단호한 목소리로 강렬한 인상을 남김' },
+  'elevenlabs:nPczCjzI2devNBz1zQrb': { rank: 7, score: 92, useCase: '감성 스토리텔링, 중후한 톤',  recommendation: '깊고 편안한 목소리로 감동적인 장면에 적합' },
+  'elevenlabs:iP95p4xoKVk53GoZ742B': { rank: 8, score: 91, useCase: '친근한 대화형 쇼츠',          recommendation: '자연스럽고 편안한 톤으로 시청자와 거리를 좁혀줌' },
+  'elevenlabs:cjVigY5qzO86Huf0OWal': { rank: 9, score: 90, useCase: '정보 전달, 신뢰감 있는 톤',   recommendation: '부드럽고 믿음직한 남성톤으로 설득력이 높음' },
+  'elevenlabs:IKne3meq5aSn9XLyUdCD': { rank: 10, score: 89, useCase: '에너지 넘치는 남성 예능형',  recommendation: '활기차고 힘 있는 목소리로 집중도를 높임' },
+  'elevenlabs:TX3LPaxmHKxFdv7VOQHJ': { rank: 11, score: 88, useCase: 'SNS 크리에이터, 젊은 층',    recommendation: '에너지 넘치고 트렌디한 SNS 스타일' },
+  'elevenlabs:cgSgspJ2msm6clMCkdW9': { rank: 2, score: 97, useCase: '트렌디한 쇼츠, 발랄한 톤', recommendation: '요즘 유튜브에서 가장 유행하는 밝고 친근한 여성톤' },
+  'elevenlabs:pNInz6obpgDQGcFmaJgB': { rank: 3, score: 96, useCase: '남성 나레이션, 강한 임팩트', recommendation: '깊고 단호한 목소리로 강렬한 인상을 남김' },
+  'elevenlabs:iP95p4xoKVk53GoZ742B': { rank: 4, score: 95, useCase: '친근한 대화형 쇼츠', recommendation: '자연스럽고 편안한 톤으로 시청자와 거리를 좁혀줌' },
+  'elevenlabs:IKne3meq5aSn9XLyUdCD': { rank: 5, score: 94, useCase: '에너지 넘치는 남성 예능형', recommendation: '활기차고 힘 있는 목소리로 집중도를 높임' },
+  'elevenlabs:FGY2WhTYpPnrIDTdsKH5': { rank: 6, score: 93, useCase: '개성 있는 여성 콘텐츠', recommendation: '독특한 개성으로 채널 아이덴티티를 강화' },
+  'elevenlabs:cjVigY5qzO86Huf0OWal': { rank: 7, score: 92, useCase: '정보 전달, 신뢰감 있는 톤', recommendation: '부드럽고 믿음직한 남성톤으로 설득력이 높음' },
+  'elevenlabs:nPczCjzI2devNBz1zQrb': { rank: 8, score: 91, useCase: '감성 스토리텔링, 시니어 톤', recommendation: '깊고 편안한 목소리로 감동적인 장면에 적합' },
+  'elevenlabs:TX3LPaxmHKxFdv7VOQHJ': { rank: 9, score: 90, useCase: 'SNS 크리에이터, 젊은 층', recommendation: '에너지 넘치고 트렌디한 SNS 스타일' },
+  'elevenlabs:Xb7hH8MSUJpSbSDYk0k2': { rank: 10, score: 89, useCase: '교육형 콘텐츠, 명확한 전달', recommendation: '또렷하고 교육적인 톤으로 정보 전달에 최적' },
+  'gemini:Kore':   { rank: 1, score: 95, useCase: '한국어 여성 기본 내레이션', recommendation: '현재 시스템에서 가장 무난한 기본값' },
   'gemini:Charon': { rank: 2, score: 92, useCase: '정보형 남성 설명', recommendation: '정보 전달용으로 발음과 톤 밸런스가 좋음' },
-  'gemini:Puck': { rank: 3, score: 90, useCase: '예능형, 텐션 높은 쇼츠', recommendation: '짧은 훅과 텐션 위주 콘텐츠에 유리' },
-  'gemini:Aoede': { rank: 4, score: 88, useCase: '차분한 여성 스토리텔링', recommendation: '과하지 않은 감정선에 잘 맞음' },
-  'gemini:Leda': { rank: 5, score: 86, useCase: '영문 여성 소프트톤', recommendation: '부드럽고 범용적인 영문 보이스' },
+  'gemini:Puck':   { rank: 3, score: 90, useCase: '예능형, 텐션 높은 쇼츠', recommendation: '짧은 훅과 텐션 위주 콘텐츠에 유리' },
+  'gemini:Aoede':  { rank: 4, score: 88, useCase: '차분한 여성 스토리텔링', recommendation: '과하지 않은 감정선에 잘 맞음' },
+  'gemini:Leda':   { rank: 5, score: 86, useCase: '영문 여성 소프트톤', recommendation: '부드럽고 범용적인 영문 보이스' },
 };
+
 
 const buildRankedVoiceLibrary = (library: VoiceLibraryItem[], engineId: string): VoiceLibraryItem[] => {
   const recommendationEngine = engineId === 'multilingual-v2' ? 'elevenlabs' : engineId;
@@ -264,6 +273,8 @@ type BenchmarkAnalysis = {
   rebuildProtocol: string;
 };
 
+const API_BASE_URL = 'http://localhost:3002';
+
 const TubeFactoryPanel: React.FC = () => {
   const getTextClient = async () => {
     await initGeminiService();
@@ -295,6 +306,7 @@ const TubeFactoryPanel: React.FC = () => {
   const [importJsonText, setImportJsonText] = useState('');
   const [currentProjectFolder, setCurrentProjectFolder] = useState<string | null>(null);
   const [scriptLanguage, setScriptLanguage] = useState<AppLanguage>('ko');
+  const [targetAge, setTargetAge] = useState<string>('20대');
   const [ttsLanguage, setTtsLanguage] = useState<AppLanguage>('all');
   const [autoSourceMode, setAutoSourceMode] = useState<AutoSourceMode>('benchmark');
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('shorts');
@@ -351,6 +363,36 @@ const TubeFactoryPanel: React.FC = () => {
       fetchProjects();
     }
   }, [activeStep, fetchProjects]);
+
+  const handleDeleteProject = async (folderName: string) => {
+    if (!confirm(`"${folderName}" 프로젝트를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 이미지와 대본이 삭제됩니다.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/story/${encodeURIComponent(folderName)}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        showToast("✅ 프로젝트가 삭제되었습니다.", "success");
+        // 목록 새로고침
+        fetchProjects();
+      } else {
+        const errorText = await response.text();
+        let errorMessage = "알 수 없는 오류";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        showToast(`삭제 실패 (${response.status}): ${errorMessage}`, "error");
+      }
+    } catch (err: any) {
+      showToast("삭제 요청 실패: " + err.message, "error");
+    }
+  };
 
   const loadProject = async (folderName: string) => {
     setIsGenerating(true);
@@ -513,14 +555,16 @@ const TubeFactoryPanel: React.FC = () => {
     prompt: string,
     negativePrompt?: string,
     referenceImages?: { inlineData: { data: string, mimeType: string } }[],
-    aspectRatio: string = "9:16"
+    aspectRatio: string = "9:16",
+    overrideModel?: string
   ) => {
-    const isGeminiImageModel = selectedImageModel.startsWith("gemini-");
+    const targetModel = overrideModel || selectedImageModel;
+    const isGeminiImageModel = targetModel.startsWith("gemini-");
     if (isGeminiImageModel) {
-      const result = await generateImage(prompt, { aspectRatio, model: selectedImageModel }, undefined, referenceImages);
+      const result = await generateImage(prompt, { aspectRatio, model: targetModel }, undefined, referenceImages);
       return extractGeneratedImageBase64(result);
     }
-    const result = await generateImageWithImagen(prompt, negativePrompt || "", { aspectRatio, model: selectedImageModel });
+    const result = await generateImageWithImagen(prompt, negativePrompt || "", { aspectRatio, model: targetModel });
     return extractGeneratedImageBase64(result);
   };
 
@@ -608,8 +652,14 @@ const TubeFactoryPanel: React.FC = () => {
         photorealistic, 4K, do NOT change anything about the person's physical features,
         ${baseDesc}`;
 
+      // Imagen 모델은 이미지 참조(Image-to-Image)를 지원하지 않으므로 
+      // 캐릭터 시트 생성 시에는 반드시 Gemini 이미지 모델을 사용합니다.
+      let generationModel = selectedImageModel;
+      if (!generationModel.startsWith("gemini-")) {
+        generationModel = "gemini-2.5-flash-image";
+      }
 
-      const base64 = await generateImageBySelectedModel(sheetPrompt, "", refImage, "16:9");
+      const base64 = await generateImageBySelectedModel(sheetPrompt, "", refImage, "16:9", generationModel);
 
 
       if (base64) {
@@ -846,6 +896,90 @@ const TubeFactoryPanel: React.FC = () => {
       }
     }
   };
+
+  const handleSaveSingleCharacter = async (charId: string) => {
+    const char = characters.find(c => c.id === charId);
+    if (!char) return;
+
+    try {
+      const payload = {
+        version: 3,
+        type: "single-character",
+        savedAt: new Date().toISOString(),
+        character: {
+          ...char,
+          // 저장 시 현재 입력된 이름을 확실히 반영
+          name: char.name || "이름 없는 캐릭터"
+        }
+      };
+
+      const fileHandle = await (window as any).showSaveFilePicker({
+        suggestedName: `${char.name || '캐릭터'}.json`,
+        types: [{
+          description: 'JSON 파일',
+          accept: { 'application/json': ['.json'] },
+        }],
+      });
+
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(payload, null, 2));
+      await writable.close();
+
+      showToast(`✅ "${char.name}" 저장 완료!`, "success");
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        showToast("저장 실패: " + err.message, "error");
+      }
+    }
+  };
+
+  const handleLoadSingleCharacter = async (charId: string) => {
+    try {
+      const [fileHandle] = await (window as any).showOpenFilePicker({
+        types: [{
+          description: 'JSON 파일',
+          accept: { 'application/json': ['.json'] },
+        }],
+        multiple: false
+      });
+
+      const file = await fileHandle.getFile();
+      const fileName = file.name.replace(/\.[^/.]+$/, ""); // 확장자 제거
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      // 개별 캐릭터 파일이거나 기존 라이브러리의 첫 번째 캐릭터를 가져옴
+      let loadedChar = parsed.character || (parsed.characters && parsed.characters[0]);
+
+      if (!loadedChar) {
+        showToast("올바르지 않은 캐릭터 파일입니다.", "error");
+        return;
+      }
+
+      // 만약 저장된 이름이 기본 형식이면 파일 이름으로 교체
+      if (!loadedChar.name || loadedChar.name.startsWith("캐릭터 ")) {
+        loadedChar = { ...loadedChar, name: fileName };
+      }
+
+      setCharacters(prev => prev.map(c => {
+        if (c.id === charId) {
+          return {
+            ...loadedChar,
+            id: charId, // 현재 슬롯 ID 유지
+            isActive: true
+          };
+        }
+        return c;
+      }));
+
+      showToast(`✅ "${loadedChar.name}" 불러오기 완료!`, "success");
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        showToast("불러오기 실패: " + err.message, "error");
+      }
+    }
+  };
+
 const handleDuplicateCharacter = (charId: string) => {
     const char = characters.find(c => c.id === charId);
     if (!char) return;
@@ -1133,8 +1267,8 @@ Character Description: ${baseStyle}`;
 
 
   // 4. TTS 및 이미지 생성 상태
-  const [selectedTtsEngine, setSelectedTtsEngine] = useState('gemini');
-  const [selectedVoice, setSelectedVoice] = useState('Kore');
+  const [selectedTtsEngine, setSelectedTtsEngine] = useState('elevenlabs');
+  const [selectedVoice, setSelectedVoice] = useState('gigi');
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [sceneAudioUrls, setSceneAudioUrls] = useState<Record<number, string>>({});
   const [ttsLoadingMap, setTtsLoadingMap] = useState<Record<number, boolean>>({});
@@ -1292,6 +1426,9 @@ Character Description: ${baseStyle}`;
         ? `\n[벤치마킹 분석]\n- 핵심 요약: ${benchmarkAnalysis.sourceSummary}\n- 후킹 방식: ${benchmarkAnalysis.hookPattern}\n- 전개 구조: ${benchmarkAnalysis.narrativeStructure}\n- 톤/말투: ${benchmarkAnalysis.toneStyle}\n- 나레이션 습관: ${benchmarkAnalysis.narrationHabit}\n- 재구성 규칙: ${benchmarkAnalysis.rebuildProtocol}\n- 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.`
         : '';
       const customContext = `[제작 요구사항]
+- ⚠️ CRITICAL: scriptBody는 반드시 최소 8문장 이상 생성할 것 (8문장 미만 절대 금지)
+- ⚠️ CRITICAL: scenes는 scriptBody 문장 수와 동일하게 최소 8개 이상 생성할 것
+
 - 출력 언어: ${languageLabel}
 - 포맷: ${formatLabel}
 - 목표 러닝타임: ${targetDuration}
@@ -1303,15 +1440,31 @@ ${compositionPrompt}
 ${selectedStory.title}
 ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
       
+      // 활성 캐릭터를 WomanA/WomanB/ManA 슬롯에 매핑
+      const activeChars = characters.filter(c => c.isActive);
+      const femaleChars = activeChars.filter(c => c.gender === '여성');
+      const maleChars = activeChars.filter(c => c.gender === '남성');
+
+      const characterContext = activeChars.length > 0 ? `
+[캐릭터 설정]
+${femaleChars[0] ? `WomanA: 이름=${femaleChars[0].name}, 헤어=${femaleChars[0].hairStyle || '긴 웨이브'}, 나이=${femaleChars[0].age || targetAge}, 체형=${femaleChars[0].bodyType || '슬림'}, 특징=${femaleChars[0].uniqueFeatures || ''}` : ''}
+${femaleChars[1] ? `WomanB: 이름=${femaleChars[1].name}, 헤어=${femaleChars[1].hairStyle || '단발'}, 나이=${femaleChars[1].age || targetAge}, 체형=${femaleChars[1].bodyType || '슬림'}, 특징=${femaleChars[1].uniqueFeatures || ''}` : ''}
+${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairStyle || '단정한 단발'}, 나이=${maleChars[0].age || targetAge}, 체형=${maleChars[0].bodyType || '탄탄한 체형'}, 특징=${maleChars[0].uniqueFeatures || ''}` : ''}
+- 의상은 주제와 대본에 맞게 LLM이 고급스럽고 세련된 의상을 자유롭게 선택 (고정 의상 없음)
+- 나이가 들어도 관리를 잘 한 아름다운 여성, 짧고 타이트한 의상이 어울리는 글래머러스한 실루엣
+- 씬마다 동일 캐릭터는 동일 의상 유지 (일관성 필수)
+` : '';
+
       const response = await generateStory({
         engineVersion: 'V3_COSTAR' as any,
         category: 'short',
         scenarioMode: 'default' as any,
         dialect: 'standard' as any,
         targetService: 'GEMINI',
-        customContext,
-        targetAge: '20대'
+        customContext: customContext + characterContext,
+        targetAge: targetAge
       });
+
       
       let parsedLines: string[] = [];
       if (response && response.scriptBody) {
@@ -1416,25 +1569,56 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
          rawCharacterIds.length === 2 ? 'two-shot' : 'single-shot');
 
       // ③ 캐릭터 정보 조회
-      const getCharInfo = (slotId: string) => {
-        const panelChar = characters.find((c: any) => c.id === slotId);
-        if (panelChar) return panelChar;
-        const preset = Object.values(CHARACTER_PRESETS).find(p => p.id === slotId);
-        if (preset) return {
-          id: preset.id,
-          name: preset.name,
-          hair: preset.hair,
-          body: preset.body,
-          identity: preset.gender === 'FEMALE'
-            ? 'A stunning Korean woman in her 40s'
-            : 'A handsome Korean man in his 40s',
-          aiOptimizedPrompt: '',
-          negativePrompt: '',
-          referenceSlots: null,
-          referenceImageUrl: null,
-        };
-        return null;
+    const getCharInfo = (slotId: string) => {
+      // 1순위: ID 직접 매칭
+      const panelChar = characters.find((c: any) => c.id === slotId);
+      if (panelChar) return panelChar;
+
+      // 2순위: WomanA/WomanB/ManA 슬롯을 패널 캐릭터 순서로 매핑
+      const activeChars = characters.filter(c => c.isActive);
+      const femaleChars = activeChars.filter(c => c.gender === '여성');
+      const maleChars = activeChars.filter(c => c.gender === '남성');
+
+      const slotMap: Record<string, any> = {
+        'WomanA': femaleChars[0],
+        'WomanB': femaleChars[1],
+        'WomanC': femaleChars[2],
+        'WomanD': femaleChars[3],
+        'ManA': maleChars[0],
+        'ManB': maleChars[1],
       };
+
+      const mappedChar = slotMap[slotId];
+      if (mappedChar) return mappedChar;
+
+      
+      // CHARACTER_PRESETS가 정의되지 않았을 때를 대비한 폴백 맵
+      const fallbackPresets: Record<string, any> = {
+        'WomanA': { id: 'WomanA', name: 'Woman A', hair: 'long soft-wave hairstyle', body: 'slim', gender: 'FEMALE' },
+        'WomanB': { id: 'WomanB', name: 'Woman B', hair: 'short chic bob cut', body: 'slim', gender: 'FEMALE' },
+        'WomanC': { id: 'WomanC', name: 'Woman C', hair: 'low ponytail hairstyle', body: 'slim', gender: 'FEMALE' },
+        'WomanD': { id: 'WomanD', name: 'Woman D', hair: 'high-bun hairstyle', body: 'slim', gender: 'FEMALE' },
+        'ManA': { id: 'ManA', name: 'Man A', hair: 'short neat hairstyle', body: 'athletic', gender: 'MALE' },
+        'ManB': { id: 'ManB', name: 'Man B', hair: 'clean short cut', body: 'athletic', gender: 'MALE' },
+        'ManC': { id: 'ManC', name: 'Man C', hair: 'classic side-part hairstyle', body: 'athletic', gender: 'MALE' },
+      };
+
+      const preset = fallbackPresets[slotId] || Object.values(fallbackPresets).find(p => p.id === slotId);
+      if (preset) return {
+        id: preset.id,
+        name: preset.name,
+        hair: preset.hair,
+        body: preset.body,
+        identity: preset.gender === 'FEMALE'
+          ? 'A stunning Korean woman in her 40s'
+          : 'A handsome Korean man in his 40s',
+        aiOptimizedPrompt: '',
+        negativePrompt: '',
+        referenceSlots: null,
+        referenceImageUrl: null,
+      };
+      return null;
+    };
 
       const selectedChars = rawCharacterIds
         .map((id: string) => getCharInfo(id))
@@ -1443,7 +1627,7 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
       // ④ 의상: scene.lockedOutfits 우선, 캐릭터 패널 폴백
       const getOutfit = (slotId: string): string =>
         scene.lockedOutfits?.[slotId]
-        || characters.find((c: any) => c.id === slotId)?.outfit
+        || characters.find((c: any) => c.id === slotId)?.outfitStyle
         || '';
 
       // ⑤ 프롬프트 조립
@@ -1826,16 +2010,56 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
       showToast('대본 내용이 없습니다.', 'error');
       return;
     }
-    if (selectedTtsEngine !== 'gemini') {
-      showToast('현재 standalone-lite에서는 Gemini TTS만 실제 생성됩니다.', 'info');
-      return;
-    }
 
     setTtsLoadingMap(prev => ({ ...prev, [index]: true }));
 
     try {
-      const audioUrl = await generateGeminiTtsAudioUrl(selectedVoice, scene.scriptLine);
+      let audioUrl = '';
+
+      if (selectedTtsEngine === 'gemini') {
+        audioUrl = await generateGeminiTtsAudioUrl(selectedVoice, scene.scriptLine);
+
+      } else if (
+        selectedTtsEngine === 'elevenlabs' ||
+        selectedTtsEngine === 'multilingual-v2'
+      ) {
+        const engine = TTS_ENGINES.find(e => e.id === selectedTtsEngine);
+        const response = await fetch(`${API_BASE_URL}/api/tts/preview/elevenlabs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            voiceId: selectedVoice,
+            text: scene.scriptLine,
+            modelId: engine?.model || 'eleven_flash_v2_5',
+            toneValue,
+            speed: ttsSpeed,
+          }),
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'ElevenLabs TTS 실패');
+        audioUrl = `${API_BASE_URL}${data.audioUrl}`;
+      } else if (selectedTtsEngine === 'typecast') {
+        const response = await fetch(`${API_BASE_URL}/api/tts/preview/typecast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actorId: selectedVoice,
+            text: scene.scriptLine,
+            speed: ttsSpeed,
+            pitch: Math.round((toneValue - 50) / 10),
+          }),
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Typecast TTS 실패');
+        audioUrl = `${API_BASE_URL}${data.audioUrl}`;
+      } else {
+        showToast('지원하지 않는 TTS 엔진입니다.', 'error');
+        return;
+      }
+
+
       setSceneAudioUrls(prev => ({ ...prev, [index]: audioUrl }));
+
       
       const newHistoryItem = {
         id: uuidv4(),
@@ -1858,20 +2082,59 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
   };
 
   const handlePreviewSpecificVoice = async (voiceId: string) => {
-    if (selectedTtsEngine !== 'gemini') {
-      showToast('현재 미리듣기는 Gemini TTS만 지원합니다.', 'info');
-      return;
-    }
     setIsPreviewingVoice(voiceId);
     try {
       const sampleText = buildPreviewSampleText('안녕하세요. 선택한 보이스 미리듣기입니다.');
-      const audioUrl = await generateGeminiTtsAudioUrl(voiceId, sampleText);
-      setSelectedVoice(voiceId);
-      const audio = new Audio(audioUrl);
-      audio.play().catch(() => {});
-      showToast('보이스 미리듣기 생성 완료', 'success');
-    } catch (error) {
-      showToast('보이스 미리듣기 생성 실패', 'error');
+      let audioUrl = '';
+
+      if (selectedTtsEngine === 'gemini') {
+        audioUrl = await generateGeminiTtsAudioUrl(voiceId, sampleText);
+      } else if (selectedTtsEngine === 'elevenlabs' || selectedTtsEngine === 'multilingual-v2') {
+        const engine = TTS_ENGINES.find(e => e.id === selectedTtsEngine);
+        const response = await fetch(`${API_BASE_URL}/api/tts/preview/elevenlabs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            voiceId,
+            text: sampleText,
+            modelId: engine?.model || 'eleven_flash_v2_5',
+            toneValue,
+            speed: ttsSpeed,
+          }),
+
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error);
+        audioUrl = `${API_BASE_URL}${result.audioUrl}`;
+      } else if (selectedTtsEngine === 'typecast') {
+        const response = await fetch(`${API_BASE_URL}/api/tts/preview/typecast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actorId: voiceId,
+            text: sampleText,
+            speed: ttsSpeed,
+            pitch: Math.round((toneValue - 50) / 10), // -5 ~ +5
+          }),
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error);
+        audioUrl = `${API_BASE_URL}${result.audioUrl}`;
+      } else {
+        showToast('이 엔진은 아직 미리듣기를 지원하지 않습니다.', 'info');
+        return;
+      }
+
+
+      if (audioUrl) {
+        setSelectedVoice(voiceId);
+        const audio = new Audio(audioUrl);
+        audio.play().catch((e) => console.error('Audio play failed:', e));
+        showToast('보이스 미리듣기 생성 완료', 'success');
+      }
+    } catch (error: any) {
+      console.error('Preview error:', error);
+      showToast(error.message || '보이스 미리듣기 생성 실패', 'error');
     } finally {
       setIsPreviewingVoice(null);
     }
@@ -1893,10 +2156,7 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
       showToast('생성할 씬이 없습니다.', 'error');
       return;
     }
-    if (selectedTtsEngine !== 'gemini') {
-      showToast('현재 standalone-lite에서는 Gemini TTS만 전체 생성됩니다.', 'info');
-      return;
-    }
+  
 
     setIsGenerating(true);
     setBatchProgress({ current: 0, total: scenes.length });
@@ -2039,9 +2299,25 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
                 <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase">Library</h2>
                 <p className="text-slate-500 text-sm mt-1">작업했던 모든 대본과 이미지 폴더를 확인하세요.</p>
               </div>
-              <button onClick={() => setActiveStep('style')} className="bg-lime-500 text-black px-8 py-3 rounded-2xl font-black hover:bg-lime-400 transition-all flex items-center gap-2 shadow-xl shadow-lime-500/20">
+              <button onClick={() => {
+                setScenes([]);
+                setTopic('');
+                setBenchmarkSource('');
+                setStorylines([]);
+                setSelectedStoryIndex(null);
+                setSelectedStoryDraft('');
+                setScriptPhase('input');
+                setCurrentProjectFolder(null);
+                setSceneAudioUrls({});
+                setTtsLoadingMap({});
+                setSeoData(null);
+                setBenchmarkAnalysis(null);
+                setTargetAge('20대');
+                setActiveStep('style');
+              }} className="bg-lime-500 text-black px-8 py-3 rounded-2xl font-black hover:bg-lime-400 transition-all shadow-xl shadow-lime-500/20 flex items-center gap-2">
                 <Plus size={20} /> 새 프로젝트 시작
               </button>
+
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
@@ -2064,6 +2340,7 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
                             <button className="bg-white/5 px-6 py-2.5 rounded-xl text-[11px] font-black group-hover:bg-lime-500 group-hover:text-black transition-all">이어서 작업하기</button>
                             <button className="bg-white/5 px-6 py-2.5 rounded-xl text-[11px] font-black text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all" onClick={(e) => {
                               e.stopPropagation();
+                              handleDeleteProject(proj.folderName);
                             }}>삭제</button>
                          </div>
                       </div>
@@ -2197,11 +2474,32 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
                       <div className="text-[11px] text-slate-500 mt-2 leading-relaxed">{mode.description}</div>
                     </button>
                   ))}
-                </div>
               </div>
+            </div>
 
-              <div className="bg-[#111a22] border border-white/5 rounded-[24px] p-6 space-y-4">
-                <h3 className="font-bold mb-1 text-slate-200">기본 언어</h3>
+            <div className="bg-[#111a22] border border-white/5 rounded-[24px] p-6 space-y-4">
+              <h3 className="font-bold mb-1 text-slate-200">타겟 시청자 나이</h3>
+              <div className="flex gap-2 flex-wrap">
+                {['10대', '20대', '30대', '40대', '50대 이상'].map((age) => (
+                  <button
+                    key={age}
+                    onClick={() => setTargetAge(age)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                      targetAge === age
+                        ? 'bg-lime-500 text-black border-lime-500'
+                        : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    {age}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">선택한 나이대에 맞는 어휘와 감성으로 대본이 생성됩니다.</p>
+            </div>
+
+            <div className="bg-[#111a22] border border-white/5 rounded-[24px] p-6 space-y-4">
+                <h3 className="font-bold mb-1 text-slate-200">씬 구성 방식</h3>
+
                 <div className="flex gap-2">
                   {LANGUAGE_OPTIONS.map((lang) => (
                     <button
@@ -2815,12 +3113,27 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
                            {charIndex + 1}
                         </div>
                         <input 
-                          className="bg-transparent text-xl font-bold text-white outline-none w-48 border-b border-transparent focus:border-lime-500"
+                          className="bg-white/5 text-xl font-bold text-white outline-none w-48 border-b-2 border-transparent focus:border-lime-500 focus:bg-white/10 px-2 py-1 rounded-t-lg transition-all hover:border-white/20"
                           value={char.name} 
+                          placeholder="캐릭터 이름 입력"
                           onChange={e => handleUpdateCharacter(char.id, 'name', e.target.value)} 
                         />
                      </div>
                      <div className="flex items-center gap-2">
+                       <button
+                         onClick={() => handleSaveSingleCharacter(char.id)}
+                         className="text-xs font-bold px-3 py-1.5 rounded-full border border-lime-500/30 bg-lime-500/5 text-lime-400 hover:bg-lime-500 hover:text-black transition-all"
+                         title="이 캐릭터만 파일로 저장"
+                       >
+                         저장
+                       </button>
+                       <button
+                         onClick={() => handleLoadSingleCharacter(char.id)}
+                         className="text-xs font-bold px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-400 hover:bg-violet-500 hover:text-black transition-all"
+                         title="캐릭터 파일 불러와서 덮어쓰기"
+                       >
+                         불러오기
+                       </button>
                        <button
                          onClick={() => handleDuplicateCharacter(char.id)}
                          className="text-xs font-bold px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/30 transition-all"

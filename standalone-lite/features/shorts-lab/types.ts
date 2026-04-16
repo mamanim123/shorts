@@ -99,16 +99,31 @@ export interface TemplateAnalysisRequest {
 }
 
 export interface Scene {
+  id?: number;
   sceneNumber: number;
+  scriptLine?: string;
+  text?: string;
+
+  shotType?: 'single-shot' | 'two-shot' | 'group-shot';
+  characterIds?: string[];
+  cameraAngle?: string;
+  background?: string;
+  action?: string;
+  emotionBeat?: string;
+
+  lockedOutfits?: Record<string, string>;
+
   shortPrompt: string;
   shortPromptKo: string;
   longPrompt: string;
   longPromptKo: string;
   negativePrompt?: string;
-  soraPrompt?: string;
-  soraPromptKo?: string;
-  narration?: string;
-  dialogue?: string;
+
+  imageUrl?: string;
+  isImageGenerating?: boolean;
+  imageError?: boolean;
+  imageUploaded?: boolean;
+
   voiceType?: 'narration' | 'lipSync' | 'both' | 'none';
   narrationMeta?: {
     text?: string;
@@ -122,7 +137,18 @@ export interface Scene {
     emotion?: string;
     timing?: 'start' | 'mid' | 'end';
   };
-  characterIds?: string[];
+
+  videoPrompt?: string;
+  videoUrl?: string;
+  isVideoGenerating?: boolean;
+
+  assignedCharacters?: string[];
+  assignedCharacter?: string;
+
+  soraPrompt?: string;
+  soraPromptKo?: string;
+  narration?: string;
+  dialogue?: string;
   characterNames?: string[];
 }
 

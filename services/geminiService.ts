@@ -2379,3 +2379,157 @@ export const previewPrompt = async (input: UserInput): Promise<string> => {
 
   return "No prompt generated. Please check engine settings.";
 };
+
+// ============================================================================
+// BENCHMARK STORYLINE PACKAGE (뉴버전 줄거리 10개 생성)
+// ============================================================================
+
+export type BenchmarkStorylineItem = {
+  title: string;
+  content: string;
+  hook: string;
+  twist: string;
+};
+
+export type BenchmarkStorylinePackage = {
+  storylines: BenchmarkStorylineItem[];
+  analysis: {
+    sourceSummary: string;
+    hookPattern: string;
+    narrativeStructure: string;
+    toneStyle: string;
+  };
+};
+
+export const generateBenchmarkStorylinePackage = async (
+  topic: string,
+  benchmarkSource?: string,
+  options?: {
+    style?: string;
+    language?: string;
+    outputFormat?: string;
+    targetDuration?: string;
+    scriptStructure?: string;
+  }
+): Promise<BenchmarkStorylinePackage> => {
+  const style = options?.style || '실사풍';
+  const language = options?.language || 'ko';
+  const outputFormat = options?.outputFormat || 'shorts';
+  const targetDuration = options?.targetDuration || '30초';
+  const scriptStructure = options?.scriptStructure || 'narration';
+
+  const benchmarkSection = benchmarkSource?.trim()
+    ? `
+[벤치마크 참고 자료]
+다음은 참고할 영상/콘텐츠의 분석입니다:
+${benchmarkSource}
+
+위 벤치마크를 분석하여 아래 줄거리에 반영하세요:
+- 핵심 훅(Hook) 패턴 추출
+- 서사 구조 분석
+- 톤앤매너 파악
+- 바이럴 요소 식별
+`
+    : '';
+
+  const prompt = `당신은 유튜브 쇼츠 전문 기획자입니다.
+
+[주제] ${topic}
+${benchmarkSection}
+[스타일] ${style}
+[포맷] ${outputFormat === 'shorts' ? '쇼츠 (9:16)' : '롱폼 (16:9)'}
+[목표 길이] ${targetDuration}
+[대본 구조] ${scriptStructure === 'narration' ? '내레이션만' : '내레이션 + 대화'}
+
+위 주제와 조건으로 **10개의 서로 다른 줄거리**를 생성하세요.
+각 줄거리는 완전히 다른 각도와 접근 방식을 가져야 합니다.
+
+[줄거리 다양성 규칙]
+1. 각 줄거리는 서로 완전히 다른 훅으로 시작
+2. 서사 전개 방식이 모두 달라야 함 (반전, 정보전달, 감성, 유머 등)
+3. 타겟 시청자의 반응을 고려한 차별화된 펀치라인
+4. 10개 중 3개는 정보형, 3개는 감성형, 2개는 유머형, 2개는 반전형
+
+[출력 형식 - 반드시 아래 JSON 형식만 출력]
+{
+  "analysis": {
+    "sourceSummary": "벤치마크 핵심 요약 (1-2문장)",
+    "hookPattern": "식별된 훅 패턴",
+    "narrativeStructure": "서사 구조 분석",
+    "toneStyle": "톤앤매너 분석"
+  },
+  "storylines": [
+    {
+      "title": "줄거리 제목 (흥미로운 것)",
+      "content": "줄거리 상세 내용 (3-5문장, 서사 흐름 포함)",
+      "hook": "오프닝 훅 문장 (시청자를 잡는 첫 문장)",
+      "twist": "반전 또는 펀치라인"
+    }
+  ]
+}
+
+반드시 10개의 줄거리를 생성하세요. JSON 형식만 출력하세요.`;
+
+  const API_BASE = 'http://localhost:3002';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service: 'GEMINI',
+        prompt,
+        responseMode: 'simple-text',
+      }),
+    });
+
+    const payload = await response.json();
+    const text = payload.rawResponse || payload.text || payload.result || '';
+
+    if (!text.trim()) {
+      throw new Error('빈 응답이 반환되었습니다.');
+    }
+
+    // JSON 파싱 시도
+    let parsed: any;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      // jsonrepair 시도
+      try {
+        const { jsonrepair } = require('jsonrepair');
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonrepair(jsonMatch[0]));
+        }
+      } catch (e2) {
+        throw new Error('JSON 파싱 실패');
+      }
+    }
+
+    if (!parsed || !Array.isArray(parsed.storylines)) {
+      throw new Error('줄거리 데이터를 파싱할 수 없습니다.');
+    }
+
+    return {
+      storylines: parsed.storylines.map((s: any) => ({
+        title: s.title || '제목 없음',
+        content: s.content || '',
+        hook: s.hook || '',
+        twist: s.twist || '',
+      })),
+      analysis: {
+        sourceSummary: parsed.analysis?.sourceSummary || '',
+        hookPattern: parsed.analysis?.hookPattern || '',
+        narrativeStructure: parsed.analysis?.narrativeStructure || '',
+        toneStyle: parsed.analysis?.toneStyle || '',
+      },
+    };
+  } catch (error: any) {
+    console.error('[generateBenchmarkStorylinePackage] Error:', error);
+    throw new Error(`줄거리 생성 실패: ${error.message}`);
+  }
+};

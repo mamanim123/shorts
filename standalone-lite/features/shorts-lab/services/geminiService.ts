@@ -101,12 +101,8 @@ const requestAutomationGeneration = async (prompt: string, signal?: AbortSignal)
 };
 
 const requestGeneration = async (prompt: string, signal?: AbortSignal): Promise<string> => {
-  try {
-    return await requestRawGeneration(prompt, signal);
-  } catch (error) {
-    console.warn('[geminiService] Raw generation failed. Falling back to automation.', error);
-    return requestAutomationGeneration(prompt, signal);
-  }
+  // Puppeteer 브라우저로 고정 (Gemini API 직접 호출 사용 안 함)
+  return requestAutomationGeneration(prompt, signal);
 };
 
 // ============================================================================
@@ -2164,7 +2160,14 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       'scriptBody',
       'punchline',
       'sceneNumber',
+      'scriptLine',
+      'shotType',
       'characterIds',
+      'cameraAngle',
+      'background',
+      'action',
+      'emotionBeat',
+      'lockedOutfits',
       'shortPrompt',
       'shortPromptKo',
       'longPrompt',

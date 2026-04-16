@@ -530,14 +530,14 @@ app.post('/api/delete-file', (req, res) => {
 app.post('/api/generate/raw', async (req, res) => {
   console.log('[standalone-lite] POST /api/generate/raw 호출됨');
   const { prompt } = req.body;
-  
+
   if (!prompt) {
     return res.status(400).json({ error: 'prompt is required' });
   }
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다 (.env 파일 확인).' });
+    return res.status(500).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
   }
 
   try {
@@ -546,25 +546,71 @@ app.post('/api/generate/raw', async (req, res) => {
       model: 'gemini-2.0-flash',
       contents: prompt,
     });
-    
+
     let rawResponse = '';
     if (response && response.candidates && response.candidates.length > 0) {
-        rawResponse = response.candidates[0].content.parts[0].text;
+      rawResponse = response.candidates[0].content.parts[0].text;
     } else {
-        rawResponse = response.text || '';
+      rawResponse = response.text || '';
     }
 
-    // JSON 텍스트 파싱을 위해 클라이언트에서 처리하도록 raw 문자열을 보냅니다.
-    // 폴더 생성 로직은 일단 스킵하고 (Lite 버전), 프론트에서 렌더링되게 만듭니다.
-    res.json({
-      success: true,
-      rawResponse: rawResponse,
-      service: 'GEMINI',
-      _folderName: `lite_story_${Date.now()}` // 가상의 폴더명 부여
-    });
+    // 서버에서 JSON 파싱 (기존 방식과 동일)
+    let parsed = null;
+    try {
+      let jsonText = rawResponse.trim();
+      jsonText = jsonText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        parsed = JSON.parse(jsonText);
+      }
+    } catch (parseError) {
+      console.warn('[standalone-lite] JSON 파싱 실패:', parseError.message);
+    }
+
+    // 폴더 생성 및 저장
+    let folderName = `lite_story_${Date.now()}`;
+    if (parsed && parsed.title) {
+      const safeTitle = parsed.title.replace(/[^a-zA-Z0-9가-힣_\-]/g, '_').substring(0, 50);
+      folderName = `${Date.now()}_${safeTitle}`;
+      const storyDir = path.join(generatedStoryDir, folderName);
+      if (!fs.existsSync(storyDir)) fs.mkdirSync(storyDir, { recursive: true });
+      try {
+        fs.writeFileSync(
+          path.join(storyDir, 'story.json'),
+          JSON.stringify({ ...parsed, _folderName: folderName }, null, 2),
+          'utf-8'
+        );
+      } catch(e) {
+        console.warn('[standalone-lite] 대본 저장 실패:', e.message);
+      }
+    }
+
+    if (parsed) {
+      res.json({ success: true, rawResponse, ...parsed, _folderName: folderName, service: 'GEMINI' });
+    } else {
+      res.json({ success: true, rawResponse, _folderName: folderName, service: 'GEMINI' });
+    }
+
   } catch (error) {
     console.error('[standalone-lite] Gemini 생성 오류:', error);
     res.status(500).json({ error: 'Gemini 생성 중 오류 발생', details: error.message });
+  }
+});
+
+// [신규 추가] 스토리 폴더 생성
+app.post('/api/create-story-folder', async (req, res) => {
+  const { title } = req.body;
+  if (!title) return res.status(400).json({ error: 'title is required' });
+  try {
+    const safeTitle = title.replace(/[^a-zA-Z0-9가-힣_\-]/g, '_').substring(0, 50);
+    const folderName = `${Date.now()}_${safeTitle}`;
+    const storyDir = path.join(generatedStoryDir, folderName);
+    if (!fs.existsSync(storyDir)) fs.mkdirSync(storyDir, { recursive: true });
+    res.json({ success: true, folderName });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

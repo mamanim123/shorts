@@ -5,7 +5,7 @@ import {
   Settings, Download, Search, Video, Music, Scissors, Type, 
   ChevronRight, Play, Plus, Trash2, Check, ExternalLink, Info, Bell, Sun, User,
   ChevronLeft, MessageSquare, Volume2, FastForward, Sliders, Edit2, Loader2, X, Camera, Wand2, Star,
-  Zap, RefreshCw, Bot, Clock, Maximize2, ShieldAlert
+  Zap, RefreshCw, Bot, Clock, Maximize2, ShieldAlert, Monitor
 } from 'lucide-react';
 
 // 기존 로직 서비스
@@ -371,7 +371,7 @@ const TubeFactoryPanel: React.FC = () => {
             scriptLine: scene?.scriptLine || scene?.text || '',
             imageUrl: scene?.imageUrl || '',
             isImageGenerating: false,
-            assignedCharacter: scene?.assignedCharacter || null,
+            assignedCharacters: scene?.assignedCharacters || (scene?.assignedCharacter ? [scene.assignedCharacter] : []),
           }))
         : images.map((img: any, i: number) => ({
             id: i + 1,
@@ -379,7 +379,7 @@ const TubeFactoryPanel: React.FC = () => {
             imageUrl: `http://localhost:3002/generated_scripts/${img.filename}`,
             isImageGenerating: false,
             longPrompt: img.prompt,
-            assignedCharacter: null
+            assignedCharacters: []
           }));
 
       if (loadedScenes.length > 0) {
@@ -603,8 +603,9 @@ const TubeFactoryPanel: React.FC = () => {
         TOP ROW left to right: full body front view, full body side view, full body back view,
         BOTTOM ROW center: large face and upper body close-up portrait,
         all views of EXACTLY the same person from reference image,
-        same face same hair same skin same outfit same shoes,
-        photorealistic, 4K, do NOT change anything about the person,
+        same face same hair same skin same body shape,
+        character wearing basic tight neutral clothing to clearly show body type,
+        photorealistic, 4K, do NOT change anything about the person's physical features,
         ${baseDesc}`;
 
 
@@ -757,9 +758,7 @@ const TubeFactoryPanel: React.FC = () => {
 
   const handleSaveCharacterLibrary = async () => {
     try {
-      const fileName = prompt("저장할 파일 이름을 입력하세요:", `캐릭터_${new Date().toISOString().slice(0,10)}`);
-      if (!fileName) return;
-
+      // 1. 캐릭터 데이터 준비
       const serializable = characters.map((char) => ({
         id: char.id,
         name: char.name,
@@ -779,73 +778,75 @@ const TubeFactoryPanel: React.FC = () => {
         referenceImageUrl: char.referenceImageUrl || null,
       }));
 
-      const payload = { version: 3, savedAt: new Date().toISOString(), characters: serializable };
+      const payload = {
+        version: 3,
+        savedAt: new Date().toISOString(),
+        characters: serializable
+      };
 
-      const res = await fetch('/api/characters/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName, data: payload }),
+      // 2. 윈도우 기본 다른 이름으로 저장 (Save As) 창 열기
+      const fileHandle = await (window as any).showSaveFilePicker({
+        suggestedName: `캐릭터_${new Date().toISOString().slice(0, 10)}.json`,
+        types: [{
+          description: 'JSON 파일',
+          accept: { 'application/json': ['.json'] },
+        }],
       });
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error);
 
-      // localStorage 백업 (이미지 제외)
+      // 3. 파일 쓰기 (사용자가 선택한 위치에 파일 저장)
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(payload, null, 2));
+      await writable.close();
+
+      showToast(`✅ 캐릭터 저장 완료!`, "success");
+
+      // 4. localStorage 백업 (이미지 제외)
       try {
-        const lightPayload = { ...payload, characters: serializable.map(c => ({ ...c, referenceImageUrl: null })) };
+        const lightPayload = {
+          ...payload,
+          characters: serializable.map((c) => ({ ...c, referenceImageUrl: null }))
+        };
         localStorage.setItem(CHARACTER_LIBRARY_STORAGE_KEY, JSON.stringify(lightPayload));
-      } catch(e) { console.warn("localStorage 저장 실패:", e); }
-
-      showToast(`✅ "${result.fileName}" 저장 완료! (characters 폴더)`, "success");
-    } catch(err: any) {
-      showToast("저장 실패: " + err.message, "error");
+      } catch (e) {
+        console.warn("localStorage 백업 실패:", e);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        showToast("저장 실패: " + err.message, "error");
+      }
     }
   };
 
   const handleLoadCharacterLibrary = async () => {
     try {
-      // 서버에서 파일 목록 가져오기
-      const res = await fetch('/api/characters/list');
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error);
+      // 1. 윈도우 기본 파일 열기 창 (Open File)
+      const [fileHandle] = await (window as any).showOpenFilePicker({
+        types: [{
+          description: 'JSON 파일',
+          accept: { 'application/json': ['.json'] },
+        }],
+        multiple: false
+      });
 
-      if (result.files.length === 0) {
-        showToast("저장된 캐릭터 파일이 없습니다.", "info");
+      // 2. 파일에서 데이터 읽기
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      if (!parsed.characters || !Array.isArray(parsed.characters)) {
+        showToast("올바르지 않은 캐릭터 파일입니다.", "error");
         return;
       }
-
-      // 파일 선택 모달 표시 (간단한 선택창)
-      const fileNames = result.files.map((f: any, i: number) => `${i + 1}. ${f.name} (${new Date(f.savedAt).toLocaleString('ko-KR')})`).join('\n');
-      const input = prompt(`불러올 파일 번호를 입력하세요:\n\n${fileNames}`, "1");
-      if (!input) return;
-
-      const idx = parseInt(input) - 1;
-      if (isNaN(idx) || idx < 0 || idx >= result.files.length) {
-        showToast("올바른 번호를 입력해주세요.", "error");
-        return;
+      
+      setCharacters(parsed.characters);
+      showToast("✅ 불러오기 완료!", "success");
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        showToast("불러오기 실패: " + err.message, "error");
       }
-
-      const selectedFile = result.files[idx];
-      const loadRes = await fetch(`/api/characters/load/${encodeURIComponent(selectedFile.name)}`);
-      const loadResult = await loadRes.json();
-      if (!loadResult.success) throw new Error(loadResult.error);
-
-      const charList = loadResult.data?.characters ?? (Array.isArray(loadResult.data) ? loadResult.data : null);
-      if (!charList?.length) throw new Error("캐릭터 데이터가 없습니다.");
-
-      const restored = charList.map((c: any) => ({
-        ...createCharacter(0),
-        ...c,
-        referenceSlots: {},
-      }));
-
-      setCharacters(restored);
-      showToast(`✅ "${selectedFile.name}" 불러오기 완료! (${restored.length}명)`, "success");
-    } catch(err: any) {
-      showToast("불러오기 실패: " + err.message, "error");
     }
   };
-
-  const handleDuplicateCharacter = (charId: string) => {
+const handleDuplicateCharacter = (charId: string) => {
     const char = characters.find(c => c.id === charId);
     if (!char) return;
     const newChar = {
@@ -922,9 +923,23 @@ Character Description: ${baseStyle}`;
     const char = characters.find(c => c.id === charId);
     if (!char) return;
     setIsOptimizingChar(charId);
+
+    // 연령/성별 영문 변환 (이미지 생성 최적화용)
+    const ageMap: Record<string, string> = { '10대': 'teenage', '20대': '20s', '30대': '30s', '40대': '40s', '50대 이상': 'mature 50s' };
+    const genderMap: Record<string, string> = { '여성': 'woman', '남성': 'man' };
+    const engAge = ageMap[char.age] || char.age || '20s';
+    let engGender = genderMap[char.gender] || char.gender || 'woman';
+    if (char.age === '10대') engGender = char.gender === '남성' ? 'boy' : 'girl';
+    
+    let engBase = `${engAge} ${engGender}`;
+    // 여성이 선택된 경우, 나이에 상관없이 관리가 잘 된 아름다운 한국 여성 베이스 프롬프트 강제 주입
+    if (char.gender === '여성') {
+      engBase += `, extremely beautiful korean ${engGender}, highly detailed beautiful face, well-maintained fit body, flawless smooth skin, elegant, k-beauty`;
+    }
+
     try {
-      // 참조 이미지가 있으면 이미지 분석으로 프롬프트 생성
-      const previewUrl = sheetUploadPreview[charId];
+      // 1. 참조 이미지(캐릭터 시트 또는 원본 업로드 이미지)가 있으면 이미지 분석으로 프롬프트 생성
+      const previewUrl = char.referenceImageUrl || sheetUploadPreview[charId];
       if (previewUrl) {
         try {
           const res = await fetch(previewUrl);
@@ -936,47 +951,53 @@ Character Description: ${baseStyle}`;
           });
           const base64Only = base64Data.split(",")[1];
           const mimeType = blob.type || "image/png";
+          
           const ai = new GoogleGenAI({ apiKey: getApiKey() });
           const analyzeResult = await ai.models.generateContent({
             model: "gemini-2.0-flash",
             contents: [{
               parts: [
                 { inlineData: { data: base64Only, mimeType } },
-                { text: `Analyze this person in the image and create a detailed English prompt for image generation. Focus on: face features (eye color, face shape, skin tone), hair (style, color, length), body type, outfit (clothing style, colors, accessories). Format: concise comma-separated descriptors suitable for image generation. Do NOT include any personal identification. Example format: "young woman, oval face, bright brown eyes, long wavy dark brown hair, slim build, wearing red one-shoulder mini dress, high heels"` }
+                { text: `Analyze this person in the image and create a detailed English prompt for image generation. The character MUST be described as: ${engBase}. Focus strictly on PHYSICAL characteristics ONLY: face features (eye color, face shape, skin tone, lips), hair (style, color, length), and detailed body type (figure, curves, breast size, muscle tone). Format: concise comma-separated descriptors suitable for image generation. DO NOT include any description of clothing, outfits, or accessories whatsoever. Example format: "${engBase}, oval face, bright brown eyes, full lips, long wavy dark brown hair, slim curvy build, large breasts, fair skin"` }
               ]
             }]
           });
           const optimized = analyzeResult.candidates?.[0]?.content?.parts?.[0]?.text || "";
           if (!optimized) throw new Error("분석 결과 없음");
-          handleUpdateCharacter(charId, "aiOptimizedPrompt", optimized);
-          showToast("이미지 분석으로 프롬프트가 생성되었습니다.", "success");
+          
+          handleUpdateCharacter(charId, "aiOptimizedPrompt", optimized.trim());
+          showToast("이미지 분석으로 프롬프트가 자동 생성되었습니다.", "success");
           return;
         } catch(e) {
+          console.warn("이미지 분석 실패:", e);
           showToast("이미지 분석 실패, 텍스트 방식으로 시도합니다.", "warning");
         }
       }
-      // 참조 이미지 없으면 텍스트 기반으로 생성
-      let baseStyle = char.style;
+      
+      // 2. 참조 이미지가 없거나 분석 실패 시 텍스트 기반으로 프롬프트 생성
+      const traits = [
+        engBase, char.bodyType,
+        char.faceType ? `${char.faceType} face` : "",
+        char.eyeColor ? `${char.eyeColor} eyes` : "",
+        char.hairStyle ? `${char.hairStyle} hair` : "",
+        char.hairColor ? `${char.hairColor} color` : "",
+        char.outfitStyle, char.uniqueFeatures
+      ].filter(Boolean).join(", ");
+      
+      // 성별, 나이, 스타일(사용자 입력값), 세부 속성을 모두 결합하여 전달
+      const baseStyle = [traits, char.style].filter(Boolean).join(". ");
+      
       if (!baseStyle.trim()) {
-        const traits = [
-          char.gender, char.age, char.bodyType,
-          char.faceType ? `${char.faceType} face` : "",
-          char.eyeColor ? `${char.eyeColor} eyes` : "",
-          char.hairStyle ? `${char.hairStyle} hair` : "",
-          char.hairColor ? `${char.hairColor} color` : "",
-          char.outfitStyle, char.uniqueFeatures
-        ].filter(Boolean).join(", ");
-        baseStyle = traits;
-      }
-      if (!baseStyle.trim()) {
-        showToast("스타일 묘사나 상세 속성을 입력해주세요.", "error");
+        showToast("스타일 묘사나 상세 속성(성별/연령 등)을 먼저 입력해주세요.", "error");
         return;
       }
+      
       const optimized = await optimizeCharacterPrompt(baseStyle);
       handleUpdateCharacter(charId, "aiOptimizedPrompt", optimized);
-      showToast("AI 최적화 프롬프트가 생성되었습니다.", "success");
+      showToast("입력된 텍스트 기반으로 AI 프롬프트가 최적화되었습니다.", "success");
     } catch (err) {
-      showToast("최적화 실패", "error");
+      console.error(err);
+      showToast("프롬프트 최적화에 실패했습니다.", "error");
     } finally {
       setIsOptimizingChar(null);
     }
@@ -1312,7 +1333,15 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
             scriptLine: fallbackText,
             shortPrompt: s.shortPrompt || s.text || '',
             longPrompt: s.longPrompt || s.shortPrompt || s.text || '',
-            assignedCharacter: null // 캐릭터 할당 필드 추가
+            // LLM 자동배정 필드 보존
+            shotType: s.shotType || 'single-shot',
+            characterIds: s.characterIds || [],
+            cameraAngle: s.cameraAngle || '',
+            background: s.background || '',
+            action: s.action || '',
+            emotionBeat: s.emotionBeat || '',
+            lockedOutfits: s.lockedOutfits || response.lockedOutfits || {},
+            assignedCharacters: []
           };
         });
         setScenes(generatedScenes);
@@ -1327,11 +1356,19 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
           id: i + 1,
           scriptLine: line,
           text: line,
-          shortPrompt: line,
-          longPrompt: line,
+          shortPrompt: '',
+          longPrompt: '',
+          shortPromptKo: line,
+          longPromptKo: line,
+          shotType: 'single-shot' as const,
+          characterIds: ['WomanA'],
+          cameraAngle: i === 0 ? 'close-up portrait shot' : 'full body wide shot',
+          background: '',
+          action: '',
+          lockedOutfits: {},
           imageUrl: '',
           isImageGenerating: false,
-          assignedCharacter: null
+          assignedCharacters: []
         }));
         setScenes(generatedScenes);
         await saveCurrentProject(generatedScenes, {
@@ -1359,66 +1396,150 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
     const scene = scenes.find(s => s.id === sceneId);
     if (!scene) return;
 
-    setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, isImageGenerating: true } : s));
-    
-    try {
-      let finalPrompt = scene.longPrompt || scene.shortPrompt || scene.text;
-      let referenceImages: { inlineData: { data: string, mimeType: string } }[] | undefined = undefined;
-      let charNegativePrompt = '';
+    setScenes(prev => prev.map(s =>
+      s.id === sceneId ? { ...s, isImageGenerating: true } : s
+    ));
 
-      // 캐릭터가 할당되어 있다면, 캐릭터 설정을 프롬프트에 주입
-      if (scene.assignedCharacter) {
-        const char = characters.find(c => c.id === scene.assignedCharacter);
-        if (char) {
-           finalPrompt = `${char.aiOptimizedPrompt || `A ${char.gender} in ${char.age}, ${char.style}`}. ${finalPrompt}`;
-           charNegativePrompt = char.negativePrompt || '';
-           
-           // 다중 참조 슬롯 이미지 수집
-           const collectedImages: { inlineData: { data: string, mimeType: string } }[] = [];
-           if (char.referenceSlots) {
-             for (const slotKey of CHARACTER_REFERENCE_SLOTS) {
-               const slot = char.referenceSlots[slotKey as keyof typeof char.referenceSlots];
-               if (slot?.url) {
-                  try {
-                    const blobRes = await fetch(slot.url);
-                    const blob = await blobRes.blob();
-                    const reader = new FileReader();
-                    const base64Data = await new Promise<string>((resolve) => {
-                      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-                      reader.readAsDataURL(blob);
-                    });
-                    if (base64Data) {
-                       collectedImages.push({ inlineData: { data: base64Data, mimeType: blob.type || 'image/png' } });
-                    }
-                  } catch(e) {}
-               }
-             }
-           }
-           if (collectedImages.length > 0) {
-             referenceImages = collectedImages;
-           }
-        }
+    try {
+      // ① 캐릭터 ID: LLM 자동배정 우선, UI 수동배정 폴백
+      const rawCharacterIds: string[] =
+        (scene.characterIds && scene.characterIds.length > 0)
+          ? scene.characterIds
+          : (scene.assignedCharacters && scene.assignedCharacters.length > 0)
+            ? scene.assignedCharacters
+            : [];
+
+      // ② 샷타입 결정
+      const resolvedShotType: 'single-shot' | 'two-shot' | 'group-shot' =
+        scene.shotType ||
+        (rawCharacterIds.length >= 3 ? 'group-shot' :
+         rawCharacterIds.length === 2 ? 'two-shot' : 'single-shot');
+
+      // ③ 캐릭터 정보 조회
+      const getCharInfo = (slotId: string) => {
+        const panelChar = characters.find((c: any) => c.id === slotId);
+        if (panelChar) return panelChar;
+        const preset = Object.values(CHARACTER_PRESETS).find(p => p.id === slotId);
+        if (preset) return {
+          id: preset.id,
+          name: preset.name,
+          hair: preset.hair,
+          body: preset.body,
+          identity: preset.gender === 'FEMALE'
+            ? 'A stunning Korean woman in her 40s'
+            : 'A handsome Korean man in his 40s',
+          aiOptimizedPrompt: '',
+          negativePrompt: '',
+          referenceSlots: null,
+          referenceImageUrl: null,
+        };
+        return null;
+      };
+
+      const selectedChars = rawCharacterIds
+        .map((id: string) => getCharInfo(id))
+        .filter(Boolean) as any[];
+
+      // ④ 의상: scene.lockedOutfits 우선, 캐릭터 패널 폴백
+      const getOutfit = (slotId: string): string =>
+        scene.lockedOutfits?.[slotId]
+        || characters.find((c: any) => c.id === slotId)?.outfit
+        || '';
+
+      // ⑤ 프롬프트 조립
+      const START = 'unfiltered raw photograph, highly detailed skin texture, natural skin glow';
+      const END = 'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16';
+      const NO_TEXT = 'no text, no letters, no watermark';
+
+      let finalPrompt = '';
+
+      if (scene.longPrompt && !/[가-힣]/.test(scene.longPrompt)) {
+        finalPrompt = scene.longPrompt;
+      } else if (selectedChars.length === 0) {
+        finalPrompt = [
+          START,
+          scene.cameraAngle || 'wide shot',
+          scene.action || '',
+          scene.background ? `in a ${scene.background}` : '',
+          NO_TEXT, END
+        ].filter(Boolean).join(', ');
+      } else {
+        const charBlocks = selectedChars.map((char: any, i: number) => {
+          const outfit = getOutfit(char.id);
+          const identity = char.identity || 'A stunning Korean woman in her 40s';
+          const hair = char.hair || '';
+          const body = char.body || '';
+          const outfitText = outfit ? `wearing ${outfit}` : '';
+          const block = [identity, hair, body, outfitText].filter(Boolean).join(', ');
+          return selectedChars.length >= 2 ? `[Person ${i + 1}: ${block}]` : block;
+        }).join(' ');
+
+        const shotPrefix =
+          resolvedShotType === 'group-shot' ? 'group wide shot, three people in frame,' :
+          resolvedShotType === 'two-shot'   ? 'two-shot wide, two people in frame,' : '';
+
+        finalPrompt = [
+          START, shotPrefix,
+          scene.cameraAngle || 'full body wide shot',
+          charBlocks,
+          scene.action || '',
+          scene.background ? `in a ${scene.background}` : '',
+          NO_TEXT, END
+        ].filter(Boolean).join(', ');
       }
-      
-      // 스타일 반영
+
       if (selectedStyle && selectedStyle !== '실사풍' && selectedStyle !== '전체') {
         finalPrompt += ', in ' + selectedStyle + ' style';
       }
-
-      // 효과(Effect) 반영
       const targetEffect = IMAGE_EFFECTS.find(e => e.id === imageEffect);
-      if (targetEffect && targetEffect.prompt) {
-        finalPrompt += targetEffect.prompt;
+      if (targetEffect && targetEffect.prompt) finalPrompt += targetEffect.prompt;
+
+      // ⑥ 네거티브
+      const baseNeg = 'nsfw, nude, naked, deformed, ugly, bad anatomy, blurry, text, watermark';
+      const charNegs = selectedChars.map((c: any) => c.negativePrompt).filter(Boolean).join(', ');
+      const charNegativePrompt = charNegs ? `${baseNeg}, ${charNegs}` : baseNeg;
+
+      // ⑦ 레퍼런스 이미지
+      const collectedImages: { inlineData: { data: string, mimeType: string } }[] = [];
+      for (const char of selectedChars) {
+        if (char.referenceSlots) {
+          for (const slotKey of CHARACTER_REFERENCE_SLOTS) {
+            const slot = char.referenceSlots[slotKey as keyof typeof char.referenceSlots];
+            if (slot?.url) {
+              try {
+                const blobRes = await fetch(slot.url);
+                const blob = await blobRes.blob();
+                const reader = new FileReader();
+                const base64Data = await new Promise<string>((resolve) => {
+                  reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                  reader.readAsDataURL(blob);
+                });
+                if (base64Data) collectedImages.push({ inlineData: { data: base64Data, mimeType: blob.type || 'image/png' } });
+              } catch(e) {}
+            }
+          }
+        } else if (char.referenceImageUrl) {
+          try {
+            const blobRes = await fetch(char.referenceImageUrl);
+            const blob = await blobRes.blob();
+            const reader = new FileReader();
+            const base64Data = await new Promise<string>((resolve) => {
+              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+              reader.readAsDataURL(blob);
+            });
+            if (base64Data) collectedImages.push({ inlineData: { data: base64Data, mimeType: blob.type || 'image/png' } });
+          } catch(e) {}
+        }
       }
+      const referenceImages = collectedImages.length > 0 ? collectedImages : undefined;
 
-      finalPrompt += ', 8k resolution, masterpiece';
+      console.log(`[Scene ${sceneId}] shotType: ${resolvedShotType}, chars: [${rawCharacterIds.join(', ')}]`);
 
+      // ⑧ 이미지 생성
       const finalBase64Image = await generateImageBySelectedModel(finalPrompt, charNegativePrompt, referenceImages);
+      if (!finalBase64Image) throw new Error('생성된 이미지 데이터를 찾지 못했습니다.');
 
-      if (!finalBase64Image) {
-        throw new Error('생성된 이미지 데이터를 찾지 못했습니다.');
-      }
-
+      // ⑨ 저장
       const storyId = currentProjectFolder || await saveCurrentProject(scenes, { title: topic || 'untitled' });
       const saveResponse = await fetch('http://localhost:3002/api/save-image', {
         method: 'POST',
@@ -1433,17 +1554,13 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
       });
 
       const saveResult = await saveResponse.json();
-      if (!saveResult?.success) {
-        throw new Error(saveResult?.error || '이미지 저장 실패');
-      }
-
-      if (saveResult.storyId) {
-        setCurrentProjectFolder(saveResult.storyId);
-      }
+      if (!saveResult?.success) throw new Error(saveResult?.error || '이미지 저장 실패');
+      if (saveResult.storyId) setCurrentProjectFolder(saveResult.storyId);
 
       const savedImageUrl = saveResult.url?.startsWith('http')
         ? saveResult.url
         : `http://localhost:3002${saveResult.url}`;
+
       const updatedScenes = scenes.map((item) => item.id === sceneId
         ? { ...item, imageUrl: savedImageUrl, isImageGenerating: false, longPrompt: finalPrompt, imageError: false }
         : item
@@ -1451,10 +1568,13 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
       setScenes(updatedScenes);
       await saveCurrentProject(updatedScenes, { title: topic || 'untitled' });
       showToast(`${sceneId}번 장면 이미지 생성 완료`, 'success');
+
     } catch (error) {
       console.error(error);
       showToast('이미지 생성에 실패했습니다.', 'error');
-      setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, isImageGenerating: false, imageError: true } : s));
+      setScenes(prev => prev.map(s =>
+        s.id === sceneId ? { ...s, isImageGenerating: false, imageError: true } : s
+      ));
     }
   };
 
@@ -2684,23 +2804,6 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
               >
                 📁 폴더 변경
               </button>
-              <input
-                ref={characterLibraryInputRef}
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={async (event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const text = await file.text();
-                    const parsed = JSON.parse(text);
-                    applyLoadedCharacterLibrary(parsed);
-                  } catch (error) {
-                    showToast('캐릭터 라이브러리 파일 파싱 실패', 'error');
-                  }
-                }}
-              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -2811,9 +2914,9 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
                           className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black transition-all flex items-center justify-center gap-2"
                         >
                           {isGeneratingCharImage === char.id ? (
-                            <><Loader2 size={14} className="animate-spin"/><span>4장 생성 중... 잠시 기다려주세요</span></>
+                            <><Loader2 size={14} className="animate-spin"/><span>생성 중...</span></>
                           ) : (
-                            <><Sparkles size={14}/><span>① 참조 이미지로 4장 자동 생성</span></>
+                            <><Sparkles size={14}/><span>캐릭터 시트 생성</span></>
                           )}
                         </button>
                       </div>
@@ -3611,3 +3714,11 @@ ${selectedStoryDraft || selectedStory.content}${benchmarkContext}`;
 };
 
 export default TubeFactoryPanel;
+
+
+
+
+
+
+
+

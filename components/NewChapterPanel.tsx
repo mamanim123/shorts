@@ -1,694 +1,571 @@
-import React, { useMemo, useState } from 'react';
-import { Loader2, Download, FileText, Wand2, Scissors, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Loader2, Wand2, CheckCircle2, Play, RotateCcw, Sparkles, ChevronRight, FileText, Download } from 'lucide-react';
 import type { TargetService } from '../types';
-import { parseJsonFromText } from '../services/jsonParse';
-import { buildLabScriptPrompt } from '../services/labPromptBuilder';
+import type { UserInput, StoryResponse, ScenarioMode } from '../types';
+import {
+  generateBenchmarkStorylinePackage,
+  type BenchmarkStorylineItem,
+  type BenchmarkStorylinePackage,
+} from '../services/geminiService';
+import { generateStory } from '../services/geminiService';
 import { showToast } from './Toast';
 
-type SplitMode = 'context' | 'precision';
-
-type CharacterLock = {
-  id: string;
-  name: string;
-  lockedTraits: string;
-  tokenString: string;
-  aliases: string;
-};
-
-type ScenePromptRow = {
-  sceneNo: number;
-  sourceText: string;
-  action: string;
-  location: string;
-  camera: string;
-  mood: string;
-  characterRefs: string[];
-  overrides: string;
-  promptBase: string;
-  promptFinal: string;
-};
-
-type ProductionReport = {
-  project: {
-    ratio: '9:16';
-    engine: string;
-    styleDNA: string;
-    splitMode: SplitMode;
-  };
-  characters: Array<{
-    id: string;
-    name: string;
-    lockedTraits: string;
-    tokenString: string;
-    aliases: string[];
-  }>;
-  scenes: Array<{
-    sceneNo: number;
-    sourceText: string;
-    promptBase: string;
-    promptFinal: string;
-    overrides: string;
-    characterRefs: string[];
-  }>;
-  checks: {
-    consistencyScore: number;
-    missingLocks: string[];
-    warnings: string[];
-  };
-};
-
-const STYLE_PRESETS = [
-  { id: 'cinematic', label: '시네마틱 실사', prompt: 'cinematic photography, dramatic lighting, realistic skin texture, filmic contrast' },
-  { id: 'kdrama', label: 'K-드라마', prompt: 'k-drama aesthetic, clean beauty lighting, soft highlight rolloff, premium production look' },
-  { id: 'noir', label: '누아르', prompt: 'film noir mood, high contrast shadows, moody backlight, cinematic grain' },
-  { id: 'illustration', label: '동화 일러스트', prompt: 'storybook illustration style, soft color palette, painterly texture, whimsical mood' }
-];
-
-const DEFAULT_CHARACTERS: CharacterLock[] = [
-  {
-    id: 'C1',
-    name: '주인공',
-    lockedTraits: '40대 한국인, 또렷한 눈매, 자연스러운 헤어, 안정된 표정',
-    tokenString: 'Korean protagonist, 40s, consistent facial features, consistent hairstyle, same identity across all scenes',
-    aliases: '나,본인,주인공'
-  },
-  {
-    id: 'C2',
-    name: '조연',
-    lockedTraits: '40대 한국인, 단정한 스타일, 보조 리액션 담당',
-    tokenString: 'Korean supporting character, 40s, consistent face and outfit, same identity across all scenes',
-    aliases: '친구,동료,상대'
-  }
-];
-
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-const splitSentences = (text: string): string[] => {
-  const normalized = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!normalized) return [];
-
-  const chunks = normalized
-    .split(/(?<=[.!?。！？]|다\.|요\.)\s+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return chunks.length > 0 ? chunks : [normalized];
-};
-
-const contextSplit = (script: string, desiredCount: number): string[] => {
-  const sentences = splitSentences(script);
-  if (sentences.length === 0) return [];
-  if (sentences.length <= desiredCount) return sentences;
-
-  const result: string[] = [];
-  const step = sentences.length / desiredCount;
-  for (let i = 0; i < desiredCount; i += 1) {
-    const start = Math.floor(i * step);
-    const end = Math.floor((i + 1) * step);
-    const segment = sentences.slice(start, end > start ? end : start + 1).join(' ').trim();
-    if (segment) result.push(segment);
-  }
-  return result.length > 0 ? result : sentences;
-};
-
-const precisionSplit = (script: string, desiredCount: number): string[] => {
-  const normalized = script.replace(/\s+/g, ' ').trim();
-  if (!normalized) return [];
-  if (desiredCount <= 1) return [normalized];
-
-  const roughChunkSize = Math.max(1, Math.floor(normalized.length / desiredCount));
-  const pieces: string[] = [];
-  let cursor = 0;
-
-  for (let i = 0; i < desiredCount - 1; i += 1) {
-    let cut = cursor + roughChunkSize;
-    if (cut >= normalized.length) break;
-    const nextBoundary = normalized.slice(cut, cut + 40).search(/[.!?。！？,]/);
-    if (nextBoundary >= 0) {
-      cut += nextBoundary + 1;
-    }
-    const piece = normalized.slice(cursor, cut).trim();
-    if (piece) pieces.push(piece);
-    cursor = cut;
-  }
-
-  const tail = normalized.slice(cursor).trim();
-  if (tail) pieces.push(tail);
-
-  return pieces.filter(Boolean);
-};
-
-const parseScriptFromRawResponse = (rawText: string): { scriptBody: string; scenes: any[] } => {
-  let cleaned = rawText.trim();
-  cleaned = cleaned.replace(/^(JSON|json)\s+/, '').trim();
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-  }
-
-  const parsed = parseJsonFromText<any>(cleaned, [
-    'scripts',
-    'script',
-    'scriptBody',
-    'scenes',
-    'sceneNumber',
-    'scriptLine',
-    'summary',
-    'longPrompt',
-    'shortPrompt'
-  ]);
-
-  if (!parsed) {
-    return { scriptBody: rawText, scenes: [] };
-  }
-
-  const scriptData = parsed.scripts?.[0] || parsed;
-  const rawScript = scriptData.scriptBody || scriptData.script || parsed.scriptBody || parsed.script || '';
-  const scriptMatch = typeof rawScript === 'string' ? rawScript.match(/---\s*([\s\S]*?)\s*---/) : null;
-  const scriptBody = scriptMatch ? scriptMatch[1].trim() : String(rawScript || '').trim();
-  const scenes = Array.isArray(scriptData.scenes) ? scriptData.scenes : Array.isArray(parsed.scenes) ? parsed.scenes : [];
-
-  return { scriptBody, scenes };
-};
-
-const downloadBlob = (fileName: string, content: BlobPart, mimeType: string) => {
-  const blob = new Blob([content], { type: mimeType });
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.URL.revokeObjectURL(url);
-};
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface NewChapterPanelProps {
   targetService?: TargetService;
 }
 
+type Step = 1 | 2 | 3 | 4;
+
+const GENRE_OPTIONS = [
+  { id: 'info', label: '📊 정보형', desc: '지식/정보 전달' },
+  { id: 'emotional', label: '💖 감성형', desc: '감동/공감 유도' },
+  { id: 'humor', label: '😂 유머형', desc: '웃음/재미' },
+  { id: 'twist', label: '🔄 반전형', desc: '추리/반전' },
+];
+
+const DURATION_OPTIONS = [
+  { id: '15s', label: '15초' },
+  { id: '30s', label: '30초' },
+  { id: '60s', label: '60초' },
+];
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
 export const NewChapterPanel: React.FC<NewChapterPanelProps> = ({ targetService }) => {
-  const [step, setStep] = useState<number>(1);
+  // Step control
+  const [step, setStep] = useState<Step>(1);
+
+  // Step 1: Topic input
   const [topic, setTopic] = useState('');
-  const [genre, setGenre] = useState('comedy-humor');
   const [targetAge, setTargetAge] = useState('40대');
-  const [scriptText, setScriptText] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState('humor');
+  const [selectedDuration, setSelectedDuration] = useState('30s');
+  const [benchmarkSource, setBenchmarkSource] = useState('');
+  const [isGeneratingStorylines, setIsGeneratingStorylines] = useState(false);
+
+  // Step 2: Storyline selection
+  const [storylinePackage, setStorylinePackage] = useState<BenchmarkStorylinePackage | null>(null);
+  const [selectedStorylineIndex, setSelectedStorylineIndex] = useState<number | null>(null);
+
+  // Step 3: Script generation
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [generatedStory, setGeneratedStory] = useState<StoryResponse | null>(null);
 
-  const [splitMode, setSplitMode] = useState<SplitMode>('context');
-  const [sceneCount, setSceneCount] = useState(12);
-  const [sceneRows, setSceneRows] = useState<ScenePromptRow[]>([]);
+  // Step 4: Result view
+  const [error, setError] = useState<string | null>(null);
 
-  const [stylePreset, setStylePreset] = useState(STYLE_PRESETS[0].id);
-  const [styleDna, setStyleDna] = useState('consistent visual style, coherent tone across all scenes');
-  const [lighting, setLighting] = useState('cinematic soft key light');
-  const [lens, setLens] = useState('35mm cinematic lens');
-  const [texture, setTexture] = useState('high detail, realistic texture');
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
 
-  const [characters, setCharacters] = useState<CharacterLock[]>(DEFAULT_CHARACTERS);
-  const [engine] = useState('PRO');
-
-  const selectedStylePrompt = useMemo(
-    () => STYLE_PRESETS.find((item) => item.id === stylePreset)?.prompt || STYLE_PRESETS[0].prompt,
-    [stylePreset]
-  );
-
-  const buildGlobalStyleBlock = useMemo(() => {
-    return [
-      selectedStylePrompt,
-      styleDna,
-      lighting,
-      lens,
-      texture,
-      'aspect ratio 9:16'
-    ]
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .join(', ');
-  }, [selectedStylePrompt, styleDna, lighting, lens, texture]);
-
-  const handleGenerateScript = async () => {
+  const handleGenerateStorylines = async () => {
     if (!topic.trim()) {
       showToast('주제를 입력해주세요.', 'warning');
       return;
     }
 
-    setIsGeneratingScript(true);
+    setIsGeneratingStorylines(true);
+    setError(null);
+    setSelectedStorylineIndex(null);
+
     try {
-      const prompt = buildLabScriptPrompt({
-        topic: topic.trim(),
-        genre,
-        targetAge,
-        gender: 'female'
-      });
+      const result = await generateBenchmarkStorylinePackage(
+        topic.trim(),
+        benchmarkSource.trim() || undefined,
+        {
+          style: '실사풍',
+          language: 'ko',
+          outputFormat: 'shorts',
+          targetDuration: selectedDuration,
+          scriptStructure: 'narration',
+        }
+      );
 
-      const selectedService = targetService || 'GEMINI';
-      const response = await fetch('http://localhost:3002/api/generate/raw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service: selectedService,
-          prompt,
-          maxTokens: 2000,
-          temperature: 0.9
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API 오류: ${response.status}`);
-      }
-
-      const payload = await response.json();
-      const generatedText = payload.rawResponse || payload.text || payload.result || '';
-      const parsed = parseScriptFromRawResponse(String(generatedText || ''));
-
-      const finalScript = parsed.scriptBody || String(generatedText || '').trim();
-      setScriptText(finalScript);
-
-      if (Array.isArray(parsed.scenes) && parsed.scenes.length > 0) {
-        const rows: ScenePromptRow[] = parsed.scenes.map((scene: any, index: number) => ({
-          sceneNo: scene.sceneNumber || index + 1,
-          sourceText: scene.scriptLine || scene.summary || scene.text || `장면 ${index + 1}`,
-          action: scene.action || '',
-          location: scene.location || '',
-          camera: scene.cameraAngle || scene.camera || 'medium shot',
-          mood: scene.mood || 'cinematic',
-          characterRefs: [],
-          overrides: '',
-          promptBase: '',
-          promptFinal: ''
-        }));
-        setSceneRows(rows);
-      }
-
+      setStorylinePackage(result);
       setStep(2);
-      showToast(`${selectedService} AI로 대본 생성 완료`, 'success');
-    } catch (error) {
-      console.error('[NewChapter] script generation failed:', error);
-      showToast(error instanceof Error ? error.message : '대본 생성 실패', 'error');
+      showToast(`${result.storylines.length}개 줄거리 생성 완료!`, 'success');
+    } catch (err: any) {
+      console.error('[NewVersion] storyline generation failed:', err);
+      setError(err.message || '줄거리 생성 실패');
+      showToast(err.message || '줄거리 생성 실패', 'error');
+    } finally {
+      setIsGeneratingStorylines(false);
+    }
+  };
+
+  const handleSelectStoryline = (index: number) => {
+    setSelectedStorylineIndex(index);
+  };
+
+  const handleGenerateScript = async () => {
+    if (selectedStorylineIndex === null || !storylinePackage) {
+      showToast('줄거리를 먼저 선택해주세요.', 'warning');
+      return;
+    }
+
+    setIsGeneratingScript(true);
+    setError(null);
+
+    try {
+      const selectedStoryline = storylinePackage.storylines[selectedStorylineIndex];
+
+      const userInput: UserInput = {
+        topic: topic.trim(),
+        category: selectedGenre,
+        scenarioMode: 'GAG_SSUL' as ScenarioMode,
+        dialect: '서울' as any,
+        customContext: selectedStoryline.content,
+        targetAge: targetAge,
+        engineVersion: 'V3',
+        targetService: targetService || 'GEMINI',
+        useViralMode: false,
+        useRegenerationGuidance: false,
+        enableWinterAccessories: false,
+      };
+
+      const story = await generateStory(userInput);
+      setGeneratedStory(story);
+      setStep(4);
+      showToast('대본 생성 완료!', 'success');
+    } catch (err: any) {
+      console.error('[NewVersion] script generation failed:', err);
+      setError(err.message || '대본 생성 실패');
+      showToast(err.message || '대본 생성 실패', 'error');
     } finally {
       setIsGeneratingScript(false);
     }
   };
 
-  const handleSplitScenes = () => {
-    const count = Math.max(5, Math.min(100, Number(sceneCount) || 12));
-    const chunks = splitMode === 'precision' ? precisionSplit(scriptText, count) : contextSplit(scriptText, count);
-    const rows: ScenePromptRow[] = chunks.map((text, index) => ({
-      sceneNo: index + 1,
-      sourceText: text,
-      action: '',
-      location: '',
-      camera: 'medium shot',
-      mood: 'cinematic',
-      characterRefs: [],
-      overrides: '',
-      promptBase: '',
-      promptFinal: ''
-    }));
-    setSceneRows(rows);
-    setStep(3);
-    showToast(`${rows.length}개 신으로 분할 완료`, 'success');
+  const handleReset = () => {
+    setStep(1);
+    setStorylinePackage(null);
+    setSelectedStorylineIndex(null);
+    setGeneratedStory(null);
+    setError(null);
   };
 
-  const updateCharacter = (id: string, patch: Partial<CharacterLock>) => {
-    setCharacters((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  const handleDownloadScript = () => {
+    if (!generatedStory) return;
+    const content = JSON.stringify(generatedStory, null, 2);
+    const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `new-version-script-${Date.now()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+    showToast('대본 JSON 다운로드 완료', 'success');
   };
 
-  const detectCharacterRefs = (text: string, items: CharacterLock[]): string[] => {
-    const lower = text.toLowerCase();
-    const refs: string[] = [];
+  // ============================================================================
+  // RENDER HELPERS
+  // ============================================================================
 
-    items.forEach((item) => {
-      const aliases = item.aliases
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-      const keywords = [item.name, ...aliases].map((value) => value.toLowerCase());
-      if (keywords.some((word) => word && lower.includes(word))) {
-        refs.push(item.id);
-      }
-    });
+  const getGenreLabel = (id: string) => GENRE_OPTIONS.find(g => g.id === id)?.label || id;
 
-    if (refs.length === 0 && items.length > 0) {
-      refs.push(items[0].id);
-    }
-    return Array.from(new Set(refs));
-  };
+  const renderStepIndicator = () => (
+    <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm text-slate-400">현재 단계</div>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="text-xs text-slate-400 hover:text-white flex items-center gap-1"
+        >
+          <RotateCcw className="w-3 h-3" /> 처음으로
+        </button>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { n: 1, label: '주제 입력' },
+          { n: 2, label: '줄거리 선택' },
+          { n: 3, label: '대본 생성' },
+          { n: 4, label: '결과 확인' },
+        ].map(({ n, label }) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => { if (n < step) setStep(n as Step); }}
+            className={`px-3 py-2 rounded border text-xs font-medium transition-all ${
+              step === n
+                ? 'bg-indigo-600 border-indigo-400 text-white'
+                : n < step
+                ? 'bg-emerald-900/40 border-emerald-600 text-emerald-300 cursor-pointer'
+                : 'bg-slate-800 border-slate-700 text-slate-500 cursor-default'
+            }`}
+          >
+            {n}. {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
-  const buildPromptByRow = (row: ScenePromptRow): ScenePromptRow => {
-    const refs = row.characterRefs.length > 0 ? row.characterRefs : detectCharacterRefs(row.sourceText, characters);
+  // ============================================================================
+  // STEP 1: Topic Input
+  // ============================================================================
 
-    const identityTokens = refs
-      .map((id) => characters.find((character) => character.id === id))
-      .filter((character): character is CharacterLock => Boolean(character))
-      .map((character) => `${character.name}: ${character.tokenString}; traits: ${character.lockedTraits}`)
-      .join(' | ');
+  const renderStep1 = () => (
+    <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-4">
+      <h3 className="font-semibold flex items-center gap-2">
+        <Wand2 className="w-4 h-4 text-indigo-400" /> 1단계: 주제 입력
+      </h3>
 
-    const globalBlock = `GlobalStyleBlock: ${buildGlobalStyleBlock}`;
-    const identityBlock = `IdentityLockBlock: ${identityTokens || 'NO_CHARACTER_TOKEN'}`;
-    const sceneBlock = `SceneAnchorBlock: scene=${row.sceneNo}, text=${row.sourceText}, action=${row.action || 'none'}, location=${row.location || 'unspecified'}`;
-    const cineBlock = `CineBlock: camera=${row.camera || 'medium shot'}, mood=${row.mood || 'cinematic'}, ratio=9:16`;
-    const overrideBlock = row.overrides.trim() ? `OverrideBlock: ${row.overrides.trim()}` : '';
-
-    const promptBase = [globalBlock, identityBlock, sceneBlock, cineBlock].join('\n');
-    const promptFinal = [promptBase, overrideBlock].filter(Boolean).join('\n');
-
-    return {
-      ...row,
-      characterRefs: refs,
-      promptBase,
-      promptFinal
-    };
-  };
-
-  const handleGeneratePrompts = () => {
-    const next = sceneRows.map((row) => buildPromptByRow(row));
-    setSceneRows(next);
-    setStep(6);
-    showToast('신별 프롬프트 생성 완료', 'success');
-  };
-
-  const checks = useMemo(() => {
-    const missingLocks: string[] = [];
-    const warnings: string[] = [];
-
-    const styleOkCount = sceneRows.filter((row) => row.promptFinal.includes('GlobalStyleBlock:')).length;
-    const identityOkCount = sceneRows.filter((row) => row.promptFinal.includes('IdentityLockBlock:') && !row.promptFinal.includes('NO_CHARACTER_TOKEN')).length;
-
-    sceneRows.forEach((row) => {
-      if (!row.promptFinal.includes('GlobalStyleBlock:')) {
-        missingLocks.push(`Scene ${row.sceneNo}: GlobalStyleBlock 누락`);
-      }
-      if (!row.promptFinal.includes('IdentityLockBlock:') || row.promptFinal.includes('NO_CHARACTER_TOKEN')) {
-        missingLocks.push(`Scene ${row.sceneNo}: IdentityLockBlock 누락`);
-      }
-      if (!row.promptFinal.includes('ratio=9:16')) {
-        missingLocks.push(`Scene ${row.sceneNo}: 9:16 누락`);
-      }
-      if (row.promptFinal.length > 3200) {
-        warnings.push(`Scene ${row.sceneNo}: 프롬프트 길이 과다`);
-      }
-    });
-
-    const total = sceneRows.length || 1;
-    const score = Math.round(((styleOkCount + identityOkCount) / (total * 2)) * 100);
-
-    return {
-      consistencyScore: score,
-      missingLocks,
-      warnings
-    };
-  }, [sceneRows]);
-
-  const reportData: ProductionReport = useMemo(() => {
-    return {
-      project: {
-        ratio: '9:16',
-        engine,
-        styleDNA: buildGlobalStyleBlock,
-        splitMode
-      },
-      characters: characters.map((character) => ({
-        id: character.id,
-        name: character.name,
-        lockedTraits: character.lockedTraits,
-        tokenString: character.tokenString,
-        aliases: character.aliases
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean)
-      })),
-      scenes: sceneRows.map((row) => ({
-        sceneNo: row.sceneNo,
-        sourceText: row.sourceText,
-        promptBase: row.promptBase,
-        promptFinal: row.promptFinal,
-        overrides: row.overrides,
-        characterRefs: row.characterRefs
-      })),
-      checks
-    };
-  }, [engine, buildGlobalStyleBlock, splitMode, characters, sceneRows, checks]);
-
-  const handleDownloadJsonReport = () => {
-    const fileName = `new-chapter-report-${Date.now()}.json`;
-    downloadBlob(fileName, JSON.stringify(reportData, null, 2), 'application/json;charset=utf-8');
-    showToast('JSON 작업 지침서 다운로드 완료', 'success');
-  };
-
-  const handleDownloadHtmlReport = () => {
-    const rowsHtml = reportData.scenes
-      .map((scene) => {
-        return `<tr>
-  <td>${scene.sceneNo}</td>
-  <td>${escapeHtml(scene.sourceText)}</td>
-  <td><pre>${escapeHtml(scene.promptFinal)}</pre></td>
-  <td>${escapeHtml(scene.characterRefs.join(', '))}</td>
-</tr>`;
-      })
-      .join('\n');
-
-    const html = `<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>뉴챕터 작업 지침서</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7fb; color: #111; }
-    h1, h2 { margin: 0 0 12px; }
-    .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; font-size: 12px; }
-    th { background: #f0f0f5; }
-    pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
-  </style>
-</head>
-<body>
-  <h1>뉴챕터 작업 지침서</h1>
-  <div class="card">
-    <h2>Project</h2>
-    <pre>${escapeHtml(JSON.stringify(reportData.project, null, 2))}</pre>
-  </div>
-  <div class="card">
-    <h2>Checks</h2>
-    <pre>${escapeHtml(JSON.stringify(reportData.checks, null, 2))}</pre>
-  </div>
-  <div class="card">
-    <h2>Characters</h2>
-    <pre>${escapeHtml(JSON.stringify(reportData.characters, null, 2))}</pre>
-  </div>
-  <div class="card">
-    <h2>Scenes</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Source</th>
-          <th>Prompt Final</th>
-          <th>Refs</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml}
-      </tbody>
-    </table>
-  </div>
-</body>
-</html>`;
-
-    const fileName = `new-chapter-report-${Date.now()}.html`;
-    downloadBlob(fileName, html, 'text/html;charset=utf-8');
-    showToast('HTML 작업 지침서 다운로드 완료', 'success');
-  };
-
-  return (
-    <div className="h-full overflow-y-auto p-4 text-slate-100 bg-slate-950">
-      <div className="max-w-6xl mx-auto space-y-4">
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
-          <h2 className="text-xl font-bold">뉴챕터 - 쇼츠 대본 to 일관 이미지 프롬프트</h2>
-          <p className="text-sm text-slate-400 mt-1">쇼츠랩 초기 AI 대본 생성 로직 재사용 + 엄격 일관성 잠금 + HTML/JSON 지침서 출력</p>
+      <div className="space-y-3">
+        <div>
+          <label className="text-sm text-slate-400 mb-1 block">주제 *</label>
+          <input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            className="w-full rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            placeholder="예: 골프장에서 벌어진 해프닝, 사내 비밀 등"
+          />
         </div>
 
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
-          <div className="text-sm text-slate-400 mb-3">현재 단계: {step} / 6</div>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
-            {[1, 2, 3, 4, 5, 6].map((index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">타겟 연령</label>
+            <select
+              value={targetAge}
+              onChange={(e) => setTargetAge(e.target.value)}
+              className="w-full rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
+            >
+              <option value="20대">20대</option>
+              <option value="30대">30대</option>
+              <option value="40대">40대</option>
+              <option value="50대">50대</option>
+              <option value="60대">60대</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">목표 길이</label>
+            <div className="flex gap-2">
+              {DURATION_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSelectedDuration(opt.id)}
+                  className={`flex-1 px-2 py-2 rounded border text-xs font-medium ${
+                    selectedDuration === opt.id
+                      ? 'bg-indigo-600 border-indigo-400 text-white'
+                      : 'bg-slate-800 border-slate-700 text-slate-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm text-slate-400 mb-1 block">장르 선호</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {GENRE_OPTIONS.map((opt) => (
               <button
-                key={index}
+                key={opt.id}
                 type="button"
-                onClick={() => setStep(index)}
-                className={`px-2 py-2 rounded border ${step === index ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}
+                onClick={() => setSelectedGenre(opt.id)}
+                className={`px-3 py-2 rounded border text-xs font-medium transition-all ${
+                  selectedGenre === opt.id
+                    ? 'bg-indigo-600 border-indigo-400 text-white'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'
+                }`}
               >
-                {index}단계
+                <div>{opt.label}</div>
+                <div className="text-[10px] opacity-70">{opt.desc}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {step === 1 && (
-          <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-            <h3 className="font-semibold flex items-center gap-2"><Wand2 className="w-4 h-4" /> 1단계 대본 생성/불러오기</h3>
-            <input
-              value={topic}
-              onChange={(event) => setTopic(event.target.value)}
-              className="w-full rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
-              placeholder="주제를 입력하세요"
-            />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input value={genre} onChange={(event) => setGenre(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm" placeholder="장르 ID (예: comedy-humor)" />
-              <input value={targetAge} onChange={(event) => setTargetAge(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm" placeholder="타깃 연령 (예: 40대)" />
-              <button
-                type="button"
-                onClick={handleGenerateScript}
-                disabled={isGeneratingScript}
-                className="rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 px-3 py-2 text-sm font-semibold"
-              >
-                {isGeneratingScript ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> 생성 중...</span> : 'AI 대본 생성'}
-              </button>
-            </div>
-            <textarea
-              value={scriptText}
-              onChange={(event) => setScriptText(event.target.value)}
-              className="w-full min-h-[180px] rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
-              placeholder="생성된 대본 또는 직접 붙여넣기"
-            />
-          </section>
+        <div>
+          <label className="text-sm text-slate-400 mb-1 block">벤치마크 참고 (선택)</label>
+          <textarea
+            value={benchmarkSource}
+            onChange={(e) => setBenchmarkSource(e.target.value)}
+            className="w-full min-h-[80px] rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            placeholder="참고할 영상/콘텐츠의 URL이나 설명을 입력하세요"
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGenerateStorylines}
+        disabled={isGeneratingStorylines || !topic.trim()}
+        className="w-full rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all"
+      >
+        {isGeneratingStorylines ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" /> 10개 줄거리 생성 중...
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-4 h-4" /> 줄거리 10개 생성하기
+          </>
+        )}
+      </button>
+    </section>
+  );
+
+  // ============================================================================
+  // STEP 2: Storyline Selection
+  // ============================================================================
+
+  const renderStep2 = () => {
+    if (!storylinePackage) return null;
+
+    return (
+      <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 2단계: 줄거리 선택
+        </h3>
+
+        {storylinePackage.analysis.sourceSummary && (
+          <div className="rounded border border-slate-700 bg-slate-800 p-3 text-xs text-slate-300">
+            <div className="font-semibold text-slate-200 mb-1">📊 벤치마크 분석</div>
+            <div>{storylinePackage.analysis.sourceSummary}</div>
+            {storylinePackage.analysis.hookPattern && (
+              <div className="mt-1">훅 패턴: {storylinePackage.analysis.hookPattern}</div>
+            )}
+          </div>
         )}
 
-        {step === 2 && (
-          <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-            <h3 className="font-semibold flex items-center gap-2"><Scissors className="w-4 h-4" /> 2단계 신 분할</h3>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-sm flex items-center gap-2">
-                <input type="radio" checked={splitMode === 'context'} onChange={() => setSplitMode('context')} /> 일반 분할(맥락)
-              </label>
-              <label className="text-sm flex items-center gap-2">
-                <input type="radio" checked={splitMode === 'precision'} onChange={() => setSplitMode('precision')} /> 정밀 분할
-              </label>
-              <input
-                type="number"
-                min={5}
-                max={100}
-                value={sceneCount}
-                onChange={(event) => setSceneCount(Number(event.target.value))}
-                className="w-28 rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm"
-              />
-              <button type="button" onClick={handleSplitScenes} className="rounded bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-semibold">
-                분할 적용
-              </button>
-            </div>
-            <div className="text-sm text-slate-400">분할 결과: {sceneRows.length}개 신</div>
-          </section>
-        )}
+        <div className="text-sm text-slate-400">
+          생성된 {storylinePackage.storylines.length}개 줄거리 중 하나를 선택하세요
+        </div>
 
-        {step === 3 && (
-          <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-            <h3 className="font-semibold">3단계 스타일 DNA</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <select value={stylePreset} onChange={(event) => setStylePreset(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm">
-                {STYLE_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>{preset.label}</option>
-                ))}
-              </select>
-              <input value={styleDna} onChange={(event) => setStyleDna(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm" placeholder="Style DNA" />
-              <input value={lighting} onChange={(event) => setLighting(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm" placeholder="조명" />
-              <input value={lens} onChange={(event) => setLens(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm" placeholder="렌즈" />
-              <input value={texture} onChange={(event) => setTexture(event.target.value)} className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm md:col-span-2" placeholder="질감" />
-            </div>
-            <div className="text-xs text-emerald-300">GlobalStyleBlock는 모든 신에 강제 삽입됩니다.</div>
-          </section>
-        )}
-
-        {step === 4 && (
-          <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-            <h3 className="font-semibold">4단계 인물 락</h3>
-            <div className="space-y-3">
-              {characters.map((character) => (
-                <div key={character.id} className="rounded border border-slate-700 bg-slate-800 p-3 space-y-2">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <input value={character.name} onChange={(event) => updateCharacter(character.id, { name: event.target.value })} className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="인물명" />
-                    <input value={character.aliases} onChange={(event) => updateCharacter(character.id, { aliases: event.target.value })} className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="별칭(쉼표 구분)" />
-                  </div>
-                  <input value={character.lockedTraits} onChange={(event) => updateCharacter(character.id, { lockedTraits: event.target.value })} className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="고정 특징" />
-                  <textarea value={character.tokenString} onChange={(event) => updateCharacter(character.id, { tokenString: event.target.value })} className="w-full min-h-[72px] rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="강제 토큰" />
+        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+          {storylinePackage.storylines.map((storyline, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleSelectStoryline(index)}
+              className={`w-full text-left rounded-lg border p-3 transition-all ${
+                selectedStorylineIndex === index
+                  ? 'border-indigo-400 bg-indigo-900/30 ring-1 ring-indigo-400'
+                  : 'border-slate-700 bg-slate-800 hover:border-slate-500'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                  selectedStorylineIndex === index
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-slate-700 text-slate-300'
+                }`}>
+                  {index + 1}
                 </div>
-              ))}
-            </div>
-            <div className="text-xs text-emerald-300">IdentityLockBlock는 모든 신에 강제 삽입됩니다.</div>
-          </section>
-        )}
-
-        {step === 5 && (
-          <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-            <h3 className="font-semibold">5단계 신별 프롬프트 생성</h3>
-            <button type="button" onClick={handleGeneratePrompts} className="rounded bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-semibold">
-              일괄 생성
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm">{storyline.title}</div>
+                  <div className="text-xs text-slate-400 mt-1 line-clamp-2">{storyline.content}</div>
+                  <div className="flex gap-2 mt-2">
+                    {storyline.hook && (
+                      <span className="inline-block text-[10px] bg-amber-900/40 text-amber-300 px-2 py-0.5 rounded">
+                        🎣 {storyline.hook.slice(0, 30)}...
+                      </span>
+                    )}
+                    {storyline.twist && (
+                      <span className="inline-block text-[10px] bg-rose-900/40 text-rose-300 px-2 py-0.5 rounded">
+                        🔄 {storyline.twist.slice(0, 30)}...
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {selectedStorylineIndex === index && (
+                  <CheckCircle2 className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+                )}
+              </div>
             </button>
-            <div className="space-y-3">
-              {sceneRows.map((row) => (
-                <div key={row.sceneNo} className="rounded border border-slate-700 bg-slate-800 p-3 space-y-2">
-                  <div className="text-sm font-semibold">Scene {row.sceneNo}</div>
-                  <textarea value={row.sourceText} onChange={(event) => setSceneRows((prev) => prev.map((item) => (item.sceneNo === row.sceneNo ? { ...item, sourceText: event.target.value } : item)))} className="w-full min-h-[80px] rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <input value={row.action} onChange={(event) => setSceneRows((prev) => prev.map((item) => (item.sceneNo === row.sceneNo ? { ...item, action: event.target.value } : item)))} className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="행동" />
-                    <input value={row.location} onChange={(event) => setSceneRows((prev) => prev.map((item) => (item.sceneNo === row.sceneNo ? { ...item, location: event.target.value } : item)))} className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="장소" />
-                    <input value={row.camera} onChange={(event) => setSceneRows((prev) => prev.map((item) => (item.sceneNo === row.sceneNo ? { ...item, camera: event.target.value } : item)))} className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="카메라" />
-                    <input value={row.mood} onChange={(event) => setSceneRows((prev) => prev.map((item) => (item.sceneNo === row.sceneNo ? { ...item, mood: event.target.value } : item)))} className="rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="무드" />
-                  </div>
-                  <textarea value={row.overrides} onChange={(event) => setSceneRows((prev) => prev.map((item) => (item.sceneNo === row.sceneNo ? { ...item, overrides: event.target.value } : item)))} className="w-full min-h-[64px] rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm" placeholder="OverrideBlock (선택)" />
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            className="rounded bg-slate-700 hover:bg-slate-600 px-4 py-2 text-sm font-medium"
+          >
+            ← 이전
+          </button>
+          <button
+            type="button"
+            onClick={handleGenerateScript}
+            disabled={selectedStorylineIndex === null || isGeneratingScript}
+            className="flex-1 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm font-bold flex items-center justify-center gap-2"
+          >
+            {isGeneratingScript ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> 대본 생성 중...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" /> 선택한 줄거리로 대본 생성
+                <ChevronRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </section>
+    );
+  };
+
+  // ============================================================================
+  // STEP 3: Script Generation (loading state)
+  // ============================================================================
+
+  const renderStep3 = () => (
+    <section className="rounded-xl border border-slate-700 bg-slate-900 p-8 space-y-4 text-center">
+      <Loader2 className="w-12 h-12 animate-spin text-indigo-400 mx-auto" />
+      <h3 className="font-semibold text-lg">대본 생성 중...</h3>
+      <p className="text-sm text-slate-400">
+        선택한 줄거리를 바탕으로 AI가 대본과 이미지 프롬프트를 생성하고 있습니다.
+      </p>
+      <p className="text-xs text-slate-500">약 30~60초 소요될 수 있습니다.</p>
+    </section>
+  );
+
+  // ============================================================================
+  // STEP 4: Result
+  // ============================================================================
+
+  const renderStep4 = () => {
+    if (!generatedStory) return null;
+
+    return (
+      <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <FileText className="w-4 h-4 text-emerald-400" /> 4단계: 생성 결과
+        </h3>
+
+        {/* Title */}
+        <div className="rounded border border-slate-700 bg-slate-800 p-3">
+          <div className="text-xs text-slate-400 mb-1">제목</div>
+          <div className="font-bold text-lg">{generatedStory.title}</div>
+          {generatedStory.titleOptions && generatedStory.titleOptions.length > 0 && (
+            <div className="text-xs text-slate-400 mt-1">
+              대안: {generatedStory.titleOptions.join(' | ')}
+            </div>
+          )}
+        </div>
+
+        {/* Script Body */}
+        <div className="rounded border border-slate-700 bg-slate-800 p-3">
+          <div className="text-xs text-slate-400 mb-1">대본</div>
+          <div className="text-sm whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
+            {generatedStory.scriptBody}
+          </div>
+        </div>
+
+        {/* Punchline */}
+        {generatedStory.punchline && (
+          <div className="rounded border border-amber-700/50 bg-amber-900/20 p-3">
+            <div className="text-xs text-amber-400 mb-1">🔥 펀치라인</div>
+            <div className="font-bold text-amber-200">{generatedStory.punchline}</div>
+          </div>
+        )}
+
+        {/* Characters */}
+        {generatedStory.characters && generatedStory.characters.length > 0 && (
+          <div className="rounded border border-slate-700 bg-slate-800 p-3">
+            <div className="text-xs text-slate-400 mb-2">캐릭터</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {generatedStory.characters.map((char: any, idx: number) => (
+                <div key={idx} className="rounded bg-slate-900 p-2 text-xs">
+                  <div className="font-semibold">{char.name || char.id}</div>
+                  <div className="text-slate-400">{char.outfit || '의상 없음'}</div>
                 </div>
               ))}
             </div>
-          </section>
+          </div>
         )}
 
-        {step === 6 && (
-          <section className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-4">
-            <h3 className="font-semibold flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> 6단계 리포트 출력</h3>
-
-            <div className="rounded border border-slate-700 bg-slate-800 p-3">
-              <div className="text-sm">Consistency Score: <span className="font-bold text-emerald-300">{checks.consistencyScore}</span></div>
-              <div className="text-xs text-slate-400 mt-1">Missing Locks: {checks.missingLocks.length} / Warnings: {checks.warnings.length}</div>
-              {checks.missingLocks.length > 0 && (
-                <ul className="mt-2 text-xs text-rose-300 list-disc pl-5">
-                  {checks.missingLocks.map((item) => <li key={item}>{item}</li>)}
-                </ul>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={handleDownloadHtmlReport} className="rounded bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-sm font-semibold inline-flex items-center gap-2">
-                <FileText className="w-4 h-4" /> HTML 다운로드
-              </button>
-              <button type="button" onClick={handleDownloadJsonReport} className="rounded bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-sm font-semibold inline-flex items-center gap-2">
-                <Download className="w-4 h-4" /> JSON 다운로드
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-              {sceneRows.map((row) => (
-                <div key={row.sceneNo} className="rounded border border-slate-700 bg-slate-800 p-3">
-                  <div className="text-sm font-semibold mb-1">Scene {row.sceneNo}</div>
-                  <pre className="text-xs whitespace-pre-wrap break-words text-slate-300">{row.promptFinal}</pre>
+        {/* Scenes */}
+        {generatedStory.scenes && generatedStory.scenes.length > 0 && (
+          <div className="rounded border border-slate-700 bg-slate-800 p-3">
+            <div className="text-xs text-slate-400 mb-2">씬 ({generatedStory.scenes.length}개)</div>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+              {generatedStory.scenes.map((scene: any, idx: number) => (
+                <div key={idx} className="rounded bg-slate-900 p-2 text-xs">
+                  <div className="font-semibold text-slate-200 mb-1">Scene {scene.sceneNumber || idx + 1}</div>
+                  {scene.shortPrompt && (
+                    <div className="text-slate-400 mb-1">
+                      <span className="text-indigo-300">Short:</span> {scene.shortPrompt.slice(0, 120)}...
+                    </div>
+                  )}
+                  {scene.longPrompt && (
+                    <details className="text-slate-400">
+                      <summary className="cursor-pointer text-indigo-300">Long Prompt 보기</summary>
+                      <pre className="mt-1 whitespace-pre-wrap break-words text-[10px]">{scene.longPrompt}</pre>
+                    </details>
+                  )}
                 </div>
               ))}
             </div>
-          </section>
+          </div>
         )}
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="rounded bg-slate-700 hover:bg-slate-600 px-4 py-2 text-sm font-medium flex items-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4" /> 새로 시작
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadScript}
+            className="rounded bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-medium flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" /> JSON 다운로드
+          </button>
+        </div>
+      </section>
+    );
+  };
+
+  // ============================================================================
+  // MAIN RENDER
+  // ============================================================================
+
+  return (
+    <div className="h-full overflow-y-auto p-4 text-slate-100 bg-slate-950">
+      <div className="max-w-4xl mx-auto space-y-4">
+        {/* Header */}
+        <div className="rounded-xl border border-indigo-700/50 bg-gradient-to-r from-indigo-900/40 to-purple-900/40 p-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-indigo-400" /> 뉴버전 - AI 줄거리 기반 대본 생성
+          </h2>
+          <p className="text-sm text-slate-400 mt-1">
+            주제 입력 → 10개 줄거리 자동 생성 → 선택한 줄거리로 대본+이미지프롬프트 완성
+          </p>
+        </div>
+
+        {/* Step Indicator */}
+        {renderStepIndicator()}
+
+        {/* Error */}
+        {error && (
+          <div className="rounded border border-rose-700 bg-rose-900/30 p-3 text-sm text-rose-300">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Steps */}
+        {step === 1 && renderStep1()}
+        {step === 2 && renderStep2()}
+        {step === 3 && renderStep3()}
+        {step === 4 && renderStep4()}
       </div>
     </div>
   );

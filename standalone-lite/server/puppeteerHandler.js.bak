@@ -298,8 +298,12 @@ async function switchService(serviceName) {
     throw new Error('Browser page not initialized.');
   }
 
-  if (!page.url().includes(config.url)) {
+  const shouldResetSession = serviceName === 'GEMINI' || serviceName === 'CLAUDE';
+  const isSameServicePage = page.url().includes(config.url);
+
+  if (shouldResetSession || !isSameServicePage) {
     await page.goto(config.url, { waitUntil: 'networkidle2', timeout: 60000 });
+    await delay(1200);
   }
 
   return config;

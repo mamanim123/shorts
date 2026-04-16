@@ -136,6 +136,7 @@ async function waitForResponseText(activePage, config, serviceName, { minLength,
     }
 
     const currentText = await extractLatestResponseText(activePage, config, serviceName);
+
     if (currentText && currentText.length >= minLength) {
       if (currentText === lastText) {
         stableCount += 1;
@@ -143,12 +144,7 @@ async function waitForResponseText(activePage, config, serviceName, { minLength,
         stableCount = 0;
       }
 
-      const trimmed = currentText.trim();
-      const looksStructured = trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('```');
-      if (looksStructured) {
-        return currentText;
-      }
-
+      // ✅ 수정: looksStructured 조기 리턴 제거, stableCount 충족 후 리턴
       if (stableCount >= stableTarget) {
         return currentText;
       }
@@ -156,6 +152,10 @@ async function waitForResponseText(activePage, config, serviceName, { minLength,
 
     lastText = currentText;
     attempts += 1;
+  }
+
+  if (lastText && lastText.length >= minLength) {
+    return lastText.trim();
   }
 
   if (lastText.trim()) {
@@ -314,9 +314,9 @@ export async function generateContent(serviceName, prompt) {
   await sendPromptToPage(page, config, prompt, serviceName);
   return waitForResponseText(page, config, serviceName, {
     minLength: 200,
-    stableTarget: 3,
+    stableTarget: 5,    // ✅ 3 → 5 (완성 안정화 강화)
     maxAttempts: 180,
-    initialDelayMs: 5000,
+    initialDelayMs: 8000, // ✅ 5000 → 8000ms (LLM 응답 시작 여유)
   });
 }
 

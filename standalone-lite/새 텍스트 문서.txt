@@ -1,4 +1,4 @@
-You are a viral YouTube Shorts/TikTok content planner. The user provided the topic: "골프장에 아름다운여성".
+You are a viral YouTube Shorts/TikTok content planner. The user provided the topic: "봄꽃이 만연한 골프장에 아름다운 여성들".
 
 Generate 10 highly engaging Korean storyline ideas that grab attention in the first 3 seconds.
 
@@ -37,48 +37,47 @@ Rules:
 {
 "storylines": [
 {
-"title": "필드 위 여신, 사실은 국가대표급 스윙?",
-"content": "모델 같은 실루엣의 여성이 어드레스를 잡는 순간 반전되는 완벽한 폼과 250m 비거리를 보여주며 시청자의 고정관념을 깨뜨립니다."
+"title": "꽃보다 그녀들? 솔직히 반칙이죠",
+"content": "만개한 벚꽃 아래에서 티샷을 준비하는 여성들의 우아한 모습과 함께, 공이 날아가는 순간 꽃잎이 흩날리는 슬로우 모션 연출."
 },
 {
-"title": "라운딩 중 번호 5번 따인 비결, 의상일까 실력일까?",
-"content": "단순히 예쁜 옷이 아니라 센스 있는 골프 매너와 수준급 퍼팅 실력으로 주위 시선을 싹쓸이하는 골퍼의 하루를 요약합니다."
+"title": "여기가 골프장이야, 런웨이야?",
+"content": "화사한 파스텔톤 골프웨어를 입은 친구들이 꽃길을 따라 걷다가 카메라를 향해 환하게 웃으며 포즈를 취하는 룩북 스타일 영상."
 },
 {
-"title": "골프장 런웨이? 샷 하나로 분위기 올킬",
-"content": "카트에서 내릴 때부터 티박스까지 영화 같은 미장센을 연출하다가, 임팩트 순간 강력한 파워를 보여주는 슬로우 모션 연출입니다."
+"title": "1년에 딱 2주, 인생샷 건지는 방법",
+"content": "분홍빛 꽃나무로 둘러싸인 그린 위에서 퍼팅에 성공한 뒤, 서로 하이파이브를 하며 환호하는 생동감 넘치는 순간 포착."
 },
 {
-"title": "옆 팀 아저씨들이 구경 멈추고 박수 친 이유",
-"content": "화려한 외모로 주목받던 여성이 어려운 벙커 탈출을 한 번에 성공시키며 갤러리들의 환호성을 자아내는 리얼한 현장감을 담습니다."
+"title": "꽃향기 맡으며 굿샷! 현실판 낙원",
+"content": "카트를 타고 이동하며 보이는 흐드러진 봄꽃 풍경과 그 속에서 여유롭게 라운딩을 즐기는 여성들의 힐링 감성 브이로그."
 },
 {
-"title": "첫 라운딩에 '인생샷'과 '홀인원'을 동시에?",
-"content": "완벽한 골프웨어 핏으로 사진을 찍던 초보 골퍼가 우연히 날린 샷이 홀컵으로 빨려 들어가는 기적 같은 순간을 포착합니다."
+"title": "동화 속에서 골프 치는 기분 어때요?",
+"content": "마치 그림 같은 꽃밭 한가운데 서 있는 뒷모습으로 시작해, 힘찬 스윙과 함께 꽃잎이 비처럼 내리는 환상적인 비주얼."
 },
 {
-"title": "프로 선수도 놀란 일반인 모델의 스윙 궤도",
-"content": "멀리서 보면 연예인 같은 여성이 알고 보니 정석에 가까운 파워풀한 드라이버 샷을 구사하며 반전 매력을 선사합니다."
+"title": "봄 라운딩 갈 때 옷 고민 끝!",
+"content": "각기 다른 매력의 봄 시즌 골프웨어를 입은 여성들이 차례대로 스윙을 선보이며 개성 있는 필드룩을 제안하는 트랜지션 영상."
 },
 {
-"title": "골프장 갈 때마다 '착장 정보' DM 폭주하는 이유",
-"content": "필드의 계절감을 살린 세련된 코디와 그에 걸맞은 우아한 피니시 동작을 교차 편집하여 시각적 즐거움을 극대화합니다."
+"title": "남들 다 찍는 꽃놀이 말고 '꽃프' 어때?",
+"content": "뻔한 공원 대신 분홍색으로 물든 골프 코스에서 진지하게 경기에 집중하는 여성들의 프로페셔널하고 멋진 반전 매력."
 },
 {
-"title": "남자 친구가 골프 연습장만 가면 연락 안 되는 이유",
-"content": "골프장에 나타난 압도적인 분위기의 여성 골퍼를 비추며, 스포츠의 집중력과 미적 요소가 결합된 장면을 연출합니다."
+"title": "지금 이 순간, 가장 예쁜 필드 위 우리",
+"content": "벚꽃 나무 아래에서 셀카를 찍는 친근한 모습부터 완벽한 피니시 자세까지, 골프의 재미와 우정을 동시에 담은 짧은 기록."
 },
 {
-"title": "운동 신경 0%처럼 보였는데... 반전의 버디 찬스",
-"content": "가녀린 체구의 여성이 롱 퍼트 상황에서 과감하고 정확한 스트로크로 버디를 잡아내는 짜릿한 반전 스토리를 보여줍니다."
+"title": "꽃잎이 스윙에 반응한다고?",
+"content": "스윙 궤적을 따라 CG처럼 흩날리는 꽃잎 효과를 극대화하여 시각적인 쾌감을 주는 고퀄리티 임팩트 영상."
 },
 {
-"title": "골프장 직원이 뽑은 '오늘의 베스트 드레서' 스윙",
-"content": "현장에서 가장 눈에 띄는 스타일을 가진 여성이 실력까지 겸비해 진정한 '골프 퀸'으로 거듭나는 과정을 짧게 구성합니다."
+"title": "벚꽃 엔딩 말고 벚꽃 버디!",
+"content": "흩날리는 꽃비 속에서 극적인 버디 찬스를 성공시키는 모습과 함께, 봄의 정취를 만끽하는 여성들의 행복한 미소."
 }
 ]
 }
-
 
 ==========================================================
 
@@ -429,6 +428,12 @@ IMPORTANT: 순수 JSON만 출력하세요.
 
 Topic: [제작 요구사항]
 
+- ⚠️ CRITICAL: scriptBody는 반드시 최소 8문장 이상 생성할 것 (8문장 미만 절대 금지)
+
+- ⚠️ CRITICAL: scenes는 scriptBody 문장 수와 동일하게 최소 8개 이상 생성할 것
+
+
+
 - 출력 언어: 한국어
 
 - 포맷: 쇼츠 (9:16)
@@ -445,9 +450,9 @@ Topic: [제작 요구사항]
 
 [선택 줄거리]
 
-필드 위 여신, 사실은 국가대표급 스윙?
+지금 이 순간, 가장 예쁜 필드 위 우리
 
-모델 같은 실루엣의 여성이 어드레스를 잡는 순간 반전되는 완벽한 폼과 250m 비거리를 보여주며 시청자의 고정관념을 깨뜨립니다.
+벚꽃 나무 아래에서 셀카를 찍는 친근한 모습부터 완벽한 피니시 자세까지, 골프의 재미와 우정을 동시에 담은 짧은 기록.
 
 [벤치마킹 분석]
 
@@ -464,6 +469,20 @@ Topic: [제작 요구사항]
 - 재구성 규칙: 선택한 줄거리를 60초 쇼츠형으로 확장
 
 - 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.
+
+[캐릭터 설정]
+
+WomanA: 이름=미숙, 헤어=긴 웨이브, 나이=40대, 체형=슬림, 특징=
+
+WomanB: 이름=혜진, 헤어=단발, 나이=40대, 체형=슬림, 특징=
+
+
+
+- 의상은 주제와 대본에 맞게 LLM이 고급스럽고 세련된 의상을 자유롭게 선택 (고정 의상 없음)
+
+- 나이가 들어도 관리를 잘 한 아름다운 여성, 짧고 타이트한 의상이 어울리는 글래머러스한 실루엣
+
+- 씬마다 동일 캐릭터는 동일 의상 유지 (일관성 필수)
 
 Outfit Style: short
 
@@ -477,6 +496,12 @@ Target Age: 40대
 
 - Topic: [제작 요구사항]
 
+- ⚠️ CRITICAL: scriptBody는 반드시 최소 8문장 이상 생성할 것 (8문장 미만 절대 금지)
+
+- ⚠️ CRITICAL: scenes는 scriptBody 문장 수와 동일하게 최소 8개 이상 생성할 것
+
+
+
 - 출력 언어: 한국어
 
 - 포맷: 쇼츠 (9:16)
@@ -493,9 +518,9 @@ Target Age: 40대
 
 [선택 줄거리]
 
-필드 위 여신, 사실은 국가대표급 스윙?
+지금 이 순간, 가장 예쁜 필드 위 우리
 
-모델 같은 실루엣의 여성이 어드레스를 잡는 순간 반전되는 완벽한 폼과 250m 비거리를 보여주며 시청자의 고정관념을 깨뜨립니다.
+벚꽃 나무 아래에서 셀카를 찍는 친근한 모습부터 완벽한 피니시 자세까지, 골프의 재미와 우정을 동시에 담은 짧은 기록.
 
 [벤치마킹 분석]
 
@@ -512,6 +537,20 @@ Target Age: 40대
 - 재구성 규칙: 선택한 줄거리를 60초 쇼츠형으로 확장
 
 - 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.
+
+[캐릭터 설정]
+
+WomanA: 이름=미숙, 헤어=긴 웨이브, 나이=40대, 체형=슬림, 특징=
+
+WomanB: 이름=혜진, 헤어=단발, 나이=40대, 체형=슬림, 특징=
+
+
+
+- 의상은 주제와 대본에 맞게 LLM이 고급스럽고 세련된 의상을 자유롭게 선택 (고정 의상 없음)
+
+- 나이가 들어도 관리를 잘 한 아름다운 여성, 짧고 타이트한 의상이 어울리는 글래머러스한 실루엣
+
+- 씬마다 동일 캐릭터는 동일 의상 유지 (일관성 필수)
 
 - Ignore Scenario presets. Follow ONLY the Style Template guidance above plus the outfit/visual rules here.
 
@@ -547,6 +586,12 @@ Target Age: 40대
 
 - Location Anchor: [제작 요구사항]
 
+- ⚠️ CRITICAL: scriptBody는 반드시 최소 8문장 이상 생성할 것 (8문장 미만 절대 금지)
+
+- ⚠️ CRITICAL: scenes는 scriptBody 문장 수와 동일하게 최소 8개 이상 생성할 것
+
+
+
 - 출력 언어: 한국어
 
 - 포맷: 쇼츠 (9:16)
@@ -563,9 +608,9 @@ Target Age: 40대
 
 [선택 줄거리]
 
-필드 위 여신, 사실은 국가대표급 스윙?
+지금 이 순간, 가장 예쁜 필드 위 우리
 
-모델 같은 실루엣의 여성이 어드레스를 잡는 순간 반전되는 완벽한 폼과 250m 비거리를 보여주며 시청자의 고정관념을 깨뜨립니다.
+벚꽃 나무 아래에서 셀카를 찍는 친근한 모습부터 완벽한 피니시 자세까지, 골프의 재미와 우정을 동시에 담은 짧은 기록.
 
 [벤치마킹 분석]
 
@@ -581,7 +626,21 @@ Target Age: 40대
 
 - 재구성 규칙: 선택한 줄거리를 60초 쇼츠형으로 확장
 
-- 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것..
+- 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.
+
+[캐릭터 설정]
+
+WomanA: 이름=미숙, 헤어=긴 웨이브, 나이=40대, 체형=슬림, 특징=
+
+WomanB: 이름=혜진, 헤어=단발, 나이=40대, 체형=슬림, 특징=
+
+
+
+- 의상은 주제와 대본에 맞게 LLM이 고급스럽고 세련된 의상을 자유롭게 선택 (고정 의상 없음)
+
+- 나이가 들어도 관리를 잘 한 아름다운 여성, 짧고 타이트한 의상이 어울리는 글래머러스한 실루엣
+
+- 씬마다 동일 캐릭터는 동일 의상 유지 (일관성 필수).
 
 - Keep scenes 1~5 in the SAME location and lighting. Change only the camera distance and character actions.
 
@@ -684,11 +743,11 @@ Hair: Low ponytail (사용 시 고정)
 
 - Characters array with stable IDs and outfits:
 
-- {"id":"WomanA","name":"지영","role":"Female Lead","outfit":"Forest Green Lace Overlay Top + Ivory Satin Skirt","hair":"Long soft-wave hairstyle","gender":"FEMALE"}
+- {"id":"WomanA","name":"지영","role":"Female Lead","outfit":"Mauve Silk Wrap Mini Dress","hair":"Long soft-wave hairstyle","gender":"FEMALE"}
 
-- {"id":"B","name":"Male Lead","role":"Male Lead","outfit":"White Shirt + Navy Blazer + Grey Slacks","hair":"Neatly styled short black hair (dandy, clean cut)","gender":"MALE"}
+- {"id":"B","name":"Male Lead","role":"Male Lead","outfit":"All Black Chic Golf Look (Black Polo + Black Slacks)","hair":"Neatly styled short black hair (dandy, clean cut)","gender":"MALE"}
 
-- {"id":"WomanC","name":"미숙","role":"Female Observer","outfit":"White See-through Shirt + White High-waist Hot Pants (Pure Luxury)","hair":"Low ponytail","gender":"FEMALE"}
+- {"id":"WomanC","name":"미숙","role":"Female Observer","outfit":"Black Sleeveless Turtleneck + White Micro Pleated Skirt (Monochrome Chic)","hair":"Low ponytail","gender":"FEMALE"}
 
 - Every scene MUST include "characterIds": ["A"] or ["A","B"] referencing this map. Do NOT swap outfits between characters.
 
@@ -708,6 +767,12 @@ Hair: Low ponytail (사용 시 고정)
 
 - Content Inputs: Use ONLY the Topic ([제작 요구사항]
 
+- ⚠️ CRITICAL: scriptBody는 반드시 최소 8문장 이상 생성할 것 (8문장 미만 절대 금지)
+
+- ⚠️ CRITICAL: scenes는 scriptBody 문장 수와 동일하게 최소 8개 이상 생성할 것
+
+
+
 - 출력 언어: 한국어
 
 - 포맷: 쇼츠 (9:16)
@@ -724,9 +789,9 @@ Hair: Low ponytail (사용 시 고정)
 
 [선택 줄거리]
 
-필드 위 여신, 사실은 국가대표급 스윙?
+지금 이 순간, 가장 예쁜 필드 위 우리
 
-모델 같은 실루엣의 여성이 어드레스를 잡는 순간 반전되는 완벽한 폼과 250m 비거리를 보여주며 시청자의 고정관념을 깨뜨립니다.
+벚꽃 나무 아래에서 셀카를 찍는 친근한 모습부터 완벽한 피니시 자세까지, 골프의 재미와 우정을 동시에 담은 짧은 기록.
 
 [벤치마킹 분석]
 
@@ -742,7 +807,21 @@ Hair: Low ponytail (사용 시 고정)
 
 - 재구성 규칙: 선택한 줄거리를 60초 쇼츠형으로 확장
 
-- 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.), Outfit Style (short), and any user-provided context. Ignore Scenario Modes entirely.
+- 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.
+
+[캐릭터 설정]
+
+WomanA: 이름=미숙, 헤어=긴 웨이브, 나이=40대, 체형=슬림, 특징=
+
+WomanB: 이름=혜진, 헤어=단발, 나이=40대, 체형=슬림, 특징=
+
+
+
+- 의상은 주제와 대본에 맞게 LLM이 고급스럽고 세련된 의상을 자유롭게 선택 (고정 의상 없음)
+
+- 나이가 들어도 관리를 잘 한 아름다운 여성, 짧고 타이트한 의상이 어울리는 글래머러스한 실루엣
+
+- 씬마다 동일 캐릭터는 동일 의상 유지 (일관성 필수)), Outfit Style (short), and any user-provided context. Ignore Scenario Modes entirely.
 
 - Never mention outfit names/colors in the scriptBody. Focus on emotions, conflict, and twist resolution.
 
@@ -837,108 +916,104 @@ Examples:
 
 
 {
-"title": "필드 위 여신이 골프백을 잡는 순간 벌어지는 일",
+"title": "필드 위의 벚꽃보다 우리가 더 예쁜 이유",
 "titleOptions": [
-"장비 빨인 줄 알았더니 진짜가 나타났다",
-"250미터 날리는 모델 몸매 그녀의 정체",
-"남자들 기 다 죽이는 국가대표급 스윙 반전"
+"벚꽃 아래에서 터진 미숙이의 비밀 피니시",
+"40대 골프 여신들이 필드에서 노는 법",
+"꽃구경보다 짜릿한 혜진이의 완벽한 굿샷"
 ],
-"scriptBody": "명품으로 휘감고 나타난 지영이가 필드에 섰을 때 다들 비웃었지.\n모델 뺨치는 몸매에 저런 짧은 치마 입고 공이나 제대로 맞히겠냐고 말이야.\n옆에서 구경하던 미숙이도 콧방귀를 뀌며 선글라스를 고쳐 쓰더라고.\n준호는 그냥 예쁜 구경이나 하자며 여유롭게 폼을 잡고 있었지.\n그때 지영이가 장갑을 질질 끌어올리더니 눈빛이 180도 변하는 거야.\n어드레스를 잡는 그 완벽한 실루엣에 주변 공기가 갑자기 얼어붙었어.\n바람을 가르는 묵직한 파열음과 함께 공이 시야에서 사라져 버리더라고.\n쭉 뻗은 피니시 자세는 그야말로 예술 그 자체였지.\n'이거... 지게차로 공 주우러 가야겠는데?'\n궤적을 그리며 날아간 공은 정확히 250미터를 찍고 멈췄어.\n입이 떡 벌어진 준호와 미숙이는 아무 말도 못 하고 서로 얼굴만 봤지.\n필드 위 여신인 줄 알았더니, 사실은 전직 국가대표급 괴물이었던 거야.\n골프는 역시 장비나 외모가 아니라 실력으로 말하는 거더라고.",
-"punchline": "지게차로 공 주우러 가야겠네, 이건 사람이 친 게 아니야.",
+"scriptBody": "하늘에서 분홍빛 벚꽃비가 쏟아지는 오늘, 우리 미숙이랑 혜진이가 필드에 떴어.\n관리는 좀 힘들어도 이맘때 골프장은 인생샷 건지기 딱 좋은 날이잖아?\n'야, 미숙아! 거기 벚꽃 나무 아래 서봐, 진짜 모델이 따로 없네!'\n미숙이는 긴 웨이브 머리를 찰랑이며 수줍게 웃더니 명품 가방보다 귀한 드라이버를 꺼내들더라고.\n단발머리가 찰떡인 혜진이는 옆에서 벌써 셀카 백 장 찍느라 정신이 하나도 없어.\n근데 갑자기 바람이 휙 불면서 꽃잎이 눈앞을 가리는데, 미숙이가 풀스윙을 준비하네?\n순간 정적이 흐르고 모두의 시선이 미숙이의 아찔한 실루엣에 꽂히는 그 찰나!\n'딱!' 소리와 함께 공은 하늘로 솟구치고, 미숙이의 피니시 자세는 그야말로 예술이었지.\n혜진이가 입을 쩍 벌리며 감탄하는데, 미숙이가 씩 웃으며 한마디 하더라고.\n'언니, 꽃보다 내가 더 예뻐서 공이 길을 잃었나 봐!'\n역시 나이가 들어도 이 자신감 하나면 필드는 우리 세상인 거야.\n깔깔거리며 웃는 우리 목소리가 초록빛 페어웨이를 가득 채운 행복한 오후였어.",
+"punchline": "꽃보다 내가 더 예뻐서 공이 길을 잃었나 봐!",
 "characters": [
 {
 "id": "WomanA",
-"name": "지영",
+"name": "미숙",
 "role": "Female Lead",
-"outfit": "Forest Green Lace Overlay Top + Ivory Satin Skirt",
+"outfit": "Ultra-tight Pink Pastel Crop Polo + White Micro Mini Skirt",
 "hair": "Long soft-wave hairstyle",
 "gender": "FEMALE"
 },
 {
-"id": "ManB",
-"name": "준호",
-"role": "Male Lead",
-"outfit": "White Shirt + Navy Blazer + Grey Slacks",
-"hair": "Neatly styled short black hair (dandy, clean cut)",
-"gender": "MALE"
-},
-{
-"id": "WomanC",
-"name": "미숙",
-"role": "Female Observer",
-"outfit": "White See-through Shirt + White High-waist Hot Pants (Pure Luxury)",
-"hair": "Low ponytail",
+"id": "WomanB",
+"name": "혜진",
+"role": "Female Lead",
+"outfit": "Sleeveless Navy Bodycon Golf Dress (Micro length)",
+"hair": "Short neat bob hairstyle",
 "gender": "FEMALE"
 }
 ],
 "scenes": [
 {
 "sceneNumber": 1,
-"characterIds": ["WomanA", "ManB", "WomanC"],
-"shortPrompt": "Stunning Korean woman 지영 (40s) standing on a luxury golf course with long soft-wave hair, wearing Forest Green Lace Overlay Top + Ivory Satin Skirt, looking confident.",
-"shortPromptKo": "럭셔리 골프장에 서 있는 40대 한국 여성 지영, 긴 웨이브 머리에 레이스 탑과 새틴 스커트를 입고 자신감 넘치는 표정.",
-"longPrompt": "A group of stunning Korean characters in their 40s on a sun-drenched luxury golf course. Main character 지영 (WomanA) has a long soft-wave hairstyle and wears a Forest Green Lace Overlay Top and Ivory Satin Skirt. She stands elegantly with a slim-fit silhouette. In the background, 준호 (ManB) in a Navy Blazer and 미숙 (WomanC) in a white see-through shirt and hot pants watch her. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, Shallow depth of field, Bokeh background, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "햇살이 내리쬐는 럭셔리 골프장의 40대 주인공 지영. 긴 웨이브 헤어스타일에 포레스트 그린 레이스 탑과 아이보리 새틴 스커트를 입고 우아한 실루엣을 뽐냅니다. 배경에는 네이비 블레이저를 입은 준호와 화이트 핫팬츠를 입은 미숙이 그녀를 지켜봅니다. 하이퍼 리얼리스틱 8K 시네마틱 사진.",
-"soraPrompt": "Cinematic tracking shot moving towards 지영 standing on a green golf field. Consistent identity: 지영 in Forest Green Lace Overlay Top and Ivory Satin Skirt. Wind gently blowing her long wavy hair. Raw footage, Arri Alexa, ProRes 422, Crystal clear focus.",
-"soraPromptKo": "푸른 골프 필드에 서 있는 지영을 향해 다가가는 시네마틱 트래킹 샷. 그린 레이스 탑과 아이보리 스커트를 입은 지영의 일관된 외모. 바람에 흔들리는 긴 머리."
+"shortPrompt": "A stunning Korean woman Misook (40s, long soft-wave hair) in Pink Crop Polo and White Micro Mini Skirt, standing in a golf course with falling cherry blossoms, push-in close-up.",
+"shortPromptKo": "벚꽃이 떨어지는 골프장에서 핑크색 크롭 폴로와 흰색 초미니스커트를 입은 미숙(40대, 긴 웨이브 헤어)이 서 있는 모습, 푸시인 클로즈업.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Close-up on Misook (WomanA), a stunning Korean woman with long soft-wave hair, wearing an ultra-tight Pink Pastel Crop Polo and White Micro Mini Skirt. She is standing on a lush green golf course as cherry blossom petals fall like snow. Her expression is bright and radiant. High-end luxury golf aesthetic, graceful silhouette with feminine proportions, healthy beauty. Atmosphere: Warm spring afternoon, bright sunlight. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, Shallow depth of field, Bokeh background, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "40대 한국 여성 미숙의 클로즈업. 긴 웨이브 머리에 몸에 딱 붙는 핑크색 파스텔 크롭 폴로와 화이트 마이크로 미니스커트를 입고 있습니다. 벚꽃잎이 눈처럼 흩날리는 푸른 골프장에 서 있으며 표정은 밝고 화사합니다. 고급스러운 골프 미학, 우아한 실루엣과 여성스러운 비율. 따뜻한 봄 오후의 햇살. 하이퍼 리얼리스틱 8K 시네마틱 사진, 잡지 표지 퀄리티.",
+"soraPrompt": "Cinematic push-in shot of Misook, a beautiful 40s Korean woman with long wavy hair, wearing a pink tight golf outfit, standing in a shower of cherry blossoms on a golf course. Realistic motion of petals and hair blowing in the wind. Raw footage, Arri Alexa, ProRes 422, Crystal clear focus.",
+"soraPromptKo": "벚꽃이 내리는 골프장에서 핑크색 타이트한 골프복을 입은 긴 머리의 40대 한국 여성 미숙의 시네마틱 푸시인 샷. 바람에 흔들리는 머리카락과 꽃잎의 사실적인 움직임."
 },
 {
 "sceneNumber": 2,
-"characterIds": ["WomanC"],
-"shortPrompt": "Korean woman 미숙 (40s) with low ponytail, wearing White See-through Shirt + White High-waist Hot Pants, adjusting her sunglasses with a skeptical look.",
-"shortPromptKo": "낮은 포니테일을 한 40대 한국 여성 미숙이 화이트 시스루 셔츠와 핫팬츠를 입고 의심스러운 표정으로 선글라스를 고쳐 쓰는 모습.",
-"longPrompt": "Shoulder-level tracking shot of 미숙 (WomanC) on the golf course. She has a low ponytail and wears a White See-through Shirt and White High-waist Hot Pants. She is adjusting her luxury sunglasses with a mocking, skeptical expression. Professional fashion photography, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, depth of field",
-"longPromptKo": "골프장에서 미숙의 어깨 높이 트래킹 샷. 낮은 포니테일에 화이트 시스루 셔츠와 하이웨이스트 핫팬츠를 입고 명품 선글라스를 고쳐 쓰며 비웃는 듯한 표정을 짓고 있습니다.",
-"soraPrompt": "Close up on 미숙's face as she adjusts her sunglasses. She is wearing a White See-through Shirt. Smooth camera movement. Raw footage, Arri Alexa, Crystal clear focus.",
-"soraPromptKo": "선글라스를 고쳐 쓰는 미숙의 얼굴 클로즈업. 화이트 시스루 셔츠를 입고 있으며 부드러운 카메라 무빙이 돋보입니다."
+"shortPrompt": "Misook and Hyejin (40s, short bob hair) walking together on the fairway, laughing, shoulder-level tracking shot.",
+"shortPromptKo": "페어웨이를 함께 걸으며 웃고 있는 미숙과 혜진(40대, 단발머리), 어깨 높이의 트래킹 샷.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Shoulder-level tracking shot of Misook (WomanA) and Hyejin (WomanB). Misook wears her Pink Crop Polo and White Micro Mini Skirt. Hyejin is a stunning Korean woman with a short neat bob, wearing a Sleeveless Navy Bodycon Golf Dress (Micro length). Both have glamorous silhouettes and are laughing naturally while walking on the grass. No male characters appear. Atmosphere: High-end luxury, vibrant spring colors. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, Shallow depth of field, Motion blur, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "40대 한국 여성 미숙과 혜진의 트래킹 샷. 미숙은 핑크색 크롭 폴로와 화이트 미니스커트를, 혜진은 단발머리에 민소매 네이비 바디콘 골프 원피스를 입고 있습니다. 두 사람 모두 글래머러스한 실루엣으로 잔디 위를 걸으며 자연스럽게 웃고 있습니다. 고급스러운 분위기와 선명한 봄의 색감.",
+"soraPrompt": "Tracking shot of two elegant Korean women in their 40s walking and laughing on a golf course. One with long hair in pink, the other with short hair in navy. Consistent identity, smooth camera movement. Raw footage, Arri Alexa, ProRes 422.",
+"soraPromptKo": "골프장에서 걷고 웃는 두 명의 우아한 40대 한국 여성의 트래킹 샷. 핑크색 옷의 긴 머리 여성과 네이비색 옷의 단발 여성. 일관된 캐릭터 아이덴티티, 부드러운 카메라 워크."
 },
 {
 "sceneNumber": 3,
-"characterIds": ["ManB"],
-"shortPrompt": "Dandy Korean man 준호 (40s) in White Shirt + Navy Blazer + Grey Slacks, leaning against a golf cart, looking relaxed and amused.",
-"shortPromptKo": "화이트 셔츠와 네이비 블레이저, 그레이 슬랙스를 입은 댄디한 40대 한국 남성 준호가 골프 카트에 기대어 여유롭게 지켜보는 모습.",
-"longPrompt": "Dutch-angle half body shot of 준호 (ManB) at the luxury golf course. He has neatly styled short black hair and wears a White Shirt, Navy Blazer, and Grey Slacks. He is leaning against a high-end golf cart, watching the scene with a relaxed, amused grin. photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "럭셔리 골프장에서 준호의 더치 앵글 하프 바디 샷. 깔끔한 쇼트 블랙 헤어에 네이비 블레이저를 입고 골프 카트에 기대어 여유로운 미소를 띠며 장면을 지켜보고 있습니다."
+"shortPrompt": "Hyejin taking a selfie with a smartphone, posing cutely, Dutch-angle half body.",
+"shortPromptKo": "스마트폰으로 셀카를 찍으며 귀여운 포즈를 취하는 혜진, 더치 앵글 하프 바디 샷.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Dutch-angle half body shot of Hyejin (WomanB). She is holding a smartphone, taking a selfie with a playful expression. She wears the Sleeveless Navy Bodycon Golf Dress (Micro length) which highlights her fit physique. Background shows a blurred cherry blossom tree. Stunning Korean woman, well-fitted elegant outfit, healthy beauty. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "40대 여성 혜진의 더치 앵글 하프 바디 샷. 스마트폰을 들고 장난스러운 표정으로 셀카를 찍고 있습니다. 몸매가 드러나는 민소매 네이비 바디콘 원피스를 입고 있으며 배경에는 흐릿한 벚꽃 나무가 보입니다. 건강한 아름다움과 세련된 의상.",
+"soraPrompt": "Medium shot of Hyejin taking a selfie on a golf course. She is smiling and adjusting her hair. Handheld camera feel, crystal clear focus on the phone and face. Raw footage, Arri Alexa, ProRes 422.",
+"soraPromptKo": "골프장에서 셀카를 찍는 혜진의 미디엄 샷. 웃으며 머리를 만지는 모습. 핸드헬드 카메라 느낌, 얼굴과 핸드폰에 선명한 초점."
 },
 {
 "sceneNumber": 4,
-"characterIds": ["WomanA"],
-"shortPrompt": "Extreme close-up on 지영's hands as she pulls up her golf gloves tightly. Her Forest Green Lace sleeve is visible.",
-"shortPromptKo": "골프 장갑을 꽉 조여 올리는 지영의 손 익스트림 클로즈업. 포레스트 그린 레이스 소매가 보임.",
-"longPrompt": "Extreme close-up on the hands of 지영 (WomanA). She is wearing white professional golf gloves and pulling them tight with an intense focus. The Forest Green Lace Overlay Top sleeve is clearly visible. Tension is rising in the atmosphere. photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "지영의 손 익스트림 클로즈업. 하얀 골프 장갑을 강하게 당기며 집중하는 모습. 그린 레이스 소매가 선명하게 보이며 긴장감이 고조됩니다."
+"shortPrompt": "Misook holding a luxury driver club, looking focused, extreme close-up on hands and face.",
+"shortPromptKo": "명품 드라이버를 잡고 집중하는 미숙, 손과 얼굴의 익스트림 클로즈업.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Extreme close-up on Misook's (WomanA) face and hands. She is gripping a high-end golf driver with intense focus. Her long soft-wave hair is slightly blowing. She wears the Pink Pastel Crop Polo. Her skin is flawless, showing refined elegance. Atmosphere: High tension before a swing. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "미숙의 얼굴과 손의 익스트림 클로즈업. 고급 골프 드라이버를 꽉 쥐고 강렬하게 집중하고 있습니다. 긴 웨이브 머리가 살짝 날리고 핑크색 크롭 폴로를 입고 있습니다. 무결점 피부와 정제된 우아함. 스윙 직전의 긴장감.",
+"soraPrompt": "Extreme close-up on a woman's hands gripping a golf club and her focused eyes. Cinematic lighting, subtle camera shake to build tension. Raw footage, Arri Alexa, ProRes 422.",
+"soraPromptKo": "골프채를 잡은 여성의 손과 집중한 눈의 익스트림 클로즈업. 시네마틱한 조명, 긴장감을 조성하는 미세한 카메라 흔들림."
 },
 {
 "sceneNumber": 5,
-"characterIds": ["WomanA"],
-"shortPrompt": "Stunning Korean woman 지영 (40s) taking a perfect golf address posture, showing her glamorous silhouette in Forest Green Lace Top + Ivory Satin Skirt.",
-"shortPromptKo": "완벽한 어드레스 자세를 취하는 40대 지영. 그린 레이스 탑과 아이보리 새틴 스커트를 입은 글래머러스한 실루엣.",
-"longPrompt": "Full shot of 지영 (WomanA) taking a professional golf address stance. Her silhouette is graceful and feminine in her tight Forest Green Lace Overlay Top and Ivory Satin Skirt. The background is a lush green golf course under a clear sky. photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "전문적인 골프 어드레스 자세를 취한 지영의 풀샷. 타이트한 그린 레이스 탑과 아이보리 새틴 스커트를 입은 우아한 실루엣이 강조됩니다. 배경은 맑은 하늘 아래 푸른 골프장입니다."
+"shortPrompt": "Hyejin watching Misook from behind, holding her phone, wide shot on the tee box.",
+"shortPromptKo": "티박스에서 핸드폰을 들고 미숙을 뒤에서 지켜보는 혜진, 와이드 샷.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Wide shot of the golf tee box. Hyejin (WomanB) in her Navy Bodycon Dress stands in the foreground, holding her phone to record. Misook (WomanA) in her Pink Crop Polo and White Micro Skirt is preparing for a swing in the background. Cherry blossoms are scattered on the green grass. No male characters appear. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "골프 티박스의 와이드 샷. 네이비 바디콘 원피스를 입은 혜진이 전경에서 촬영을 위해 핸드폰을 들고 있고, 배경에서는 핑크색 크롭 폴로와 화이트 미니스커트를 입은 미숙이 스윙을 준비합니다. 잔디 위에 벚꽃잎이 흩어져 있습니다.",
+"soraPrompt": "Wide shot of a golf tee box with two women. One is recording with a phone while the other prepares to swing. Lush green grass and cherry blossoms. Smooth panning motion. Raw footage, Arri Alexa, ProRes 422.",
+"soraPromptKo": "두 여성이 있는 골프 티박스의 와이드 샷. 한 명은 폰으로 찍고 다른 한 명은 스윙을 준비하는 모습. 푸른 잔디와 벚꽃. 부드러운 팬 동작."
 },
 {
 "sceneNumber": 6,
-"characterIds": ["WomanA"],
-"shortPrompt": "Extreme wide shot of 지영 finishing a powerful golf swing. The motion blur of the club is visible against the blue sky.",
-"shortPromptKo": "강력한 골프 스윙을 마친 지영의 익스트림 와이드 샷. 파란 하늘을 배경으로 클럽의 잔상이 보임.",
-"longPrompt": "A stunning Korean woman 지영 (WomanA) in her Forest Green Lace Overlay Top and Ivory Satin Skirt completing a powerful, high-speed golf swing. Dynamic motion blur of the club, hair blowing in the wind. The golf ball is invisible but the impact is felt. photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "그린 레이스 탑과 아이보리 새틴 스커트를 입은 지영이 강력한 스윙을 마치는 모습. 클럽의 역동적인 모션 블러와 바람에 흩날리는 머리카락이 돋보입니다."
+"shortPrompt": "Wind blowing cherry blossoms around Misook as she starts her swing, dynamic motion blur.",
+"shortPromptKo": "미숙이 스윙을 시작할 때 바람에 벚꽃이 휘날리는 모습, 역동적인 모션 블러.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Dynamic action shot of Misook (WomanA) starting her golf swing. Wind is blowing hard, causing a swirl of cherry blossom petals around her. Her Pink Crop Polo and White Micro Mini Skirt emphasize her glamorous silhouette. Her long hair is flying dramatically. Atmosphere: Dramatic and cinematic. Hyper-realistic 8K cinematic photograph, Motion blur, Bokeh background, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "미숙이 골프 스윙을 시작하는 역동적인 액션 샷. 강한 바람이 불어 주변에 벚꽃잎이 소용돌이칩니다. 핑크색 크롭 폴로와 화이트 미니스커트가 글래머러스한 실루엣을 강조합니다. 긴 머리가 드라마틱하게 날리는 시네마틱한 분위기.",
+"soraPrompt": "Dynamic slow-motion shot of a woman swinging a golf club as cherry blossoms swirl around her. Dramatic lighting and hair movement. Arri Alexa, ProRes 422, Crystal clear focus.",
+"soraPromptKo": "벚꽃이 주위에 휘날리는 가운데 골프 스윙을 하는 여성의 역동적인 슬로우 모션 샷. 드라마틱한 조명과 머리카락의 움직임."
 },
 {
 "sceneNumber": 7,
-"characterIds": ["WomanA", "ManB", "WomanC"],
-"shortPrompt": "지영 (WomanA) holding a perfect finish pose, while 준호 (ManB) and 미숙 (WomanC) stand in the background with shocked expressions and open mouths.",
-"shortPromptKo": "완벽한 피니시 자세를 유지하는 지영. 배경에서 준호와 미숙이 입을 벌린 채 충격받은 표정으로 서 있는 모습.",
-"longPrompt": "Master shot revealing the aftermath of the swing. 지영 (WomanA) maintains a graceful finish pose. In the distance, 준호 (ManB) and 미숙 (WomanC) are shown with wide eyes and shocked expressions, completely speechless. photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "스윙 직후를 보여주는 마스터 샷. 지영은 우아한 피니시 자세를 유지하고 있으며, 멀리서 준호와 미숙이 눈을 크게 뜨고 충격받은 표정으로 서 있습니다."
+"shortPrompt": "Misook in a perfect finish pose, looking at the sky, smiling confidently, zoom-out master shot.",
+"shortPromptKo": "완벽한 피니시 자세로 하늘을 보며 자신 있게 웃는 미숙, 줌아웃 마스터 샷.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Zoom-out master shot revealing Misook (WomanA) in a perfect, professional golf finish pose. She is looking at the distant sky with a confident smile. Her ultra-tight outfit shows her elegant and fit body. Hyejin (WomanB) is seen in the background clapping. The entire scene is framed by cherry blossom trees. Hyper-realistic 8K cinematic photograph, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "완벽하고 전문적인 골프 피니시 자세를 취한 미숙을 보여주는 줌아웃 마스터 샷. 자신감 넘치는 미소로 먼 하늘을 바라보고 있습니다. 타이트한 의상이 우아하고 탄탄한 몸매를 드러냅니다. 배경에는 박수를 치는 혜진이 보입니다.",
+"soraPrompt": "Zoom out from the woman's face to a full shot showing her perfect golf finish pose. Her friend in the background claps. Soft afternoon light and falling petals. Raw footage, Arri Alexa, ProRes 422.",
+"soraPromptKo": "여성의 얼굴에서 줌아웃하여 완벽한 골프 피니시 포즈를 보여주는 풀 샷. 배경의 친구가 박수를 칩니다. 부드러운 오후의 빛과 떨어지는 꽃잎."
 },
 {
 "sceneNumber": 8,
-"characterIds": ["WomanA"],
-"shortPrompt": "Close-up of 지영 (40s) smiling subtly while brushing off her golf bag with a sophisticated look, Forest Green Lace Top visible.",
-"shortPromptKo": "세련된 표정으로 골프백을 매만지며 살짝 미소 짓는 지영의 클로즈업. 그린 레이스 탑이 보임.",
-"longPrompt": "Close-up of 지영 (WomanA) as she finishes her turn. She is smiling subtly with a look of refined elegance. She is casually brushing her hand over her luxury golf bag. Her Forest Green Lace Overlay Top and ivory skirt look pristine. photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
-"longPromptKo": "차례를 마친 지영의 클로즈업. 우아한 미소를 지으며 럭셔리 골프백을 가볍게 매만집니다. 그녀의 그린 레이스 탑과 스커트는 여전히 완벽합니다."
+"shortPrompt": "Misook and Hyejin laughing together, Misook pointing at herself, joyful atmosphere.",
+"shortPromptKo": "함께 웃고 있는 미숙과 혜진, 미숙이 자신을 가리키는 모습, 즐거운 분위기.",
+"longPrompt": "A group of stunning Korean characters in their 40s. Final shot of Misook (WomanA) and Hyejin (WomanB) laughing together on the green. Misook is playfully pointing at herself as if saying the punchline. They look radiant and happy. Misook in Pink Crop Polo, Hyejin in Navy Bodycon Dress. Background is a beautiful fairway with pink blossoms. No male characters. Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, --ar 9:16 --q 2 --style raw, photorealistic, 8k resolution, cinematic lighting, detailed texture, masterpiece, professional fashion photography, depth of field",
+"longPromptKo": "그린 위에서 함께 웃고 있는 미숙과 혜진의 마지막 샷. 미숙이 펀치라인을 말하는 듯 장난스럽게 자신을 가리키고 있습니다. 두 사람 모두 화사하고 행복해 보입니다. 핑크색 크롭 폴로의 미숙과 네이비 바디콘 드레스의 혜진. 배경은 분홍색 꽃이 핀 아름다운 페어웨이.",
+"soraPrompt": "Two beautiful women in golf attire laughing and talking to each other. One points to herself playfully. The camera pans around them capturing the joyful atmosphere. Raw footage, Arri Alexa, ProRes 422.",
+"soraPromptKo": "골프복을 입은 두 명의 아름다운 여성이 웃으며 대화하는 모습. 한 명이 장난스럽게 자신을 가리킵니다. 즐거운 분위기를 담아내며 주위를 회전하는 카메라."
 }
 ]
 }

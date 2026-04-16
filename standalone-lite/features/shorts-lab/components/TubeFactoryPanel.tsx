@@ -213,31 +213,22 @@ const GEMINI_VOICE_LIBRARY: VoiceLibraryItem[] = [
 ] as const;
 
 const VOICE_RECOMMENDATION_META: Record<string, VoiceRecommendationMeta> = {
-  'elevenlabs:EXAVITQu4vr4xnSDxMaL': { rank: 1, score: 98, useCase: '정보형 쇼츠, 여성 대표',       recommendation: '안정적이고 신뢰감 있는 표준 여성 나레이션' },
-  'elevenlabs:cgSgspJ2msm6clMCkdW9': { rank: 2, score: 97, useCase: '트렌디한 쇼츠, 발랄한 톤',     recommendation: '요즘 유튜브에서 가장 유행하는 밝고 친근한 여성톤' },
-  'elevenlabs:hpp4J3VqNfWAUOO0d1Us': { rank: 3, score: 96, useCase: '밝고 전문적인 나레이션',       recommendation: '깔끔하고 전문적인 여성 내레이션' },
-  'elevenlabs:FGY2WhTYpPnrIDTdsKH5': { rank: 4, score: 95, useCase: '개성 있는 여성 콘텐츠',       recommendation: '독특한 개성으로 채널 아이덴티티를 강화' },
-  'elevenlabs:Xb7hH8MSUJpSbSDYk0k2': { rank: 5, score: 94, useCase: '교육형 콘텐츠, 명확한 전달',  recommendation: '또렷하고 교육적인 톤으로 정보 전달에 최적' },
-  'elevenlabs:pNInz6obpgDQGcFmaJgB': { rank: 6, score: 93, useCase: '남성 나레이션, 강한 임팩트',   recommendation: '깊고 단호한 목소리로 강렬한 인상을 남김' },
-  'elevenlabs:nPczCjzI2devNBz1zQrb': { rank: 7, score: 92, useCase: '감성 스토리텔링, 중후한 톤',  recommendation: '깊고 편안한 목소리로 감동적인 장면에 적합' },
-  'elevenlabs:iP95p4xoKVk53GoZ742B': { rank: 8, score: 91, useCase: '친근한 대화형 쇼츠',          recommendation: '자연스럽고 편안한 톤으로 시청자와 거리를 좁혀줌' },
-  'elevenlabs:cjVigY5qzO86Huf0OWal': { rank: 9, score: 90, useCase: '정보 전달, 신뢰감 있는 톤',   recommendation: '부드럽고 믿음직한 남성톤으로 설득력이 높음' },
-  'elevenlabs:IKne3meq5aSn9XLyUdCD': { rank: 10, score: 89, useCase: '에너지 넘치는 남성 예능형',  recommendation: '활기차고 힘 있는 목소리로 집중도를 높임' },
-  'elevenlabs:TX3LPaxmHKxFdv7VOQHJ': { rank: 11, score: 88, useCase: 'SNS 크리에이터, 젊은 층',    recommendation: '에너지 넘치고 트렌디한 SNS 스타일' },
-  'elevenlabs:cgSgspJ2msm6clMCkdW9': { rank: 2, score: 97, useCase: '트렌디한 쇼츠, 발랄한 톤', recommendation: '요즘 유튜브에서 가장 유행하는 밝고 친근한 여성톤' },
-  'elevenlabs:pNInz6obpgDQGcFmaJgB': { rank: 3, score: 96, useCase: '남성 나레이션, 강한 임팩트', recommendation: '깊고 단호한 목소리로 강렬한 인상을 남김' },
-  'elevenlabs:iP95p4xoKVk53GoZ742B': { rank: 4, score: 95, useCase: '친근한 대화형 쇼츠', recommendation: '자연스럽고 편안한 톤으로 시청자와 거리를 좁혀줌' },
-  'elevenlabs:IKne3meq5aSn9XLyUdCD': { rank: 5, score: 94, useCase: '에너지 넘치는 남성 예능형', recommendation: '활기차고 힘 있는 목소리로 집중도를 높임' },
-  'elevenlabs:FGY2WhTYpPnrIDTdsKH5': { rank: 6, score: 93, useCase: '개성 있는 여성 콘텐츠', recommendation: '독특한 개성으로 채널 아이덴티티를 강화' },
-  'elevenlabs:cjVigY5qzO86Huf0OWal': { rank: 7, score: 92, useCase: '정보 전달, 신뢰감 있는 톤', recommendation: '부드럽고 믿음직한 남성톤으로 설득력이 높음' },
-  'elevenlabs:nPczCjzI2devNBz1zQrb': { rank: 8, score: 91, useCase: '감성 스토리텔링, 시니어 톤', recommendation: '깊고 편안한 목소리로 감동적인 장면에 적합' },
-  'elevenlabs:TX3LPaxmHKxFdv7VOQHJ': { rank: 9, score: 90, useCase: 'SNS 크리에이터, 젊은 층', recommendation: '에너지 넘치고 트렌디한 SNS 스타일' },
-  'elevenlabs:Xb7hH8MSUJpSbSDYk0k2': { rank: 10, score: 89, useCase: '교육형 콘텐츠, 명확한 전달', recommendation: '또렷하고 교육적인 톤으로 정보 전달에 최적' },
+  'elevenlabs:EXAVITQu4vr4xnSDxMaL': { rank: 1,  score: 98, useCase: '정보형 쇼츠, 여성 대표',        recommendation: '안정적이고 신뢰감 있는 표준 여성 나레이션' },
+  'elevenlabs:cgSgspJ2msm6clMCkdW9': { rank: 2,  score: 97, useCase: '트렌디한 쇼츠, 발랄한 톤',      recommendation: '요즘 유튜브에서 가장 유행하는 밝고 친근한 여성톤' },
+  'elevenlabs:hpp4J3VqNfWAUOO0d1Us': { rank: 3,  score: 96, useCase: '밝고 전문적인 나레이션',        recommendation: '깔끔하고 전문적인 여성 내레이션' },
+  'elevenlabs:FGY2WhTYpPnrIDTdsKH5': { rank: 4,  score: 95, useCase: '개성 있는 여성 콘텐츠',        recommendation: '독특한 개성으로 채널 아이덴티티를 강화' },
+  'elevenlabs:Xb7hH8MSUJpSbSDYk0k2': { rank: 5,  score: 94, useCase: '교육형 콘텐츠, 명확한 전달',   recommendation: '또렷하고 교육적인 톤으로 정보 전달에 최적' },
+  'elevenlabs:pNInz6obpgDQGcFmaJgB': { rank: 6,  score: 93, useCase: '남성 나레이션, 강한 임팩트',   recommendation: '깊고 단호한 목소리로 강렬한 인상을 남김' },
+  'elevenlabs:nPczCjzI2devNBz1zQrb': { rank: 7,  score: 92, useCase: '감성 스토리텔링, 중후한 톤',   recommendation: '깊고 편안한 목소리로 감동적인 장면에 적합' },
+  'elevenlabs:iP95p4xoKVk53GoZ742B': { rank: 8,  score: 91, useCase: '친근한 대화형 쇼츠',           recommendation: '자연스럽고 편안한 톤으로 시청자와 거리를 좁혀줌' },
+  'elevenlabs:cjVigY5qzO86Huf0OWal': { rank: 9,  score: 90, useCase: '정보 전달, 신뢰감 있는 톤',    recommendation: '부드럽고 믿음직한 남성톤으로 설득력이 높음' },
+  'elevenlabs:IKne3meq5aSn9XLyUdCD': { rank: 10, score: 89, useCase: '에너지 넘치는 남성 예능형',    recommendation: '활기차고 힘 있는 목소리로 집중도를 높임' },
+  'elevenlabs:TX3LPaxmHKxFdv7VOQHJ': { rank: 11, score: 88, useCase: 'SNS 크리에이터, 젊은 층',      recommendation: '에너지 넘치고 트렌디한 SNS 스타일' },
   'gemini:Kore':   { rank: 1, score: 95, useCase: '한국어 여성 기본 내레이션', recommendation: '현재 시스템에서 가장 무난한 기본값' },
-  'gemini:Charon': { rank: 2, score: 92, useCase: '정보형 남성 설명', recommendation: '정보 전달용으로 발음과 톤 밸런스가 좋음' },
-  'gemini:Puck':   { rank: 3, score: 90, useCase: '예능형, 텐션 높은 쇼츠', recommendation: '짧은 훅과 텐션 위주 콘텐츠에 유리' },
-  'gemini:Aoede':  { rank: 4, score: 88, useCase: '차분한 여성 스토리텔링', recommendation: '과하지 않은 감정선에 잘 맞음' },
-  'gemini:Leda':   { rank: 5, score: 86, useCase: '영문 여성 소프트톤', recommendation: '부드럽고 범용적인 영문 보이스' },
+  'gemini:Charon': { rank: 2, score: 92, useCase: '정보형 남성 설명',          recommendation: '정보 전달용으로 발음과 톤 밸런스가 좋음' },
+  'gemini:Puck':   { rank: 3, score: 90, useCase: '예능형, 텐션 높은 쇼츠',    recommendation: '짧은 훅과 텐션 위주 콘텐츠에 유리' },
+  'gemini:Aoede':  { rank: 4, score: 88, useCase: '차분한 여성 스토리텔링',     recommendation: '과하지 않은 감정선에 잘 맞음' },
+  'gemini:Leda':   { rank: 5, score: 86, useCase: '영문 여성 소프트톤',         recommendation: '부드럽고 범용적인 영문 보이스' },
 };
 
 
@@ -1425,9 +1416,10 @@ Character Description: ${baseStyle}`;
       const benchmarkContext = benchmarkAnalysis
         ? `\n[벤치마킹 분석]\n- 핵심 요약: ${benchmarkAnalysis.sourceSummary}\n- 후킹 방식: ${benchmarkAnalysis.hookPattern}\n- 전개 구조: ${benchmarkAnalysis.narrativeStructure}\n- 톤/말투: ${benchmarkAnalysis.toneStyle}\n- 나레이션 습관: ${benchmarkAnalysis.narrationHabit}\n- 재구성 규칙: ${benchmarkAnalysis.rebuildProtocol}\n- 주의사항: 원문 문장/고유 장면/고유 표현을 복사하지 말고 구조만 참고할 것.`
         : '';
-      const customContext = `[제작 요구사항]
-- ⚠️ CRITICAL: scriptBody는 반드시 최소 8문장 이상 생성할 것 (8문장 미만 절대 금지)
-- ⚠️ CRITICAL: scenes는 scriptBody 문장 수와 동일하게 최소 8개 이상 생성할 것
+      const customContext = `[최우선 지시 - 절대 준수]
+⚠️ scriptBody 문장 수: 반드시 12~15문장 (8문장 미만 생성 시 실패 처리)
+⚠️ scenes 개수: scriptBody 문장 수와 동일하게 최소 8개, 최대 12개 생성 필수
+⚠️ 위 조건 미충족 시 JSON 전체를 다시 생성할 것
 
 - 출력 언어: ${languageLabel}
 - 포맷: ${formatLabel}
@@ -1484,6 +1476,9 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
             ...s,
             id: i + 1,
             scriptLine: fallbackText,
+            // characters 정보 씬에 저장 (의상 일관성 유지용)
+            responseCharacters: response.characters || [],
+
             shortPrompt: s.shortPrompt || s.text || '',
             longPrompt: s.longPrompt || s.shortPrompt || s.text || '',
             // LLM 자동배정 필드 보존
@@ -1493,7 +1488,27 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
             background: s.background || '',
             action: s.action || '',
             emotionBeat: s.emotionBeat || '',
-            lockedOutfits: s.lockedOutfits || response.lockedOutfits || {},
+            lockedOutfits: (() => {
+              // 씬 자체의 lockedOutfits 우선
+              const raw = s.lockedOutfits || response.lockedOutfits || {};
+              // 키 대소문자 정규화 (womanA → WomanA, manA → ManA)
+              const normalized: Record<string, string> = {};
+              Object.entries(raw).forEach(([k, v]) => {
+                const normKey = k.charAt(0).toUpperCase() + k.slice(1);
+                normalized[normKey] = v as string;
+              });
+              // 캐릭터 패널에서 설정한 의상도 추가 (WomanA/WomanB/ManA 슬롯 매핑)
+              const activeChars = characters.filter((c: any) => c.isActive);
+              const femaleChars = activeChars.filter((c: any) => c.gender === '여성');
+              const maleChars = activeChars.filter((c: any) => c.gender === '남성');
+              if (femaleChars[0]?.outfitStyle) normalized['WomanA'] = normalized['WomanA'] || femaleChars[0].outfitStyle;
+              if (femaleChars[1]?.outfitStyle) normalized['WomanB'] = normalized['WomanB'] || femaleChars[1].outfitStyle;
+              if (femaleChars[2]?.outfitStyle) normalized['WomanD'] = normalized['WomanD'] || femaleChars[2].outfitStyle;
+              if (maleChars[0]?.outfitStyle)   normalized['ManA']   = normalized['ManA']   || maleChars[0].outfitStyle;
+              if (maleChars[1]?.outfitStyle)   normalized['ManB']   = normalized['ManB']   || maleChars[1].outfitStyle;
+              return normalized;
+            })(),
+
             assignedCharacters: []
           };
         });
@@ -1625,10 +1640,36 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
         .filter(Boolean) as any[];
 
       // ④ 의상: scene.lockedOutfits 우선, 캐릭터 패널 폴백
-      const getOutfit = (slotId: string): string =>
-        scene.lockedOutfits?.[slotId]
-        || characters.find((c: any) => c.id === slotId)?.outfitStyle
-        || '';
+      const getOutfit = (slotId: string): string => {
+        // 1순위: lockedOutfits (대소문자 양쪽 시도)
+        const fromLocked = scene.lockedOutfits?.[slotId]
+          || scene.lockedOutfits?.[slotId.charAt(0).toLowerCase() + slotId.slice(1)];
+        if (fromLocked) return fromLocked;
+
+        // 2순위: response의 characters 배열에서 찾기
+        const fromResponseChar = response?.characters?.find((c: any) => c.id === slotId)?.outfit;
+        if (fromResponseChar) return fromResponseChar;
+
+        // 2.5순위: 씬에 저장된 responseCharacters에서 찾기
+        const fromSceneChar = scene.responseCharacters?.find((c: any) => c.id === slotId)?.outfit;
+        if (fromSceneChar) return fromSceneChar;
+
+
+        // 3순위: 캐릭터 패널 슬롯 매핑
+        const activeChars = characters.filter((c: any) => c.isActive);
+        const femaleChars = activeChars.filter((c: any) => c.gender === '여성');
+        const maleChars = activeChars.filter((c: any) => c.gender === '남성');
+        const slotMap: Record<string, any> = {
+          'WomanA': femaleChars[0],
+          'WomanB': femaleChars[1],
+          'WomanD': femaleChars[2],
+          'ManA': maleChars[0],
+          'ManB': maleChars[1],
+        };
+        return slotMap[slotId]?.outfitStyle || '';
+      };
+
+       
 
       // ⑤ 프롬프트 조립
       const START = 'unfiltered raw photograph, highly detailed skin texture, natural skin glow';
@@ -2404,16 +2445,16 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 pb-10">
               {[
-                {name: '한국웹툰', img: ''},
-                {name: '실사풍', img: ''},
-                {name: '픽사 스타일', img: ''},
-                {name: '3D 게임 트레일러', img: ''},
-                {name: '졸라맨', badge: '고정캐릭터 1명', img: ''},
-                {name: '해골 스타일', badge: '고정캐릭터 1명', img: ''},
-                {name: '일본 애니 스타일', img: ''},
-                {name: '클레이', img: ''},
-                {name: '틸트시프트 미니어처', img: ''},
-                {name: '무협', img: ''}
+                {name: '한국웹툰',         img: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&q=80'},
+                {name: '실사풍',           img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=80'},
+                {name: '픽사 스타일',      img: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&q=80'},
+                {name: '3D 게임 트레일러', img: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&q=80'},
+                {name: '졸라맨',           img: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=80', badge: '고정캐릭터 1명'},
+                {name: '해골 스타일',      img: 'https://images.unsplash.com/photo-1509557965875-b88c97052f0e?w=400&q=80', badge: '고정캐릭터 1명'},
+                {name: '일본 애니 스타일', img: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&q=80'},
+                {name: '클레이',           img: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80'},
+                {name: '틸트시프트 미니어처', img: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80'},
+                {name: '무협',             img: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400&q=80'},
               ].map((style, i) => (
                 <div 
                   key={style.name} 
@@ -2423,8 +2464,12 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
                   }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center bg-[#0d131f]">
-                    <ImageIcon size={32} className="text-white/5" />
+                    {style.img
+                      ? <img src={style.img} alt={style.name} className="w-full h-full object-cover opacity-80" />
+                      : <ImageIcon size={32} className="text-white/5" />
+                    }
                   </div>
+
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
                   <div className="absolute bottom-3 left-4 right-4 z-20">
                     <h3 className="font-bold text-sm text-white group-hover:text-lime-400 transition-colors uppercase">{style.name}</h3>

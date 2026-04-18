@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-extra';
+﻿import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import path from 'path';
 import fs from 'fs';
@@ -2087,7 +2087,7 @@ export async function generateContent(serviceName, prompt, files = [], options =
                 // [OPTIMIZED] Relaxed validation - accept if ANY key field exists
                 const isScript = dataToCheck.script || dataToCheck.scriptBody ||
                     dataToCheck.scenes || dataToCheck.title || dataToCheck.titleOptions ||
-                    dataToCheck.hook || dataToCheck.twist;
+                    dataToCheck.hook || dataToCheck.twist || dataToCheck.storylines || dataToCheck.analysis;
                 const isTemplate = dataToCheck.templateName && dataToCheck.structure;
                 const isAnalysis = dataToCheck.scores && (dataToCheck.totalScore !== undefined || dataToCheck.improvements);
                 const isDetailedAnalysis = dataToCheck.style && dataToCheck.lighting && dataToCheck.camera && dataToCheck.score !== undefined;
@@ -2643,3 +2643,4 @@ export async function submitPromptAndCaptureImage_LEGACY(serviceName, prompt, sc
         tokenMatched
     };
 }
+

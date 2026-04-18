@@ -9,7 +9,7 @@ puppeteer.use(StealthPlugin());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const liteRootDir = path.join(__dirname, '..');
-const userDataBaseDir = path.join(liteRootDir, 'server', 'user_data', 'puppeteer');
+const userDataBaseDir = process.env.PUPPETEER_USER_DATA_DIR || 'C:\\puppeteer-user-data';
 
 const SERVICES = {
   GEMINI: {

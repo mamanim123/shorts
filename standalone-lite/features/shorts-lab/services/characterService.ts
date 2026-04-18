@@ -63,11 +63,19 @@ const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }):
 const normalizeCharacters = (characters: Array<Partial<CharacterItem> & { id: string }>): CharacterItem[] =>
   characters.map(normalizeCharacter);
 
-const CHARACTER_CACHE_KEY = 'character-catalog-cache-v1';
+const CHARACTER_CACHE_KEY = 'character-catalog-cache-v2';
 
 primeAppStorageCache();
 
 const getStorageValue = <T,>(key: string, fallback: T): T => {
+  // [FORCE_UPDATE] 이전 버전의 오염된 데이터 강제 무시
+  if (key === 'characterCollection') {
+    const val = getAppStorageCachedValue<any>(key, null);
+    if (val && JSON.stringify(val).includes('red one-shoulder')) {
+      console.log('Detected corrupted character data, clearing cache...');
+      return fallback;
+    }
+  }
   return getAppStorageCachedValue<T>(key, fallback);
 };
 

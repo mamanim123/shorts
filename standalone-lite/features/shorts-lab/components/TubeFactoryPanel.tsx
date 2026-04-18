@@ -14,6 +14,7 @@ import { generateBenchmarkStorylinePackage, generateStory, optimizeCharacterProm
 import { buildLabScriptPrompt } from '../services/labPromptBuilder';
 import { parseJsonFromText } from '../services/jsonParse';
 import { showToast } from './Toast';
+import { useCharacterSheetLoader } from '../hooks/useCharacterSheetLoader';
 import { generateSRT, generateCapCutXML, downloadFile } from '../services/exportService';
 import { pcmToWavBlob } from './master-studio/services/audioUtils';
 import { v4 as uuidv4 } from 'uuid';
@@ -615,36 +616,81 @@ const TubeFactoryPanel: React.FC = () => {
 
 
   // 1장 업로드 -> 4장 생성 -> 슬롯 자동 배치
-  const handleGenerateCharacterSheet = async (charId: string, file: File) => {
+  const handleGenerateCharacterSheet = async (charId: string, file?: File | null) => {
     setIsGeneratingCharImage(charId);
     const char = characters.find((c) => c.id === charId);
+    if (!char) return;
+
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      const base64Data = await base64Promise;
-      const mimeType = file.type || "image/png";
-      const base64Only = base64Data.split(",")[1];
-      const refImage = [{ inlineData: { data: base64Only, mimeType } }];
-      const charStyle = char?.style || "";
-      const charGender = char?.gender || "female";
-      const charAge = char?.age || "20대";
-      const baseDesc = [charGender, charAge, charStyle].filter(Boolean).join(", ");
+      let refImage = undefined;
+      
+      // 1. 파일이 직접 들어온 경우 (업로드)
+      if (file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        const base64Data = await base64Promise;
+        const mimeType = file.type || "image/png";
+        const base64Only = base64Data.split(",")[1];
+        refImage = [{ inlineData: { data: base64Only, mimeType } }];
+      } 
+      // 2. 파일은 없지만 현재 이미지가 있는 경우 (재생성 - 얼굴 유지)
+      else if (char.referenceImageUrl) {
+        try {
+          // 현재 화면의 이미지를 Base64로 가져와서 참조 이미지로 사용
+          const response = await fetch(char.referenceImageUrl);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          const base64Data = await base64Promise;
+          const base64Only = base64Data.split(",")[1];
+          refImage = [{ inlineData: { data: base64Only, mimeType: blob.type } }];
+        } catch (err) {
+          console.warn("현재 이미지 참조 실패, 텍스트로만 생성합니다.", err);
+        }
+      }
 
-      // 한 장에 4가지 앵글을 모두 담는 캐릭터 시트 프롬프트
-      const sheetPrompt = `professional character reference sheet, white background, studio lighting,
-        TOP ROW left to right: full body front view, full body side view, full body back view,
-        BOTTOM ROW center: large face and upper body close-up portrait,
-        all views of EXACTLY the same person from reference image,
-        same face same hair same skin same body shape,
-        character wearing basic tight neutral clothing to clearly show body type,
-        photorealistic, 4K, do NOT change anything about the person's physical features,
-        ${baseDesc}`;
+      // [V3.20] 마마님이 UI에서 수정한 최신 정보를 실시간으로 수집
+      const currentChar = characters.find(c => c.id === charId) || char;
+      const charStyle = currentChar.style || "";
+      const charGender = currentChar.gender || "female";
+      const charAge = currentChar.age || "20대";
+      const charGlamour = glamourBase[charId] || "none";
+      
+      // 체형 키워드 대폭 강화 (AI가 무시 못하게)
+      const glamourPrompt = 
+        charGlamour === "A" ? "slimmest waist, moderate curves, athletic body" : 
+        charGlamour === "B" ? "extreme hourglass figure, very large breasts, very slim waist, pronounced glamorous curves, voluptuous silhouette" : "";
+      
+      // 텍스트 최적화 프롬프트와 현재 UI 설정을 결합하여 최강의 DNA 생성
+      const dnaBase = [
+        char.aiOptimizedPrompt, // 기존 최적화 프롬프트 (있는 경우)
+        charGender, charAge, glamourPrompt, charStyle // 최신 UI 설정 (강제 주입)
+      ].filter(Boolean).join(", ");
 
-      // Imagen 모델은 이미지 참조(Image-to-Image)를 지원하지 않으므로 
-      // 캐릭터 시트 생성 시에는 반드시 Gemini 이미지 모델을 사용합니다.
+      // [V3.21] AI '참교육' 프롬프트: 사진의 몸매를 무시하고 텍스트대로 수정하게 함
+      const sheetPrompt = `[CRITICAL: BODY SHAPE TRANSFORMATION]
+        MANDATORY: IGNORE the body shape of the reference image.
+        MANDATORY: FOLLOW these body measurements 100%: ${glamourPrompt}.
+        MANDATORY: Keep ONLY the face identity from the reference.
+        
+        Professional character reference sheet, white background,
+        TOP ROW: full body front, side, back view.
+        BOTTOM ROW: face portrait.
+        
+        CHARACTER DNA:
+        - Face: Strictly keep the face from reference image.
+        - Body Shape: ${glamourPrompt}, ${charStyle}.
+        - Outfit: Very short yoga hot pants and a sports bra.
+        
+        Visual Quality: Photorealistic, 8K, cinematic lighting,
+        ${dnaBase}`;
+
       let generationModel = selectedImageModel;
       if (!generationModel.startsWith("gemini-")) {
         generationModel = "gemini-2.5-flash-image";
@@ -995,6 +1041,10 @@ const handleDuplicateCharacter = (charId: string) => {
 
   
   const [isOptimizingChar, setIsOptimizingChar] = useState<string | null>(null);
+  // 글래머 베이스 설정 (캐릭터별)
+  const GLAMOUR_BASE_A = "extremely beautiful korean woman, flawless smooth skin, k-beauty, petite slim frame, voluptuous hourglass figure, high-seated perky bust, narrow waist, full rounded hips, toned glamorous body";
+  const GLAMOUR_BASE_B = "extremely beautiful korean woman, flawless smooth skin, k-beauty, petite 5ft2 frame, surprisingly voluptuous glamorous body, extraordinarily high-projection perky bust, impossibly narrow waist, dramatic hourglass silhouette, toned athletic glamour";
+  const [glamourBase, setGlamourBase] = useState<Record<string, "A" | "B" | "none">>({});
   const [isGeneratingCharImage, setIsGeneratingCharImage] = useState<string | null>(null);
   const [isDraggingSheet, setIsDraggingSheet] = useState<string | null>(null);
   const [libraryDirHandle, setLibraryDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -1224,34 +1274,28 @@ Character Description: ${baseStyle}`;
   });
   const [characters, setCharacters] = useState<any[]>(() => {
     try {
-      const autoSaved = localStorage.getItem("tubefactory-autosave");
+      // 1순위: 로컬 스토리지 최신 데이터
+      const autoSaved = localStorage.getItem("tubefactory-autosave-v2");
       if (autoSaved) {
         const parsed = JSON.parse(autoSaved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((c: any) => ({
-            ...createCharacter(0),
-            ...c,
-            referenceImageUrl: null,
-            referenceSlots: {},
-          }));
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch(e) { console.warn("자동 저장 복원 실패:", e); }
     return [createCharacter(0), createCharacter(1)];
   });
 
-  // 자동 저장 (characters 변경 시 localStorage에 텍스트 정보만 저장)
+  // 캐릭터 시트 자동 로드
+  useCharacterSheetLoader(characters, setCharacters);
+
+  // [V3.16] 자동 저장 강화: 이미지 정보 보존 및 즉시 동기화
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        const autoSave = characters.map(c => ({
-          ...c,
-          referenceImageUrl: null,
-          referenceSlots: {},
-        }));
-        localStorage.setItem("tubefactory-autosave", JSON.stringify(autoSave));
+        localStorage.setItem("tubefactory-autosave-v2", JSON.stringify(characters));
+        // 서버에도 백업 저장
+        saveCharacters(characters);
       } catch(e) { /* 저장 실패 무시 */ }
-    }, 2000);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [characters]);
 
@@ -1695,19 +1739,31 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
           const hair = char.hair || '';
           const body = char.body || '';
           const outfitText = outfit ? `wearing ${outfit}` : '';
-          const block = [identity, hair, body, outfitText].filter(Boolean).join(', ');
+          
+          // [V3.12] Individual Action Differentiation
+          const defaultActions = [
+            'gracefully smiling and looking at the camera',
+            'playfully laughing while looking at the companion',
+            'walking elegantly with a confident stride',
+            'adjusting hair while looking away from camera',
+            'gesturing naturally with a soft smile'
+          ];
+          const individualAction = defaultActions[i % defaultActions.length];
+          
+          const block = [identity, hair, body, outfitText, individualAction].filter(Boolean).join(', ');
           return selectedChars.length >= 2 ? `[Person ${i + 1}: ${block}]` : block;
         }).join(' ');
 
         const shotPrefix =
-          resolvedShotType === 'group-shot' ? 'group wide shot, three people in frame,' :
-          resolvedShotType === 'two-shot'   ? 'two-shot wide, two people in frame,' : '';
+          resolvedShotType === 'group-shot' ? 'group wide shot, three people in frame, distinct actions for each,' :
+          resolvedShotType === 'two-shot'   ? 'two-shot wide, two people in frame, different poses for each,' : '';
 
         finalPrompt = [
           START, shotPrefix,
           scene.cameraAngle || 'full body wide shot',
           charBlocks,
-          scene.action || '',
+          // If it's multi-char, common action should be moved to background context
+          selectedChars.length >= 2 ? `scene context: ${scene.action || ''}` : (scene.action || ''),
           scene.background ? `in a ${scene.background}` : '',
           NO_TEXT, END
         ].filter(Boolean).join(', ');
@@ -3128,12 +3184,16 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={() => setCharacters(prev => [...prev, createCharacter(prev.length)])} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-bold hover:bg-white/10 transition-all flex items-center gap-2">
-                <Plus size={16} /> 캐릭터 추가
+              <button 
+                onClick={() => setCharacters(prev => [...prev, createCharacter(prev.length)])} 
+                className="bg-lime-500 text-black px-6 py-2.5 rounded-xl text-sm font-black hover:bg-lime-400 transition-all flex items-center gap-2 shadow-lg shadow-lime-500/20"
+              >
+                <Plus size={18} /> 캐릭터 추가
               </button>
-              <button onClick={handleGenerateAllCharacterImages} className="bg-lime-500 text-black px-4 py-2 rounded-xl text-sm font-black hover:bg-lime-400 transition-all">
+              <button onClick={handleGenerateAllCharacterImages} className="bg-white/10 text-white border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-white/20 transition-all">
                 전체 이미지 생성
               </button>
+
               <button onClick={handleSaveCharacterLibrary} className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-sm font-bold hover:bg-white/10 transition-all flex items-center gap-2">
                 {libraryDirName ? <><span className="text-lime-400">📁</span><span>{libraryDirName}</span></> : <span>라이브러리 저장</span>}
               </button>
@@ -3298,6 +3358,24 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
                                    <span className="text-white text-xs font-bold">{"🔍 클릭하면 원본 크기로 보기"}</span>
                                  </div>
                                </div>
+                               {/* [V3.18] 이미지 즉시 재생성 버튼 추가 */}
+                               <button
+                                 onClick={async () => {
+                                   // 1. 먼저 현재 입력된 정보로 프롬프트 최적화 실행
+                                   await handleOptimizeCharacter(char.id);
+                                   // 2. 최적화된 프롬프트를 사용하여 이미지 재생성 (참조 이미지 없이 텍스트 기반 시트 생성)
+                                   // handleGenerateCharacterSheet에 파일 대신 null을 넣으면 텍스트 기반으로 동작하게 보강 필요
+                                   handleGenerateCharacterSheet(char.id, null as any);
+                                 }}
+                                 disabled={isGeneratingCharImage === char.id || isOptimizingChar === char.id}
+                                 className="w-full py-2.5 bg-lime-500 hover:bg-lime-400 text-black text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-lime-500/20"
+                               >
+                                 {isGeneratingCharImage === char.id || isOptimizingChar === char.id ? (
+                                   <><Loader2 size={14} className="animate-spin"/><span>반영 중...</span></>
+                                 ) : (
+                                   <><RefreshCw size={14}/><span>이 설정으로 캐릭터 다시 만들기</span></>
+                                 )}
+                               </button>
                              </div>
                            ) : (
                              <div className="w-full aspect-video bg-black/20 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center">
@@ -3309,6 +3387,40 @@ ${maleChars[0] ? `ManA: 이름=${maleChars[0].name}, 헤어=${maleChars[0].hairS
                         {/* 상세 프롬프트 구역 */}
                         <div className="space-y-4">
                            <div className="space-y-1">
+                           {/* 글래머 베이스 버튼 */}
+                           <div className="space-y-2 mb-2">
+                              <label className="text-[10px] text-violet-400 font-black uppercase tracking-widest px-1 flex items-center gap-1">
+                                <Sparkles size={10} /> 체형
+                                <span className="text-slate-500 font-normal ml-1">(시트생성+AI최적화 자동적용)</span>
+                              </label>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setGlamourBase(prev => ({ ...prev, [char.id]: prev[char.id] === "A" ? "none" : "A" }))}
+                                  className={`flex-1 py-2 rounded-xl text-xs font-black border transition-all ${glamourBase[char.id] === "A" ? "bg-pink-500/20 border-pink-500 text-pink-300" : "bg-white/5 border-white/10 text-slate-400 hover:border-pink-500/50"}`}
+                                >
+                                  A · 자-글
+                                </button>
+                                <button
+                                  onClick={() => setGlamourBase(prev => ({ ...prev, [char.id]: prev[char.id] === "B" ? "none" : "B" }))}
+                                  className={`flex-1 py-2 rounded-xl text-xs font-black border transition-all ${glamourBase[char.id] === "B" ? "bg-purple-500/20 border-purple-500 text-purple-300" : "bg-white/5 border-white/10 text-slate-400 hover:border-purple-500/50"}`}
+                                >
+                                  B · 강-글
+                                </button>
+                                {glamourBase[char.id] && glamourBase[char.id] !== "none" && (
+                                  <button
+                                    onClick={() => setGlamourBase(prev => ({ ...prev, [char.id]: "none" }))}
+                                    className="px-3 py-2 rounded-xl text-xs font-bold border border-white/10 text-slate-500 hover:text-white bg-white/5"
+                                  >
+                                    해제
+                                  </button>
+                                )}
+                              </div>
+                              {glamourBase[char.id] && glamourBase[char.id] !== "none" && (
+                                <p className="text-[10px] text-violet-300/70 px-1">
+                                  {glamourBase[char.id] === "A" ? "✓ 볼륨감 있는 모래시계 체형 + 탄탄한 글래머" : "✓ 극적인 글래머 실루엣 + 강한 볼륨감"}
+                                </p>
+                              )}
+                           </div>
                               <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-1">성별 및 연령</label>
                               <div className="flex gap-2">
                                  <select value={char.gender} onChange={e => handleUpdateCharacter(char.id, 'gender', e.target.value)} className="flex-1 bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-lime-500">

@@ -2608,12 +2608,32 @@ const enhanceMultiPersonBlocks = (
 
       // 3. Assemble with Master Data
       const masterOutfit = character.outfit.replace(/^wearing\s+/i, '').trim();
+      
+      // [V3.11] Action Differentiation: Ensure each person has a unique focus/pose
+      let finalAction = llmAction;
+      if (!finalAction || finalAction.length < 5) {
+        // Provide default distinct actions if LLM provided none
+        const defaultActions = [
+          'gracefully smiling and looking at the scenery',
+          'playfully laughing while looking at the companion',
+          'walking elegantly with a confident stride',
+          'adjusting hair while looking slightly away'
+        ];
+        finalAction = defaultActions[index % defaultActions.length];
+      }
+      
+      // Force unique gaze if not specified
+      if (!/looking at|gazing|eyes on/i.test(finalAction)) {
+        const gazes = ['looking at the camera', 'looking away from camera', 'looking at the companion', 'looking towards the horizon'];
+        finalAction = `${finalAction}, ${gazes[index % gazes.length]}`;
+      }
+
       const reconstructed = [
         character.identity,
         character.hair,
         character.body,
         `wearing ${masterOutfit}`,
-        llmAction,
+        finalAction,
         posPart,
         colorPart
       ].filter(Boolean).join(', ');

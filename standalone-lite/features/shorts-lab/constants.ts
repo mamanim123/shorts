@@ -200,19 +200,22 @@ export const SYSTEM_PROMPT_V3_COSTAR = `
 🎬 IMAGE PROMPT GENERATION (CONSISTENCY & CONTEXT)
 ==========================================================
 [Prompt Template Structure]
-**START with**: "A group of stunning Korean characters in their [Target Age], [Dynamic Action/Candid Moment] in a setting that matches the script (e.g., Snowy Field, Cafe, Home, Office),"
-**INSERT**: 사용자가 제공한 캐릭터 설명을 문자 그대로 삽입 (WomanA/B/C, ManA/B/C 명시 필수)
+**START with**: "Stunning Korean characters with DISTINCT actions in their [Target Age], [Candid Moment] in a setting that matches the script,"
+**INSERT Character DNA**: 사용자가 제공한 캐릭터 설명(Hair, Body, Face)을 문자 그대로 삽입 (WomanA/B/C, ManA/B/C 명시 필수)
+**ADD Outfit (CRITICAL)**: LLM이 선택한 의상을 모든 장면에 **단어 하나 바꾸지 말고 그대로 복사(Verbatim)**. 절대 요약하지 말 것 (예: "same outfit" (X), "glamorous look" (X)).
+**ADD Individual Actions (MANDATORY)**: 둘 이상의 캐릭터가 등장할 경우, 반드시 각자의 동작을 다르게 부여하라. 
+  - ✅ GOOD: "[Person 1: laughing and gesturing] [Person 2: looking at Person 1 with a curious expression]"
+  - ❌ BAD: "Both are laughing", "They are walking" (동일 동작 절대 금지)
 **ADD**: "Women MUST be described as 'Stunning Korean woman, Well-fitted elegant outfits, Graceful silhouette with feminine proportions, Healthy beauty' regardless of age (20s-50s)."
-**ADD (Conditional)**: "Only when a male character actually appears in the scene, append: "Men MUST be described as 'Dandy Korean man, Fit, Luxury'." If there are no male characters for this script/scene, do NOT mention men anywhere in the prompt and explicitly note "No male characters appear in this scene. Focus entirely on the women." so the model never invents a man."
-**ADD**: "Atmosphere: Reflect the script's mood and weather (e.g., Heavy snow falling, Warm indoor lighting, Sunset, Rainy day). Ensure the visual background perfectly matches the script line's context."
-**ADD**: "Dynamic Motion: Hair blowing in the wind, Walking briskly, Laughing naturally, Interacting with each other. AVOID static poses. AVOID looking directly at camera."
-**ADD**: 장면별 액션, 카메라 앵글, 표정, 조명, 배경 상세 묘사
+**ADD (Conditional)**: "Only when a male character actually appears in the scene, append: "Men MUST be described as 'Dandy Korean man, Fit, Luxury'."
+**ADD**: "Atmosphere: Reflect the script's mood and weather. Ensure the visual background perfectly matches the context."
+**ADD**: "Dynamic Motion: Hair blowing, Walking, Laughing. AVOID static poses. AVOID looking directly at camera (except Scene 1)."
 **END with**: "Hyper-realistic 8K cinematic photograph, Magazine Cover Quality, Shallow depth of field, Motion blur, Bokeh background, --ar 9:16 --q 2 --style raw"
 
 [Sora Video Prompt Rules]
 - "Consistent identity: The characters defined in input" 포함 필수
 - 정확한 의상 설명 포함
-- 부드러운 모션과 고급 카메라 워크 묘사 (Drone, Tracking, Pan)
+- 개별 캐릭터의 독립적인 움직임 묘사 필수
 - Quality tags: "Raw footage, Arri Alexa, ProRes 422, Crystal clear focus"
 
 ==========================================================

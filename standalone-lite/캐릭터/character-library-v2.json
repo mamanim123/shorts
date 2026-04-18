@@ -1,0 +1,42 @@
+{
+    "version": 3,
+    "savedAt": "2026-04-17T12:00:00.000Z",
+    "characters": [
+        {
+            "id": "char_slot_1_1776263367780",
+            "name": "미숙",
+            "gender": "여성",
+            "age": "40대",
+            "hairStyle": "",
+            "hairColor": "",
+            "faceType": "",
+            "eyeColor": "",
+            "bodyType": "",
+            "uniqueFeatures": "",
+            "outfitStyle": "",
+            "style": "",
+            "aiOptimizedPrompt": "40s woman, extremely beautiful korean woman, highly detailed beautiful face, well-maintained fit body, flawless smooth skin, elegant, k-beauty, heart-shaped face, warm brown eyes, full pink lips, short bob haircut, medium brown hair, hourglass figure, pronounced curves, large breasts, toned muscles, fair skin.",
+            "negativePrompt": "",
+            "isActive": true,
+            "referenceImageFileName": "캐릭터 1_sheet.png"
+        },
+        {
+            "id": "char_slot_2_1776295429137",
+            "name": "혜진",
+            "gender": "여성",
+            "age": "40대",
+            "hairStyle": "",
+            "hairColor": "",
+            "faceType": "",
+            "eyeColor": "",
+            "bodyType": "",
+            "uniqueFeatures": "",
+            "outfitStyle": "",
+            "style": "",
+            "aiOptimizedPrompt": "40s woman, extremely beautiful korean woman, highly detailed beautiful face, well-maintained fit body, flawless smooth skin, elegant, k-beauty, oval face, brown eyes, full lips, dark brown hair in a bun, slim hourglass figure, medium breasts, toned muscles, light skin tone.",
+            "negativePrompt": "",
+            "isActive": true,
+            "referenceImageFileName": "캐릭터 1 (복사)_sheet.png"
+        }
+    ]
+}

@@ -946,6 +946,127 @@ app.delete('/api/characters/delete/:fileName', (req, res) => {
   }
 });
 
+
+// ===== CHARACTER SHEET API (PATCH) =====
+app.get('/api/character-sheet-base64', async (req, res) => {
+  const fileName = decodeURIComponent(req.query.fileName || '');
+  const charDir = path.join(rootDir, '캐릭터');
+  
+  const tryPaths = [];
+  if (fileName) tryPaths.push(path.join(charDir, fileName));
+  
+  // 인코딩 깨짐 대비: 폴더 스캔
+  if (fs.existsSync(charDir)) {
+    const sheets = fs.readdirSync(charDir).filter(f => f.endsWith('_sheet.png') || f.endsWith('_sheet.jpg'));
+    sheets.forEach(f => tryPaths.push(path.join(charDir, f)));
+  }
+  
+  for (const p of tryPaths) {
+    if (fs.existsSync(p)) {
+      const buf = fs.readFileSync(p);
+      const b64 = buf.toString('base64');
+      const ext = path.extname(p).slice(1).replace('jpg','jpeg');
+      return res.json({ success: true, dataUrl: `data:image/${ext};base64,${b64}`, fileName: path.basename(p) });
+    }
+  }
+  res.status(404).json({ success: false, error: 'Sheet not found' });
+});
+
+app.get('/api/character-sheets-list', (req, res) => {
+  const charDir = path.join(rootDir, '캐릭터');
+  if (!fs.existsSync(charDir)) return res.json({ sheets: [] });
+  const sheets = fs.readdirSync(charDir)
+    .filter(f => f.endsWith('_sheet.png') || f.endsWith('_sheet.jpg'))
+    .map((f, i) => ({ index: i, fileName: f }));
+  res.json({ sheets });
+});
+
+app.get('/api/character-library', (req, res) => {
+  const libPath = path.join(rootDir, '캐릭터', 'character-library.json');
+  if (!fs.existsSync(libPath)) return res.json({ characters: [] });
+  try {
+    const raw = fs.readFileSync(libPath, 'utf8').replace(/^\uFEFF/, '');
+    res.json(JSON.parse(raw));
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+// ===== END CHARACTER SHEET API =====
+
+// ===== CHARACTER SHEET BASE64 API =====
+app.get('/api/character-sheet-b64', (req, res) => {
+  const fileName = decodeURIComponent(String(req.query.fileName || ''));
+  const charDir = path.join(rootDir, '캐릭터');
+  
+  const tryPaths = [];
+  if (fileName) tryPaths.push(path.join(charDir, fileName));
+  
+  if (fs.existsSync(charDir)) {
+    fs.readdirSync(charDir)
+      .filter(f => f.endsWith('_sheet.png') || f.endsWith('_sheet.jpg'))
+      .forEach(f => tryPaths.push(path.join(charDir, f)));
+  }
+  
+  for (const p of tryPaths) {
+    if (fs.existsSync(p)) {
+      const buf = fs.readFileSync(p);
+      const b64 = buf.toString('base64');
+      const ext = path.extname(p).slice(1).replace('jpg', 'jpeg');
+      return res.json({
+        success: true,
+        dataUrl: `data:image/${ext};base64,${b64}`,
+        fileName: path.basename(p)
+      });
+    }
+  }
+  res.status(404).json({ success: false, error: 'Sheet not found', fileName });
+});
+
+app.get('/api/character-library-full', (req, res) => {
+  const libPath = path.join(rootDir, '캐릭터', 'character-library-v2.json');
+  const charDir = path.join(rootDir, '캐릭터');
+  
+  if (!fs.existsSync(libPath)) return res.json({ characters: [] });
+  
+  try {
+    const raw = fs.readFileSync(libPath, 'utf8').replace(/^\uFEFF/, '');
+    const lib = JSON.parse(raw);
+    
+    // 각 캐릭터에 시트 파일 존재 여부 추가
+    const sheets = fs.existsSync(charDir)
+      ? fs.readdirSync(charDir).filter(f => f.endsWith('_sheet.png') || f.endsWith('_sheet.jpg'))
+      : [];
+    
+    lib.characters = lib.characters.map(char => {
+      const sheetExists = char.referenceImageFileName &&
+        fs.existsSync(path.join(charDir, char.referenceImageFileName));
+      return {
+        ...char,
+        sheetFileExists: !!sheetExists,
+        availableSheets: sheets
+      };
+    });
+    
+    res.json(lib);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/character-library-save', (req, res) => {
+  const libPath = path.join(rootDir, '캐릭터', 'character-library.json');
+  try {
+    const payload = req.body;
+    if (!payload || !Array.isArray(payload.characters)) {
+      return res.status(400).json({ success: false, error: 'Invalid payload' });
+    }
+    fs.writeFileSync(libPath, JSON.stringify(payload, null, 2), 'utf8');
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+// ===== END CHARACTER SHEET API =====
 app.listen(PORT, async () => {
   console.log(`[standalone-lite] server listening on http://localhost:${PORT}`);
   const shouldAutoLaunchBrowser = process.env.PUPPETEER_AUTO_START === 'true';

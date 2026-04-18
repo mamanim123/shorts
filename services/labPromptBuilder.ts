@@ -1,4 +1,4 @@
-/**
+﻿/**
  * labPromptBuilder.ts
  * 쇼츠랩 전용 경량화 프롬프트 빌더
  *
@@ -581,10 +581,10 @@ export const applyWinterLookToExistingPrompt = (
     newPromptKo = `${newPromptKo.replace(' (겨울 룩 적용됨)', '')} (겨울 룩 적용됨: ${accsStr})`;
   }
 
-  // 4. 배경 보정 (눈 내리는 효과 - snow 키워드 없을 때만)
-  if (!contentPart.toLowerCase().includes('snow')) {
-    contentPart = contentPart.replace(/(standing|walking|looking|sitting|background|setting)/i, `$1 in a heavy snow falling snowy background`);
-  }
+  // [DISABLED] 배경 snow 자동 추가 제거 - 주제와 무관한 겨울 배경 방지
+  // if (!contentPart.toLowerCase().includes('snow')) {
+  //   contentPart = contentPart.replace(/(standing|walking|looking|sitting|background|setting)/i, `$1 in a heavy snow falling snowy background`);
+  // }
 
   // 5. 최종 재조립 (마마님의 고정 문구 순서 그대로 복구)
   newPrompt = contentPart + technicalPart + negativePart;

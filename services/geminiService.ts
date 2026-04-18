@@ -1,4 +1,4 @@
-// Imports removed for browser compatibility
+﻿// Imports removed for browser compatibility
 import { SYSTEM_PROMPT_V3_COSTAR, SYSTEM_PROMPT_V3, SYSTEM_PROMPT_CHATGPT, SYSTEM_PROMPT_CLAUDE, SYSTEM_PROMPT_VIRAL, CHARACTER_PRESETS, UNIFIED_OUTFIT_LIST } from "../constants";
 import { resolveEnginePrompt, ensureEngineConfigLoaded } from "./enginePromptStore";
 import { UserInput, StoryResponse, ScenarioMode, StyleTemplate } from '../types';
@@ -2473,7 +2473,7 @@ ${benchmarkSection}
   const API_BASE = 'http://localhost:3002';
 
   try {
-    const response = await fetch(`${API_BASE}/api/generate`, {
+    const response = await fetch(`${API_BASE}/api/generate/raw`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

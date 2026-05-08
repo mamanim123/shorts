@@ -67,10 +67,30 @@ const SLOT_PRESETS = {
         desc: 'Short bob hair, Petite but glamorous',
         prompt: 'Short stylish bob hair with side swept bangs, Petite but glamorous figure with confident stance'
     },
+    'woman-c': {
+        name: 'Woman C (포니테일)',
+        desc: 'Elegant ponytail, athletic and calm',
+        prompt: 'Elegant ponytail hairstyle, Gracefully toned athletic body with calm observer demeanor'
+    },
+    'woman-d': {
+        name: 'Woman D (캐디)',
+        desc: 'High-bun hairstyle, professional caddy look',
+        prompt: 'High-bun hairstyle, Bright cheerful professional golf caddy presence'
+    },
     'man-a': {
         name: 'Man A (운동형)',
         desc: 'Fit athletic build, Short neat hairstyle',
         prompt: 'Fit athletic build with broad shoulders, Short neat hairstyle with clean-shaven face'
+    },
+    'man-b': {
+        name: 'Man B (댄디형)',
+        desc: 'Clean short cut, approachable presence',
+        prompt: 'Clean short cut hair, Fit athletic build with approachable casual presence'
+    },
+    'man-c': {
+        name: 'Man C (조연)',
+        desc: 'Stylish side-part, confident presence',
+        prompt: 'Stylish side-part hairstyle, Well-built physique with confident supporting presence'
     }
 };
 
@@ -139,7 +159,26 @@ const DEFAULT_CHARACTER_META: Record<string, { gender: 'female' | 'male'; hair: 
     ManC: { gender: 'male', hair: 'classic side-part hairstyle', body: 'athletic' }
 };
 
-const SLOT_ORDER = ['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB', 'ManC'];
+const DEFAULT_SLOT_ORDER = ['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB', 'ManC'];
+
+const getManagedSlotOrder = () => {
+    const rules = getCharacterRules();
+    const managedSlots = [
+        ...(rules.females || []).map((char: any) => char.id),
+        ...(rules.males || []).map((char: any) => char.id)
+    ].filter(Boolean);
+    const merged = Array.from(new Set([...managedSlots, ...DEFAULT_SLOT_ORDER]));
+    return merged;
+};
+
+const getManagedSlotsByGender = (gender: 'female' | 'male') => {
+    const rules = getCharacterRules();
+    const source = gender === 'female' ? rules.females : rules.males;
+    const fallback = gender === 'female'
+        ? DEFAULT_SLOT_ORDER.filter((id) => id.startsWith('Woman'))
+        : DEFAULT_SLOT_ORDER.filter((id) => id.startsWith('Man'));
+    return Array.from(new Set([...(source || []).map((char: any) => char.id).filter(Boolean), ...fallback]));
+};
 const CAMERA_ANGLE_KEYWORDS = [
     'close-up',
     'close up',
@@ -285,7 +324,7 @@ const normalizeSlotList = (slotIds: string[], defaultGender: 'female' | 'male', 
         .map((id) => normalizeSlotId(id))
         .filter(Boolean);
     const unique = new Set(normalized);
-    const ordered = SLOT_ORDER.filter((id) => unique.has(id));
+    const ordered = getManagedSlotOrder().filter((id) => unique.has(id));
     if (ordered.length === 0) {
         return [defaultGender === 'male' ? 'ManA' : 'WomanA'];
     }
@@ -799,7 +838,8 @@ const normalizeMasterCameraByCharacterCount = (cameraAngle: string, count: numbe
 
 const rebalanceMasterSceneCharacterMix = (
     scenes: Array<{ characterIds?: string[]; cameraAngle?: string }>,
-    narratorGender: 'female' | 'male'
+    narratorGender: 'female' | 'male',
+    allowedSlotIds?: string[]
 ) => {
     const normalized = scenes.map((scene) => {
         const ids = Array.isArray(scene.characterIds)
@@ -814,10 +854,13 @@ const rebalanceMasterSceneCharacterMix = (
         )
     ).filter((id) => /^(Woman|Man)[A-Z0-9]+$/.test(id));
 
+    const allowedSet = new Set((allowedSlotIds || []).map((id) => normalizeSlotId(id)).filter(Boolean));
     const fallbackPool = narratorGender === 'male'
-        ? ['ManA', 'ManB', 'ManC']
-        : ['WomanA', 'WomanB', 'WomanD', 'ManA', 'ManB'];
-    const characterPool = Array.from(new Set([...(discoveredIds.length > 0 ? discoveredIds : fallbackPool), ...fallbackPool]));
+        ? getManagedSlotsByGender('male')
+        : [...getManagedSlotsByGender('female'), ...getManagedSlotsByGender('male')];
+    const basePool = discoveredIds.length > 0 ? discoveredIds : fallbackPool;
+    const characterPool = Array.from(new Set([...basePool, ...fallbackPool]))
+        .filter((id) => allowedSet.size === 0 || allowedSet.has(id));
     if (characterPool.length === 0) return normalized;
 
     const totalScenes = normalized.length;
@@ -893,12 +936,13 @@ const rebalanceMasterSceneCharacterMix = (
 
 const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: string; role?: string }>) => {
     const mapping = new Map<string, string>();
+    const currentRules = getCharacterRules();
     const hasCaddy = characters.some((char) => {
         const name = (char.name || '').trim();
         return /캐디|caddy/i.test(name) || /caddy/i.test(char.role || '');
     });
-    const femaleSlots = ['WomanA', 'WomanB', 'WomanC', 'WomanD'];
-    const maleSlots = ['ManA', 'ManB', 'ManC'];
+    const femaleSlots = getManagedSlotsByGender('female');
+    const maleSlots = getManagedSlotsByGender('male');
     const usedSlots = new Set<string>();
     let femaleIndex = 0;
     let maleIndex = 0;
@@ -920,6 +964,14 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
 
     // 🔹 [V3.9.2] 지능형 이름 정규화 (이름 뒤의 숫자나 수식어 제거하여 매핑 확률 높임)
     const normalizeName = (n: string) => n.trim().replace(/\d+$/, '').replace(/(님|씨|가|는|이|가)$/, '').trim();
+    const managedNameMap = new Map<string, string>();
+    [...(currentRules.females || []), ...(currentRules.males || [])].forEach((rule: any) => {
+        const slotId = normalizeSlotId(rule.id);
+        const name = String(rule.name || '').trim();
+        if (!slotId || !name) return;
+        managedNameMap.set(name, slotId);
+        managedNameMap.set(normalizeName(name), slotId);
+    });
 
     characters.forEach((char) => {
         const name = char.name.trim();
@@ -931,6 +983,13 @@ const buildCharacterSlotMapping = (characters: Array<{ name: string; gender: str
             mapping.set(name, preferred);
             mapping.set(normalized, preferred);
             usedSlots.add(preferred);
+            return;
+        }
+        const managedSlot = managedNameMap.get(name) || managedNameMap.get(normalized);
+        if (managedSlot && !usedSlots.has(managedSlot)) {
+            mapping.set(name, managedSlot);
+            mapping.set(normalized, managedSlot);
+            usedSlots.add(managedSlot);
             return;
         }
         if (char.gender === 'male') {
@@ -1867,6 +1926,19 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             name: normalized,
             prompt: normalized
         };
+    }, []);
+
+    const normalizeLockedOutfits = useCallback((input: unknown): Record<string, string> => {
+        if (!input || typeof input !== 'object') return {};
+        const normalized: Record<string, string> = {};
+        Object.entries(input as Record<string, unknown>).forEach(([rawSlotId, rawOutfit]) => {
+            const outfit = String(rawOutfit || '').trim();
+            if (!outfit) return;
+            const slotId = normalizeSlotId(String(rawSlotId || '').trim()) || String(rawSlotId || '').trim();
+            if (!slotId) return;
+            normalized[slotId] = outfit;
+        });
+        return normalized;
     }, []);
 
     const buildCastingIdentitySummary = useCallback((character: Partial<CharacterItem>) => {
@@ -3624,7 +3696,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
-            const llmLockedOutfits = parsedResult.lockedOutfits || {};
+            const llmLockedOutfits = normalizeLockedOutfits(parsedResult.lockedOutfits || {});
             const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
@@ -3950,7 +4022,7 @@ ${scriptInput}
                 return;
             }
 
-            const slotSequence = ['Woman A', 'Woman B', 'Woman C', 'Woman D', 'Man A', 'Man B'];
+            const slotSequence = getManagedSlotOrder().map((id) => id.replace('Woman', 'Woman ').replace('Man', 'Man '));
             const newIdentities = analyzed.map((char: any, index: number) => {
                 const slotId = slotSequence[index % slotSequence.length];
                 const bodyFromProfile = typeof char?.visualProfile?.bodyType === 'string'
@@ -3990,7 +4062,7 @@ ${scriptInput}
         const missing = candidates.filter((name) => scriptInput.includes(name) && !currentNames.has(name));
 
         if (missing.length > 0) {
-            const slotSequence = ['Woman A', 'Woman B', 'Woman C', 'Woman D', 'Man A', 'Man B'];
+            const slotSequence = getManagedSlotOrder().map((id) => id.replace('Woman', 'Woman ').replace('Man', 'Man '));
             const newIdentities = missing.map((name, index) => createManualIdentity({
                 slotId: slotSequence[(manualIdentities.length + index) % slotSequence.length],
                 name,
@@ -4084,7 +4156,7 @@ ${scriptInput}
             const sceneData = await sceneResponse.json();
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
-            const llmLockedOutfitsMaster = parsedResult.lockedOutfits || {};
+            const llmLockedOutfitsMaster = normalizeLockedOutfits(parsedResult.lockedOutfits || {});
             const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
@@ -4182,9 +4254,15 @@ ${scriptInput}
                 };
             });
 
+            const lockedOutfitSlotIds = Object.keys(llmLockedOutfitsMaster)
+                .map((id) => normalizeSlotId(id))
+                .filter(Boolean);
+            const allowedSceneSlotIds = Array.from(new Set([...allSlotIds, ...lockedOutfitSlotIds]));
+
             const rebalancedScenes = rebalanceMasterSceneCharacterMix(
                 normalizedMasterScenes,
-                settings.koreanGender
+                settings.koreanGender,
+                allowedSceneSlotIds
             );
 
             const allCharacterIds = new Set<string>();
@@ -4196,14 +4274,8 @@ ${scriptInput}
             const outfitsData = await outfitsResponse.json();
             const allOutfits = outfitsData.outfits || [];
             const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
-            const fallbackOutfitMap = assignOutfitsToCharacters({
-                characterIds: Array.from(allCharacterIds),
-                genre: aiGenre,
-                outfitsData: allOutfits,
-                topic: aiTopic || finalScript
-            });
             const llmDerivedOutfitMap = deriveOutfitMapFromScenePrompts(scenesSource as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
-            const outfitMap = new Map(fallbackOutfitMap);
+            const outfitMap = new Map<string, { name: string; prompt: string }>();
             llmDerivedOutfitMap.forEach((value, key) => {
                 outfitMap.set(key, value);
             });
@@ -4213,6 +4285,21 @@ ${scriptInput}
                 Object.entries(llmLockedOutfitsMaster).forEach(([slotId, outfitName]) => {
                     if (outfitName) {
                         outfitMap.set(slotId, { name: String(outfitName), prompt: String(outfitName) });
+                    }
+                });
+            }
+
+            const missingOutfitIds = Array.from(allCharacterIds).filter((id) => !outfitMap.has(id));
+            if (missingOutfitIds.length > 0) {
+                const fallbackOutfitMap = assignOutfitsToCharacters({
+                    characterIds: missingOutfitIds,
+                    genre: aiGenre,
+                    outfitsData: allOutfits,
+                    topic: aiTopic || finalScript
+                });
+                fallbackOutfitMap.forEach((value, key) => {
+                    if (!outfitMap.has(key)) {
+                        outfitMap.set(key, value);
                     }
                 });
             }
@@ -5350,7 +5437,9 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 targetAge: aiTargetAge,
                 gender: settings.koreanGender,
                 genreGuideOverride,
-                legacyGenrePrompt
+                legacyGenrePrompt,
+                useRandomOutfits,
+                allowedOutfitCategories: selectedGenreData?.allowedOutfitCategories || []
             });
 
             showToast(`${selectedService} AI로 대본과 씬 구조를 생성하고 있습니다...`, 'info');
@@ -5394,10 +5483,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 scriptLines?: string[];
                 closingPunch?: string;
                 commentTrigger?: string;
+                lockedOutfits?: Record<string, string>;
                 scenes: any[];
             }>(
                 jsonClean,
-                ['scriptBody', 'scriptLines', 'openingCaption', 'openingLine', 'closingPunch', 'commentTrigger', 'scenes']
+                ['scriptBody', 'scriptLines', 'openingCaption', 'openingLine', 'closingPunch', 'commentTrigger', 'lockedOutfits', 'scenes']
             );
 
             const normalizeScriptLines = (value: unknown): string[] => {
@@ -5433,16 +5523,36 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 console.warn('[AI Master] closingPunch does not match last script line. Using script line as source of truth.');
             }
 
+            const llmLockedOutfitsPass2 = normalizeLockedOutfits(parsed.lockedOutfits || {});
+            const parsedSceneSlotIds = Array.from(new Set((parsed.scenes || []).flatMap((scene: any) => (
+                Array.isArray(scene.characterIds) ? scene.characterIds : []
+            )).map((id: string) => normalizeSlotId(String(id || '').trim())).filter(Boolean)));
+            const allowedPass2SlotIds = Array.from(new Set([...parsedSceneSlotIds, ...Object.keys(llmLockedOutfitsPass2)]));
+
             const rebalancedScenes = rebalanceMasterSceneCharacterMix(
                 parsed.scenes || [],
-                settings.koreanGender
-            );
+                settings.koreanGender,
+                allowedPass2SlotIds
+            ).map((scene: any) => ({
+                ...scene,
+                characterIds: Array.isArray(scene.characterIds)
+                    ? scene.characterIds
+                        .map((id: string) => normalizeSlotId(String(id || '').trim()) || String(id || '').trim())
+                        .filter(Boolean)
+                    : []
+            }));
 
             // 5. 사용된 모든 캐릭터 ID 수집
             const allCharacterIds = new Set<string>();
             rebalancedScenes.forEach((scene: any) => {
                 (scene.characterIds || []).forEach((id: string) => allCharacterIds.add(id));
             });
+            if (!useRandomOutfits) {
+                const missingLlmOutfitSlots = Array.from(allCharacterIds).filter((slotId) => !llmLockedOutfitsPass2[slotId]);
+                if (missingLlmOutfitSlots.length > 0) {
+                    throw new Error(`LLM 의상 선택 모드인데 lockedOutfits가 누락되었습니다: ${missingLlmOutfitSlots.join(', ')}`);
+                }
+            }
 
             // 6. 의상 중복 없이 랜덤 선택
             console.log('[AI Master] All character IDs:', Array.from(allCharacterIds));
@@ -5450,20 +5560,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.log('[AI Master] Available outfits:', allOutfits.length);
 
             const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
-            const fallbackOutfitMap = assignOutfitsToCharacters({
-                characterIds: Array.from(allCharacterIds),
-                genre: aiGenre,
-                outfitsData: allOutfits,
-                topic: aiTopic
-            });
             const llmDerivedOutfitMap = deriveOutfitMapFromScenePrompts(rebalancedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
-            const outfitMap = new Map(fallbackOutfitMap);
+            const outfitMap = new Map<string, { name: string; prompt: string }>();
             llmDerivedOutfitMap.forEach((value, key) => {
                 outfitMap.set(key, value);
             });
 
             // [v3.5.3 fix] LLM JSON에 담긴 lockedOutfits를 최우선으로 반영
-            const llmLockedOutfitsPass2 = parsed.lockedOutfits || {};
             if (Object.keys(llmLockedOutfitsPass2).length > 0) {
                 Object.entries(llmLockedOutfitsPass2).forEach(([slotId, outfitName]) => {
                     if (outfitName) {
@@ -5471,6 +5574,21 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     }
                 });
                 console.log('[AI Master] LLM lockedOutfits applied:', llmLockedOutfitsPass2);
+            }
+
+            const missingOutfitIds = Array.from(allCharacterIds).filter((id) => !outfitMap.has(id));
+            if (missingOutfitIds.length > 0) {
+                const fallbackOutfitMap = assignOutfitsToCharacters({
+                    characterIds: missingOutfitIds,
+                    genre: aiGenre,
+                    outfitsData: allOutfits,
+                    topic: aiTopic
+                });
+                fallbackOutfitMap.forEach((value, key) => {
+                    if (!outfitMap.has(key)) {
+                        outfitMap.set(key, value);
+                    }
+                });
             }
 
             console.log('[AI Master] Outfit map created:', outfitMap);
@@ -6437,7 +6555,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             }
                             return { ...character, id };
                         });
-                        const lockedOutfits = scriptData.lockedOutfits || fbParsed.lockedOutfits || {};
+                        const lockedOutfits = normalizeLockedOutfits(scriptData.lockedOutfits || fbParsed.lockedOutfits || {});
                         const hasCaddy = normalizedCharacters.some((char: any) => /캐디|caddy/i.test(char.name || '') || /WomanD/i.test(String(char.id || '')));
                         const rawSlotIds = [
                             ...normalizedCharacters.map((char: any) => String(char.id || '').trim()).filter(Boolean),
@@ -6877,7 +6995,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             
                             // [v3.5.3] Extract lockedOutfits exactly as saved
                             if (scriptObj.lockedOutfits || parsed.lockedOutfits) {
-                                explicitLockedOutfits = scriptObj.lockedOutfits || parsed.lockedOutfits;
+                                explicitLockedOutfits = normalizeLockedOutfits(scriptObj.lockedOutfits || parsed.lockedOutfits);
                             }
                             
                             const rawScript = scriptObj.scriptBody || scriptObj.script || '';
@@ -7661,6 +7779,10 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                     onUpdate={updateManualIdentity}
                                                     onDelete={deleteManualIdentity}
                                                     outfitPresets={manualOutfitPresets}
+                                                    slotOptions={getManagedSlotOrder().map((id) => {
+                                                        const label = id.replace('Woman', 'Woman ').replace('Man', 'Man ');
+                                                        return { id: label, label };
+                                                    })}
                                                     showOutfitGallery
                                                     showAccessoryGallery
                                                     accessoryGroups={GENERAL_ACCESSORIES}
@@ -7682,8 +7804,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                     onCharactersSaved={syncSavedCharactersToMasterProfiles}
                                     onCharacterSelect={(char, slot) => {
                                         if (char) {
-                                            const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
-                                            updateSetting('selectedSlot', protagonistSlot as any);
+                                            updateSetting('selectedSlot', slot as any);
                                             updateSetting('useSlotSystem', true);
                                         }
                                     }}
@@ -7722,7 +7843,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                         각 캐릭터에 참조 얼굴 이미지를 업로드하면 생성된 이미지에 적용됩니다.
                                     </p>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {['WomanA', 'WomanB', 'WomanC', 'WomanD', 'ManA', 'ManB', 'ManC'].map((slotId) => {
+                                        {getManagedSlotOrder().map((slotId) => {
                                             const casting = characterCastings.get(slotId);
                                             return (
                                                 <div key={slotId} className="bg-slate-800/50 border border-slate-700 rounded-lg p-2">

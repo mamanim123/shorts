@@ -2092,16 +2092,20 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
 📋 **UNIFIED_OUTFIT_LIST에서만 선택**
 - 모든 의상은 사전 정의된 리스트에서 정확한 명칭으로 선택
  - 리스트에 없는 의상 생성 절대 금지`
-    : `## 🚨 의상 선택 절대 규칙 (LLM 선택 모드)
-1) lockedOutfits 값은 반드시 **UNIFIED_OUTFIT_LIST**에서 골라 직접 채워야 합니다.
-2) "CHOOSE_FROM_UNIFIED_OUTFIT_LIST"라는 문구는 절대 그대로 출력하지 말고 실제 의상 명칭으로 치환하세요.
-3) **WomanA/WomanB/WomanD/ManA/ManB는 서로 다른 의상**을 선택해야 합니다. (중복 금지)
-4) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
-5) 의상 명칭은 한 글자도 바꾸지 말고 리스트의 원문 그대로 사용하세요.
-6) 여성 캐릭터 의상은 최대한 여성스럽고 아름답고 세련된 방향으로 선택하세요.
-7) 타겟 연령대가 높아도 관리가 잘 된 탄탄한 몸매를 바탕으로 짧고 타이트한 의상도 품위 있게 소화하는 인물로 보이게 선택하세요.
-8) 노골적이거나 저급한 느낌보다 refined, elegant, polished, flattering silhouette를 우선하세요.
-9) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
+    : `## 🚨 의상 선택 절대 규칙 (LLM 디자인 모드)
+1) lockedOutfits 값은 LLM이 대본의 주제, 배경, 계절, 장르, 캐릭터 역할에 맞춰 직접 디자인한 실제 의상명으로 채워야 합니다.
+2) "CHOOSE_FROM_UNIFIED_OUTFIT_LIST" 또는 "LLM_DESIGN_REQUIRED" 같은 플레이스홀더는 절대 출력하지 마세요.
+3) lockedOutfits 키는 반드시 대문자 슬롯 ID만 사용하세요: WomanA, WomanB, WomanD, ManA, ManB, ManC.
+4) **WomanA/WomanB/WomanD/ManA/ManB는 서로 다른 의상**을 선택해야 합니다. (중복 금지)
+5) 장면이 바뀌어도 lockedOutfits 값은 동일하게 유지되어야 합니다.
+6) 의상 명칭은 한 글자도 바꾸지 말고 모든 shortPrompt/longPrompt에서 그대로 사용하세요.
+7) 여성 캐릭터 의상은 최대한 여성스럽고 아름답고 세련된 방향으로 선택하세요.
+8) 여성 캐릭터는 40s/50s/60s처럼 나이대가 있어도 꾸준한 운동과 자기관리로 탄탄하고 우아한 실루엣을 가진 인물로 설정하세요.
+9) 짧고 타이트한 의상도 저급하거나 과한 노출이 아니라, 고급스럽고 세련된 핏으로 아름답게 소화하는 방향으로 디자인하세요.
+10) Mini skirt, skort, fitted knit, slim-fit polo, tailored cardigan, body-skimming dress 등은 허용하되, cheap, vulgar, tacky, overly revealing, deep cleavage, lingerie-like 스타일은 피하세요.
+11) 나이 들어 보이는 보수적 의상으로 숨기지 말고, 관리가 잘 된 건강미와 고급스러운 여성미가 드러나는 코디를 선택하세요.
+12) refined, elegant, polished, luxurious, feminine, tastefully fitted, flattering silhouette, graceful proportions를 우선하세요.
+13) 대본에 의상 설명을 넣지 말고, 이미지 프롬프트에만 적용합니다.`;
 
   const outfitRulesSection = promptSections.outfitRulesSection?.trim() || defaultOutfitRulesSection;
   const rawHairSection = promptSections.hairstyleSection?.trim() || defaultHairSection;
@@ -2395,11 +2399,11 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
   "narrator": { "slot": "${narratorSlotId}", "name": "${narratorName}" },
   "emotionFlow": "${genreGuide?.emotionCurve || ''}",
   "lockedOutfits": {
-    "womanA": "${womanAOutfit}",
-    "womanB": "${womanBOutfit}",
-    "womanD": "${womanDOutfit}",
-    "manA": "${manAOutfit}",
-    "manB": "${manBOutfit}"
+    "WomanA": "${womanAOutfit}",
+    "WomanB": "${womanBOutfit}",
+    "WomanD": "${womanDOutfit}",
+    "ManA": "${manAOutfit}",
+    "ManB": "${manBOutfit}"
   },
   "characters": [
     { "id": "WomanA", "name": "${womanAName}", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY_A}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },
@@ -2848,6 +2852,27 @@ export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
   const characterSection = applySlotNameOverrides(rawCharacterSection, slotNames);
 
   const golfCaddyNote = isGolf ? '\n- WomanD(캐디)는 골프 관련 장면에 자연스럽게 포함시킬 것.' : '';
+  const masterOutfitSection = useRandomOutfits
+    ? `## 👗 사전 선택 의상 (반드시 이 명칭 그대로 사용)
+- WomanA: ${womanAOutfit}
+- WomanB: ${womanBOutfit}
+- WomanD: ${womanDOutfit}
+- ManA: ${manAOutfit}
+- ManB: ${manBOutfit}`
+    : `## 👗 LLM 의상 디자인 모드 (의상 랜덤 선택 OFF)
+의상은 로컬 랜덤/사전 선택을 사용하지 않습니다. 대본의 주제, 배경, 계절, 장르, 캐릭터 역할에 맞춰 각 캐릭터에게 가장 어울리는 아름답고 세련된 최상급 의상을 직접 디자인하세요.
+
+필수 규칙:
+- lockedCharacters[].outfit에는 실제 의상명을 직접 작성하세요. "CHOOSE_FROM_UNIFIED_OUTFIT_LIST", "LLM_DESIGN_REQUIRED" 같은 플레이스홀더 출력 금지.
+- 여성 캐릭터는 40s/50s/60s처럼 나이대가 있어도 꾸준한 운동과 자기관리로 탄탄하고 우아한 실루엣을 가진 인물로 설정하세요.
+- 짧고 타이트한 의상도 저급하거나 과한 노출이 아니라, 고급스럽고 세련된 핏으로 아름답게 소화하는 방향으로 디자인하세요.
+- Mini skirt, skort, fitted knit, slim-fit polo, tailored cardigan, body-skimming dress 등은 허용하되, cheap, vulgar, tacky, overly revealing, deep cleavage, lingerie-like 스타일은 피하세요.
+- 나이 들어 보이는 보수적 의상으로 숨기지 말고, 관리가 잘 된 건강미와 고급스러운 여성미가 드러나는 코디를 선택하세요.
+- refined, elegant, polished, luxurious, feminine, tastefully fitted, flattering silhouette, graceful proportions를 우선하세요.
+- 배경이 골프장/봄꽃/눈/실내/클럽하우스 등 무엇인지에 맞춰 소재, 색감, 핏을 자연스럽게 설계하세요.
+- 캐릭터별 의상은 서로 중복되지 않게 하세요.
+- 한번 정한 outfit은 미리보기와 이미지 프롬프트에서 절대 바뀌면 안 되는 잠금값입니다.
+- 대본(scriptBody)에는 의상명을 쓰지 말고, lockedCharacters[].outfit에만 저장하세요.`;
 
   const rawPrompt = `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
 
@@ -2895,12 +2920,7 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}` : ''}
 
 ${characterSection}
 
-## 👗 사전 선택 의상 (반드시 이 명칭 그대로 사용)
-- WomanA: ${womanAOutfit}
-- WomanB: ${womanBOutfit}
-- WomanD: ${womanDOutfit}
-- ManA: ${manAOutfit}
-- ManB: ${manBOutfit}
+${masterOutfitSection}
 
 ## 👠 여성 의상 선택 우선순위
 - 여성 캐릭터 의상은 최대한 여성스럽고 아름답고 세련된 방향으로 선택하세요.
@@ -3008,7 +3028,7 @@ ${additionalContext ? `8. 추가 요청: ${additionalContext}` : ''}
 ## ✅ 체크리스트
 1. scriptBody 8~12문장?
 2. lockedCharacters에서 hair/body는 위의 고정값 100% 복사?
-3. outfit은 사전 선택 의상 명칭 100% 그대로?
+3. outfit은 ${useRandomOutfits ? '사전 선택 의상 명칭 100% 그대로' : 'LLM이 직접 디자인한 실제 의상명이며 플레이스홀더가 아님'}?
 4. lockedLocations 2~4개 (주제에 맞는 다양한 배경)?
 5. visualStyleDNA 모든 필드 채움?
 6. identity에 얼굴 특징(face, jawline, features 등) 포함?${golfCaddyNote}
@@ -3223,10 +3243,14 @@ export const buildSimplifiedMasterPrompt = (params: {
   gender?: string;
   genreGuideOverride?: LabGenreGuideline;
   legacyGenrePrompt?: string;
+  useRandomOutfits?: boolean;
+  allowedOutfitCategories?: string[];
 }): string => {
   const { topic, genre, targetAge, gender = '여성' } = params;
   const genreGuide = params.genreGuideOverride || LAB_GENRE_GUIDELINES[genre];
   const legacyGenreBlock = buildLegacyGenreBlock(params.legacyGenrePrompt);
+  const useRandomOutfits = params.useRandomOutfits ?? true;
+  const allowedOutfitCategories = params.allowedOutfitCategories;
   const scriptRules = getShortsLabScriptRules();
   const buildNumberedRules = (rules: string[]) =>
     rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n');
@@ -3243,6 +3267,58 @@ export const buildSimplifiedMasterPrompt = (params: {
   const characterSlots = gender === '남성'
     ? 'ManA (준호), ManB (민수), ManC (남성 조연)'
     : 'WomanA (지영), WomanB (혜경), WomanC (미숙), WomanD (캐디), ManA (준호), ManB (민수)';
+
+  const outfitPlaceholder = 'LLM_DESIGN_REQUIRED';
+  const womanAOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [], allowedOutfitCategories) : outfitPlaceholder;
+  const womanBOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit], allowedOutfitCategories) : outfitPlaceholder;
+  const womanDOutfit = useRandomOutfits ? pickFemaleOutfit(genre, topic, [womanAOutfit, womanBOutfit], allowedOutfitCategories) : outfitPlaceholder;
+  const manAOutfit = useRandomOutfits ? pickMaleOutfit(topic, [], allowedOutfitCategories) : outfitPlaceholder;
+  const manBOutfit = useRandomOutfits ? pickMaleOutfit(topic, [manAOutfit], allowedOutfitCategories) : outfitPlaceholder;
+
+  const lockedOutfitExample = gender === '남성'
+    ? (useRandomOutfits
+      ? `  "ManA": "${manAOutfit}",
+  "ManB": "${manBOutfit}",
+  "ManC": "${pickMaleOutfit(topic, [manAOutfit, manBOutfit], allowedOutfitCategories)}"`
+      : `  "ManA": "Charcoal Tailored Knit Polo + Cream Pleated Golf Trousers",
+  "ManB": "Deep Navy Cashmere Quarter-zip Pullover + White Slim Golf Pants",
+  "ManC": "Sage Green Performance Blazer Polo + Light Beige Tapered Slacks"`)
+    : (useRandomOutfits
+      ? `  "WomanA": "${womanAOutfit}",
+  "WomanB": "${womanBOutfit}",
+  "WomanD": "${womanDOutfit}",
+  "ManA": "${manAOutfit}",
+  "ManB": "${manBOutfit}"`
+      : `  "WomanA": "Blush Pink Sculpted Knit Polo + Ivory Pleated Luxury Golf Mini Skirt",
+  "WomanB": "Powder Blue Silk-blend Fitted Cardigan + White Tailored Tennis Skort",
+  "WomanC": "Champagne Satin Sleeveless Blouse + Dove Gray Luxury Pleated Skirt",
+  "WomanD": "Pearl White Professional Caddy Jacket + Sky Blue Slim Performance Skort",
+  "ManA": "Charcoal Tailored Knit Polo + Cream Pleated Golf Trousers",
+  "ManB": "Deep Navy Cashmere Quarter-zip Pullover + White Slim Golf Pants"`);
+
+  const outfitInstruction = useRandomOutfits
+    ? `## 👗 의상 고정 모드
+아래 lockedOutfits 값은 시스템이 미리 선택한 의상입니다. JSON의 lockedOutfits에 글자 하나 바꾸지 말고 그대로 복사하세요.
+
+{
+${lockedOutfitExample}
+}`
+    : `## 👗 LLM 의상 디자인 모드 (의상 랜덤 선택 OFF)
+의상은 로컬 랜덤/사전 선택을 사용하지 않습니다. 당신이 대본의 주제, 배경, 계절, 장르, 캐릭터 역할을 분석해 각 캐릭터에게 가장 어울리는 아름답고 세련된 최상급 의상을 직접 디자인하세요.
+
+필수 규칙:
+- JSON의 lockedOutfits에 실제 의상명을 직접 작성하세요. "LLM_DESIGN_REQUIRED", "CHOOSE_FROM_UNIFIED_OUTFIT_LIST", "의상 명칭" 같은 플레이스홀더 출력 금지.
+- lockedOutfits 키는 반드시 대문자 슬롯 ID만 사용하세요: WomanA, WomanB, WomanC, WomanD, ManA, ManB, ManC.
+- scenes[].characterIds에 등장시키는 모든 슬롯은 lockedOutfits에도 반드시 포함하세요.
+- 여성 캐릭터는 40s/50s/60s처럼 나이대가 있어도 꾸준한 운동과 자기관리로 탄탄하고 우아한 실루엣을 가진 인물로 설정하세요.
+- 짧고 타이트한 의상도 저급하거나 과한 노출이 아니라, 고급스럽고 세련된 핏으로 아름답게 소화하는 방향으로 디자인하세요.
+- Mini skirt, skort, fitted knit, slim-fit polo, tailored cardigan, body-skimming dress 등은 허용하되, cheap, vulgar, tacky, overly revealing, deep cleavage, lingerie-like 스타일은 피하세요.
+- 나이 들어 보이는 보수적 의상으로 숨기지 말고, 관리가 잘 된 건강미와 고급스러운 여성미가 드러나는 코디를 선택하세요.
+- refined, elegant, polished, luxurious, feminine, tastefully fitted, flattering silhouette, graceful proportions를 우선하세요.
+- 배경이 골프장/봄꽃/눈/실내/클럽하우스 등 무엇인지에 맞춰 소재, 색감, 핏을 자연스럽게 설계하세요.
+- 캐릭터별 의상은 서로 중복되지 않게 하세요.
+- 한번 정한 lockedOutfits 의상명은 미리보기와 이미지 프롬프트에서 절대 바뀌면 안 되는 잠금값입니다.
+- 대본(scriptBody)에는 의상명을 쓰지 말고, lockedOutfits에만 저장하세요.`;
 
   return `당신은 YouTube 쇼츠용 ${genreGuide?.name || genre} 장르의 ${targetAge} 타겟 대본 작가입니다.
 
@@ -3265,6 +3341,8 @@ ${genreGuide?.forbiddenPatterns?.map(p => `• ${p}`).join('\n') || ''}
 
 ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
 
+${outfitInstruction}
+
 다음 JSON 형식으로 응답하세요:
 
 \`\`\`json
@@ -3277,6 +3355,9 @@ ${legacyGenreBlock ? `\n${legacyGenreBlock}\n` : ''}
   "scriptLines": ["첫 번째 대사", "두 번째 대사"],
   "closingPunch": "마지막 반전 대사",
   "commentTrigger": "댓글을 부르는 질문 한 줄",
+  "lockedOutfits": {
+${lockedOutfitExample}
+  },
   "scenes": [
     {
       "sceneNumber": 1,
@@ -3333,10 +3414,11 @@ ${formatRulesText}
    - \`commentTrigger\`: 업로드용 댓글 유도 질문 한 줄
    - \`closingPunch\`는 반드시 \`scriptLines\` 마지막 문장과 동일해야 함
 5. **문체 고정**: 반드시 반말 구어체(~했어, ~더라고). **~요/~습니다 금지**
-6. **캐릭터 슬롯 ID만 사용** (절대 캐릭터 특징 언급 금지):
+6. **씬에는 캐릭터 슬롯 ID만 사용** (대본/씬 문장에는 캐릭터 특징 언급 금지):
    - 사용 가능한 슬롯: ${characterSlots}
    - 각 씬의 \`characterIds\`에 슬롯 ID만 배열로 기입
-   - **절대 금지**: 캐릭터 외모, 헤어스타일, 의상, 체형 등 특징 언급 (코드가 자동 처리)
+   - \`lockedOutfits\`에는 의상명을 반드시 작성하되, \`scriptBody\`, \`scriptLines\`, \`scenes[].scriptLine\`, \`scenes[].action\`에는 의상명을 쓰지 마세요.
+   - **씬 내부 절대 금지**: 캐릭터 외모, 헤어스타일, 의상, 체형 등 특징 언급 (미리보기 프롬프트 조립 단계에서 lockedOutfits가 자동 적용)
 
 7. **대본 구조 필수**:
    - 첫 문장은 반드시 질문형 / 충격형 / 관계 의심형 Hook
@@ -3443,7 +3525,7 @@ ${formatRulesText}
 - [ ] characterIds가 빈 배열인 씬이 없는가?
 - [ ] 원샷 60% 이하, 투샷 30% 이상, 쓰리샷 10% 이상(가능 시)인가?
 - [ ] 동일 인물 원샷이 2씬 이상 연속되지 않는가?
-- [ ] 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않았는가?
+- [ ] 대본/씬 문장에는 캐릭터 특징(헤어, 의상, 체형 등)을 언급하지 않고, 의상은 lockedOutfits에만 작성했는가?
 - [ ] 첫 문장이 질문형/충격형/관계 의심형 Hook인가?
 - [ ] 첫 문장이 배경 설명이 아니라 사건/의심/충격 그 자체로 시작하는가?
 - [ ] 첫 문장이 18~32자 내외로 짧고 날카로운가?

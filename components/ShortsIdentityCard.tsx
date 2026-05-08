@@ -25,6 +25,7 @@ interface ShortsIdentityCardProps {
   onUpdate: (id: string, updates: Partial<CharacterIdentity>) => void;
   onDelete: (id: string) => void;
   outfitPresets: { id?: string; name: string; translation: string; imageUrl?: string }[];
+  slotOptions?: { id: string; label: string; desc?: string }[];
   accessoryGroups?: AccessoryGroup[];
   winterAccessoryOptions?: string[];
   showAccessoryGallery?: boolean;
@@ -48,6 +49,7 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
   onUpdate,
   onDelete,
   outfitPresets,
+  slotOptions,
   accessoryGroups = [],
   winterAccessoryOptions = [],
   showAccessoryGallery = false,
@@ -66,7 +68,8 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
 
   const isFieldLocked = (field: string) => identity.lockedFields.has(field);
 
-  const selectedSlot = SLOT_OPTIONS.find(s => s.id === identity.slotId);
+  const availableSlotOptions = slotOptions && slotOptions.length > 0 ? slotOptions : SLOT_OPTIONS;
+  const selectedSlot = availableSlotOptions.find(s => s.id === identity.slotId);
   const selectedAccessories = identity.accessories
     ? identity.accessories.split(',').map(item => item.trim()).filter(Boolean)
     : [];
@@ -175,7 +178,7 @@ export const ShortsIdentityCard: React.FC<ShortsIdentityCardProps> = ({
           >
             <option value="">선택안함</option>
             <option value="">캐릭터 슬롯 선택 (Woman A/B/C...)</option>
-            {SLOT_OPTIONS.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+            {availableSlotOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
           </select>
         </div>
       </div>

@@ -26,6 +26,7 @@ import { getAppStorageCachedValue, setAppStorageValue } from '../services/appSto
 import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
 import type { ExtractedOutfit, ExtractedFeature } from '../services/extractionCacheService';
 import type { CharacterItem } from '../services/characterService';
+import { getCharacterRules, shortsLabCharacterRulesManager } from '../services/shortsLabCharacterRulesManager';
 
 // ============================================
 // 타입 정의
@@ -58,12 +59,27 @@ interface CharacterPanelProps {
 
 const DEFAULT_OUTFITS: Outfit[] = [];
 
-const SLOT_OPTIONS = [
-  { id: 'woman-a', name: 'Woman A', gender: 'female' as const },
-  { id: 'woman-b', name: 'Woman B', gender: 'female' as const },
-  { id: 'man-a', name: 'Man A', gender: 'male' as const },
-  { id: 'man-b', name: 'Man B', gender: 'male' as const },
-];
+const toPanelSlotId = (slotId: string) => slotId.replace(/^(Woman|Man)([A-Z])$/, (_, group, letter) => (
+  `${String(group).toLowerCase()}-${String(letter).toLowerCase()}`
+));
+
+const toPanelSlotName = (slotId: string) => slotId.replace(/^(Woman|Man)([A-Z])$/, '$1 $2');
+
+const buildSlotOptionsFromRules = () => {
+  const rules = getCharacterRules();
+  return [
+    ...(rules.females || []).map((char) => ({
+      id: toPanelSlotId(char.id),
+      name: toPanelSlotName(char.id),
+      gender: 'female' as const
+    })),
+    ...(rules.males || []).map((char) => ({
+      id: toPanelSlotId(char.id),
+      name: toPanelSlotName(char.id),
+      gender: 'male' as const
+    }))
+  ];
+};
 
 // 의상 카테고리 (대본 생성에 사용되는 실제 카테고리)
 const DEFAULT_OUTFIT_CATEGORIES: OutfitCategory[] = [
@@ -97,6 +113,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [baseOutfitOverrides, setBaseOutfitOverridesState] = useState<OutfitBaseOverrides>(() => getOutfitBaseOverrides());
   const [showHiddenBaseOutfits, setShowHiddenBaseOutfits] = useState(false);
   const [showHiddenUserOutfits, setShowHiddenUserOutfits] = useState(false);
+  const [slotOptions, setSlotOptions] = useState(buildSlotOptionsFromRules);
 
   // 선택 상태
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -218,6 +235,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       : `overall ${overall} body proportions, ${shoulders}, ${leg}, chest volume (${bustFront}) with ${bustHeight}, pelvis width ${pelvisWidth}, glute projection ${buttProjection}, glute position ${buttLift}`;
 
     return `${core}, natural anatomy, balanced posture, well-proportioned silhouette`;
+  }, []);
+
+  React.useEffect(() => {
+    const unsubscribe = shortsLabCharacterRulesManager.subscribeRules(() => {
+      setSlotOptions(buildSlotOptionsFromRules());
+    });
+    shortsLabCharacterRulesManager.loadRules()
+      .then(() => setSlotOptions(buildSlotOptionsFromRules()))
+      .catch(() => setSlotOptions(buildSlotOptionsFromRules()));
+    return unsubscribe;
   }, []);
 
   React.useEffect(() => {
@@ -2492,7 +2519,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
               <div className="text-[11px] font-bold text-slate-500 mb-3 uppercase tracking-wider">슬롯 할당</div>
               <div className="grid grid-cols-2 gap-2">
-                {SLOT_OPTIONS.map(slot => (
+                {slotOptions.map(slot => (
                   <button
                     key={slot.id}
                     className={`p-2.5 rounded-lg text-xs font-bold border transition-all ${selectedSlot === slot.id
@@ -2532,8 +2559,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         });
                         setBodyTuning(char.bodyTuning ? { ...DEFAULT_BODY_TUNING, ...char.bodyTuning } : { ...DEFAULT_BODY_TUNING });
                         setActiveTab('manage');
-                        const protagonistSlot = char.gender === 'female' ? 'woman-a' : 'man-a';
-                        onCharacterSelect?.(char, protagonistSlot);
+                        const selectedSlotMeta = slotOptions.find((slot) => slot.id === selectedSlot);
+                        const targetSlot = selectedSlotMeta?.gender === char.gender
+                          ? selectedSlot
+                          : (slotOptions.find((slot) => slot.gender === char.gender)?.id || selectedSlot);
+                        onCharacterSelect?.(char, targetSlot);
                       }}
                       className={`group p-3 rounded-xl border cursor-pointer transition-all ${selectedCharacterId === char.id
                         ? 'border-purple-500 bg-purple-600/10 shadow-lg'

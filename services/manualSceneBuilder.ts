@@ -164,9 +164,11 @@ export const buildManualSceneDecompositionPrompt = (options: {
   const outfitSelectionInstruction = !options.characters.some(c => c.outfit)
     ? `\n2. **의상 자율 선택 (LLM Selection)**: 
    - 현재 캐릭터들의 의상이 지정되지 않았습니다. 
-   - 대본의 주제, 분위기, 장르를 종합적으로 분석하여 **각 캐릭터에게 가장 잘 어울리는 최상급 명품 의상 명칭**을 직접 선택하세요.
+   - 아래 "캐릭터 ID 목록"에 있는 실제 등장 캐릭터에게만 의상을 생성하세요. 목록에 없는 WomanB/WomanC 같은 슬롯을 새로 만들거나 대체하지 마세요.
+   - 대본의 주제, 배경, 계절, 분위기, 장르를 종합적으로 분석하여 **각 캐릭터에게 가장 잘 어울리는 아름답고 세련된 최상급 의상 명칭**을 직접 선택하세요.
+   - 여성 캐릭터는 나이가 있어도 관리가 잘 된 우아하고 탄탄한 분위기로 표현하세요. 짧거나 타이트한 의상도 고급스럽고 세련되게 허용하되, cheap/vulgar/tacky/overly revealing/deep cleavage/lingerie-like 표현은 피하세요.
    - **⚠️ 의상 정책 (Must Follow)**: 쇄골(Collarbone)과 어깨(Shoulder) 라인이 드러나는 스타일(Off-shoulder 등)은 허용되지만, **가슴골(Cleavage)이 깊게 파인 디자인(Deep V-neck, Plunging, Low-cut)은 절대 피하세요.**
-   - 선택한 의상은 아래 JSON의 "lockedOutfits" 객체에 담아야 합니다.`
+   - 선택한 의상은 아래 JSON의 "lockedOutfits" 객체에 담아야 하며, 이후 longPrompt에서는 이 문자열을 한 글자도 바꾸지 말고 그대로 복사해야 합니다.`
     : `\n2. **의상 일관성 준수**: 캐릭터 ID 목록에 명시된 의상을 한 글자도 바꾸지 말고 그대로 사용하세요.`;
 
   const step2Rules = getShortsLabStep2PromptRules();

@@ -1032,66 +1032,8 @@ const normalizeManualScenePrompts = (options: {
  */
 const enforceMultipleCharacters = (scenes: any[]): any[] => {
   if (!scenes || scenes.length === 0) return scenes;
-
-  // 1. 현재 여러 명 등장 비율 계산
-  const multiCount = scenes.filter(s =>
-    s.characterIds && Array.isArray(s.characterIds) && s.characterIds.length >= 2
-  ).length;
-
-  const ratio = multiCount / scenes.length;
-
-  // 2. 비율이 30% 미만이면 강제 수정
-  if (ratio < 0.3) {
-    console.log(`[Multiple Characters] 현재 비율: ${(ratio * 100).toFixed(1)}% → 30% 이상으로 강제 조정`);
-
-    // 짝수 씬에 WomanB 추가 (인덱스 1, 3, 5, 7번 씬)
-    const targetIndices = [1, 3, 5, 7].filter(idx => idx < scenes.length);
-
-    targetIndices.forEach(idx => {
-      const scene = scenes[idx];
-      if (!scene || !scene.characterIds) return;
-
-      const currentIds = scene.characterIds;
-
-      // WomanA만 있으면 WomanB 추가
-      if (currentIds.length === 1 && (currentIds[0] === 'WomanA' || /Slot Woman A/i.test(currentIds[0]) || currentIds[0] === 'A')) {
-        scenes[idx].characterIds.push('WomanB');
-
-        // Slot Woman B 설명
-        const slotBDesc = `Slot Woman B — stunning Korean woman in her 40s [${CHARACTER_PRESETS.WOMAN_B.hair}, ${CHARACTER_PRESETS.WOMAN_B.body}], wearing a simple silver necklace, standing beside her with a curious expression`;
-
-        // longPrompt에 Slot Woman B 추가
-        if (scene.longPrompt) {
-          // 마침표 앞에 추가
-          scenes[idx].longPrompt = scene.longPrompt.replace(
-            /(\. |\.(?=[A-Z]))/,
-            `. ${slotBDesc}. `
-          );
-
-          // 마침표가 없으면 끝에 추가
-          if (!scenes[idx].longPrompt.includes('Slot Woman B')) {
-            scenes[idx].longPrompt += `. ${slotBDesc}`;
-          }
-        }
-
-        // shortPrompt에도 추가
-        if (scene.shortPrompt) {
-          scenes[idx].shortPrompt = scene.shortPrompt.replace(
-            /(Slot Woman A[^,]*),/i,
-            '$1, and Slot Woman B,'
-          );
-
-          // 패턴이 없으면 끝에 추가
-          if (!scenes[idx].shortPrompt.includes('Slot Woman B')) {
-            scenes[idx].shortPrompt += ', with Slot Woman B';
-          }
-        }
-
-        console.log(`[Multiple Characters] Scene ${idx + 1}에 WomanB 추가됨`);
-      }
-    });
-  }
-
+  // 캐릭터/의상 관리창의 확정 슬롯과 LLM lockedOutfits를 보존하기 위해
+  // 후처리에서 WomanB 같은 슬롯을 임의로 추가하지 않는다.
   return scenes;
 };
 
@@ -1423,17 +1365,14 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       let scriptFolderName = characterData._folderName || '';
 
       // ===== 캐릭터 → 슬롯 매핑 + 의상 생성 =====
-      const femaleSlots = ['WomanA', 'WomanB', 'WomanC'];
-      const maleSlots = ['ManA', 'ManB', 'ManC'];
-      let femaleIdx = 0;
-      let maleIdx = 0;
-
       const characterSlotMap: Record<string, string> = {};
       const mappedCharacters: ManualSceneCharacter[] = [];
 
       // 의상 및 캐릭터 정보 생성을 위한 준비
       const promptConstants = getPromptConstants();
       const characterRules = getCharacterRules();
+      const femaleSlots = (characterRules.females || []).map((char: any) => char.id).filter(Boolean);
+      const maleSlots = (characterRules.males || []).map((char: any) => char.id).filter(Boolean);
       const topic = input.topic || input.category || '';
       const enableWinterAccessories = input.enableWinterAccessories || false;
       const shouldAddWinterAccessories = enableWinterAccessories || isWinterTopic(topic);
@@ -1470,6 +1409,15 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       // 나머지 인물 배정을 위한 인덱스
       let fIdx = 0;
       let mIdx = 0;
+      const normalizeCharacterName = (value: string) => String(value || '').trim().replace(/\d+$/, '').replace(/(님|씨|가|는|이|가)$/, '').trim();
+      const managedNameMap = new Map<string, string>();
+      [...(characterRules.females || []), ...(characterRules.males || [])].forEach((rule: any) => {
+        const slotId = String(rule.id || '').trim();
+        const name = String(rule.name || '').trim();
+        if (!slotId || !name) return;
+        managedNameMap.set(name, slotId);
+        managedNameMap.set(normalizeCharacterName(name), slotId);
+      });
 
       // 최종 캐릭터 리스트 구축 (고정 역할 포함)
       const allMappedChars = [];
@@ -1478,14 +1426,18 @@ export const generateStory = async (input: UserInput, signal?: AbortSignal, temp
       
       for (const char of unmappedChars) {
         let slotId = '';
+        const managedSlot = managedNameMap.get(char.name) || managedNameMap.get(normalizeCharacterName(char.name));
+        if (managedSlot && !slots_assigned.has(managedSlot)) {
+          slotId = managedSlot;
+        }
         if (char.gender === 'female' || (char.gender === 'unknown' && defaultGender === 'female')) {
-          while (fIdx < femaleSlots.length && slots_assigned.has(femaleSlots[fIdx])) fIdx++;
-          if (fIdx < femaleSlots.length) {
+          while (!slotId && fIdx < femaleSlots.length && slots_assigned.has(femaleSlots[fIdx])) fIdx++;
+          if (!slotId && fIdx < femaleSlots.length) {
             slotId = femaleSlots[fIdx++];
           }
         } else {
-          while (mIdx < maleSlots.length && slots_assigned.has(maleSlots[mIdx])) mIdx++;
-          if (mIdx < maleSlots.length) {
+          while (!slotId && mIdx < maleSlots.length && slots_assigned.has(maleSlots[mIdx])) mIdx++;
+          if (!slotId && mIdx < maleSlots.length) {
             slotId = maleSlots[mIdx++];
           }
         }

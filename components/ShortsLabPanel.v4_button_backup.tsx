@@ -44,7 +44,6 @@ import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, E
 import { usePromptEditModal } from '../hooks/usePromptEditModal';
 import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
 import { fetchPromptEnhancementSettings } from '../services/promptEnhancementUtils';
-import { runShortsLabV4Master } from '../services/shortslab-v4/shortsLabV4FlowService';
 
 
 // ============================================
@@ -5693,13 +5692,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         }
     };
 
-      // ============================================
-      // [V4] 새 파일 전용 AI 마스터 생성
-      // ============================================
-      const handleMasterGenerateV4 = async () => {
-          showToast('AI MASTER V4 시작', 'info');
-      };
-
     // ============================================
     // [신규] 캐릭터 프로필 업데이트 핸들러
     // ============================================
@@ -7222,8 +7214,9 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     // 렌더링
     // ============================================
 
-        return (
+    return (
         <div className="h-full flex flex-col bg-slate-950 text-white overflow-hidden">
+            {/* 헤더 */}
             <div className="flex-shrink-0 border-b border-slate-800 p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -7235,12 +7228,47 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             <p className="text-xs text-slate-400">프롬프트 고정 문구 테스트</p>
                         </div>
 
+                        {/* 불러오기 버튼 - 쇼츠 랩 옆으로 이동 */}
                         <button
                             onClick={handleLoadFolders}
                             className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
                         >
                             <Folder className="w-4 h-4" />
                             불러오기
+                        </button>
+
+                        {/* 전체 이미지 생성 버튼 */}
+                        <button
+                            onClick={handleGenerateAllImages}
+                            disabled={scenes.length === 0 || generatingId !== null || aiForwardingId !== null || isBatchImageGenerating}
+                            className="px-3 py-1.5 bg-purple-600/80 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                        >
+                            <ImageIcon className="w-4 h-4" />
+                            {isBatchImageGenerating
+                                ? `생성중 ${batchImageCurrent}/${batchImageTotal}${batchImageCurrentScene ? ` (장면 ${batchImageCurrentScene})` : ''}`
+                                : '전체이미지생성'}
+                        </button>
+
+                        {/* [NEW] 작업 지침서 다운로드 */}
+                        <button
+                            onClick={handleDownloadProductionReport}
+                            disabled={scenes.length === 0}
+                            className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                            title="HTML 형식의 작업 지침서 다운로드"
+                        >
+                            <FileText className="w-4 h-4" />
+                            작업지침서
+                        </button>
+
+                        {/* [NEW] 브루 프로젝트 난바내기 */}
+                        <button
+                            onClick={handleExportVrewProject}
+                            disabled={scenes.length === 0}
+                            className="px-3 py-1.5 bg-pink-600/80 hover:bg-pink-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                            title="브루(Vrew)에서 사용할 수 있는 프로젝트 파일"
+                        >
+                            <Video className="w-4 h-4" />
+                            브루난바내기
                         </button>
                     </div>
 
@@ -7271,6 +7299,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     </div>
                 </div>
             </div>
+
             {/* 폴더 선택 모달 */}
             {showFolderPicker && (
                 <div
@@ -7514,16 +7543,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                         ? <><Loader2 className="w-5 h-5 animate-spin" /> 마스터 생성 중...</>
                                                         : <><Wand2 className="w-5 h-5" /> AI 마스터 생성</>}
                                                 </button>
-                                <button
-                                    onClick={handleMasterGenerateV4}
-                                    disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
-                                    className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 col-span-2"
-                                >
-                                    {isMasterGenerating
-                                        ? <><Loader2 className="w-5 h-5 animate-spin" /> V4 생성 중...</>
-                                        : <><Zap className="w-5 h-5" /> AI MASTER V4 생성</>}
-                                </button>
-
                                             </div>
                                         </div>
                                     ) : (
@@ -12880,12 +12899,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
-
-
-
-
-
-
 
 
 

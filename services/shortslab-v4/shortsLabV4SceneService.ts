@@ -1,0 +1,40 @@
+﻿export interface V4SceneInput {
+  scenes: any[];
+  profiles: any[];
+  outfitMap: Map<string, { name: string; prompt: string }>;
+}
+
+export function applyCharacterProfilesToScenesV4(input: V4SceneInput): any[] {
+  const { scenes, profiles, outfitMap } = input;
+
+  return scenes.map((scene) => {
+    const characterIds: string[] = scene.characterIds || [];
+    const profileBlocks = characterIds
+      .map((slotId) => profiles.find((p) => p.slotId === slotId))
+      .filter(Boolean)
+      .map((profile) => [
+        `${profile.slotId} (${profile.name})`,
+        profile.identity,
+        profile.face,
+        profile.hair,
+        profile.body,
+        profile.style,
+        profile.skinTone,
+        profile.signatureFeatures,
+        profile.outfitPrompt || profile.outfit
+      ].filter(Boolean).join(', '))
+      .join(' | ');
+
+    return {
+      ...scene,
+      prompt: [
+        profileBlocks,
+        scene.background,
+        scene.action,
+        scene.cameraAngle || scene.camera,
+        scene.longPrompt || scene.prompt
+      ].filter(Boolean).join(', '),
+      characterProfilesApplied: true
+    };
+  });
+}

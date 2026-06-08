@@ -1,0 +1,142 @@
+﻿
+  services\shortsLabCharacterRulesManager.ts:166:
+  services\shortsLabCharacterRulesManager.ts:167:const writeStoredRules = async (rules: S
+hortsLabCharacterRules): Promise<void> => {
+  services\shortsLabCharacterRulesManager.ts:168:  try {
+  services\shortsLabCharacterRulesManager.ts:169:    await setAppStorageValue(STORAGE_KEY
+, rules);
+  services\shortsLabCharacterRulesManager.ts:170:  } catch (error) {
+> services\shortsLabCharacterRulesManager.ts:171:    console.error('[shortsLabCharacterRu
+lesManager] Failed to save rules:', error);
+  services\shortsLabCharacterRulesManager.ts:172:    throw error;
+  services\shortsLabCharacterRulesManager.ts:173:  }
+  services\shortsLabCharacterRulesManager.ts:174:};
+  services\shortsLabCharacterRulesManager.ts:175:
+  services\shortsLabCharacterRulesManager.ts:176:const readStoredBackups = async (): Prom
+ise<ShortsLabCharacterRulesBackup[]> => {
+  services\shortsLabCharacterRulesManager.ts:177:  try {
+  services\shortsLabCharacterRulesManager.ts:178:    const response = await fetch(`${API_
+BASE}/api/character-backups`);
+  services\shortsLabCharacterRulesManager.ts:179:    if (!response.ok) return [];
+  services\shortsLabCharacterRulesManager.ts:180:    const data = await response.json();
+  services\shortsLabCharacterRulesManager.ts:181:    return (data.backups || []).map((ite
+m: Partial<ShortsLabCharacterRulesBackup> & { id: string }) => normalizeBackup(item));
+  services\shortsLabCharacterRulesManager.ts:182:  } catch (error) {
+> services\shortsLabCharacterRulesManager.ts:183:    console.warn('[shortsLabCharacterRul
+esManager] Failed to load backups:', error);
+  services\shortsLabCharacterRulesManager.ts:184:    return [];
+  services\shortsLabCharacterRulesManager.ts:185:  }
+  services\shortsLabCharacterRulesManager.ts:186:};
+  services\shortsLabCharacterRulesManager.ts:187:
+  services\shortsLabCharacterRulesManager.ts:188:const writeStoredBackup = async (backup:
+ ShortsLabCharacterRulesBackup): Promise<boolean> => {
+  services\shortsLabCharacterRulesManager.ts:189:  try {
+  services\shortsLabCharacterRulesManager.ts:190:    const response = await fetch(`${API_
+BASE}/api/character-backups`, {
+  services\shortsLabCharacterRulesManager.ts:191:      method: 'POST',
+  services\shortsLabCharacterRulesManager.ts:192:      headers: { 'Content-Type': 'applic
+ation/json' },
+  services\shortsLabCharacterRulesManager.ts:193:      body: JSON.stringify({ backup })
+  services\shortsLabCharacterRulesManager.ts:194:    });
+> services\shortsLabCharacterRulesManager.ts:195:    if (!response.ok) throw new Error('F
+ailed to save backup');
+  services\shortsLabCharacterRulesManager.ts:196:    return true;
+  services\shortsLabCharacterRulesManager.ts:197:  } catch (error) {
+> services\shortsLabCharacterRulesManager.ts:198:    console.warn('[shortsLabCharacterRul
+esManager] Failed to save backup:', error);
+  services\shortsLabCharacterRulesManager.ts:199:    return false;
+  services\shortsLabCharacterRulesManager.ts:200:  }
+  services\shortsLabCharacterRulesManager.ts:201:};
+  services\shortsLabCharacterRulesManager.ts:202:
+  services\shortsLabCharacterRulesManager.ts:203:const deleteStoredBackup = async (id: st
+ring): Promise<boolean> => {
+  services\shortsLabCharacterRulesManager.ts:204:  try {
+  services\shortsLabCharacterRulesManager.ts:205:    const response = await fetch(`${API_
+BASE}/api/character-backups/${encodeURIComponent(id)}`, {
+  services\shortsLabCharacterRulesManager.ts:206:      method: 'DELETE'
+  services\shortsLabCharacterRulesManager.ts:207:    });
+  services\shortsLabCharacterRulesManager.ts:208:    if (!response.ok) throw new Error('F
+ailed to delete backup');
+  services\shortsLabCharacterRulesManager.ts:209:    return true;
+  services\shortsLabCharacterRulesManager.ts:210:  } catch (error) {
+  services\shortsLabCharacterRulesManager.ts:211:    console.warn('[shortsLabCharacterRul
+esManager] Failed to delete backup:', error);
+  services\shortsLabCharacterRulesManager.ts:212:    return false;
+  services\shortsLabCharacterRulesManager.ts:213:  }
+  services\shortsLabCharacterRulesManager.ts:214:};
+  services\shortsLabCharacterRulesManager.ts:215:
+  services\shortsLabCharacterRulesManager.ts:216:const formatBackupName = (input?: string
+) => {
+  services\shortsLabCharacterRulesManager.ts:217:  if (input && input.trim()) return inpu
+t.trim();
+  services\shortsLabCharacterRulesManager.ts:218:  const now = new Date();
+  services\shortsLabCharacterRulesManager.ts:226:    if (cachedRules) return cachedRules;
+  services\shortsLabCharacterRulesManager.ts:227:    cachedRules = readStoredRules();
+  services\shortsLabCharacterRulesManager.ts:228:    return cachedRules;
+  services\shortsLabCharacterRulesManager.ts:229:  },
+  services\shortsLabCharacterRulesManager.ts:230:  getBackups: (): ShortsLabCharacterRule
+sBackup[] => {
+> services\shortsLabCharacterRulesManager.ts:231:    // 캐시된 백업 반환 (최초 로드는 loadBackups를 통해
+)
+  services\shortsLabCharacterRulesManager.ts:232:    return cachedBackups || [];
+  services\shortsLabCharacterRulesManager.ts:233:  },
+  services\shortsLabCharacterRulesManager.ts:234:  subscribeRules: (listener: RulesListen
+er) => {
+  services\shortsLabCharacterRulesManager.ts:235:    rulesListeners.add(listener);
+  services\shortsLabCharacterRulesManager.ts:236:    return () => {
+  services\shortsLabCharacterRulesManager.ts:237:      rulesListeners.delete(listener);
+  services\shortsLabCharacterRulesManager.ts:238:    };
+  services\shortsLabCharacterRulesManager.ts:239:  },
+  services\shortsLabCharacterRulesManager.ts:240:  subscribeBackups: (listener: BackupLis
+tener) => {
+  services\shortsLabCharacterRulesManager.ts:241:    backupListeners.add(listener);
+  services\shortsLabCharacterRulesManager.ts:242:    return () => {
+  services\shortsLabCharacterRulesManager.ts:243:      backupListeners.delete(listener);
+  services\shortsLabCharacterRulesManager.ts:244:    };
+  services\shortsLabCharacterRulesManager.ts:245:  },
+> services\shortsLabCharacterRulesManager.ts:246:  loadRules: async (): Promise<ShortsLab
+CharacterRules> => {
+  services\shortsLabCharacterRulesManager.ts:247:    await primeAppStorageCache();
+  services\shortsLabCharacterRulesManager.ts:248:    const stored = await getAppStorageVa
+lue<ShortsLabCharacterRules | null>(STORAGE_KEY, null);
+  services\shortsLabCharacterRulesManager.ts:249:    cachedRules = stored ? normalizeRule
+s(stored) : readStoredRules();
+  services\shortsLabCharacterRulesManager.ts:250:    if (stored && hasLegacyIds(cachedRul
+es)) {
+  services\shortsLabCharacterRulesManager.ts:251:      await writeStoredRules(cachedRules
+);
+  services\shortsLabCharacterRulesManager.ts:252:    }
+  services\shortsLabCharacterRulesManager.ts:253:    notifyRulesListeners(cachedRules);
+  services\shortsLabCharacterRulesManager.ts:254:    return cachedRules;
+  services\shortsLabCharacterRulesManager.ts:255:  },
+> services\shortsLabCharacterRulesManager.ts:256:  loadBackups: async (): Promise<ShortsL
+abCharacterRulesBackup[]> => {
+  services\shortsLabCharacterRulesManager.ts:257:    cachedBackups = await readStoredBack
+ups();
+  services\shortsLabCharacterRulesManager.ts:258:    notifyBackupListeners(cachedBackups)
+;
+  services\shortsLabCharacterRulesManager.ts:259:    return cachedBackups;
+  services\shortsLabCharacterRulesManager.ts:260:  },
+  services\shortsLabCharacterRulesManager.ts:261:  updateRules: async (rulesInput: unknow
+n): Promise<ShortsLabCharacterRules> => {
+  services\shortsLabCharacterRulesManager.ts:262:    const normalized = normalizeRules(ru
+lesInput as Partial<ShortsLabCharacterRules>);
+  services\shortsLabCharacterRulesManager.ts:263:    await writeStoredRules(normalized);
+  services\shortsLabCharacterRulesManager.ts:264:    cachedRules = normalized;
+  services\shortsLabCharacterRulesManager.ts:265:    notifyRulesListeners(normalized);
+  services\shortsLabCharacterRulesManager.ts:266:    return normalized;
+  services\shortsLabCharacterRulesManager.ts:267:  },
+  services\shortsLabCharacterRulesManager.ts:268:  resetRules: async (): Promise<ShortsLa
+bCharacterRules> => {
+  services\shortsLabCharacterRulesManager.ts:269:    const defaultRules = DEFAULT_CHARACT
+ER_RULES;
+  services\shortsLabCharacterRulesManager.ts:270:    await writeStoredRules(defaultRules)
+;
+  services\shortsLabCharacterRulesManager.ts:271:    cachedRules = defaultRules;
+  services\shortsLabCharacterRulesManager.ts:272:    notifyRulesListeners(defaultRules);
+  services\shortsLabCharacterRulesManager.ts:273:    return defaultRules;
+  services\shortsLabCharacterRulesManager.ts:274:  },
+  services\shortsLabCharacterRulesManager.ts:275:
+  services\shortsLabCharacterRulesManager.ts:276:  // ===== 캐릭터 추가/삭제 기능 =====
+
+

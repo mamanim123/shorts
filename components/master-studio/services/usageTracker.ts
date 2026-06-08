@@ -16,12 +16,20 @@ export interface UsageRecord {
     context?: string;
 }
 
+export interface UsageDailyStats {
+    calls: number;
+    totalPromptTokens: number;
+    totalResponseTokens: number;
+    totalTokens: number;
+}
+
 export interface UsageSnapshot {
     calls: number;
     totalPromptTokens: number;
     totalResponseTokens: number;
     totalTokens: number;
     byModel: Record<string, { calls: number; totalTokens: number }>;
+    byDate: Record<string, UsageDailyStats>;
     last: UsageRecord | null;
 }
 
@@ -45,6 +53,7 @@ const emptySnapshot: UsageSnapshot = {
     totalResponseTokens: 0,
     totalTokens: 0,
     byModel: {},
+    byDate: {},
     last: null,
 };
 
@@ -63,8 +72,18 @@ const getLegacyMasterKey = (): string => {
 const ensureSnapshot = (store: UsageStore, keyId: string): UsageSnapshot => {
     if (!store.snapshots[keyId]) {
         store.snapshots[keyId] = { ...emptySnapshot };
+    } else if (!store.snapshots[keyId].byDate) {
+        store.snapshots[keyId] = { ...store.snapshots[keyId], byDate: {} };
     }
     return store.snapshots[keyId];
+};
+
+const getLocalDateKey = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 const normalizeStore = (raw: any): UsageStore => {
@@ -89,6 +108,7 @@ const normalizeStore = (raw: any): UsageStore => {
                 ...emptySnapshot,
                 ...(snapshot as UsageSnapshot),
                 byModel: (snapshot as UsageSnapshot).byModel || {},
+                byDate: (snapshot as UsageSnapshot).byDate || {},
                 last: (snapshot as UsageSnapshot).last || null,
             };
         });
@@ -110,6 +130,7 @@ const normalizeStore = (raw: any): UsageStore => {
             ...emptySnapshot,
             ...(raw as UsageSnapshot),
             byModel: (raw as UsageSnapshot).byModel || {},
+            byDate: (raw as UsageSnapshot).byDate || {},
             last: (raw as UsageSnapshot).last || null,
         };
     } else {
@@ -274,7 +295,11 @@ export const recordUsage = (context: string, response: any, apiKeyId?: string): 
     const store = loadStore();
     const keyId = apiKeyId || store.activeKeyId || DEFAULT_KEY_ID;
     const baseSnapshot = ensureSnapshot(store, keyId);
-    const snapshot = { ...baseSnapshot, byModel: { ...baseSnapshot.byModel } };
+    const snapshot = {
+        ...baseSnapshot,
+        byModel: { ...baseSnapshot.byModel },
+        byDate: { ...(baseSnapshot.byDate || {}) },
+    };
 
     snapshot.calls += 1;
     snapshot.totalPromptTokens += record.promptTokens;
@@ -285,6 +310,20 @@ export const recordUsage = (context: string, response: any, apiKeyId?: string): 
     snapshot.byModel[record.model] = {
         calls: modelStats.calls + 1,
         totalTokens: modelStats.totalTokens + record.totalTokens,
+    };
+
+    const dateKey = getLocalDateKey(record.timestamp);
+    const dayStats = snapshot.byDate[dateKey] || {
+        calls: 0,
+        totalPromptTokens: 0,
+        totalResponseTokens: 0,
+        totalTokens: 0,
+    };
+    snapshot.byDate[dateKey] = {
+        calls: dayStats.calls + 1,
+        totalPromptTokens: dayStats.totalPromptTokens + record.promptTokens,
+        totalResponseTokens: dayStats.totalResponseTokens + record.responseTokens,
+        totalTokens: dayStats.totalTokens + record.totalTokens,
     };
 
     snapshot.last = record;
@@ -317,6 +356,6 @@ export const getUsageSnapshot = (apiKeyId?: string): UsageSnapshot => {
 export const resetUsage = (apiKeyId?: string) => {
     const store = loadStore();
     const keyId = apiKeyId || store.activeKeyId || DEFAULT_KEY_ID;
-    store.snapshots[keyId] = { ...emptySnapshot, byModel: {} };
+    store.snapshots[keyId] = { ...emptySnapshot, byModel: {}, byDate: {} };
     persistStore(store, keyId);
 };

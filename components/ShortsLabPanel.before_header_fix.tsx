@@ -7222,26 +7222,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     // 렌더링
     // ============================================
 
-        return (
+    return (
         <div className="h-full flex flex-col bg-slate-950 text-white overflow-hidden">
-            <div className="flex-shrink-0 border-b border-slate-800 p-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold">쇼츠 랩</h2>
-                            <p className="text-xs text-slate-400">프롬프트 고정 문구 테스트</p>
-                        </div>
-
-                        <button
-                            onClick={handleLoadFolders}
-                            className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-                        >
-                            <Folder className="w-4 h-4" />
-                            불러오기
-                        </button>
                     </div>
 
                     {/* 탭 버튼 */}
@@ -7271,6 +7253,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     </div>
                 </div>
             </div>
+
             {/* 폴더 선택 모달 */}
             {showFolderPicker && (
                 <div
@@ -12880,7 +12863,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
-
 
 
 

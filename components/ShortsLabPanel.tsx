@@ -4260,6 +4260,52 @@ ${scriptInput}
                 .filter(Boolean);
             const allowedSceneSlotIds = Array.from(new Set([...allSlotIds, ...lockedOutfitSlotIds]));
 
+                        // ===== [V4 우회] 깨끗한 파서로 조립 후 종료 =====
+            try {
+                const { parseJsonToScenesDirect } = await import('../services/shortslab-v4/v4DirectParser');
+                const v4OutfitMap = new Map<string, { name: string; prompt: string }>();
+                Object.entries(llmLockedOutfitsMaster || {}).forEach(([k, v]) => {
+                    if (v) v4OutfitMap.set(normalizeSlotId(k), { name: String(v), prompt: String(v) });
+                });
+
+                // characterIds를 정규화된 슬롯으로 교체한 씬 (LLM 원본 신뢰)
+                const v4Scenes = normalizedMasterScenes.map((s) => ({
+                    sceneNumber: s.sceneNumber,
+                    scriptLine: s.scriptLine,
+                    characterIds: s.characterIds,
+                    cameraAngle: s.cameraAngle,
+                    background: s.background,
+                    action: s.action,
+                    summary: s.summary,
+                    shortPrompt: s.shortPrompt,
+                    longPrompt: s.longPrompt,
+                }));
+
+                const v4Result = parseJsonToScenesDirect(
+                    JSON.stringify({ scriptBody: finalScript, scenes: v4Scenes, lockedOutfits: llmLockedOutfitsMaster }),
+                    {
+                        mode: 'rebuild',
+                        characterRules: getCharacterRules(),
+                        savedCharacters,
+                        outfitMap: v4OutfitMap,
+                        lockBackgroundToFirst: true,
+                    }
+                );
+
+                if (v4Result.scenes.length > 0) {
+                    setScenes(v4Result.scenes);
+                    setActiveTab('preview');
+                    showToast(`✓ V4 씬 분해 완료 (${v4Result.scenes.length}개 씬, 일관성 모드)`, 'success');
+                    return; // ★ 이 아래 기존 오염 로직 전부 건너뜀
+                }
+            } catch (v4Error) {
+                console.error('[V4] 우회 실패, 기존 로직으로 폴백:', v4Error);
+                // 실패 시 아래 기존 로직이 그대로 실행됨
+            }
+            // ===== [V4 우회 끝] =====
+
+
+
             const rebalancedScenes = rebalanceMasterSceneCharacterMix(
                 normalizedMasterScenes,
                 settings.koreanGender,
@@ -5697,8 +5743,71 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
       // [V4] 새 파일 전용 AI 마스터 생성
       // ============================================
       const handleMasterGenerateV4 = async () => {
-          showToast('AI MASTER V4 시작', 'info');
-      };
+        if (!aiTopic.trim()) { showToast('주제를 입력해주세요.', 'warning'); return; }
+        setIsMasterGenerating(true);
+        try {
+            const { buildSimplifiedMasterPrompt } = await import('../services/labPromptBuilder');
+            const { parseJsonToScenesDirect } = await import('../services/shortslab-v4/v4DirectParser');
+
+            const prompt = buildSimplifiedMasterPrompt({
+            topic: aiTopic, genre: aiGenre, targetAge: aiTargetAge,
+            gender: settings.koreanGender, useRandomOutfits,
+            });
+
+            const res = await fetch('http://localhost:3002/api/generate/raw', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ service: targetService || 'GEMINI', prompt, temperature: 0.9 }),
+            });
+            const data = await res.json();
+            const rawText = data.rawResponse || data.text || data.result || '';
+
+            // outfitMap: lockedOutfits 또는 랜덤 (역추출 deriveOutfitMapFromScenePrompts 사용 안 함!)
+            const parsedForOutfit = JSON.parse(rawText.replace(/^```json|```$/g, '').trim().slice(rawText.indexOf('{')));
+            const outfitMap = new Map<string, { name: string; prompt: string }>();
+            Object.entries(parsedForOutfit.lockedOutfits || {}).forEach(([k, v]) => {
+            if (v) outfitMap.set(k, { name: String(v), prompt: String(v) });
+            });
+
+            const result = parseJsonToScenesDirect(rawText, {
+            mode: 'rebuild',
+            characterRules: getCharacterRules(),
+            savedCharacters,
+            outfitMap,
+            targetAgeEnglish: '', // 필요시 convertAgeToEnglish(aiTargetAge)
+            lockBackgroundToFirst: true,
+            });
+
+            if (result.errors.length) showToast('경고: ' + result.errors.join(', '), 'warning');
+            if (result.scenes.length) {
+            setScriptInput(result.scriptBody);
+            setScenes(result.scenes);
+            setActiveTab('preview');
+            showToast(`✓ V4: ${result.scenes.length}개 씬 생성 완료`, 'success');
+            }
+        } catch (e) {
+            showToast('V4 생성 실패: ' + (e instanceof Error ? e.message : ''), 'error');
+        } finally {
+            setIsMasterGenerating(false);
+        }
+        };
+
+    const [manualJsonInput, setManualJsonInput] = useState('');
+    const handleManualJsonParse = () => {
+        import('../services/shortslab-v4/v4DirectParser').then(({ parseJsonToScenesDirect }) => {
+            const result = parseJsonToScenesDirect(manualJsonInput, {
+            mode: 'raw', // 붙여넣은 longPrompt를 그대로 미리보기 → 바로 이미지 생성
+            });
+            if (result.errors.length) showToast('경고: ' + result.errors.join(', '), 'warning');
+            if (result.scenes.length) {
+            setScriptInput(result.scriptBody);
+            setScenes(result.scenes);
+            setActiveTab('preview');
+            showToast(`✓ ${result.scenes.length}개 씬 그대로 불러옴`, 'success');
+            }
+          });
+        };
+
+
 
     // ============================================
     // [신규] 캐릭터 프로필 업데이트 핸들러
@@ -7523,6 +7632,24 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                         ? <><Loader2 className="w-5 h-5 animate-spin" /> V4 생성 중...</>
                                         : <><Zap className="w-5 h-5" /> AI MASTER V4 생성</>}
                                 </button>
+
+                                                                <div className="space-y-2 mt-2 col-span-2">
+                                                                    <textarea
+                                                                        value={manualJsonInput}
+                                                                        onChange={(e) => setManualJsonInput(e.target.value)}
+                                                                        placeholder="여기에 JSON을 붙여넣으세요 (파싱 실패 시 수동 입력용)"
+                                                                        rows={4}
+                                                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs text-white font-mono resize-y"
+                                                                    />
+                                                                    <button
+                                                                        onClick={handleManualJsonParse}
+                                                                        disabled={!manualJsonInput.trim()}
+                                                                        className="w-full py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                                                                    >
+                                                                        <Sparkles className="w-4 h-4" /> JSON 그대로 출력 (미리보기)
+                                                                    </button>
+                                                                </div>
+
 
                                             </div>
                                         </div>

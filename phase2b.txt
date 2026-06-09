@@ -1,0 +1,76 @@
+﻿[1759]     const [characterCastings, setCharacterCastings] = useState<Map<string, CharacterCasting>>(new Map());
+    const [showCastingPanel, setShowCastingPanel] = useState(false);
+
+
+    // Identity Lock (씬 분해 전 캐릭터/의상/악세서리 고정)
+    const [identityLockEnabled, setIdentityLockEnabled] = useState(false);
+    const [identityCharacters, setIdentityCharacters] = useState<IdentityCharacter[]>([]);
+    const [outfitCatalog, setOutfitCatalog] = useState<OutfitCatalog>({ outfits: [], categories: [] });
+    const [isLoadingOutfitCatalog, setIsLoadingOutfitCatalog] = useState(false);
+---
+[2138]                 setCharacterCastings(prev => {
+                    const newMap = new Map(prev);
+                    const existing = newMap.get(characterId);
+                    newMap.set(characterId, {
+                        ...existing,
+                        characterId,
+                        referenceImageUrl: imageUrl,
+                        referenceImageUrls: {
+                            ...existing?.referenceImageUrls,
+---
+[2164]         setCharacterCastings(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(characterId);
+            return newMap;
+        });
+        showToast('캐릭터 캐스팅 이미지가 제거되었습니다.', 'info');
+    }, []);
+
+    // 프롬프트 수정 모달 hook
+---
+[5840]             setCharacterCastings((prev) => {
+                const existing = prev.get(slotId);
+                if (!existing) return prev;
+                const next = new Map(prev);
+                const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
+                const summary = [
+                    field === 'face' ? value : (profile?.face || profile?.identity),
+                    field === 'hair' ? value : profile?.hair,
+                    field === 'body' ? value : profile?.body,
+---
+[6029]         setCharacterCastings((prev) => {
+            const next = new Map(prev);
+            Array.from(next.entries()).forEach(([slotId, casting]) => {
+                const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
+                const matched = characters.find((character) => character.id === profile?.characterId);
+                if (!matched) return;
+                next.set(slotId, {
+                    ...casting,
+                    characterId: matched.id,
+---
+[6068]                 setCharacterCastings((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(slotId, {
+                        characterId: char.id,
+                        referenceImageUrl,
+                        referenceImageUrls: {
+                            front: frontUrl || undefined,
+                            angle45: angle45Url || undefined,
+                            back: backUrl || undefined,
+---
+interface CharacterCasting {
+    characterId: string;
+    referenceImageUrl?: string;
+    referenceImageUrls?: Partial<Record<'front' | 'angle45' | 'back', string>>;
+    referenceViewPreference?: 'front' | 'angle45' | 'back';
+    identitySummary?: string;
+    name?: string;
+}
+
+interface Scene {
+    number: number;
+    text: string;
+    prompt: string;
+    imageUrl?: string;
+    characterIds?: string[];
+    cameraAngle?: string;

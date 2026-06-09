@@ -1,0 +1,15 @@
+﻿=== 파일 존재 확인 ===
+OK   services\characterService.ts
+OK   services\shortsLabCharacterRulesManager.ts
+OK   services\shortsLabCharacterRulesDefaults.ts
+OK   services\shortslab-v4\shortsLabV4CharacterService.ts
+OK   components\ShortsLabPanel.tsx
+
+=== 기존 동기화 함수 유무 ===
+
+=== characterService exports ===
+export interface CharacterItem {
+export const getCachedCharacters = (): CharacterItem[] => {
+export const setCachedCharacters = (characters: CharacterItem[]) => {
+export const fetchCharacters = async (): Promise<CharacterItem[]> => {
+export const saveCharacters = async (characters: CharacterItem[]): Promise<boolean> => {

@@ -5744,54 +5744,129 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
       // ============================================
       const handleMasterGenerateV4 = async () => {
         if (!aiTopic.trim()) { showToast('주제를 입력해주세요.', 'warning'); return; }
+        if (isMasterGenerating) return;
         setIsMasterGenerating(true);
         try {
-            const { buildSimplifiedMasterPrompt } = await import('../services/labPromptBuilder');
+            const service = targetService || 'GEMINI';
+            const gender = settings.koreanGender;
+
+            // ===== 1단계: 줄거리 생성 후 1순위 자동 선택 (또는 기존 선택값 활용) =====
+            let storyContext = '';
+            if (selectedStoryIndex !== null && storylines[selectedStoryIndex]) {
+                const s = storylines[selectedStoryIndex];
+                storyContext = s.title + '\n' + (selectedStoryDraft || s.content);
+            } else {
+                showToast('V4: 줄거리 생성 중...', 'info');
+                const pkg = await generateBenchmarkStorylinePackage(aiTopic.trim(), benchmarkSource.trim() || undefined);
+                const first = pkg.storylines && pkg.storylines[0];
+                if (first) storyContext = first.title + '\n' + first.content;
+            }
+
+            // ===== 2단계: 대본만 생성 (의상/배경 LLM이 안 만듦) =====
+            showToast('V4: 대본 생성 중...', 'info');
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
+            const genreGuideOverride = selectedGenreData ? {
+                name: selectedGenreData.name, description: selectedGenreData.description,
+                emotionCurve: selectedGenreData.emotionCurve, structure: selectedGenreData.structure,
+                killerPhrases: selectedGenreData.killerPhrases,
+                supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                bodyReactions: selectedGenreData.bodyReactions, forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                goodTwistExamples: selectedGenreData.goodTwistExamples,
+                supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                badTwistExamples: selectedGenreData.badTwistExamples,
+                allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
+            } : undefined;
+            const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
+            const scriptPrompt = buildLabScriptOnlyPrompt({
+                topic: aiTopic, genre: aiGenre, targetAge: aiTargetAge, gender,
+                genreGuideOverride, legacyGenrePrompt,
+                characterSlotMode: scriptCharacterMode, additionalContext: storyContext
+            });
+            const scriptRes = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service, prompt: scriptPrompt, maxTokens: 2000, temperature: 0.9, skipFolderCreation: true })
+            });
+            const scriptData = await scriptRes.json();
+            const scriptRaw = scriptData.rawResponse || scriptData.text || scriptData.result || '';
+            let finalScript = '';
+            try {
+                let jc = scriptRaw.trim().replace(/^(JSON|json)\s+/, '');
+                if (jc.startsWith('\`\`\`')) jc = jc.replace(/^\`\`\`(json)?/, '').replace(/\`\`\`$/, '').trim();
+                const pj = JSON.parse(jc.slice(jc.indexOf('{')));
+                const lines = Array.isArray(pj.scriptLines) ? pj.scriptLines : null;
+                finalScript = lines ? lines.join('\n') : (pj.scriptBody || pj.script || '');
+            } catch {
+                const m = scriptRaw.match(/---\s*([\s\S]*?)\s*---/);
+                finalScript = m ? m[1].trim() : scriptRaw.trim();
+            }
+            if (!finalScript) throw new Error('대본 추출 실패');
+            console.log('[V4-2 대본raw]', scriptRaw.slice(0,300));
+            console.log('[V4-2 finalScript]', finalScript.slice(0,300));
+
+            // ===== 3단계: 씬 배정 (고정 슬롯 목록 중에서만 characterIds 선택, rebalance 없음) =====
+            showToast('V4: 씬 배정 중...', 'info');
+            const rules = getCharacterRules();
+            const fixedSlots = [
+                ...(gender === 'male'
+                    ? [...(rules.males||[]), ...(rules.females||[])]
+                    : [...(rules.females||[]), ...(rules.males||[])])
+            ].map((c) => ({ slotId: c.id, name: c.name || c.id, role: (c.id === (gender==='male'?'ManA':'WomanA')) ? '내레이터/주인공' : '' }));
+            const allowedSlotIds = fixedSlots.map(s => s.slotId);
+
+            const { buildV4SceneAssignmentPrompt, parseV4SceneAssignment } = await import('../services/shortslab-v4/shortsLabV4SceneService');
+            const assignPrompt = buildV4SceneAssignmentPrompt({ scriptBody: finalScript, slots: fixedSlots, background: '' });
+            const assignRes = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service, prompt: assignPrompt, maxTokens: 2000, temperature: 0.3, skipFolderCreation: true })
+            });
+            const assignData = await assignRes.json();
+            const assignRaw = assignData.rawResponse || assignData.text || assignData.result || '';
+            let assigned = parseV4SceneAssignment(assignRaw, allowedSlotIds);
+            console.log('[V4-3 배정raw]', assignRaw.slice(0,300));
+            console.log('[V4-3 assigned]', JSON.stringify(assigned).slice(0,300));
+            if (assigned.length === 0) {
+                const ls = finalScript.split('\n').map(s=>s.trim()).filter(Boolean);
+                const nid = gender === 'male' ? 'ManA' : 'WomanA';
+                assigned = ls.map((l, i) => ({ sceneNumber: i+1, scriptLine: l, characterIds: [nid], action: '' }));
+            }
+
+            // ===== 4단계: 의상 배정 (토글) =====
+            const usedSlotIds = Array.from(new Set(assigned.flatMap(s => s.characterIds)));
+            const outfitMap = new Map();
+            if (useRandomOutfits) {
+                const outfitsResp = await fetch('http://localhost:3002/api/outfits');
+                const outfitsJson = await outfitsResp.json();
+                const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
+                const m = assignOutfitsToCharacters({ characterIds: usedSlotIds, genre: aiGenre, outfitsData: outfitsJson.outfits || [], topic: aiTopic });
+                m.forEach((v, k) => outfitMap.set(k, v));
+            }
+
+            // ===== 5단계: 재조립 (기존 정교한 rebuild 활용) =====
+            const llmJson = JSON.stringify({ scriptBody: finalScript, scenes: assigned.map(a => ({
+                sceneNumber: a.sceneNumber, scriptLine: a.scriptLine, characterIds: a.characterIds, action: a.action
+            })) });
             const { parseJsonToScenesDirect } = await import('../services/shortslab-v4/v4DirectParser');
-
-            const prompt = buildSimplifiedMasterPrompt({
-            topic: aiTopic, genre: aiGenre, targetAge: aiTargetAge,
-            gender: settings.koreanGender, useRandomOutfits,
+            const result = parseJsonToScenesDirect(llmJson, {
+                mode: 'rebuild', characterRules: rules, savedCharacters,
+                outfitMap, targetAgeEnglish: convertAgeToEnglish(aiTargetAge),
+                lockBackgroundToFirst: true
             });
-
-            const res = await fetch('http://localhost:3002/api/generate/raw', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ service: targetService || 'GEMINI', prompt, temperature: 0.9 }),
-            });
-            const data = await res.json();
-            const rawText = data.rawResponse || data.text || data.result || '';
-
-            // outfitMap: lockedOutfits 또는 랜덤 (역추출 deriveOutfitMapFromScenePrompts 사용 안 함!)
-            const parsedForOutfit = JSON.parse(rawText.replace(/^```json|```$/g, '').trim().slice(rawText.indexOf('{')));
-            const outfitMap = new Map<string, { name: string; prompt: string }>();
-            Object.entries(parsedForOutfit.lockedOutfits || {}).forEach(([k, v]) => {
-            if (v) outfitMap.set(k, { name: String(v), prompt: String(v) });
-            });
-
-            const result = parseJsonToScenesDirect(rawText, {
-            mode: 'rebuild',
-            characterRules: getCharacterRules(),
-            savedCharacters,
-            outfitMap,
-            targetAgeEnglish: '', // 필요시 convertAgeToEnglish(aiTargetAge)
-            lockBackgroundToFirst: true,
-            });
-
             if (result.errors.length) showToast('경고: ' + result.errors.join(', '), 'warning');
-            if (result.scenes.length) {
-            setScriptInput(result.scriptBody);
+
+            setScriptInput(result.scriptBody || finalScript);
             setScenes(result.scenes);
             setActiveTab('preview');
-            showToast(`✓ V4: ${result.scenes.length}개 씬 생성 완료`, 'success');
-            }
+            showToast(`✓ V4 (3단계): ${result.scenes.length}개 씬 생성 완료`, 'success');
         } catch (e) {
             showToast('V4 생성 실패: ' + (e instanceof Error ? e.message : ''), 'error');
         } finally {
             setIsMasterGenerating(false);
         }
-        };
+    };
 
     const [manualJsonInput, setManualJsonInput] = useState('');
+
     const handleManualJsonParse = () => {
         import('../services/shortslab-v4/v4DirectParser').then(({ parseJsonToScenesDirect }) => {
             const result = parseJsonToScenesDirect(manualJsonInput, {

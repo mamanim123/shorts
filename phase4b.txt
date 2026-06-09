@@ -1,0 +1,27 @@
+﻿=== handleMasterGenerateV4 ===
+      const handleMasterGenerateV4 = async () => {
+        if (!aiTopic.trim()) { showToast('주제를 입력해주세요.', 'warning'); return; }
+        setIsMasterGenerating(true);
+        try {
+            const { buildSimplifiedMasterPrompt } = await import('../services/labPromptBuilder');
+            const { parseJsonToScenesDirect } = await import('../services/shortslab-v4/v4DirectParser');
+
+            const prompt = buildSimplifiedMasterPrompt({
+            topic: aiTopic, genre: aiGenre, targetAge: aiTargetAge,
+
+=== 필요한 state 확인 ===
+[1562]     targetService?: 'GEMINI' | 'CHATGPT' | 'CLAUDE' | 'GENSPARK';
+[1565] export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService }) => {
+[1663]     const [scriptInput, setScriptInput] = useState('');
+[1667]     const [aiTopic, setAiTopic] = useState('');
+[1668]     const [aiGenre, setAiGenre] = useState('comedy-humor');
+[1669]     const [aiTargetAge, setAiTargetAge] = useState('40대');
+[1673]     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
+[1675]     const [isMasterGenerating, setIsMasterGenerating] = useState(false);
+[2176]         targetService,
+[2342]     }, [promptEditText, targetService]);
+[3117]         const targetService = service || settings.imageService || 'GEMINI';
+[3118]         const isGenspark = targetService === 'GENSPARK';
+
+=== V4 import 현황 ===
+[47] import { runShortsLabV4Master } from '../services/shortslab-v4/shortsLabV4FlowService';

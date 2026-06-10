@@ -1,0 +1,42 @@
+<div>
+<script> "((a,b,c,d,e,f,g,h)=>{let i=document.docu"
+<div.group/sidebar-wrapper.flex.min-h-svh>
+  <div.group.peer.md:block>
+    <div.duration-200.inset-y-0.h-svh>
+      <div.flex.h-full.w-full>
+        <div.h-header-height.flex.flex-row>
+        <div.flex.min-h-0.flex-col>
+        <div.flex.flex-col.gap-2>
+  <div.flex.w-full.h-full>
+    <div.flex.w-full.h-full>
+      <div.flex.w-full.h-full>
+        <div.relative.w-full>
+  <span>
+    <h2#radix-_r_6k_.text-lg.font-semibold.leading-none> "Upgrade to SuperGrok"
+<section[aria="Notifications alt+T"]>
+<div>
+<div#portal>
+<div#tooltip-portal>
+<div#dialog-portal>
+<script#server-client-data-experimentation> "{"status":"ready","serverConfig":{"custo"
+<script#_R_>
+<script> "(self.__next_f=self.__next_f||[]).push(["
+<script> "self.__next_f.push([1,"1:\"$Sreact.fragm"
+<script> "self.__next_f.push([1,"1c:I[330229,[\"/_"
+<script> "self.__next_f.push([1,"20:I[729730,[\"/_"
+<script> "self.__next_f.push([1,"21:I[136842,[\"/_"
+<script> "self.__next_f.push([1,"22:I[551083,[\"/_"
+<script> "self.__next_f.push([1,"23:I[115551,[\"/_"
+<script> "self.__next_f.push([1,"24:I[687990,[\"/_"
+<script> "self.__next_f.push([1,"26:I[398467,[\"/_"
+<script> "self.__next_f.push([1,"28:I[687990,[\"/_"
+<script> "self.__next_f.push([1,"2a:I[687990,[\"/_"
+<script> "self.__next_f.push([1,"2b:\"$Sreact.susp"
+<script> "self.__next_f.push([1,"0:{\"P\":null,\"b"
+<script> "self.__next_f.push([1,"2:[\"$\",\"script"
+<script> "self.__next_f.push([1,"e.js\",\"async\":"
+<script> "self.__next_f.push([1,"1a:[\"$\",\"$1\","
+<script> "self.__next_f.push([1,"1b:[\"$\",\"$1\","
+<script> "self.__next_f.push([1,"2d:I[820132,[\"/_"
+<script> "self.__next_f.push([1,"2e:I[72290,[\"/_n"
+<script> "self.__next_f.push([1,"18:[\"$\",\"html\"

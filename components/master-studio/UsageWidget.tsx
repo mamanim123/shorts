@@ -11,14 +11,6 @@ import {
     UsageSnapshot,
 } from './services/usageTracker';
 
-const getTodayDateKey = (): string => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
 const UsageWidget: React.FC = () => {
     const [snapshot, setSnapshot] = useState<UsageSnapshot>(() => getUsageSnapshot());
     const [selectedKeyId, setSelectedKeyId] = useState<string>(() => getActiveApiKeyId());
@@ -43,15 +35,6 @@ const UsageWidget: React.FC = () => {
             .sort((a, b) => b[1].totalTokens - a[1].totalTokens)
             .slice(0, 2);
     }, [snapshot.byModel]);
-
-    const todayStats = useMemo(() => {
-        return snapshot.byDate?.[getTodayDateKey()] || {
-            calls: 0,
-            totalPromptTokens: 0,
-            totalResponseTokens: 0,
-            totalTokens: 0,
-        };
-    }, [snapshot.byDate]);
 
     const last = snapshot.last;
 
@@ -131,20 +114,12 @@ const UsageWidget: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-200">
                 <div className="bg-white/5 border border-white/5 rounded-xl p-3">
-                    <div className="text-gray-400 mb-1">전체 호출</div>
+                    <div className="text-gray-400 mb-1">총 호출</div>
                     <div className="text-lg font-semibold">{snapshot.calls}회</div>
                 </div>
                 <div className="bg-white/5 border border-white/5 rounded-xl p-3">
-                    <div className="text-gray-400 mb-1">전체 토큰</div>
+                    <div className="text-gray-400 mb-1">총 토큰</div>
                     <div className="text-lg font-semibold">{snapshot.totalTokens.toLocaleString()} tok</div>
-                </div>
-                <div className="bg-emerald-500/10 border border-emerald-400/20 rounded-xl p-3">
-                    <div className="text-emerald-200 mb-1">오늘 호출</div>
-                    <div className="text-lg font-semibold">{todayStats.calls}회</div>
-                </div>
-                <div className="bg-emerald-500/10 border border-emerald-400/20 rounded-xl p-3">
-                    <div className="text-emerald-200 mb-1">오늘 토큰</div>
-                    <div className="text-lg font-semibold">{todayStats.totalTokens.toLocaleString()} tok</div>
                 </div>
             </div>
 

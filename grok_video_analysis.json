@@ -1,0 +1,403 @@
+{
+  "selectorInfo": {
+    "text": "Image",
+    "x": 1159.015625,
+    "y": 855,
+    "width": 120.96875,
+    "height": 40
+  },
+  "dropdown1": [
+    {
+      "tag": "DIV",
+      "text": "SearchCtrl+K\nChat\nCtrl+J\nVoice\nImagine\nProjects\nHistory\n2025\n이미지 편집: 키스 장면 수정\nSee all\nToggle Sidebar",
+      "zIndex": 40,
+      "position": "static",
+      "x": 0,
+      "y": 0,
+      "w": 257,
+      "h": 900,
+      "class": "group peer md:block text-sidebar-foreground z-[40] print:hidden",
+      "role": null,
+      "dataState": "expanded"
+    },
+    {
+      "tag": "DIV",
+      "text": "SearchCtrl+K\nChat\nCtrl+J\nVoice\nImagine\nProjects\nHistory\n2025\n이미지 편집: 키스 장면 수정\nSee all\nToggle Sidebar",
+      "zIndex": 50,
+      "position": "static",
+      "x": 0,
+      "y": 0,
+      "w": 257,
+      "h": 900,
+      "class": "duration-200 inset-y-0 h-svh w-[--sidebar-width] box-content transition-[left,ri",
+      "role": null,
+      "dataState": null
+    },
+    {
+      "tag": "DIV",
+      "text": "2025",
+      "zIndex": 20,
+      "position": "sticky",
+      "x": 36,
+      "y": 304,
+      "w": 200,
+      "h": 28,
+      "class": "py-1 pl-3 text-xs text-secondary sticky top-0 z-20 text-nowrap font-semibold sel",
+      "role": null,
+      "dataState": null
+    },
+    {
+      "tag": "DIV",
+      "text": "Image",
+      "zIndex": 0,
+      "position": "absolute",
+      "x": 257,
+      "y": 810,
+      "w": 1143,
+      "h": 90,
+      "class": "absolute left-0 bottom-0 w-full p-3",
+      "role": null,
+      "dataState": null
+    },
+    {
+      "tag": "DIV",
+      "text": "Image",
+      "zIndex": 20,
+      "position": "relative",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "query-bar group z-20 relative w-full overflow-hidden @container/input pb-0 bg-su",
+      "role": null,
+      "dataState": null
+    },
+    {
+      "tag": "DIV",
+      "text": "Image",
+      "zIndex": 0,
+      "position": "absolute",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "flex absolute inset-x-0 bottom-0 border-2 border-transparent max-w-full p-2 @[48",
+      "role": null,
+      "dataState": null
+    },
+    {
+      "tag": "DIV",
+      "text": "Image",
+      "zIndex": 20,
+      "position": "static",
+      "x": 1099,
+      "y": 835,
+      "w": 121,
+      "h": 40,
+      "class": "z-20",
+      "role": null,
+      "dataState": null
+    },
+    {
+      "tag": "DIV",
+      "text": "Video Duration\n\n6s\n10s\n\nVideo Resolution\n\n480p\n720p\n\nAspect Ratio\n\nVideo\nGenerate a video\nImage\nGenerate multiple images",
+      "zIndex": 0,
+      "position": "fixed",
+      "x": 1053,
+      "y": 471,
+      "w": 213,
+      "h": 360,
+      "class": "",
+      "role": null,
+      "dataState": null
+    }
+  ],
+  "videoOption": [
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 257,
+      "y": 810,
+      "w": 1143,
+      "h": 90,
+      "class": "absolute left-0 bottom-0 w-full p-3",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "w-full relative",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 269,
+      "y": 822,
+      "w": 1119,
+      "h": 66,
+      "class": "flex flex-row items-center gap-2 justify-center",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "absolute left-0 bottom-0 w-full p-3",
+        "role": null
+      }
+    },
+    {
+      "tag": "FORM",
+      "directText": "",
+      "fullText": "Image",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "w-full text-base flex flex-col gap-2 items-center justify-center relative z-10 max-w-breakout",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex flex-row items-center gap-2 justify-center",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "flex flex-col gap-0 justify-center w-full relative items-center",
+      "clickable": true,
+      "parent": {
+        "tag": "FORM",
+        "class": "w-full text-base flex flex-col gap-2 items-center justify-center relative z-10 m",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "query-bar group z-20 relative w-full overflow-hidden @container/input pb-0 bg-surface-l1 ring-1 ring",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex flex-col gap-0 justify-center w-full relative items-center",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "ps-11 pe-20",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "query-bar group z-20 relative w-full overflow-hidden @container/input pb-0 bg-su",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 474,
+      "y": 825,
+      "w": 800,
+      "h": 60,
+      "class": "flex absolute inset-x-0 bottom-0 border-2 border-transparent max-w-full p-2 @[480px]/input:p-2",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "ps-11 pe-20",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 484,
+      "y": 835,
+      "w": 780,
+      "h": 40,
+      "class": "grow flex items-center gap-1.5",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex absolute inset-x-0 bottom-0 border-2 border-transparent max-w-full p-2 @[48",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 1099,
+      "y": 835,
+      "w": 165,
+      "h": 40,
+      "class": "ms-auto flex flex-row items-end gap-1",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "grow flex items-center gap-1.5",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 1099,
+      "y": 835,
+      "w": 121,
+      "h": 40,
+      "class": "z-20",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "ms-auto flex flex-row items-end gap-1",
+        "role": null
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "directText": "",
+      "fullText": "Image",
+      "x": 1099,
+      "y": 835,
+      "w": 121,
+      "h": 40,
+      "class": "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer focus-vis",
+      "clickable": true,
+      "parent": {
+        "tag": "DIV",
+        "class": "z-20",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 1114,
+      "y": 845,
+      "w": 67,
+      "h": 21,
+      "class": "flex flex-row items-center gap-2",
+      "clickable": false,
+      "parent": {
+        "tag": "BUTTON",
+        "class": "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium curs",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 1140,
+      "y": 845,
+      "w": 41,
+      "h": 21,
+      "class": "",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex flex-row items-center gap-2",
+        "role": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "directText": "",
+      "fullText": "Image",
+      "x": 1140,
+      "y": 845,
+      "w": 41,
+      "h": 21,
+      "class": "flex flex-col items-start",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "",
+        "role": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "directText": "Image",
+      "fullText": "Image",
+      "x": 1140,
+      "y": 845,
+      "w": 41,
+      "h": 21,
+      "class": "font-semibold text-sm shrink-0 line-clamp-1",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex flex-col items-start",
+        "role": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "directText": "Video",
+      "fullText": "Video",
+      "x": 1096,
+      "y": 721,
+      "w": 39,
+      "h": 21,
+      "class": "font-semibold text-sm shrink-0 line-clamp-1",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex flex-col items-start",
+        "role": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "directText": "Image",
+      "fullText": "Image",
+      "x": 1096,
+      "y": 778,
+      "w": 41,
+      "h": 21,
+      "class": "font-semibold text-sm shrink-0 line-clamp-1",
+      "clickable": false,
+      "parent": {
+        "tag": "DIV",
+        "class": "flex flex-col items-start",
+        "role": null
+      }
+    }
+  ],
+  "clickResult": {
+    "method": "direct-click",
+    "tag": "SPAN"
+  },
+  "finalState": {
+    "currentModel": "Video",
+    "url": "https://grok.com/imagine",
+    "hasTextarea": true,
+    "textareaPlaceholder": "",
+    "submitDisabled": true,
+    "hasAttach": true,
+    "fileInputAccept": "image/*",
+    "fileInputMultiple": false
+  }
+}

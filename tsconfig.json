@@ -32,16 +32,6 @@
     "temp_*.ts",
     "temp_*.js",
     "backups/**/*",
-    "node_modules",
-    "_old_backups/**/*",
-    "**/*.bak",
-    "**/*.bak_*",
-    "patch_*.ts",
-    "patch_*.tsx",
-    "apply_*.js",
-    "pdp-maker/**/*",
-    "pdp-maker-201-main/**/*",
-    "_v4_replace.cjs",
-    "*.cjs"
+    "node_modules"
   ]
 }

@@ -1,10 +1,10 @@
-﻿/**
+/**
  * shortsLabCharacterRulesManager.ts
- * 罹먮┃???섏긽 洹쒖튃 ?ㅽ넗由ъ? 留ㅻ땲?
+ * 캐릭터 의상 규칙 스토리지 매니저
  *
- * v2.0 ?낅뜲?댄듃:
- * - 罹먮┃??異붽?/??젣 湲곕뒫 異붽?
- * - ?숈쟻 諛곗뿴 援ъ“ 吏??
+ * v2.0 업데이트:
+ * - 캐릭터 추가/삭제 기능 추가
+ * - 동적 배열 구조 지원
  */
 
 import { DEFAULT_CHARACTER_RULES, ShortsLabCharacterRules, CharacterSlotRule, generateCharacterId, ruleKeyToSlotId } from './shortsLabCharacterRulesDefaults';
@@ -14,10 +14,9 @@ import {
   primeAppStorageCache,
   setAppStorageValue
 } from './appStorageService';
-import { fetchCharacters } from './characterService';
 import type { CharacterItem } from './characterService';
 
-// CharacterItem ??CharacterSlotRule 蹂???⑥닔
+// CharacterItem → CharacterSlotRule 변환 함수
 export const convertCharacterToSlotRule = (
   char: CharacterItem,
   targetSlotId: string
@@ -128,7 +127,7 @@ const hasLegacyIds = (rules: ShortsLabCharacterRules) => {
 const normalizeRules = (input?: Partial<ShortsLabCharacterRules>): ShortsLabCharacterRules => {
   const source = input || {};
 
-  // 諛곗뿴 ?뺢퇋??
+  // 배열 정규화
   const normalizeFemales = Array.isArray(source.females)
     ? source.females.map(normalizeCharacterSlot)
     : DEFAULT_CHARACTER_RULES.females.map(normalizeCharacterSlot);
@@ -155,7 +154,7 @@ const normalizeBackup = (
   backup: Partial<ShortsLabCharacterRulesBackup> & { id: string }
 ): ShortsLabCharacterRulesBackup => ({
   id: backup.id,
-  name: backup.name?.trim() || '?대쫫 ?녿뒗 諛깆뾽',
+  name: backup.name?.trim() || '이름 없는 백업',
   createdAt: backup.createdAt || new Date().toISOString(),
   rules: normalizeRules(backup.rules)
 });
@@ -219,7 +218,7 @@ const formatBackupName = (input?: string) => {
   const now = new Date();
   const date = now.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   const time = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  return `諛깆뾽 ${date} ${time}`;
+  return `백업 ${date} ${time}`;
 };
 
 export const shortsLabCharacterRulesManager = {
@@ -229,7 +228,7 @@ export const shortsLabCharacterRulesManager = {
     return cachedRules;
   },
   getBackups: (): ShortsLabCharacterRulesBackup[] => {
-    // 罹먯떆??諛깆뾽 諛섑솚 (理쒖큹 濡쒕뱶??loadBackups瑜??듯빐)
+    // 캐시된 백업 반환 (최초 로드는 loadBackups를 통해)
     return cachedBackups || [];
   },
   subscribeRules: (listener: RulesListener) => {
@@ -274,7 +273,7 @@ export const shortsLabCharacterRulesManager = {
     return defaultRules;
   },
 
-  // ===== 罹먮┃??異붽?/??젣 湲곕뒫 =====
+  // ===== 캐릭터 추가/삭제 기능 =====
   addFemaleCharacter: async (): Promise<ShortsLabCharacterRules> => {
     const rules = cachedRules || readStoredRules();
     const newIndex = rules.females.length;
@@ -330,14 +329,14 @@ export const shortsLabCharacterRulesManager = {
   deleteFemaleCharacter: async (id: string): Promise<ShortsLabCharacterRules> => {
     const rules = cachedRules || readStoredRules();
 
-    // femaleD (罹먮뵒)????젣 諛⑹?
+    // femaleD (캐디)는 삭제 방지
     if (id === 'WomanD') {
-      throw new Error('罹먮뵒(Woman D)????젣?????놁뒿?덈떎.');
+      throw new Error('캐디(Woman D)는 삭제할 수 없습니다.');
     }
 
-    // 理쒖냼 1媛쒕뒗 ?좎?
+    // 최소 1개는 유지
     if (rules.females.length <= 1) {
-      throw new Error('理쒖냼 1媛쒖쓽 ?ъ꽦 罹먮┃?곕뒗 ?좎??댁빞 ?⑸땲??');
+      throw new Error('최소 1개의 여성 캐릭터는 유지해야 합니다.');
     }
 
     const updated = {
@@ -354,9 +353,9 @@ export const shortsLabCharacterRulesManager = {
   deleteMaleCharacter: async (id: string): Promise<ShortsLabCharacterRules> => {
     const rules = cachedRules || readStoredRules();
 
-    // 理쒖냼 1媛쒕뒗 ?좎?
+    // 최소 1개는 유지
     if (rules.males.length <= 1) {
-      throw new Error('理쒖냼 1媛쒖쓽 ?⑥꽦 罹먮┃?곕뒗 ?좎??댁빞 ?⑸땲??');
+      throw new Error('최소 1개의 남성 캐릭터는 유지해야 합니다.');
     }
 
     const updated = {
@@ -393,7 +392,7 @@ export const shortsLabCharacterRulesManager = {
     return updated;
   },
 
-  // 罹먮┃??媛?몄삤湲? CharacterItem ??CharacterSlotRule 蹂?????곸슜
+  // 캐릭터 가져오기: CharacterItem → CharacterSlotRule 변환 후 적용
   importCharacter: async (
     char: CharacterItem,
     targetSlotId: string
@@ -431,12 +430,12 @@ export const shortsLabCharacterRulesManager = {
       rules
     });
 
-    // ?뚯씪濡?諛깆뾽 ???
+    // 파일로 백업 저장
     await writeStoredBackup(newBackup);
 
-    // 諛깆뾽 紐⑸줉 媛깆떊
+    // 백업 목록 갱신
     cachedBackups = await readStoredBackups();
-    // 理쒕? 媛쒖닔 ?쒗븳
+    // 최대 개수 제한
     if (cachedBackups.length > MAX_BACKUPS) {
       const toDelete = cachedBackups.slice(MAX_BACKUPS);
       for (const backup of toDelete) {
@@ -451,7 +450,7 @@ export const shortsLabCharacterRulesManager = {
     const backups = cachedBackups || await readStoredBackups();
     const target = backups.find((backup) => backup.id === id);
     if (!target) {
-      throw new Error('諛깆뾽??李얠쓣 ???놁뒿?덈떎.');
+      throw new Error('백업을 찾을 수 없습니다.');
     }
     const restored = normalizeRules(target.rules);
     await writeStoredRules(restored);
@@ -460,10 +459,10 @@ export const shortsLabCharacterRulesManager = {
     return restored;
   },
   deleteBackup: async (id: string): Promise<ShortsLabCharacterRulesBackup[]> => {
-    // ?뚯씪?먯꽌 諛깆뾽 ??젣
+    // 파일에서 백업 삭제
     await deleteStoredBackup(id);
 
-    // 諛깆뾽 紐⑸줉 媛깆떊
+    // 백업 목록 갱신
     cachedBackups = await readStoredBackups();
     notifyBackupListeners(cachedBackups);
     return cachedBackups;
@@ -471,20 +470,20 @@ export const shortsLabCharacterRulesManager = {
   renameBackup: async (id: string, name: string): Promise<ShortsLabCharacterRulesBackup[]> => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('諛깆뾽 ?대쫫???낅젰?댁＜?몄슂.');
+      throw new Error('백업 이름을 입력해주세요.');
     }
     const backups = cachedBackups || await readStoredBackups();
     const target = backups.find(b => b.id === id);
     if (!target) {
-      throw new Error('諛깆뾽??李얠쓣 ???놁뒿?덈떎.');
+      throw new Error('백업을 찾을 수 없습니다.');
     }
 
-    // 湲곗〈 諛깆뾽 ??젣 ???대쫫留?諛붽퓭???ъ깮??
+    // 기존 백업 삭제 후 이름만 바꿔서 재생성
     await deleteStoredBackup(id);
     const renamed = normalizeBackup({ ...target, name: trimmedName });
     await writeStoredBackup(renamed);
 
-    // 諛깆뾽 紐⑸줉 媛깆떊
+    // 백업 목록 갱신
     cachedBackups = await readStoredBackups();
     notifyBackupListeners(cachedBackups);
     return cachedBackups;
@@ -497,15 +496,15 @@ export const shortsLabCharacterRulesManager = {
     const backups = cachedBackups || await readStoredBackups();
     const target = backups.find(b => b.id === id);
     if (!target) {
-      throw new Error('諛깆뾽??李얠쓣 ???놁뒿?덈떎.');
+      throw new Error('백업을 찾을 수 없습니다.');
     }
 
-    // 湲곗〈 諛깆뾽 ??젣 ???댁슜留?諛붽퓭???ъ깮??
+    // 기존 백업 삭제 후 내용만 바꿔서 재생성
     await deleteStoredBackup(id);
     const updated = normalizeBackup({ ...target, rules: normalized });
     await writeStoredBackup(updated);
 
-    // 諛깆뾽 紐⑸줉 媛깆떊
+    // 백업 목록 갱신
     cachedBackups = await readStoredBackups();
     notifyBackupListeners(cachedBackups);
     return cachedBackups;
@@ -514,66 +513,3 @@ export const shortsLabCharacterRulesManager = {
 
 export const getCharacterRules = (): ShortsLabCharacterRules =>
   shortsLabCharacterRulesManager.getRules();
-
-// ============================================
-// [V4] 罹먮┃??移댄깉濡쒓렇 ???щ’ ?숆린??(characterId 湲곕컲 ?⑥씪??
-// SSOT = characterService(移댄깉濡쒓렇). ?щ’? characterId濡??몃え瑜?議고쉶??梨꾩슫??
-// ============================================
-
-const v4SummarizeIdentity = (char: CharacterItem): string => {
-  const age = char.age ? (char.gender === 'female' ? `in her ${char.age}` : `in his ${char.age}`) : '';
-  const base = char.gender === 'female' ? 'A stunning Korean woman' : 'A handsome Korean man';
-  return [base, age].filter(Boolean).join(' ');
-};
-
-const v4BuildBody = (char: CharacterItem): string =>
-  [char.identitySpec?.bodyType, char.identitySpec?.bustDescription,
-   char.identitySpec?.heightDescription, char.body].filter(Boolean).join(', ');
-
-const v4BuildStyle = (char: CharacterItem): string =>
-  [char.identitySpec?.styleCore, char.identitySpec?.signatureFeatures, char.style]
-    .filter(Boolean).join(', ');
-
-/**
- * ?щ’??characterId濡?移댄깉濡쒓렇瑜?議고쉶???대떦 ?щ’ 1媛쒖쓽 ?몃え瑜?理쒖떊?뷀븳??
- * 諛섑솚: 媛깆떊???꾩껜 洹쒖튃 (蹂寃??놁쑝硫??꾩옱 洹쒖튃 洹몃?濡?
- */
-export const syncSlotFromCatalog = async (slotId: string): Promise<ShortsLabCharacterRules> => {
-  const rules = shortsLabCharacterRulesManager.getRules();
-  const isWoman = slotId.startsWith('Woman');
-  const list = isWoman ? rules.females : rules.males;
-  const slot = list.find((s) => s.id === slotId);
-  if (!slot || !slot.characterId) return rules;
-
-  const catalog = await fetchCharacters();
-  const matched = catalog.find((c) => c.id === slot.characterId);
-  if (!matched) return rules;
-
-  const patch: Partial<CharacterSlotRule> = {
-    name: matched.name || slot.name,
-    identity: v4SummarizeIdentity(matched),
-    hair: matched.identitySpec?.hairDescription || matched.hair || slot.hair,
-    body: v4BuildBody(matched) || slot.body,
-    style: v4BuildStyle(matched) || slot.style,
-    face: matched.identitySpec?.faceShape || matched.face || slot.face,
-    skinTone: matched.identitySpec?.skinTone || slot.skinTone,
-    signatureFeatures: matched.identitySpec?.signatureFeatures || slot.signatureFeatures
-  };
-
-  return shortsLabCharacterRulesManager.updateCharacter(isWoman ? 'female' : 'male', slotId, patch);
-};
-
-/**
- * characterId媛 ?곌껐??紐⑤뱺 ?щ’???쇨큵 ?숆린??(???쒖옉/移댄깉濡쒓렇 蹂寃????몄텧).
- */
-export const syncAllSlotsFromCatalog = async (): Promise<ShortsLabCharacterRules> => {
-  const rules = shortsLabCharacterRulesManager.getRules();
-  const linked = [...rules.females, ...rules.males]
-    .filter((s) => !!s.characterId)
-    .map((s) => s.id);
-  let latest = rules;
-  for (const slotId of linked) {
-    latest = await syncSlotFromCatalog(slotId);
-  }
-  return latest;
-};

@@ -1,8 +1,7 @@
-// Imports removed for browser compatibility
+﻿// Imports removed for browser compatibility
 import { SYSTEM_PROMPT_V3_COSTAR, SYSTEM_PROMPT_V3, SYSTEM_PROMPT_CHATGPT, SYSTEM_PROMPT_CLAUDE, SYSTEM_PROMPT_VIRAL, CHARACTER_PRESETS, UNIFIED_OUTFIT_LIST } from "../constants";
 import { resolveEnginePrompt, ensureEngineConfigLoaded } from "./enginePromptStore";
 import { UserInput, StoryResponse, ScenarioMode, StyleTemplate } from '../types';
-import { jsonrepair } from 'jsonrepair';
 import {
   applyPromptEnhancementSlots,
   DEFAULT_PROMPT_ENHANCEMENT_SETTINGS,
@@ -2453,6 +2452,7 @@ ${benchmarkSection}
     } catch (e) {
       // jsonrepair 시도
       try {
+        const { jsonrepair } = require('jsonrepair');
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           parsed = JSON.parse(jsonrepair(jsonMatch[0]));

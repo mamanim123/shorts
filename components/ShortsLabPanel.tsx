@@ -5248,6 +5248,23 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             setCurrentFolderName(result.folderName);
             setActiveTab('preview');
 
+            // [V4 STEP2] 사용된 슬롯의 저장 캐릭터(3면도)를 characterCastings에 로드
+            try {
+                const rulesForCasting = getCharacterRules();
+                const allSlotRules = [...(rulesForCasting.females || []), ...(rulesForCasting.males || [])];
+                const chars = savedCharacters.length > 0 ? savedCharacters : await loadSavedCharacters();
+                for (const slotId of (result.slotIds || [])) {
+                    const slotRule = allSlotRules.find((r) => r.id === slotId);
+                    const charId = slotRule?.characterId;
+                    if (!charId) continue;
+                    const matched = chars.find((c) => c.id === charId);
+                    if (!matched) continue;
+                    await applyCharacterToMasterProfile(slotId, matched);
+                }
+            } catch (castingError) {
+                console.warn('[V4 STEP2] 3D casting load failed:', castingError);
+            }
+
             const errorCount = result.validationIssues.filter((issue) => issue.severity === 'error').length;
             const warningCount = result.validationIssues.filter((issue) => issue.severity === 'warning').length;
             if (errorCount > 0 || warningCount > 0) {
@@ -6036,6 +6053,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
     const blobToDataUrl = useCallback(async (blobId?: string) => {
         if (!blobId) return '';
+        if (/^https?:\/\//.test(blobId) || blobId.startsWith('data:')) return blobId;
         const blob = await getBlob(blobId);
         if (!blob) return '';
         return await new Promise<string>((resolve) => {

@@ -101,6 +101,7 @@ const normalizeCharacterSlot = (input?: Partial<CharacterSlotRule>): CharacterSl
   const trimmedName = typeof source.name === 'string' ? source.name.trim() : '';
   return {
     id: normalizedId,
+    characterId: typeof source.characterId === 'string' ? source.characterId : undefined,
     name: trimmedName || fallbackName,
     identity: typeof source.identity === 'string' ? source.identity : '',
     hair: typeof source.hair === 'string' ? source.hair : '',

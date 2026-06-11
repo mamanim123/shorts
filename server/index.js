@@ -1984,8 +1984,35 @@ app.post('/api/save-character-turnaround', async (req, res) => {
 // ---------------------------------------------------------
 app.get('/api/characters', (req, res) => {
     try {
-        const raw = fs.readFileSync(CHARACTERS_FILE, 'utf8');
-        res.json(JSON.parse(raw));
+        let parsed = { characters: [] };
+        try { parsed = JSON.parse(fs.readFileSync(CHARACTERS_FILE, 'utf8')); } catch (e) {}
+        if (!Array.isArray(parsed.characters)) parsed.characters = [];
+        if (parsed.characters.length === 0) {
+            const charDir = path.join(GENERATED_DIR, 'characters');
+            if (fs.existsSync(charDir)) {
+                const folders = fs.readdirSync(charDir, { withFileTypes: true }).filter(d => d.isDirectory());
+                const base = 'http://localhost:3002/generated_scripts/characters';
+                parsed.characters = folders.map(d => {
+                    const folderName = d.name;
+                    let meta = {};
+                    try { meta = JSON.parse(fs.readFileSync(path.join(charDir, folderName, 'character.json'), 'utf8')); } catch (e) {}
+                    const files = meta.files || {};
+                    const url = (f) => f ? base + '/' + encodeURIComponent(folderName) + '/' + f : undefined;
+                    return {
+                        id: folderName,
+                        name: meta.name || folderName,
+                        age: meta.age || '40s',
+                        gender: meta.gender || 'female',
+                        face: '', hair: '', body: '', style: '',
+                        createdAt: meta.createdAt || new Date().toISOString(),
+                        sourceType: 'ai-studio',
+                        generatedImageId: url(files.front),
+                        turnaroundImageIds: { front: url(files.front), angle45: url(files.angle45), back: url(files.back) }
+                    };
+                });
+            }
+        }
+        res.json(parsed);
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

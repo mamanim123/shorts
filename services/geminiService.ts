@@ -3,6 +3,7 @@ import { SYSTEM_PROMPT_V3_COSTAR, SYSTEM_PROMPT_V3, SYSTEM_PROMPT_CHATGPT, SYSTE
 import { resolveEnginePrompt, ensureEngineConfigLoaded } from "./enginePromptStore";
 import { UserInput, StoryResponse, ScenarioMode, StyleTemplate } from '../types';
 import { jsonrepair } from 'jsonrepair';
+import { parseJsonFromText } from './jsonParse';
 import {
   applyPromptEnhancementSlots,
   DEFAULT_PROMPT_ENHANCEMENT_SETTINGS,
@@ -2444,26 +2445,33 @@ ${benchmarkSection}
     }
 
     // JSON 파싱 시도
-    let parsed: any;
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      }
-    } catch (e) {
-      // jsonrepair 시도
+    let parsed: any = parseJsonFromText(text, ['storylines', 'analysis', 'title', 'content', 'hook', 'twist']);
+
+    // fallback 1: 값 안의 깨진 따옴표 정리 후 재시도
+    if (!parsed || !Array.isArray(parsed?.storylines)) {
       try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonrepair(jsonMatch[0]));
+        const m = text.match(/\{[\s\S]*\}/);
+        if (m) {
+          const fixed = m[0].replace(/:\s*"([\s\S]*?)"(\s*[,}\]])/g, (_full, val, tail) =>
+            ': "' + String(val).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ') + '"' + tail);
+          parsed = JSON.parse(jsonrepair(fixed));
         }
-      } catch (e2) {
-        throw new Error('JSON 파싱 실패');
+      } catch (e) {}
+    }
+
+    // fallback 2: storylines 항목만 정규식으로 긁어내기
+    if (!parsed || !Array.isArray(parsed?.storylines)) {
+      const items: any[] = [];
+      const re = /"title"\s*:\s*"([^"]+)"[\s\S]*?"content"\s*:\s*"([\s\S]*?)"\s*,\s*"hook"/g;
+      let mm;
+      while ((mm = re.exec(text)) !== null) {
+        items.push({ title: mm[1], content: mm[2] });
       }
+      if (items.length > 0) parsed = { storylines: items, analysis: {} };
     }
 
     if (!parsed || !Array.isArray(parsed.storylines)) {
-      throw new Error('줄거리 데이터를 파싱할 수 없습니다.');
+      throw new Error('storylines 파싱 실패');
     }
 
     return {

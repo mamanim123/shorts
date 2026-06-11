@@ -1,4 +1,4 @@
-﻿import puppeteer from 'puppeteer-extra';
+import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import path from 'path';
 import fs from 'fs';
@@ -2100,7 +2100,9 @@ export async function generateContent(serviceName, prompt, files = [], options =
                 const isExtraction = dataToCheck.en && dataToCheck.ko;
                 const isPromptOnly = typeof dataToCheck.prompt === 'string';
 
-                if (isScript || isTemplate || isAnalysis || isDetailedAnalysis || isElementAnalysis || isCharacterAnalysis || isExtraction || isPromptOnly) {
+                // [V4] 키 검사 폐기: 파싱되는 JSON 객체/배열이면 통과 (개떡같이 와도 찰떡같이)
+                const isValidJsonObject = parsed && typeof parsed === 'object' && (Array.isArray(parsed) ? parsed.length > 0 : Object.keys(parsed).length > 0);
+                if (isValidJsonObject) {
                     console.log(`✅ JSON Parse Successful! ${isScript ? 'Script' : isTemplate ? 'Template' : isAnalysis ? 'Analysis' : isDetailedAnalysis ? 'DetailedAnalysis' : isElementAnalysis ? 'ElementAnalysis' : isExtraction ? 'Extraction' : isPromptOnly ? 'Prompt' : 'Character'} detected. Generation Complete.`);
                     return currentText;
                 } else {

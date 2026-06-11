@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ShortsLabPanel.tsx
  * 쇼츠 영상 제작을 위한 테스트 패널 V2
  * 
@@ -7621,7 +7621,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                 >
                                     {isV4Generating
                                         ? <><Loader2 className="w-5 h-5 animate-spin" /> V4 줄거리 생성 중...</>
-                                        : <><Zap className="w-5 h-5" /> V4 줄거리</>}
+                                        : <><Zap className="w-5 h-5" /> AI MASTER V4 줄거리</>}
                                 </button>
 
                                             </div>

@@ -1,0 +1,109 @@
+import { assignOutfitsToCharacters } from '../labPromptBuilder';
+import { parseJsonFromText } from '../jsonParse';
+import { callV4GenerateRaw, fetchV4Outfits } from './v4ApiClient';
+import type { V4FlowInput, V4OutfitEntry, V4SceneSlot } from './v4Types';
+
+const normalizeOutfitMap = (value: unknown, allowedSlotIds: string[]): Map<string, V4OutfitEntry> => {
+  const result = new Map<string, V4OutfitEntry>();
+  const allowed = new Set(allowedSlotIds);
+  if (!value || typeof value !== 'object') return result;
+
+  Object.entries(value as Record<string, unknown>).forEach(([slotId, outfit]) => {
+    if (!allowed.has(slotId)) return;
+    const text = String(outfit || '').trim();
+    if (!text) return;
+    result.set(slotId, { name: text, prompt: text });
+  });
+
+  return result;
+};
+
+const buildV4LlmOutfitPrompt = (params: {
+  topic: string;
+  genre: string;
+  targetAge: string;
+  scriptBody: string;
+  slots: V4SceneSlot[];
+}): string => {
+  const slotBlock = params.slots
+    .map((slot) => `- ${slot.slotId}: ${slot.name}${slot.role ? ` (${slot.role})` : ''}, ${slot.gender}`)
+    .join('\n');
+
+  return `[SYSTEM: STRICT JSON OUTPUT ONLY - NO EXTRA TEXT]
+
+당신은 쇼츠 이미지 프롬프트용 의상 디자이너입니다.
+아래 대본과 주제에 어울리는 캐릭터별 고정 의상명을 만드세요.
+
+주제: ${params.topic}
+장르: ${params.genre}
+타겟 연령: ${params.targetAge}
+
+고정 캐릭터 슬롯:
+${slotBlock}
+
+대본:
+${params.scriptBody}
+
+규칙:
+1. 위 슬롯 목록에 없는 캐릭터를 만들지 마세요.
+2. 캐릭터별 의상은 영상 전체에서 1벌만 사용됩니다.
+3. 골프/계절/장소/상황에 맞는 아름답고 세련된 의상으로 정하세요.
+4. cheap, vulgar, tacky, overly revealing, deep cleavage, lingerie-like 표현은 금지합니다.
+5. 출력은 lockedOutfits JSON만 작성하세요.
+
+출력 JSON:
+{
+  "lockedOutfits": {
+    "WomanA": "elegant outfit name",
+    "ManA": "tailored outfit name"
+  }
+}`;
+};
+
+export const resolveV4Outfits = async (params: {
+  input: V4FlowInput;
+  scriptBody: string;
+  slots: V4SceneSlot[];
+  usedSlotIds: string[];
+}): Promise<Map<string, V4OutfitEntry>> => {
+  const { input, scriptBody, slots, usedSlotIds } = params;
+  const used = Array.from(new Set(usedSlotIds.filter(Boolean)));
+
+  if (used.length === 0) return new Map();
+
+  if (input.useRandomOutfits) {
+    const outfitsData = input.outfitsData || await fetchV4Outfits();
+    return assignOutfitsToCharacters({
+      characterIds: used,
+      genre: input.genre,
+      outfitsData,
+      topic: input.topic
+    });
+  }
+
+  const usedSlots = slots.filter((slot) => used.includes(slot.slotId));
+  const prompt = buildV4LlmOutfitPrompt({
+    topic: input.topic,
+    genre: input.genre,
+    targetAge: input.targetAge,
+    scriptBody,
+    slots: usedSlots
+  });
+
+  const rawText = await callV4GenerateRaw({
+    service: input.service,
+    prompt,
+    maxTokens: 1000,
+    temperature: 0.45,
+    skipFolderCreation: true
+  });
+
+  const parsed = parseJsonFromText<any>(rawText, ['lockedOutfits']);
+  const outfitMap = normalizeOutfitMap(parsed?.lockedOutfits || parsed, used);
+
+  if (outfitMap.size === 0) {
+    throw new Error('V4 LLM 의상 선택 실패: lockedOutfits가 비어 있습니다.');
+  }
+
+  return outfitMap;
+};

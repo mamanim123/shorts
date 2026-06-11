@@ -1,0 +1,177 @@
+﻿
+  components\ShortsLabPanel.tsx:1683:    const masterGenerateLockRef = useRef(false);
+  components\ShortsLabPanel.tsx:1684:
+> components\ShortsLabPanel.tsx:1685:    // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
+  components\ShortsLabPanel.tsx:1686:    const [masterCharacterProfiles, setMasterCha
+racterProfiles] = useState<Array<{
+  components\ShortsLabPanel.tsx:1687:        slotId: string;
+  components\ShortsLabPanel.tsx:1688:        characterId?: string;
+  components\ShortsLabPanel.tsx:1689:        name: string;
+  components\ShortsLabPanel.tsx:5158:    }, []);
+  components\ShortsLabPanel.tsx:5159:
+> components\ShortsLabPanel.tsx:5160:    const handleGenerateStorylines = async () =>
+ {
+  components\ShortsLabPanel.tsx:5161:        if (!aiTopic.trim() && !benchmarkSource.
+trim()) {
+  components\ShortsLabPanel.tsx:5162:            showToast('주제/키워드를 입력해주세요.', 'error'
+);
+  components\ShortsLabPanel.tsx:5163:            return;
+  components\ShortsLabPanel.tsx:5164:        }
+  components\ShortsLabPanel.tsx:5384:
+  components\ShortsLabPanel.tsx:5385:    // =========================================
+===
+> components\ShortsLabPanel.tsx:5386:    // [신규] 단순화된 AI 마스터 생성 (캐릭터 일관성 보장)
+  components\ShortsLabPanel.tsx:5387:    // =========================================
+===
+> components\ShortsLabPanel.tsx:5388:    const handleMasterGenerate = async () => {
+  components\ShortsLabPanel.tsx:5389:        if (masterGenerateLockRef.current) retur
+n;
+  components\ShortsLabPanel.tsx:5390:        masterGenerateLockRef.current = true;
+  components\ShortsLabPanel.tsx:5391:        if (!aiTopic.trim()) {
+  components\ShortsLabPanel.tsx:5392:            setGenerationError('주제를 입력해주세요.');
+  components\ShortsLabPanel.tsx:5686:
+  components\ShortsLabPanel.tsx:5687:        } catch (error) {
+> components\ShortsLabPanel.tsx:5688:            console.error('AI 마스터 생성 실패:', error
+);
+  components\ShortsLabPanel.tsx:5689:            setGenerationError(error instanceof 
+Error ? error.message : '마스터 생성에 실패했습니다.');
+  components\ShortsLabPanel.tsx:5690:        } finally {
+  components\ShortsLabPanel.tsx:5691:            setIsMasterGenerating(false);
+  components\ShortsLabPanel.tsx:5692:            masterGenerateLockRef.current = fals
+e;
+  components\ShortsLabPanel.tsx:5695:
+  components\ShortsLabPanel.tsx:5696:      // =======================================
+=====
+> components\ShortsLabPanel.tsx:5697:      // [V4] 새 파일 전용 AI 마스터 생성
+  components\ShortsLabPanel.tsx:5698:      // =======================================
+=====
+> components\ShortsLabPanel.tsx:5699:      const handleMasterGenerateV4 = async () =>
+ {
+  components\ShortsLabPanel.tsx:5700:          showToast('AI MASTER V4 시작', 'info');
+  components\ShortsLabPanel.tsx:5701:      };
+  components\ShortsLabPanel.tsx:5702:
+  components\ShortsLabPanel.tsx:5703:    // =========================================
+===
+  components\ShortsLabPanel.tsx:6018:
+  components\ShortsLabPanel.tsx:6019:            if (masterOutfitMap.size === 0) {
+> components\ShortsLabPanel.tsx:6020:                showToast('캐릭터 의상 정보가 없습니다. AI 마
+스터 생성을 먼저 실행하세요.', 'warning');
+  components\ShortsLabPanel.tsx:6021:                return;
+  components\ShortsLabPanel.tsx:6022:            }
+  components\ShortsLabPanel.tsx:6023:
+  components\ShortsLabPanel.tsx:6024:            const { applyCharacterInfoToScenes }
+ = await import('../services/labPromptBuilder');
+  components\ShortsLabPanel.tsx:6135:
+  components\ShortsLabPanel.tsx:6136:    // =========================================
+===
+> components\ShortsLabPanel.tsx:6137:    // [기존] 2-Pass AI 마스터 생성 (백업용)
+  components\ShortsLabPanel.tsx:6138:    // =========================================
+===
+> components\ShortsLabPanel.tsx:6139:    const handleMasterGenerate_OLD = async () =>
+ {
+  components\ShortsLabPanel.tsx:6140:        if (!aiTopic.trim()) {
+  components\ShortsLabPanel.tsx:6141:            setGenerationError('주제를 입력해주세요.');
+  components\ShortsLabPanel.tsx:6142:            return;
+  components\ShortsLabPanel.tsx:6143:        }
+  components\ShortsLabPanel.tsx:6793:            }
+  components\ShortsLabPanel.tsx:6794:        } catch (error) {
+> components\ShortsLabPanel.tsx:6795:            console.error('AI 마스터 생성 실패:', error
+);
+  components\ShortsLabPanel.tsx:6796:            setGenerationError(error instanceof 
+Error ? error.message : '마스터 생성에 실패했습니다.');
+  components\ShortsLabPanel.tsx:6797:        } finally {
+  components\ShortsLabPanel.tsx:6798:            setIsMasterGenerating(false);
+  components\ShortsLabPanel.tsx:6799:        }
+  components\ShortsLabPanel.tsx:7498:                                            <div
+ className="grid grid-cols-1 md:grid-cols-2 gap-3">
+  components\ShortsLabPanel.tsx:7499:                                                
+<button
+> components\ShortsLabPanel.tsx:7500:                                                
+    onClick={handleGenerateStorylines}
+  components\ShortsLabPanel.tsx:7501:                                                
+    disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
+  components\ShortsLabPanel.tsx:7502:                                                
+    className="w-full py-3 bg-gradient-to-r from-lime-600 to-emerald-600 hover:from-l
+ime-500 hover:to-emerald-500 disabled:opacity-50 rounded-xl font-semibold transition-
+all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:7503:                                                
+>
+  components\ShortsLabPanel.tsx:7504:                                                
+    {isGenerating
+  components\ShortsLabPanel.tsx:7505:                                                
+        ? <><Loader2 className="w-5 h-5 animate-spin" /> 줄거리 생성 중...</>
+> components\ShortsLabPanel.tsx:7506:                                                
+        : <><Sparkles className="w-5 h-5" /> AI 줄거리 생성</>}
+  components\ShortsLabPanel.tsx:7507:                                                
+</button>
+  components\ShortsLabPanel.tsx:7508:                                                
+<button
+> components\ShortsLabPanel.tsx:7509:                                                
+    onClick={handleMasterGenerate}
+  components\ShortsLabPanel.tsx:7510:                                                
+    disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
+  components\ShortsLabPanel.tsx:7511:                                                
+    className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from
+-fuchsia-500 hover:to-violet-500 disabled:opacity-50 rounded-xl font-semibold transit
+ion-all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:7512:                                                
+>
+  components\ShortsLabPanel.tsx:7513:                                                
+    {isMasterGenerating
+  components\ShortsLabPanel.tsx:7514:                                                
+        ? <><Loader2 className="w-5 h-5 animate-spin" /> 마스터 생성 중...</>
+> components\ShortsLabPanel.tsx:7515:                                                
+        : <><Wand2 className="w-5 h-5" /> AI 마스터 생성</>}
+  components\ShortsLabPanel.tsx:7516:                                                
+</button>
+  components\ShortsLabPanel.tsx:7517:                                <button
+> components\ShortsLabPanel.tsx:7518:                                    onClick={han
+dleMasterGenerateV4}
+  components\ShortsLabPanel.tsx:7519:                                    disabled={is
+Generating || isMasterGenerating || !aiTopic.trim()}
+  components\ShortsLabPanel.tsx:7520:                                    className="w
+-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-bl
+ue-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center 
+justify-center gap-2 col-span-2"
+  components\ShortsLabPanel.tsx:7521:                                >
+  components\ShortsLabPanel.tsx:7522:                                    {isMasterGen
+erating
+> components\ShortsLabPanel.tsx:7523:                                        ? <><Loa
+der2 className="w-5 h-5 animate-spin" /> V4 생성 중...</>
+> components\ShortsLabPanel.tsx:7524:                                        : <><Zap
+ className="w-5 h-5" /> AI MASTER V4 생성</>}
+  components\ShortsLabPanel.tsx:7525:                                </button>
+  components\ShortsLabPanel.tsx:7526:
+  components\ShortsLabPanel.tsx:7527:                                            </di
+v>
+  components\ShortsLabPanel.tsx:7528:                                        </div>
+  components\ShortsLabPanel.tsx:8191:                {activeTab === 'preview' && (
+  components\ShortsLabPanel.tsx:8192:                    <div className="space-y-4">
+> components\ShortsLabPanel.tsx:8193:                        {/* [신규] 캐릭터 프로필 섹션 (AI 
+마스터 생성 후 표시) */}
+  components\ShortsLabPanel.tsx:8194:                        {masterCharacterProfiles
+.length > 0 && (
+  components\ShortsLabPanel.tsx:8195:                            <div className="bg-g
+radient-to-br from-indigo-900/30 to-purple-900/30 border border-indigo-700/50 rounded
+-xl p-4">
+  components\ShortsLabPanel.tsx:8196:                                <div className="
+flex items-center justify-between mb-4">
+  components\ShortsLabPanel.tsx:8197:                                    <div classNa
+me="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:8198:                                        <Sparkle
+s className="w-5 h-5 text-indigo-400" />
+  components\ShortsLabPanel.tsx:8199:                                        <h3 clas
+sName="font-semibold text-indigo-300">캐릭터 프로필</h3>
+> components\ShortsLabPanel.tsx:8200:                                        <span cl
+assName="text-xs bg-indigo-600/50 text-indigo-200 px-2 py-0.5 rounded-full">AI 마스터 생성
+</span>
+  components\ShortsLabPanel.tsx:8201:                                    </div>
+  components\ShortsLabPanel.tsx:8202:                                    <button
+  components\ShortsLabPanel.tsx:8203:                                        onClick=
+{handleApplyCharacterInfo}
+  components\ShortsLabPanel.tsx:8204:                                        classNam
+e="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 h
+over:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-semibold transiti
+on-all"
+
+

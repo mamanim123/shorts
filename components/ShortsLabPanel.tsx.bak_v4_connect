@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ShortsLabPanel.tsx
  * 쇼츠 영상 제작을 위한 테스트 패널 V2
  * 
@@ -44,8 +44,7 @@ import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, E
 import { usePromptEditModal } from '../hooks/usePromptEditModal';
 import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
 import { fetchPromptEnhancementSettings } from '../services/promptEnhancementUtils';
-import { runShortsLabV4FromStoryContext } from '../services/shortslab-v4/v4FlowService';
-import { generateV4StorylinePackage } from '../services/shortslab-v4/v4StorylineService';
+import { runShortsLabV4Master } from '../services/shortslab-v4/shortsLabV4FlowService';
 
 
 // ============================================
@@ -1674,8 +1673,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isMasterGenerating, setIsMasterGenerating] = useState(false);
-    const [isV4Generating, setIsV4Generating] = useState(false);
-    const [isV4StoryMode, setIsV4StoryMode] = useState(false);
     const [scriptPhase, setScriptPhase] = useState<'idle' | 'storylines'>('idle');
     const [storylines, setStorylines] = useState<{title:string, content:string}[]>([]);
     const [selectedStoryIndex, setSelectedStoryIndex] = useState<number | null>(null);
@@ -1684,7 +1681,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     const [benchmarkSource, setBenchmarkSource] = useState('');
     const aiGenerateLockRef = useRef(false);
     const masterGenerateLockRef = useRef(false);
-    const v4GenerateLockRef = useRef(false);
 
     // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
     const [masterCharacterProfiles, setMasterCharacterProfiles] = useState<Array<{
@@ -4264,6 +4260,52 @@ ${scriptInput}
                 .filter(Boolean);
             const allowedSceneSlotIds = Array.from(new Set([...allSlotIds, ...lockedOutfitSlotIds]));
 
+                        // ===== [V4 우회] 깨끗한 파서로 조립 후 종료 =====
+            try {
+                const { parseJsonToScenesDirect } = await import('../services/shortslab-v4/v4DirectParser');
+                const v4OutfitMap = new Map<string, { name: string; prompt: string }>();
+                Object.entries(llmLockedOutfitsMaster || {}).forEach(([k, v]) => {
+                    if (v) v4OutfitMap.set(normalizeSlotId(k), { name: String(v), prompt: String(v) });
+                });
+
+                // characterIds를 정규화된 슬롯으로 교체한 씬 (LLM 원본 신뢰)
+                const v4Scenes = normalizedMasterScenes.map((s) => ({
+                    sceneNumber: s.sceneNumber,
+                    scriptLine: s.scriptLine,
+                    characterIds: s.characterIds,
+                    cameraAngle: s.cameraAngle,
+                    background: s.background,
+                    action: s.action,
+                    summary: s.summary,
+                    shortPrompt: s.shortPrompt,
+                    longPrompt: s.longPrompt,
+                }));
+
+                const v4Result = parseJsonToScenesDirect(
+                    JSON.stringify({ scriptBody: finalScript, scenes: v4Scenes, lockedOutfits: llmLockedOutfitsMaster }),
+                    {
+                        mode: 'rebuild',
+                        characterRules: getCharacterRules(),
+                        savedCharacters,
+                        outfitMap: v4OutfitMap,
+                        lockBackgroundToFirst: true,
+                    }
+                );
+
+                if (v4Result.scenes.length > 0) {
+                    setScenes(v4Result.scenes);
+                    setActiveTab('preview');
+                    showToast(`✓ V4 씬 분해 완료 (${v4Result.scenes.length}개 씬, 일관성 모드)`, 'success');
+                    return; // ★ 이 아래 기존 오염 로직 전부 건너뜀
+                }
+            } catch (v4Error) {
+                console.error('[V4] 우회 실패, 기존 로직으로 폴백:', v4Error);
+                // 실패 시 아래 기존 로직이 그대로 실행됨
+            }
+            // ===== [V4 우회 끝] =====
+
+
+
             const rebalancedScenes = rebalanceMasterSceneCharacterMix(
                 normalizedMasterScenes,
                 settings.koreanGender,
@@ -5166,7 +5208,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             showToast('주제/키워드를 입력해주세요.', 'error');
             return;
         }
-        setIsV4StoryMode(false);
         setIsGenerating(true);
         try {
             const result = await generateBenchmarkStorylinePackage(
@@ -5207,64 +5248,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         const selectedStory = storylines[selectedStoryIndex];
         const storyContext = selectedStory.title + '\n' + (selectedStoryDraft || selectedStory.content);
         setScriptPhase('idle');
-        if (isV4StoryMode) {
-            await handleV4GenerateFromStoryline(storyContext, selectedStory.title);
-            return;
-        }
-        await handleAiGenerateWithContext(storyContext);
-    };
-
-    const handleV4GenerateFromStoryline = async (storyContext: string, storyTitle?: string) => {
-        if (!aiTopic.trim()) {
-            setGenerationError('주제를 입력해주세요.');
-            return;
-        }
-        if (v4GenerateLockRef.current) return;
-
-        v4GenerateLockRef.current = true;
-        setIsV4Generating(true);
-        setGenerationError(null);
-
-        try {
-            showToast('V4: 선택한 줄거리로 대본/씬 생성 중...', 'info');
-            const result = await runShortsLabV4FromStoryContext({
-                service: targetService || 'GEMINI',
-                topic: aiTopic,
-                genre: aiGenre,
-                targetAge: aiTargetAge,
-                gender: settings.koreanGender,
-                selectedStoryTitle: storyTitle,
-                selectedStoryContext: storyContext,
-                benchmarkSource,
-                useRandomOutfits,
-                allowedOutfitCategories: getAllowedOutfitCategoriesForGenre(aiGenre),
-                imagePromptLanguage: settings.imagePromptLanguage,
-                lockBackgroundToFirst: false
-            });
-
-            setScriptInput(result.scriptBody);
-            setScenes(result.scenes as Scene[]);
-            setMasterOutfitMap(result.outfitMap);
-            setCurrentFolderName(result.folderName);
-            setActiveTab('preview');
-
-            const errorCount = result.validationIssues.filter((issue) => issue.severity === 'error').length;
-            const warningCount = result.validationIssues.filter((issue) => issue.severity === 'warning').length;
-            if (errorCount > 0 || warningCount > 0) {
-                showToast(`V4 생성 완료: 검증 이슈 ${errorCount}개, 경고 ${warningCount}개`, errorCount > 0 ? 'warning' : 'info');
-            } else {
-                showToast(`✓ V4 생성 완료 (${result.scenes.length}개 씬)`, 'success');
-            }
-        } catch (error) {
-            console.error('V4 대본/씬 생성 실패:', error);
-            const message = error instanceof Error ? error.message : 'V4 생성에 실패했습니다.';
-            setGenerationError(message);
-            showToast(message, 'error');
-        } finally {
-            setIsV4Generating(false);
-            v4GenerateLockRef.current = false;
-            setIsV4StoryMode(false);
-        }
+        await handleMasterGenerateV4(storyContext);
     };
 
     const handleAiGenerateWithContext = async (storyContext?: string) => {
@@ -5755,50 +5739,150 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         }
     };
 
-	      // ============================================
-	      // [V4] 새 파일 전용 AI 마스터 생성
-	      // ============================================
-      const handleMasterGenerateV4 = async () => {
-          if (!aiTopic.trim()) {
-              setGenerationError('주제를 입력해주세요.');
-              return;
-          }
-          if (isGenerating || isMasterGenerating || isV4Generating) return;
+      // ============================================
+      // [V4] 새 파일 전용 AI 마스터 생성
+      // ============================================
+      const handleMasterGenerateV4 = async (forcedStoryContext?: string) => {
+        if (!aiTopic.trim()) { showToast('주제를 입력해주세요.', 'warning'); return; }
+        if (isMasterGenerating) return;
+        setIsMasterGenerating(true);
+        try {
+            const service = targetService || 'GEMINI';
+            const gender = settings.koreanGender;
 
-          setIsV4Generating(true);
-          setGenerationError(null);
-          setIsV4StoryMode(true);
+            // ===== 1단계: 줄거리 생성 후 1순위 자동 선택 (또는 기존 선택값 활용) =====
+            let storyContext = '';
+            if (selectedStoryIndex !== null && storylines[selectedStoryIndex]) {
+                const s = storylines[selectedStoryIndex];
+                storyContext = s.title + '\n' + (selectedStoryDraft || s.content);
+            } else {
+                showToast('V4: 줄거리 생성 중...', 'info');
+                const pkg = await generateBenchmarkStorylinePackage(aiTopic.trim(), benchmarkSource.trim() || undefined);
+                const first = pkg.storylines && pkg.storylines[0];
+                if (first) storyContext = first.title + '\n' + first.content;
+            }
 
-          try {
-              const packageResult = await generateV4StorylinePackage({
-                  service: targetService || 'GEMINI',
-                  topic: aiTopic,
-                  genre: aiGenre,
-                  targetAge: aiTargetAge,
-                  gender: settings.koreanGender,
-                  benchmarkSource,
-                  useRandomOutfits,
-                  allowedOutfitCategories: getAllowedOutfitCategoriesForGenre(aiGenre),
-                  imagePromptLanguage: settings.imagePromptLanguage,
-                  lockBackgroundToFirst: false
-              });
+            // ===== 2단계: 대본만 생성 (의상/배경 LLM이 안 만듦) =====
+            showToast('V4: 대본 생성 중...', 'info');
+            const selectedGenreData = labGenres.find(g => g.id === aiGenre);
+            const allowedOutfitCategories = getAllowedOutfitCategoriesForGenre(aiGenre);
+            const genreGuideOverride = selectedGenreData ? {
+                name: selectedGenreData.name, description: selectedGenreData.description,
+                emotionCurve: selectedGenreData.emotionCurve, structure: selectedGenreData.structure,
+                killerPhrases: selectedGenreData.killerPhrases,
+                supportingCharacterPhrasePatterns: selectedGenreData.supportingCharacterPhrasePatterns,
+                bodyReactions: selectedGenreData.bodyReactions, forbiddenPatterns: selectedGenreData.forbiddenPatterns,
+                goodTwistExamples: selectedGenreData.goodTwistExamples,
+                supportingCharacterTwistPatterns: selectedGenreData.supportingCharacterTwistPatterns,
+                badTwistExamples: selectedGenreData.badTwistExamples,
+                allowedOutfitCategories: selectedGenreData.allowedOutfitCategories
+            } : undefined;
+            const legacyGenrePrompt = await fetchLegacyGenrePrompt(aiGenre);
+            const scriptPrompt = buildLabScriptOnlyPrompt({
+                topic: aiTopic, genre: aiGenre, targetAge: aiTargetAge, gender,
+                genreGuideOverride, legacyGenrePrompt,
+                characterSlotMode: scriptCharacterMode, additionalContext: storyContext
+            });
+            const scriptRes = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service, prompt: scriptPrompt, maxTokens: 2000, temperature: 0.9, skipFolderCreation: true })
+            });
+            const scriptData = await scriptRes.json();
+            const scriptRaw = scriptData.rawResponse || scriptData.text || scriptData.result || '';
+            let finalScript = '';
+            try {
+                let jc = scriptRaw.trim().replace(/^(JSON|json)\s+/, '');
+                if (jc.startsWith('\`\`\`')) jc = jc.replace(/^\`\`\`(json)?/, '').replace(/\`\`\`$/, '').trim();
+                const pj = JSON.parse(jc.slice(jc.indexOf('{')));
+                const lines = Array.isArray(pj.scriptLines) ? pj.scriptLines : null;
+                finalScript = lines ? lines.join('\n') : (pj.scriptBody || pj.script || '');
+            } catch {
+                const m = scriptRaw.match(/---\s*([\s\S]*?)\s*---/);
+                finalScript = m ? m[1].trim() : scriptRaw.trim();
+            }
+            if (!finalScript) throw new Error('대본 추출 실패');
+            console.log('[V4-2 대본raw]', scriptRaw.slice(0,300));
+            console.log('[V4-2 finalScript]', finalScript.slice(0,300));
 
-              setBenchmarkAnalysis(packageResult.analysis);
-              setStorylines(packageResult.storylines.map((s: any) => ({ title: s.title, content: s.content })));
-              setSelectedStoryIndex(packageResult.storylines.length > 0 ? 0 : null);
-              setSelectedStoryDraft(packageResult.storylines[0]?.content || '');
-              setScriptPhase('storylines');
-              showToast('V4 줄거리 10개 생성 완료. 하나를 선택해 대본 생성으로 진행하세요.', 'success');
-          } catch (error) {
-              console.error('V4 줄거리 생성 실패:', error);
-              const message = error instanceof Error ? error.message : 'V4 줄거리 생성에 실패했습니다.';
-              setGenerationError(message);
-              showToast(message, 'error');
-              setIsV4StoryMode(false);
-          } finally {
-              setIsV4Generating(false);
-          }
-      };
+            // ===== 3단계: 씬 배정 (고정 슬롯 목록 중에서만 characterIds 선택, rebalance 없음) =====
+            showToast('V4: 씬 배정 중...', 'info');
+            const rules = getCharacterRules();
+            const fixedSlots = [
+                ...(gender === 'male'
+                    ? [...(rules.males||[]), ...(rules.females||[])]
+                    : [...(rules.females||[]), ...(rules.males||[])])
+            ].map((c) => ({ slotId: c.id, name: c.name || c.id, role: (c.id === (gender==='male'?'ManA':'WomanA')) ? '내레이터/주인공' : '' }));
+            const allowedSlotIds = fixedSlots.map(s => s.slotId);
+
+            const { buildV4SceneAssignmentPrompt, parseV4SceneAssignment } = await import('../services/shortslab-v4/shortsLabV4SceneService');
+            const assignPrompt = buildV4SceneAssignmentPrompt({ scriptBody: finalScript, slots: fixedSlots, background: '' });
+            const assignRes = await fetch('http://localhost:3002/api/generate/raw', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service, prompt: assignPrompt, maxTokens: 2000, temperature: 0.3, skipFolderCreation: true })
+            });
+            const assignData = await assignRes.json();
+            const assignRaw = assignData.rawResponse || assignData.text || assignData.result || '';
+            let assigned = parseV4SceneAssignment(assignRaw, allowedSlotIds);
+            console.log('[V4-3 배정raw]', assignRaw.slice(0,300));
+            console.log('[V4-3 assigned]', JSON.stringify(assigned).slice(0,300));
+            if (assigned.length === 0) {
+                const ls = finalScript.split('\n').map(s=>s.trim()).filter(Boolean);
+                const nid = gender === 'male' ? 'ManA' : 'WomanA';
+                assigned = ls.map((l, i) => ({ sceneNumber: i+1, scriptLine: l, characterIds: [nid], action: '' }));
+            }
+
+            // ===== 4단계: 의상 배정 (토글) =====
+            const usedSlotIds = Array.from(new Set(assigned.flatMap(s => s.characterIds)));
+            const outfitMap = new Map();
+            if (useRandomOutfits) {
+                const outfitsResp = await fetch('http://localhost:3002/api/outfits');
+                const outfitsJson = await outfitsResp.json();
+                const { assignOutfitsToCharacters } = await import('../services/labPromptBuilder');
+                const m = assignOutfitsToCharacters({ characterIds: usedSlotIds, genre: aiGenre, outfitsData: outfitsJson.outfits || [], topic: aiTopic });
+                m.forEach((v, k) => outfitMap.set(k, v));
+            }
+
+            // ===== 5단계: 재조립 (기존 정교한 rebuild 활용) =====
+            const llmJson = JSON.stringify({ scriptBody: finalScript, scenes: assigned.map(a => ({
+                sceneNumber: a.sceneNumber, scriptLine: a.scriptLine, characterIds: a.characterIds, action: a.action
+            })) });
+            const { parseJsonToScenesDirect } = await import('../services/shortslab-v4/v4DirectParser');
+            const result = parseJsonToScenesDirect(llmJson, {
+                mode: 'rebuild', characterRules: rules, savedCharacters,
+                outfitMap, targetAgeEnglish: convertAgeToEnglish(aiTargetAge),
+                lockBackgroundToFirst: true
+            });
+            if (result.errors.length) showToast('경고: ' + result.errors.join(', '), 'warning');
+
+            setScriptInput(result.scriptBody || finalScript);
+            setScenes(result.scenes);
+            setActiveTab('preview');
+            showToast(`✓ V4 (3단계): ${result.scenes.length}개 씬 생성 완료`, 'success');
+        } catch (e) {
+            showToast('V4 생성 실패: ' + (e instanceof Error ? e.message : ''), 'error');
+        } finally {
+            setIsMasterGenerating(false);
+        }
+    };
+
+    const [manualJsonInput, setManualJsonInput] = useState('');
+
+    const handleManualJsonParse = () => {
+        import('../services/shortslab-v4/v4DirectParser').then(({ parseJsonToScenesDirect }) => {
+            const result = parseJsonToScenesDirect(manualJsonInput, {
+            mode: 'raw', // 붙여넣은 longPrompt를 그대로 미리보기 → 바로 이미지 생성
+            });
+            if (result.errors.length) showToast('경고: ' + result.errors.join(', '), 'warning');
+            if (result.scenes.length) {
+            setScriptInput(result.scriptBody);
+            setScenes(result.scenes);
+            setActiveTab('preview');
+            showToast(`✓ ${result.scenes.length}개 씬 그대로 불러옴`, 'success');
+            }
+          });
+        };
+
+
 
     // ============================================
     // [신규] 캐릭터 프로필 업데이트 핸들러
@@ -7606,7 +7690,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                         : <><Sparkles className="w-5 h-5" /> AI 줄거리 생성</>}
                                                 </button>
                                                 <button
-                                                    onClick={handleMasterGenerate}
+                                                    onClick={handleGenerateStorylines}
                                                     disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
                                                     className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
                                                 >
@@ -7616,13 +7700,31 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                 </button>
                                 <button
                                     onClick={handleMasterGenerateV4}
-                                    disabled={isGenerating || isMasterGenerating || isV4Generating || !aiTopic.trim()}
+                                    disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
                                     className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 col-span-2"
                                 >
-                                    {isV4Generating
-                                        ? <><Loader2 className="w-5 h-5 animate-spin" /> V4 줄거리 생성 중...</>
-                                        : <><Zap className="w-5 h-5" /> V4 줄거리</>}
+                                    {isMasterGenerating
+                                        ? <><Loader2 className="w-5 h-5 animate-spin" /> V4 생성 중...</>
+                                        : <><Zap className="w-5 h-5" /> V4 생성</>}
                                 </button>
+
+                                                                <div className="space-y-2 mt-2 col-span-2">
+                                                                    <textarea
+                                                                        value={manualJsonInput}
+                                                                        onChange={(e) => setManualJsonInput(e.target.value)}
+                                                                        placeholder="여기에 JSON을 붙여넣으세요 (파싱 실패 시 수동 입력용)"
+                                                                        rows={4}
+                                                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs text-white font-mono resize-y"
+                                                                    />
+                                                                    <button
+                                                                        onClick={handleManualJsonParse}
+                                                                        disabled={!manualJsonInput.trim()}
+                                                                        className="w-full py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                                                                    >
+                                                                        <Sparkles className="w-4 h-4" /> JSON 그대로 출력 (미리보기)
+                                                                    </button>
+                                                                </div>
+
 
                                             </div>
                                         </div>
@@ -7635,10 +7737,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                                     <span className="text-xs font-normal text-slate-400">({storylines.length}개)</span>
                                                 </h3>
                                                 <button
-                                                    onClick={() => {
-                                                        setIsV4StoryMode(false);
-                                                        setScriptPhase('idle');
-                                                    }}
+                                                    onClick={() => setScriptPhase('idle')}
                                                     className="text-xs text-slate-500 hover:text-white flex items-center gap-1 transition-colors"
                                                 >
                                                     <X className="w-3 h-3" /> 다시 입력
@@ -12983,6 +13082,9 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
+
+
+
 
 
 

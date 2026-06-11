@@ -1,0 +1,2309 @@
+﻿
+  components\ShortsLabPanel.tsx:1683:    const masterGenerateLockRef = useRef(false);
+  components\ShortsLabPanel.tsx:1684:
+> components\ShortsLabPanel.tsx:1685:    // [신규] AI 마스터 생성 - 캐릭터 프로필 및 의상 정보 저장
+  components\ShortsLabPanel.tsx:1686:    const [masterCharacterProfiles, setMasterCha
+racterProfiles] = useState<Array<{
+  components\ShortsLabPanel.tsx:1687:        slotId: string;
+  components\ShortsLabPanel.tsx:1688:        characterId?: string;
+  components\ShortsLabPanel.tsx:1689:        name: string;
+  components\ShortsLabPanel.tsx:5430:
+  components\ShortsLabPanel.tsx:5431:    // =========================================
+===
+> components\ShortsLabPanel.tsx:5432:    // [신규] 단순화된 AI 마스터 생성 (캐릭터 일관성 보장)
+  components\ShortsLabPanel.tsx:5433:    // =========================================
+===
+  components\ShortsLabPanel.tsx:5434:    const handleMasterGenerate = async () => {
+  components\ShortsLabPanel.tsx:5435:        if (masterGenerateLockRef.current) retur
+n;
+  components\ShortsLabPanel.tsx:5436:        masterGenerateLockRef.current = true;
+  components\ShortsLabPanel.tsx:5732:
+  components\ShortsLabPanel.tsx:5733:        } catch (error) {
+> components\ShortsLabPanel.tsx:5734:            console.error('AI 마스터 생성 실패:', error
+);
+  components\ShortsLabPanel.tsx:5735:            setGenerationError(error instanceof 
+Error ? error.message : '마스터 생성에 실패했습니다.');
+  components\ShortsLabPanel.tsx:5736:        } finally {
+  components\ShortsLabPanel.tsx:5737:            setIsMasterGenerating(false);
+  components\ShortsLabPanel.tsx:5738:            masterGenerateLockRef.current = fals
+e;
+  components\ShortsLabPanel.tsx:5741:
+  components\ShortsLabPanel.tsx:5742:      // =======================================
+=====
+> components\ShortsLabPanel.tsx:5743:      // [V4] 새 파일 전용 AI 마스터 생성
+  components\ShortsLabPanel.tsx:5744:      // =======================================
+=====
+  components\ShortsLabPanel.tsx:5745:      const handleMasterGenerateV4 = async (forc
+edStoryContext?: string) => {
+  components\ShortsLabPanel.tsx:5746:        if (!aiTopic.trim()) {
+  components\ShortsLabPanel.tsx:5747:            showToast('주제를 입력해주세요.', 'warning');
+  components\ShortsLabPanel.tsx:5758:            } else {
+  components\ShortsLabPanel.tsx:5759:                await handleGenerateStorylines()
+;
+> components\ShortsLabPanel.tsx:5760:                showToast('줄거리 10개 중 하나를 선택한 뒤 V
+4 생성을 진행하세요.', 'info');
+  components\ShortsLabPanel.tsx:5761:                return;
+  components\ShortsLabPanel.tsx:5762:            }
+  components\ShortsLabPanel.tsx:5763:        }
+  components\ShortsLabPanel.tsx:5764:
+  components\ShortsLabPanel.tsx:5857:            setActiveTab('preview');
+  components\ShortsLabPanel.tsx:5858:
+> components\ShortsLabPanel.tsx:5859:            showToast(`✓ V4 생성 완료: ${result.scen
+es.length}개 씬`, 'success');
+  components\ShortsLabPanel.tsx:5860:        } catch (e) {
+> components\ShortsLabPanel.tsx:5861:            showToast('V4 생성 실패: ' + (e instance
+of Error ? e.message : String(e)), 'error');
+  components\ShortsLabPanel.tsx:5862:        } finally {
+  components\ShortsLabPanel.tsx:5863:            setIsMasterGenerating(false);
+  components\ShortsLabPanel.tsx:5864:        }
+  components\ShortsLabPanel.tsx:5865:    };
+  components\ShortsLabPanel.tsx:6201:
+  components\ShortsLabPanel.tsx:6202:            if (masterOutfitMap.size === 0) {
+> components\ShortsLabPanel.tsx:6203:                showToast('캐릭터 의상 정보가 없습니다. AI 마
+스터 생성을 먼저 실행하세요.', 'warning');
+  components\ShortsLabPanel.tsx:6204:                return;
+  components\ShortsLabPanel.tsx:6205:            }
+  components\ShortsLabPanel.tsx:6206:
+  components\ShortsLabPanel.tsx:6207:            const { applyCharacterInfoToScenes }
+ = await import('../services/labPromptBuilder');
+  components\ShortsLabPanel.tsx:6318:
+  components\ShortsLabPanel.tsx:6319:    // =========================================
+===
+> components\ShortsLabPanel.tsx:6320:    // [기존] 2-Pass AI 마스터 생성 (백업용)
+  components\ShortsLabPanel.tsx:6321:    // =========================================
+===
+  components\ShortsLabPanel.tsx:6322:    const handleMasterGenerate_OLD = async () =>
+ {
+  components\ShortsLabPanel.tsx:6323:        if (!aiTopic.trim()) {
+  components\ShortsLabPanel.tsx:6324:            setGenerationError('주제를 입력해주세요.');
+  components\ShortsLabPanel.tsx:6976:            }
+  components\ShortsLabPanel.tsx:6977:        } catch (error) {
+> components\ShortsLabPanel.tsx:6978:            console.error('AI 마스터 생성 실패:', error
+);
+  components\ShortsLabPanel.tsx:6979:            setGenerationError(error instanceof 
+Error ? error.message : '마스터 생성에 실패했습니다.');
+  components\ShortsLabPanel.tsx:6980:        } finally {
+  components\ShortsLabPanel.tsx:6981:            setIsMasterGenerating(false);
+  components\ShortsLabPanel.tsx:6982:        }
+  components\ShortsLabPanel.tsx:7420:
+  components\ShortsLabPanel.tsx:7421:                        <button
+> components\ShortsLabPanel.tsx:7422:                            onClick={handleLoadF
+olders}
+  components\ShortsLabPanel.tsx:7423:                            className="px-3 py-1
+.5 bg-emerald-600/80 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-c
+olors flex items-center gap-1.5"
+  components\ShortsLabPanel.tsx:7424:                        >
+  components\ShortsLabPanel.tsx:7425:                            <Folder className="w
+-4 h-4" />
+  components\ShortsLabPanel.tsx:7426:                            불러오기
+  components\ShortsLabPanel.tsx:7433:                            <button
+  components\ShortsLabPanel.tsx:7434:                                key={tab}
+> components\ShortsLabPanel.tsx:7435:                                onClick={() => s
+etActiveTab(tab)}
+  components\ShortsLabPanel.tsx:7436:                                className={`px-3
+ py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+activeTab === tab
+  components\ShortsLabPanel.tsx:7437:                                    ? 'bg-emeral
+d-600 text-white'
+  components\ShortsLabPanel.tsx:7438:                                    : 'text-slat
+e-400 hover:text-white'
+  components\ShortsLabPanel.tsx:7439:                                    }`}
+  components\ShortsLabPanel.tsx:7459:                <div
+  components\ShortsLabPanel.tsx:7460:                    className="fixed inset-0 bg-
+black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+> components\ShortsLabPanel.tsx:7461:                    onClick={() => setShowFolder
+Picker(false)}
+  components\ShortsLabPanel.tsx:7462:                >
+  components\ShortsLabPanel.tsx:7463:                    <div
+  components\ShortsLabPanel.tsx:7464:                        className="bg-slate-900 
+border border-slate-700 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto
+"
+> components\ShortsLabPanel.tsx:7465:                        onClick={(e) => e.stopPr
+opagation()}
+  components\ShortsLabPanel.tsx:7466:                    >
+  components\ShortsLabPanel.tsx:7467:                        <div className="flex ite
+ms-center justify-between mb-4">
+  components\ShortsLabPanel.tsx:7468:                            <h3 className="text-
+xl font-bold text-emerald-400">📁 작업 폴더 선택</h3>
+  components\ShortsLabPanel.tsx:7469:                            <div className="flex
+ items-center gap-3">
+  components\ShortsLabPanel.tsx:7470:                                <button
+> components\ShortsLabPanel.tsx:7471:                                    onClick={tog
+gleFavoritesFilter}
+  components\ShortsLabPanel.tsx:7472:                                    className={`
+px-3 py-1.5 text-sm font-medium rounded-lg transition flex items-center gap-1 ${showF
+avoritesOnly
+  components\ShortsLabPanel.tsx:7473:                                        ? 'bg-ye
+llow-500/20 border border-yellow-500/50 text-yellow-400'
+  components\ShortsLabPanel.tsx:7474:                                        : 'bg-sl
+ate-700 border border-slate-600 text-slate-400 hover:text-slate-300'
+  components\ShortsLabPanel.tsx:7475:                                        }`}
+  components\ShortsLabPanel.tsx:7478:                                    <span>{showF
+avoritesOnly ? '즐겨찾기만' : '전체 보기'}</span>
+  components\ShortsLabPanel.tsx:7479:                                </button>
+> components\ShortsLabPanel.tsx:7480:                                <button onClick=
+{() => setShowFolderPicker(false)} className="text-slate-400 hover:text-white transit
+ion">✕</button>
+  components\ShortsLabPanel.tsx:7481:                            </div>
+  components\ShortsLabPanel.tsx:7482:                        </div>
+  components\ShortsLabPanel.tsx:7483:                        {isLoadingFolder ? (
+  components\ShortsLabPanel.tsx:7484:                            <div className="py-1
+2 text-center">
+  components\ShortsLabPanel.tsx:7500:                                    <div
+  components\ShortsLabPanel.tsx:7501:                                        key={fol
+der.folderName}
+> components\ShortsLabPanel.tsx:7502:                                        onClick=
+{() => handleSelectFolder(folder.folderName)}
+  components\ShortsLabPanel.tsx:7503:                                        classNam
+e="w-full p-4 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-800 h
+over:border-emerald-500 transition-all text-left group cursor-pointer"
+  components\ShortsLabPanel.tsx:7504:                                        role="bu
+tton"
+  components\ShortsLabPanel.tsx:7505:                                        tabIndex
+={0}
+  components\ShortsLabPanel.tsx:7506:                                        onKeyDow
+n={(e) => {
+  components\ShortsLabPanel.tsx:7527:                                            <div
+ className="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:7528:                                                
+<button
+> components\ShortsLabPanel.tsx:7529:                                                
+    onClick={(e) => {
+  components\ShortsLabPanel.tsx:7530:                                                
+        e.stopPropagation();
+  components\ShortsLabPanel.tsx:7531:                                                
+        isFavorite(folder.folderName)
+  components\ShortsLabPanel.tsx:7532:                                                
+            ? removeFromFavorites(folder.folderName)
+  components\ShortsLabPanel.tsx:7533:                                                
+            : addToFavorites(folder.folderName);
+  components\ShortsLabPanel.tsx:7572:                                        <div cla
+ssName="flex items-center gap-2 pl-4 border-l border-slate-700/50">
+  components\ShortsLabPanel.tsx:7573:                                            <but
+ton
+> components\ShortsLabPanel.tsx:7574:                                                
+onClick={() => updateSetting('useKoreanIdentity', !settings.useKoreanIdentity)}
+  components\ShortsLabPanel.tsx:7575:                                                
+className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all duration-20
+0 border ${settings.useKoreanIdentity
+  components\ShortsLabPanel.tsx:7576:                                                
+    ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_10px_rgba
+(16,185,129,0.1)]'
+  components\ShortsLabPanel.tsx:7577:                                                
+    : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:text-slate-400 hover:bor
+der-slate-600'
+  components\ShortsLabPanel.tsx:7578:                                                
+    }`}
+  components\ShortsLabPanel.tsx:7584:                                                
+<div className="flex items-center bg-slate-800/60 rounded-full p-0.5 border border-sl
+ate-700/50 ml-1">
+  components\ShortsLabPanel.tsx:7585:                                                
+    <button
+> components\ShortsLabPanel.tsx:7586:                                                
+        onClick={() => updateSetting('koreanGender', 'female')}
+  components\ShortsLabPanel.tsx:7587:                                                
+        className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all $
+{settings.koreanGender === 'female'
+  components\ShortsLabPanel.tsx:7588:                                                
+            ? 'bg-emerald-600 text-white shadow-sm'
+  components\ShortsLabPanel.tsx:7589:                                                
+            : 'text-slate-500 hover:text-slate-300'
+  components\ShortsLabPanel.tsx:7590:                                                
+            }`}
+  components\ShortsLabPanel.tsx:7593:                                                
+    </button>
+  components\ShortsLabPanel.tsx:7594:                                                
+    <button
+> components\ShortsLabPanel.tsx:7595:                                                
+        onClick={() => updateSetting('koreanGender', 'male')}
+  components\ShortsLabPanel.tsx:7596:                                                
+        className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full transition-all $
+{settings.koreanGender === 'male'
+  components\ShortsLabPanel.tsx:7597:                                                
+            ? 'bg-emerald-600 text-white shadow-sm'
+  components\ShortsLabPanel.tsx:7598:                                                
+            : 'text-slate-500 hover:text-slate-300'
+  components\ShortsLabPanel.tsx:7599:                                                
+            }`}
+  components\ShortsLabPanel.tsx:7638:                                                
+</select>
+  components\ShortsLabPanel.tsx:7639:                                                
+<button
+> components\ShortsLabPanel.tsx:7640:                                                
+    onClick={() => setShowGenreModal(true)}
+  components\ShortsLabPanel.tsx:7641:                                                
+    className="px-3 py-2.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 ro
+unded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors flex i
+tems-center gap-1.5"
+  components\ShortsLabPanel.tsx:7642:                                                
+    title="장르 관리"
+  components\ShortsLabPanel.tsx:7643:                                                
+>
+  components\ShortsLabPanel.tsx:7644:                                                
+    <Settings2 className="w-4 h-4" />
+  components\ShortsLabPanel.tsx:7681:                                            <div
+ className="grid grid-cols-1 md:grid-cols-2 gap-3">
+  components\ShortsLabPanel.tsx:7682:                                                
+<button
+> components\ShortsLabPanel.tsx:7683:                                                
+    onClick={handleGenerateStorylines}
+  components\ShortsLabPanel.tsx:7684:                                                
+    disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
+  components\ShortsLabPanel.tsx:7685:                                                
+    className="w-full py-3 bg-gradient-to-r from-lime-600 to-emerald-600 hover:from-l
+ime-500 hover:to-emerald-500 disabled:opacity-50 rounded-xl font-semibold transition-
+all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:7686:                                                
+>
+  components\ShortsLabPanel.tsx:7687:                                                
+    {isGenerating
+  components\ShortsLabPanel.tsx:7688:                                                
+        ? <><Loader2 className="w-5 h-5 animate-spin" /> 줄거리 생성 중...</>
+> components\ShortsLabPanel.tsx:7689:                                                
+        : <><Sparkles className="w-5 h-5" /> AI 줄거리 생성</>}
+  components\ShortsLabPanel.tsx:7690:                                                
+</button>
+  components\ShortsLabPanel.tsx:7691:                                                
+<button
+> components\ShortsLabPanel.tsx:7692:                                                
+    onClick={handleGenerateStorylines}
+  components\ShortsLabPanel.tsx:7693:                                                
+    disabled={isGenerating || isMasterGenerating || !aiTopic.trim()}
+  components\ShortsLabPanel.tsx:7694:                                                
+    className="w-full py-3 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from
+-fuchsia-500 hover:to-violet-500 disabled:opacity-50 rounded-xl font-semibold transit
+ion-all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:7695:                                                
+>
+  components\ShortsLabPanel.tsx:7696:                                                
+    {isMasterGenerating
+  components\ShortsLabPanel.tsx:7697:                                                
+        ? <><Loader2 className="w-5 h-5 animate-spin" /> 마스터 생성 중...</>
+> components\ShortsLabPanel.tsx:7698:                                                
+        : <><Wand2 className="w-5 h-5" /> AI 마스터 생성</>}
+  components\ShortsLabPanel.tsx:7699:                                                
+</button>
+  components\ShortsLabPanel.tsx:7700:                                <button
+> components\ShortsLabPanel.tsx:7701:                                    onClick={han
+dleMasterGenerateV4}
+  components\ShortsLabPanel.tsx:7702:                                    disabled={is
+Generating || isMasterGenerating || !aiTopic.trim()}
+  components\ShortsLabPanel.tsx:7703:                                    className="w
+-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-bl
+ue-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-center 
+justify-center gap-2 col-span-2"
+  components\ShortsLabPanel.tsx:7704:                                >
+  components\ShortsLabPanel.tsx:7705:                                    {isMasterGen
+erating
+> components\ShortsLabPanel.tsx:7706:                                        ? <><Loa
+der2 className="w-5 h-5 animate-spin" /> V4 생성 중...</>
+> components\ShortsLabPanel.tsx:7707:                                        : <><Zap
+ className="w-5 h-5" /> V4 생성</>}
+  components\ShortsLabPanel.tsx:7708:                                </button>
+  components\ShortsLabPanel.tsx:7709:
+  components\ShortsLabPanel.tsx:7710:                                                
+                <div className="space-y-2 mt-2 col-span-2">
+  components\ShortsLabPanel.tsx:7711:                                                
+                    <textarea
+  components\ShortsLabPanel.tsx:7717:                                                
+                    />
+  components\ShortsLabPanel.tsx:7718:                                                
+                    <button
+> components\ShortsLabPanel.tsx:7719:                                                
+                        onClick={handleManualJsonParse}
+  components\ShortsLabPanel.tsx:7720:                                                
+                        disabled={!manualJsonInput.trim()}
+  components\ShortsLabPanel.tsx:7721:                                                
+                        className="w-full py-2 bg-gradient-to-r from-emerald-600 to-g
+reen-600 hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 rounded-lg fon
+t-semibold text-sm transition-all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:7722:                                                
+                    >
+  components\ShortsLabPanel.tsx:7723:                                                
+                        <Sparkles className="w-4 h-4" /> JSON 그대로 출력 (미리보기)
+  components\ShortsLabPanel.tsx:7737:                                                
+</h3>
+  components\ShortsLabPanel.tsx:7738:                                                
+<button
+> components\ShortsLabPanel.tsx:7739:                                                
+    onClick={() => setScriptPhase('idle')}
+  components\ShortsLabPanel.tsx:7740:                                                
+    className="text-xs text-slate-500 hover:text-white flex items-center gap-1 transi
+tion-colors"
+  components\ShortsLabPanel.tsx:7741:                                                
+>
+  components\ShortsLabPanel.tsx:7742:                                                
+    <X className="w-3 h-3" /> 다시 입력
+  components\ShortsLabPanel.tsx:7743:                                                
+</button>
+  components\ShortsLabPanel.tsx:7767:                                                
+    <div
+  components\ShortsLabPanel.tsx:7768:                                                
+        key={i}
+> components\ShortsLabPanel.tsx:7769:                                                
+        onClick={() => handleSelectStoryline(i)}
+  components\ShortsLabPanel.tsx:7770:                                                
+        className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedSto
+ryIndex === i ? 'border-lime-500 bg-lime-500/10' : 'border-slate-700 bg-slate-800/50 
+hover:border-lime-500/50'}`}
+  components\ShortsLabPanel.tsx:7771:                                                
+    >
+  components\ShortsLabPanel.tsx:7772:                                                
+        <div className={`text-xs font-bold mb-1 leading-snug ${selectedStoryIndex ===
+ i ? 'text-lime-400' : 'text-white'}`}>
+  components\ShortsLabPanel.tsx:7773:                                                
+            {i + 1}. {story.title}
+  components\ShortsLabPanel.tsx:7786:                                                
+/>
+  components\ShortsLabPanel.tsx:7787:                                                
+<button
+> components\ShortsLabPanel.tsx:7788:                                                
+    onClick={handleConfirmStoryline}
+  components\ShortsLabPanel.tsx:7789:                                                
+    disabled={isGenerating || selectedStoryIndex === null}
+  components\ShortsLabPanel.tsx:7790:                                                
+    className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-
+purple-500 hover:to-indigo-500 disabled:opacity-50 rounded-xl font-bold transition-al
+l flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:7791:                                                
+>
+  components\ShortsLabPanel.tsx:7792:                                                
+    {isGenerating
+  components\ShortsLabPanel.tsx:7808:                                        </div>
+  components\ShortsLabPanel.tsx:7809:                                        <button
+> components\ShortsLabPanel.tsx:7810:                                            onCl
+ick={() => setEnableWinterAccessories(!enableWinterAccessories)}
+  components\ShortsLabPanel.tsx:7811:                                            clas
+sName={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${e
+nableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
+  components\ShortsLabPanel.tsx:7812:                                                
+}`}
+  components\ShortsLabPanel.tsx:7813:                                        >
+  components\ShortsLabPanel.tsx:7814:                                            <spa
+n
+  components\ShortsLabPanel.tsx:7828:                                        </div>
+  components\ShortsLabPanel.tsx:7829:                                        <button
+> components\ShortsLabPanel.tsx:7830:                                            onCl
+ick={() => setUseRandomOutfits(!useRandomOutfits)}
+  components\ShortsLabPanel.tsx:7831:                                            clas
+sName={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${u
+seRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'
+  components\ShortsLabPanel.tsx:7832:                                                
+}`}
+  components\ShortsLabPanel.tsx:7833:                                        >
+  components\ShortsLabPanel.tsx:7834:                                            <spa
+n
+  components\ShortsLabPanel.tsx:7860:
+  components\ShortsLabPanel.tsx:7861:                            <button
+> components\ShortsLabPanel.tsx:7862:                                onClick={handleP
+arseScenes}
+  components\ShortsLabPanel.tsx:7863:                                disabled={!scrip
+tInput.trim() || isManualSceneParsing}
+  components\ShortsLabPanel.tsx:7864:                                className="w-ful
+l py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-
+teal-500 disabled:opacity-50 rounded-xl font-semibold transition-all flex items-cente
+r justify-center gap-2"
+  components\ShortsLabPanel.tsx:7865:                            >
+  components\ShortsLabPanel.tsx:7866:                                {activeTab === '
+manual' && isManualSceneParsing ? (
+  components\ShortsLabPanel.tsx:7900:                                                
+<span>인물 고정</span>
+  components\ShortsLabPanel.tsx:7901:                                                
+<button
+> components\ShortsLabPanel.tsx:7902:                                                
+    onClick={() => setManualIdentityLockEnabled(!manualIdentityLockEnabled)}
+  components\ShortsLabPanel.tsx:7903:                                                
+    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-col
+ors ${manualIdentityLockEnabled ? 'bg-purple-600' : 'bg-slate-700'
+  components\ShortsLabPanel.tsx:7904:                                                
+        }`}
+  components\ShortsLabPanel.tsx:7905:                                                
+    title="인물 고정 토글"
+  components\ShortsLabPanel.tsx:7906:                                                
+>
+  components\ShortsLabPanel.tsx:7912:                                            </di
+v>
+  components\ShortsLabPanel.tsx:7913:                                            <but
+ton
+> components\ShortsLabPanel.tsx:7914:                                                
+onClick={addManualIdentity}
+  components\ShortsLabPanel.tsx:7915:                                                
+className="px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-slate-700 bg-
+slate-900 text-purple-300 hover:border-purple-500 transition-all flex items-center ga
+p-1.5"
+  components\ShortsLabPanel.tsx:7916:                                            >
+  components\ShortsLabPanel.tsx:7917:                                                
+<Plus className="w-3 h-3" /> 캐릭터 추가
+  components\ShortsLabPanel.tsx:7918:                                            </bu
+tton>
+  components\ShortsLabPanel.tsx:7921:                                    <div classNa
+me="flex flex-wrap items-center gap-2">
+  components\ShortsLabPanel.tsx:7922:                                        <button
+> components\ShortsLabPanel.tsx:7923:                                            onCl
+ick={handleManualAICharacterAnalysis}
+  components\ShortsLabPanel.tsx:7924:                                            disa
+bled={!scriptInput.trim() || manualAnalyzing}
+  components\ShortsLabPanel.tsx:7925:                                            clas
+sName="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-purple-500/50 bg-pu
+rple-900/40 text-purple-200 hover:border-purple-400 transition-all disabled:opacity-5
+0"
+  components\ShortsLabPanel.tsx:7926:                                        >
+  components\ShortsLabPanel.tsx:7927:                                            {man
+ualAnalyzing ? 'AI 인물 분석 중...' : 'AI 인물 분석'}
+  components\ShortsLabPanel.tsx:7928:                                        </button
+>
+  components\ShortsLabPanel.tsx:7929:                                        <button
+> components\ShortsLabPanel.tsx:7930:                                            onCl
+ick={handleManualFindMissing}
+  components\ShortsLabPanel.tsx:7931:                                            disa
+bled={!scriptInput.trim()}
+  components\ShortsLabPanel.tsx:7932:                                            clas
+sName="px-3 py-1.5 text-[10px] font-bold rounded-lg border border-slate-700 bg-slate-
+900 text-slate-300 hover:border-slate-500 transition-all disabled:opacity-50"
+  components\ShortsLabPanel.tsx:7933:                                        >
+  components\ShortsLabPanel.tsx:7934:                                            누락 인
+물 찾기
+  components\ShortsLabPanel.tsx:8005:                        <div className="mt-4 pt-
+4 border-t border-slate-700">
+  components\ShortsLabPanel.tsx:8006:                            <button
+> components\ShortsLabPanel.tsx:8007:                                onClick={() => s
+etShowCastingPanel(!showCastingPanel)}
+  components\ShortsLabPanel.tsx:8008:                                className="flex 
+items-center justify-between w-full text-left mb-3"
+  components\ShortsLabPanel.tsx:8009:                            >
+  components\ShortsLabPanel.tsx:8010:                                <div className="
+flex items-center gap-2">
+  components\ShortsLabPanel.tsx:8011:                                    <ImageIcon c
+lassName="w-4 h-4 text-pink-400" />
+  components\ShortsLabPanel.tsx:8034:                                                
+        {casting && (
+  components\ShortsLabPanel.tsx:8035:                                                
+            <button
+> components\ShortsLabPanel.tsx:8036:                                                
+                onClick={() => handleRemoveCharacterReference(slotId)}
+  components\ShortsLabPanel.tsx:8037:                                                
+                className="text-[10px] text-red-400 hover:text-red-300"
+  components\ShortsLabPanel.tsx:8038:                                                
+            >
+  components\ShortsLabPanel.tsx:8039:                                                
+                <X className="w-3 h-3" />
+  components\ShortsLabPanel.tsx:8040:                                                
+            </button>
+  components\ShortsLabPanel.tsx:8095:                                    <button
+  components\ShortsLabPanel.tsx:8096:                                        key={ser
+vice}
+> components\ShortsLabPanel.tsx:8097:                                        onClick=
+{() => setSettings(prev => ({ ...prev, imageService: service }))}
+  components\ShortsLabPanel.tsx:8098:                                        classNam
+e={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${settings.ima
+geService === service
+  components\ShortsLabPanel.tsx:8099:                                            ? 'b
+g-purple-600 border-purple-500 text-white'
+  components\ShortsLabPanel.tsx:8100:                                            : 'b
+g-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+  components\ShortsLabPanel.tsx:8101:                                            }`}
+  components\ShortsLabPanel.tsx:8122:                                        <button
+  components\ShortsLabPanel.tsx:8123:                                            key=
+{option.id}
+> components\ShortsLabPanel.tsx:8124:                                            onCl
+ick={() => updateSetting('imagePromptLanguage', option.id)}
+  components\ShortsLabPanel.tsx:8125:                                            clas
+sName={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${
+  components\ShortsLabPanel.tsx:8126:                                                
+settings.imagePromptLanguage === option.id
+  components\ShortsLabPanel.tsx:8127:                                                
+    ? 'bg-emerald-600 border-emerald-500 text-white'
+  components\ShortsLabPanel.tsx:8128:                                                
+    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+  components\ShortsLabPanel.tsx:8155:                                        {scenes.
+find(s => s.seed === settings.globalSeed && s.imageUrl) ? (
+  components\ShortsLabPanel.tsx:8156:                                            <but
+ton
+> components\ShortsLabPanel.tsx:8157:                                                
+onClick={() => {
+  components\ShortsLabPanel.tsx:8158:                                                
+    const sceneWithSeed = scenes.find(s => s.seed === settings.globalSeed && s.imageU
+rl);
+  components\ShortsLabPanel.tsx:8159:                                                
+    if (sceneWithSeed?.imageUrl) {
+  components\ShortsLabPanel.tsx:8160:                                                
+        setSelectedImageForView(sceneWithSeed.imageUrl);
+  components\ShortsLabPanel.tsx:8161:                                                
+    }
+  components\ShortsLabPanel.tsx:8196:                                    </div>
+  components\ShortsLabPanel.tsx:8197:                                    <button
+> components\ShortsLabPanel.tsx:8198:                                        onClick=
+{() => updateSetting('globalSeed', Math.floor(Math.random() * 4294967295))}
+  components\ShortsLabPanel.tsx:8199:                                        classNam
+e="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-m
+edium transition-colors"
+  components\ShortsLabPanel.tsx:8200:                                        disabled
+={!settings.isSeedLocked}
+  components\ShortsLabPanel.tsx:8201:                                        title="랜
+덤 시드 생성"
+  components\ShortsLabPanel.tsx:8202:                                    >
+  components\ShortsLabPanel.tsx:8218:                                    </span>
+  components\ShortsLabPanel.tsx:8219:                                    <button
+> components\ShortsLabPanel.tsx:8220:                                        onClick=
+{() => setShowLocationBank(!showLocationBank)}
+  components\ShortsLabPanel.tsx:8221:                                        classNam
+e="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+  components\ShortsLabPanel.tsx:8222:                                    >
+  components\ShortsLabPanel.tsx:8223:                                        {showLoc
+ationBank ? '접기' : '펼치기'}
+  components\ShortsLabPanel.tsx:8224:                                        <Chevron
+Down className={`w-3 h-3 transition-transform ${showLocationBank ? 'rotate-180' : ''}
+`} />
+  components\ShortsLabPanel.tsx:8260:                                                
+            ) : (
+  components\ShortsLabPanel.tsx:8261:                                                
+                <button
+> components\ShortsLabPanel.tsx:8262:                                                
+                    onClick={() => handleApplyLocationPreset(preset)}
+  components\ShortsLabPanel.tsx:8263:                                                
+                    className="text-xs font-medium text-slate-200 hover:text-blue-400
+ text-left w-full truncate"
+  components\ShortsLabPanel.tsx:8264:                                                
+                    title={preset.description}
+  components\ShortsLabPanel.tsx:8265:                                                
+                >
+  components\ShortsLabPanel.tsx:8266:                                                
+                    {preset.name}
+  components\ShortsLabPanel.tsx:8271:                                                
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 tra
+nsition-opacity">
+  components\ShortsLabPanel.tsx:8272:                                                
+            <button
+> components\ShortsLabPanel.tsx:8273:                                                
+                onClick={() => {
+  components\ShortsLabPanel.tsx:8274:                                                
+                    setEditingLocationId(preset.id);
+  components\ShortsLabPanel.tsx:8275:                                                
+                    setEditingLocationName(preset.name);
+  components\ShortsLabPanel.tsx:8276:                                                
+                }}
+  components\ShortsLabPanel.tsx:8277:                                                
+                className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-s
+late-200"
+  components\ShortsLabPanel.tsx:8281:                                                
+            </button>
+  components\ShortsLabPanel.tsx:8282:                                                
+            <button
+> components\ShortsLabPanel.tsx:8283:                                                
+                onClick={() => handleDeleteLocationPreset(preset.id)}
+  components\ShortsLabPanel.tsx:8284:                                                
+                className="p-1 hover:bg-red-900/30 rounded text-slate-400 hover:text-
+red-400"
+  components\ShortsLabPanel.tsx:8285:                                                
+                title="삭제"
+  components\ShortsLabPanel.tsx:8286:                                                
+            >
+  components\ShortsLabPanel.tsx:8287:                                                
+                <Trash2 className="w-3 h-3" />
+  components\ShortsLabPanel.tsx:8301:                                        {scenes.
+find(s => s.background) && (
+  components\ShortsLabPanel.tsx:8302:                                            <but
+ton
+> components\ShortsLabPanel.tsx:8303:                                                
+onClick={() => {
+  components\ShortsLabPanel.tsx:8304:                                                
+    const sceneWithBg = scenes.find(s => s.background);
+  components\ShortsLabPanel.tsx:8305:                                                
+    if (sceneWithBg) handleSaveLocationPreset(sceneWithBg);
+  components\ShortsLabPanel.tsx:8306:                                                
+}}
+  components\ShortsLabPanel.tsx:8307:                                                
+className="w-full py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 
+text-blue-400 rounded-lg text-xs font-medium transition-all flex items-center justify
+-center gap-2"
+  components\ShortsLabPanel.tsx:8375:                                <div className="
+ml-6 mt-2 grid grid-cols-2 gap-2">
+  components\ShortsLabPanel.tsx:8376:                                    {STYLE_PRESE
+TS.map(style => (
+> components\ShortsLabPanel.tsx:8377:                                        <button 
+key={style.id} onClick={() => updateSetting('selectedStyle', style.id)} className={`p
+x-3 py-2 rounded-lg text-sm text-left transition-colors ${settings.selectedStyle === 
+style.id ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-
+700'}`}>{style.name}</button>
+  components\ShortsLabPanel.tsx:8378:                                    ))}
+  components\ShortsLabPanel.tsx:8379:                                </div>
+  components\ShortsLabPanel.tsx:8380:                            )}
+  components\ShortsLabPanel.tsx:8381:                        </SettingSection>
+  components\ShortsLabPanel.tsx:8382:
+  components\ShortsLabPanel.tsx:8383:                        {scenes.length > 0 && (
+> components\ShortsLabPanel.tsx:8384:                            <button onClick={han
+dleRegeneratePrompts} className="w-full py-3 bg-gradient-to-r from-amber-600 to-orang
+e-600 hover:from-amber-500 hover:to-orange-500 rounded-xl font-semibold transition-al
+l flex items-center justify-center gap-2">
+  components\ShortsLabPanel.tsx:8385:                                <RefreshCw class
+Name="w-5 h-5" /> 설정 적용 (프롬프트 재생성)
+  components\ShortsLabPanel.tsx:8386:                            </button>
+  components\ShortsLabPanel.tsx:8387:                        )}
+  components\ShortsLabPanel.tsx:8388:                    </div>
+  components\ShortsLabPanel.tsx:8392:                {activeTab === 'preview' && (
+  components\ShortsLabPanel.tsx:8393:                    <div className="space-y-4">
+> components\ShortsLabPanel.tsx:8394:                        {/* [신규] 캐릭터 프로필 섹션 (AI 
+마스터 생성 후 표시) */}
+  components\ShortsLabPanel.tsx:8395:                        {masterCharacterProfiles
+.length > 0 && (
+  components\ShortsLabPanel.tsx:8396:                            <div className="bg-g
+radient-to-br from-indigo-900/30 to-purple-900/30 border border-indigo-700/50 rounded
+-xl p-4">
+  components\ShortsLabPanel.tsx:8397:                                <div className="
+flex items-center justify-between mb-4">
+  components\ShortsLabPanel.tsx:8398:                                    <div classNa
+me="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:8399:                                        <Sparkle
+s className="w-5 h-5 text-indigo-400" />
+  components\ShortsLabPanel.tsx:8400:                                        <h3 clas
+sName="font-semibold text-indigo-300">캐릭터 프로필</h3>
+> components\ShortsLabPanel.tsx:8401:                                        <span cl
+assName="text-xs bg-indigo-600/50 text-indigo-200 px-2 py-0.5 rounded-full">AI 마스터 생성
+</span>
+  components\ShortsLabPanel.tsx:8402:                                    </div>
+  components\ShortsLabPanel.tsx:8403:                                    <button
+> components\ShortsLabPanel.tsx:8404:                                        onClick=
+{handleApplyCharacterInfo}
+  components\ShortsLabPanel.tsx:8405:                                        classNam
+e="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 h
+over:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-semibold transiti
+on-all"
+  components\ShortsLabPanel.tsx:8406:                                    >
+  components\ShortsLabPanel.tsx:8407:                                        <Zap cla
+ssName="w-4 h-4" />
+  components\ShortsLabPanel.tsx:8408:                                        캐릭터 정보 적
+용
+  components\ShortsLabPanel.tsx:8431:                                                
+<button
+  components\ShortsLabPanel.tsx:8432:                                                
+    type="button"
+> components\ShortsLabPanel.tsx:8433:                                                
+    onClick={() => openMasterProfileEditor({ ...profile, name: displayName, face: dis
+playFace, body: displayBody, hair: displayHair, style: displayStyle })}
+  components\ShortsLabPanel.tsx:8434:                                                
+    className="relative z-20 mb-2 w-full rounded-lg border border-indigo-500/50 bg-in
+digo-500/15 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/25 cu
+rsor-pointer"
+  components\ShortsLabPanel.tsx:8435:                                                
+>
+  components\ShortsLabPanel.tsx:8436:                                                
+    상세 수정
+  components\ShortsLabPanel.tsx:8437:                                                
+</button>
+  components\ShortsLabPanel.tsx:8479:                                                
+                <button
+  components\ShortsLabPanel.tsx:8480:                                                
+                    type="button"
+> components\ShortsLabPanel.tsx:8481:                                                
+                    onClick={() => {
+  components\ShortsLabPanel.tsx:8482:                                                
+                        setOpenMasterOutfitDropdownSlot((prev) =>
+  components\ShortsLabPanel.tsx:8483:                                                
+                            prev === profile.slotId ? null : profile.slotId
+  components\ShortsLabPanel.tsx:8484:                                                
+                        );
+  components\ShortsLabPanel.tsx:8485:                                                
+                    }}
+  components\ShortsLabPanel.tsx:8492:                                                
+                                alt={selectedOutfitItem?.translation || selectedOutfi
+tItem?.name || '의상 썸네일'}
+  components\ShortsLabPanel.tsx:8493:                                                
+                                className="w-7 h-7 rounded object-cover border border
+-slate-600 flex-shrink-0 cursor-pointer hover:border-emerald-400 transition-colors"
+> components\ShortsLabPanel.tsx:8494:                                                
+                                onClick={(e) => {
+  components\ShortsLabPanel.tsx:8495:                                                
+                                    e.stopPropagation();
+  components\ShortsLabPanel.tsx:8496:                                                
+                                    setSelectedImageForView(selectedOutfitImageUrl);
+  components\ShortsLabPanel.tsx:8497:                                                
+                                }}
+  components\ShortsLabPanel.tsx:8498:                                                
+                            />
+  components\ShortsLabPanel.tsx:8516:                                                
+                            <button
+  components\ShortsLabPanel.tsx:8517:                                                
+                                type="button"
+> components\ShortsLabPanel.tsx:8518:                                                
+                                onClick={() => {
+  components\ShortsLabPanel.tsx:8519:                                                
+                                    void handleUpdateMasterProfile(profile.slotId, 'o
+utfit', '');
+  components\ShortsLabPanel.tsx:8520:                                                
+                                    setOpenMasterOutfitDropdownSlot(null);
+  components\ShortsLabPanel.tsx:8521:                                                
+                                }}
+  components\ShortsLabPanel.tsx:8522:                                                
+                                className="w-full text-left px-2 py-1.5 rounded borde
+r border-slate-700 bg-slate-800/70 text-[11px] text-slate-300 hover:border-emerald-50
+0/40 hover:text-emerald-300"
+  components\ShortsLabPanel.tsx:8543:                                                
+                                                        key={item.id}
+  components\ShortsLabPanel.tsx:8544:                                                
+                                                        type="button"
+> components\ShortsLabPanel.tsx:8545:                                                
+                                                        onClick={() => {
+  components\ShortsLabPanel.tsx:8546:                                                
+                                                            void handleUpdateMasterPr
+ofile(profile.slotId, 'outfit', value);
+  components\ShortsLabPanel.tsx:8547:                                                
+                                                            setOpenMasterOutfitDropdo
+wnSlot(null);
+  components\ShortsLabPanel.tsx:8548:                                                
+                                                        }}
+  components\ShortsLabPanel.tsx:8549:                                                
+                                                        className={`w-full text-left 
+px-2 py-1.5 rounded text-[11px] flex items-center gap-2 transition-colors ${isSelecte
+d ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-200' : 'border borde
+r-transparent bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:text-white'
+}`}
+  components\ShortsLabPanel.tsx:8554:                                                
+                                                                alt={item.translation
+ || item.name}
+  components\ShortsLabPanel.tsx:8555:                                                
+                                                                className="w-7 h-7 ro
+unded object-cover border border-slate-700 flex-shrink-0 cursor-pointer hover:border-
+emerald-400 transition-colors"
+> components\ShortsLabPanel.tsx:8556:                                                
+                                                                onClick={(e) => {
+  components\ShortsLabPanel.tsx:8557:                                                
+                                                                    e.stopPropagation
+();
+  components\ShortsLabPanel.tsx:8558:                                                
+                                                                    setSelectedImageF
+orView(imageUrl);
+  components\ShortsLabPanel.tsx:8559:                                                
+                                                                }}
+  components\ShortsLabPanel.tsx:8560:                                                
+                                                            />
+  components\ShortsLabPanel.tsx:8613:                                                
+        <button
+  components\ShortsLabPanel.tsx:8614:                                                
+            type="button"
+> components\ShortsLabPanel.tsx:8615:                                                
+            onClick={() => void loadSavedCharacters()}
+  components\ShortsLabPanel.tsx:8616:                                                
+            className="mt-1 text-[10px] text-emerald-400 hover:text-emerald-300"
+  components\ShortsLabPanel.tsx:8617:                                                
+        >
+  components\ShortsLabPanel.tsx:8618:                                                
+            저장 캐릭터 새로고침
+  components\ShortsLabPanel.tsx:8619:                                                
+        </button>
+  components\ShortsLabPanel.tsx:8674:                            <div className="flex
+ gap-2">
+  components\ShortsLabPanel.tsx:8675:                                <button
+> components\ShortsLabPanel.tsx:8676:                                    onClick={() 
+=> updateSetting('imagePromptLanguage', 'ko')}
+  components\ShortsLabPanel.tsx:8677:                                    className={`
+px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+  components\ShortsLabPanel.tsx:8678:                                        settings
+.imagePromptLanguage === 'ko'
+  components\ShortsLabPanel.tsx:8679:                                            ? 'b
+g-emerald-600 border-emerald-500 text-white'
+  components\ShortsLabPanel.tsx:8680:                                            : 'b
+g-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+  components\ShortsLabPanel.tsx:8684:                                </button>
+  components\ShortsLabPanel.tsx:8685:                                <button
+> components\ShortsLabPanel.tsx:8686:                                    onClick={() 
+=> updateSetting('imagePromptLanguage', 'en')}
+  components\ShortsLabPanel.tsx:8687:                                    className={`
+px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+  components\ShortsLabPanel.tsx:8688:                                        settings
+.imagePromptLanguage === 'en'
+  components\ShortsLabPanel.tsx:8689:                                            ? 'b
+g-emerald-600 border-emerald-500 text-white'
+  components\ShortsLabPanel.tsx:8690:                                            : 'b
+g-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+  components\ShortsLabPanel.tsx:8714:                                                
+<button
+  components\ShortsLabPanel.tsx:8715:                                                
+    type="button"
+> components\ShortsLabPanel.tsx:8716:                                                
+    onClick={(event) => {
+  components\ShortsLabPanel.tsx:8717:                                                
+        event.stopPropagation();
+  components\ShortsLabPanel.tsx:8718:                                                
+        handleOpenImageFolder();
+  components\ShortsLabPanel.tsx:8719:                                                
+    }}
+  components\ShortsLabPanel.tsx:8720:                                                
+    className="bg-black/70 hover:bg-black/80 backdrop-blur-md text-slate-200 border b
+order-slate-700/60 rounded-md p-1 transition-colors"
+  components\ShortsLabPanel.tsx:8737:                                                
+        alt={`Scene ${scene.number}`}
+  components\ShortsLabPanel.tsx:8738:                                                
+        className="w-full h-full object-cover transition-transform duration-500 group
+-hover/img:scale-105 cursor-pointer"
+> components\ShortsLabPanel.tsx:8739:                                                
+        onClick={() => setSelectedImageForView(scene.imageUrl || null)}
+  components\ShortsLabPanel.tsx:8740:                                                
+    />
+  components\ShortsLabPanel.tsx:8741:                                                
+    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-10
+0 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+  components\ShortsLabPanel.tsx:8742:                                                
+        <div className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white tran
+sition-all transform translate-y-2 group-hover/img:translate-y-0"><Maximize2 classNam
+e="w-5 h-5" /></div>
+> components\ShortsLabPanel.tsx:8743:                                                
+        <button onClick={() => handleDownloadSceneImage(scene)} className="p-2 bg-whi
+te/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all trans
+form translate-y-2 group-hover/img:translate-y-0 delay-75 pointer-events-auto"><Downl
+oad className="w-5 h-5" /></button>
+  components\ShortsLabPanel.tsx:8744:                                                
+    </div>
+  components\ShortsLabPanel.tsx:8745:                                                
+</>
+  components\ShortsLabPanel.tsx:8746:                                            ) : 
+(
+  components\ShortsLabPanel.tsx:8747:                                                
+<div className="w-full h-full flex flex-col items-center justify-center text-slate-60
+0 gap-2">
+  components\ShortsLabPanel.tsx:8752:                                            {/* 
+액션 버튼 오버레이 */}
+  components\ShortsLabPanel.tsx:8753:                                            <div
+ className="absolute bottom-2 left-2 right-2 flex gap-1">
+> components\ShortsLabPanel.tsx:8754:                                                
+<button onClick={() => handleGenerateImage(scene.prompt, `scene-${scene.number}`, sce
+ne.number)} disabled={generatingId === `scene-${scene.number}`} className="flex-1 py-
+2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white text-[10px] font
+-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opa
+city-50">
+  components\ShortsLabPanel.tsx:8755:                                                
+    {generatingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-s
+pin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
+  components\ShortsLabPanel.tsx:8756:                                                
+</button>
+> components\ShortsLabPanel.tsx:8757:                                                
+<button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.numb
+er}`, scene.number)} disabled={aiForwardingId === `scene-${scene.number}`} className=
+"p-2 bg-purple-600/90 hover:bg-purple-500 backdrop-blur-md text-white rounded-lg tran
+sition-all disabled:opacity-50" title="AI 생성">
+  components\ShortsLabPanel.tsx:8758:                                                
+    {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate
+-spin" /> : <Bot className="w-3 h-3" />}
+  components\ShortsLabPanel.tsx:8759:                                                
+</button>
+> components\ShortsLabPanel.tsx:8760:                                                
+<button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.numb
+er}`, scene.number, 'GENSPARK')} disabled={gensparkForwardingId === `scene-${scene.nu
+mber}`} className="p-2 bg-blue-600/90 hover:bg-blue-500 backdrop-blur-md text-white r
+ounded-lg transition-all disabled:opacity-50" title="Genspark 생성">
+  components\ShortsLabPanel.tsx:8761:                                                
+    {gensparkForwardingId === `scene-${scene.number}` ? <Loader2 className="w-5 h-5 a
+nimate-spin" /> : <Zap className="w-5 h-5" />}
+  components\ShortsLabPanel.tsx:8762:                                                
+</button>
+  components\ShortsLabPanel.tsx:8763:                                                
+<button
+> components\ShortsLabPanel.tsx:8764:                                                
+    onClick={() => {
+  components\ShortsLabPanel.tsx:8765:                                                
+        setSceneTabs(prev => ({ ...prev, [scene.number]: 'VIDEO' }));
+  components\ShortsLabPanel.tsx:8766:                                                
+        if (!scene.videoPrompt) {
+  components\ShortsLabPanel.tsx:8767:                                                
+            handleRefineVideoPrompt(scene.number);
+  components\ShortsLabPanel.tsx:8768:                                                
+        }
+  components\ShortsLabPanel.tsx:8782:                                            <div
+ className="flex border-b border-slate-800">
+  components\ShortsLabPanel.tsx:8783:                                                
+{(['IMG', 'VIDEO', 'VOICE', 'JSON'] as const).map((tab) => (
+> components\ShortsLabPanel.tsx:8784:                                                
+    <button key={tab} onClick={() => setSceneTabs(prev => ({ ...prev, [scene.number]:
+ tab }))} className={`px-3 py-1.5 text-[10px] font-bold transition-all border-b-2 ${(
+sceneTabs[scene.number] || 'IMG') === tab ? 'border-emerald-500 text-emerald-400' : '
+border-transparent text-slate-500 hover:text-slate-300'}`}>{tab}</button>
+  components\ShortsLabPanel.tsx:8785:                                                
+))}
+  components\ShortsLabPanel.tsx:8786:                                            </di
+v>
+  components\ShortsLabPanel.tsx:8787:
+  components\ShortsLabPanel.tsx:8788:                                            {/* 
+탭 컨텐츠 */}
+  components\ShortsLabPanel.tsx:8794:                                                
+            <div className="flex items-center justify-between mb-1">
+  components\ShortsLabPanel.tsx:8795:                                                
+                <span className="text-[10px] font-bold text-slate-500 uppercase track
+ing-tight">한국어 프롬프트</span>
+> components\ShortsLabPanel.tsx:8796:                                                
+                <button onClick={() => handleStartEdit(scene.number, 'ko', scene.long
+PromptKo || '')} className="opacity-0 group-hover/edit:opacity-100 p-1 hover:bg-slate
+-800 rounded transition-all"><Edit3 className="w-3 h-3 text-slate-400" /></button>
+  components\ShortsLabPanel.tsx:8797:                                                
+            </div>
+  components\ShortsLabPanel.tsx:8798:                                                
+            <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">{scene
+.longPromptKo || scene.text}</p>
+  components\ShortsLabPanel.tsx:8799:                                                
+        </div>
+  components\ShortsLabPanel.tsx:8800:
+  components\ShortsLabPanel.tsx:8812:                                                
+                            </span>
+  components\ShortsLabPanel.tsx:8813:                                                
+                            <button 
+> components\ShortsLabPanel.tsx:8814:                                                
+                                onClick={() => {
+  components\ShortsLabPanel.tsx:8815:                                                
+                                    if (settings.globalSeed === scene.seed && setting
+s.isSeedLocked) {
+  components\ShortsLabPanel.tsx:8816:                                                
+                                        // Unlock
+  components\ShortsLabPanel.tsx:8817:                                                
+                                        updateSetting('isSeedLocked', false);
+  components\ShortsLabPanel.tsx:8818:                                                
+                                        showToast('시드 고정이 해제되었습니다.', 'info');
+  components\ShortsLabPanel.tsx:8847:
+  components\ShortsLabPanel.tsx:8848:                                                
+                    <button
+> components\ShortsLabPanel.tsx:8849:                                                
+                        onClick={() => handleApplyWinterLook(scene.number)}
+  components\ShortsLabPanel.tsx:8850:                                                
+                        className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/
+10 hover:bg-blue-500/20 border border-blue-500/30 rounded text-[9px] text-blue-400 tr
+ansition-all"
+  components\ShortsLabPanel.tsx:8851:                                                
+                        title="지능형 겨울 룩 즉시 적용 (상의 긴팔 + 악세서리)"
+  components\ShortsLabPanel.tsx:8852:                                                
+                    >
+  components\ShortsLabPanel.tsx:8853:                                                
+                        <Sparkles className="w-2.5 h-2.5" />
+  components\ShortsLabPanel.tsx:8855:                                                
+                    </button>
+  components\ShortsLabPanel.tsx:8856:                                                
+                    <button
+> components\ShortsLabPanel.tsx:8857:                                                
+                        onClick={() => openPromptEditModal(scene.number, scene.prompt
+)}
+  components\ShortsLabPanel.tsx:8858:                                                
+                        className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50
+0/10 hover:bg-purple-500/20 border border-purple-500/30 rounded text-[9px] text-purpl
+e-400 transition-all"
+  components\ShortsLabPanel.tsx:8859:                                                
+                        title="프롬프트 상세 분석 및 스타일 변환"
+  components\ShortsLabPanel.tsx:8860:                                                
+                    >
+  components\ShortsLabPanel.tsx:8861:                                                
+                        <Sparkles className="w-2.5 h-2.5" />
+  components\ShortsLabPanel.tsx:8863:                                                
+                    </button>
+  components\ShortsLabPanel.tsx:8864:                                                
+                </div>
+> components\ShortsLabPanel.tsx:8865:                                                
+                <button onClick={() => handleStartEdit(scene.number, 'en', scene.prom
+pt)} className="opacity-0 group-hover/edit:opacity-100 p-1 hover:bg-slate-800 rounded
+ transition-all"><Edit3 className="w-3 h-3 text-slate-400" /></button>
+  components\ShortsLabPanel.tsx:8866:                                                
+            </div>
+  components\ShortsLabPanel.tsx:8867:                                                
+            <p className="text-[11px] text-slate-400 font-mono leading-relaxed line-c
+lamp-2 italic">{scene.prompt}</p>
+  components\ShortsLabPanel.tsx:8868:                                                
+        </div>
+  components\ShortsLabPanel.tsx:8869:
+  components\ShortsLabPanel.tsx:8890:                                                
+                    </div>
+  components\ShortsLabPanel.tsx:8891:                                                
+                    <button
+> components\ShortsLabPanel.tsx:8892:                                                
+                        onClick={() => handleSaveLocationPreset(scene)}
+  components\ShortsLabPanel.tsx:8893:                                                
+                        className="flex-shrink-0 px-2 py-1 bg-blue-600/20 hover:bg-bl
+ue-600/30 border border-blue-500/30 text-blue-400 rounded text-[9px] font-medium tran
+sition-all flex items-center gap-1"
+  components\ShortsLabPanel.tsx:8894:                                                
+                        title="이 배경을 프리셋으로 저장"
+  components\ShortsLabPanel.tsx:8895:                                                
+                    >
+  components\ShortsLabPanel.tsx:8896:                                                
+                        <Save className="w-3 h-3" />
+  components\ShortsLabPanel.tsx:8946:                                                
+        <div className="flex gap-2">
+  components\ShortsLabPanel.tsx:8947:                                                
+            <button
+> components\ShortsLabPanel.tsx:8948:                                                
+                onClick={() => handleRefineVideoPrompt(scene.number)}
+  components\ShortsLabPanel.tsx:8949:                                                
+                disabled={scene.isVideoPromptGenerating}
+  components\ShortsLabPanel.tsx:8950:                                                
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 disable
+d:bg-slate-700 text-white text-[10px] font-bold rounded-lg border border-purple-500/5
+0 transition-all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:8951:                                                
+            >
+  components\ShortsLabPanel.tsx:8952:                                                
+                {scene.isVideoPromptGenerating ? (
+  components\ShortsLabPanel.tsx:8957:                                                
+            </button>
+  components\ShortsLabPanel.tsx:8958:                                                
+            <button
+> components\ShortsLabPanel.tsx:8959:                                                
+                onClick={() => handleGenerateSceneVideo(scene.number)}
+  components\ShortsLabPanel.tsx:8960:                                                
+                disabled={scene.isVideoGenerating || !scene.videoPrompt}
+  components\ShortsLabPanel.tsx:8961:                                                
+                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disab
+led:bg-slate-700 text-white text-[10px] font-bold rounded-lg border border-emerald-50
+0/50 transition-all flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:8962:                                                
+            >
+  components\ShortsLabPanel.tsx:8963:                                                
+                {scene.isVideoGenerating ? (
+  components\ShortsLabPanel.tsx:8969:                                                
+            {scene.isVideoGenerating && (
+  components\ShortsLabPanel.tsx:8970:                                                
+                <button
+> components\ShortsLabPanel.tsx:8971:                                                
+                    onClick={() => handleCancelSceneVideo(scene.number)}
+  components\ShortsLabPanel.tsx:8972:                                                
+                    className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white t
+ext-[10px] font-bold rounded-lg border border-slate-500/50 transition-all"
+  components\ShortsLabPanel.tsx:8973:                                                
+                >
+  components\ShortsLabPanel.tsx:8974:                                                
+                    취소
+  components\ShortsLabPanel.tsx:8975:                                                
+                </button>
+  components\ShortsLabPanel.tsx:8976:                                                
+            )}
+  components\ShortsLabPanel.tsx:8977:                                                
+            <button
+> components\ShortsLabPanel.tsx:8978:                                                
+                onClick={() => handleImportVideoFromDownloads(scene.number)}
+  components\ShortsLabPanel.tsx:8979:                                                
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[1
+0px] font-bold rounded-lg border border-blue-500/50 transition-all flex items-center 
+gap-1.5"
+  components\ShortsLabPanel.tsx:8980:                                                
+                title="다운로드 폴더에서 최근 영상 가져오기 (10분 이내)"
+  components\ShortsLabPanel.tsx:8981:                                                
+            >
+  components\ShortsLabPanel.tsx:8982:                                                
+                <Download className="w-3 h-3" />
+  components\ShortsLabPanel.tsx:9107:                        />
+  components\ShortsLabPanel.tsx:9108:                        <div className="flex gap
+-3">
+> components\ShortsLabPanel.tsx:9109:                            <button onClick={() 
+=> setEditingScene(null)} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 te
+xt-slate-300 rounded-xl font-semibold transition-all">취소</button>
+> components\ShortsLabPanel.tsx:9110:                            <button onClick={han
+dleSaveEdit} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white 
+rounded-xl font-semibold transition-all">저장하기</button>
+  components\ShortsLabPanel.tsx:9111:                        </div>
+  components\ShortsLabPanel.tsx:9112:                    </div>
+  components\ShortsLabPanel.tsx:9113:                </div>
+  components\ShortsLabPanel.tsx:9114:            )}
+  components\ShortsLabPanel.tsx:9124:                            </h3>
+  components\ShortsLabPanel.tsx:9125:                            <button
+> components\ShortsLabPanel.tsx:9126:                                onClick={() => s
+etShowRecentVideoPicker(false)}
+  components\ShortsLabPanel.tsx:9127:                                className="p-2 h
+over:bg-slate-800 rounded-full text-slate-400 transition-colors"
+  components\ShortsLabPanel.tsx:9128:                            >
+  components\ShortsLabPanel.tsx:9129:                                <X className="w-
+6 h-6" />
+  components\ShortsLabPanel.tsx:9130:                            </button>
+  components\ShortsLabPanel.tsx:9142:                                    <div
+  components\ShortsLabPanel.tsx:9143:                                        key={idx
+}
+> components\ShortsLabPanel.tsx:9144:                                        onClick=
+{() => !isImportingSpecific && handleImportSpecificVideo(video.name)}
+  components\ShortsLabPanel.tsx:9145:                                        classNam
+e={`group flex items-center justify-between p-4 bg-slate-800/50 hover:bg-blue-600/20 
+border border-slate-700 hover:border-blue-500/50 rounded-xl cursor-pointer transition
+-all ${isImportingSpecific ? 'opacity-50 cursor-not-allowed' : ''}`}
+  components\ShortsLabPanel.tsx:9146:                                    >
+  components\ShortsLabPanel.tsx:9147:                                        <div cla
+ssName="flex items-center gap-4">
+  components\ShortsLabPanel.tsx:9148:                                            <div
+ className="w-24 h-14 bg-slate-800 rounded-lg overflow-hidden border border-slate-700
+/60">
+  components\ShortsLabPanel.tsx:9466:
+  components\ShortsLabPanel.tsx:9467:            {editingMasterProfileSlotId && (
+> components\ShortsLabPanel.tsx:9468:                <div className="fixed inset-0 z-
+[120] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={()
+ => setEditingMasterProfileSlotId(null)}>
+> components\ShortsLabPanel.tsx:9469:                    <div className="w-full max-w
+-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl" onClick={(e) => e.st
+opPropagation()}>
+  components\ShortsLabPanel.tsx:9470:                        <div className="flex ite
+ms-center justify-between border-b border-slate-800 px-5 py-4">
+  components\ShortsLabPanel.tsx:9471:                            <div>
+  components\ShortsLabPanel.tsx:9472:                                <div className="
+text-sm font-bold text-white">{editingMasterProfileSlotId} 상세 수정</div>
+  components\ShortsLabPanel.tsx:9473:                                <div className="
+text-[11px] text-slate-400">저장하면 미리보기와 이미지 생성 기준 정보가 같이 갱신됩니다.</div>
+  components\ShortsLabPanel.tsx:9474:                            </div>
+> components\ShortsLabPanel.tsx:9475:                            <button onClick={() 
+=> setEditingMasterProfileSlotId(null)} className="rounded-full p-2 text-slate-400 ho
+ver:bg-slate-800 hover:text-white">
+  components\ShortsLabPanel.tsx:9476:                                <X className="w-
+4 h-4" />
+  components\ShortsLabPanel.tsx:9477:                            </button>
+  components\ShortsLabPanel.tsx:9478:                        </div>
+  components\ShortsLabPanel.tsx:9479:                        <div className="grid gri
+d-cols-1 gap-3 px-5 py-4">
+  components\ShortsLabPanel.tsx:9510:                        </div>
+  components\ShortsLabPanel.tsx:9511:                        <div className="flex jus
+tify-end gap-2 border-t border-slate-800 px-5 py-4">
+> components\ShortsLabPanel.tsx:9512:                            <button onClick={() 
+=> setEditingMasterProfileSlotId(null)} className="rounded-lg bg-slate-700 px-4 py-2 
+text-sm font-medium text-slate-200 hover:bg-slate-600">취소</button>
+> components\ShortsLabPanel.tsx:9513:                            <button onClick={() 
+=> void handleSaveMasterProfileDetails()} disabled={isSavingMasterProfile} className=
+"rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-50
+0 disabled:bg-slate-700">
+  components\ShortsLabPanel.tsx:9514:                                {isSavingMasterP
+rofile ? '저장 중...' : '저장'}
+  components\ShortsLabPanel.tsx:9515:                            </button>
+  components\ShortsLabPanel.tsx:9516:                        </div>
+  components\ShortsLabPanel.tsx:9517:                    </div>
+  components\ShortsLabPanel.tsx:10817:            onMouseMove={handleMouseMove}
+  components\ShortsLabPanel.tsx:10818:            onMouseUp={handleMouseUp}
+> components\ShortsLabPanel.tsx:10819:            onClick={onClose}
+  components\ShortsLabPanel.tsx:10820:        >
+  components\ShortsLabPanel.tsx:10821:            <div
+  components\ShortsLabPanel.tsx:10822:                className="bg-slate-900 border 
+border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+  components\ShortsLabPanel.tsx:10823:                style={{
+  components\ShortsLabPanel.tsx:10825:                    transition: isDragging ? 'n
+one' : 'transform 0.1s ease-out'
+  components\ShortsLabPanel.tsx:10826:                }}
+> components\ShortsLabPanel.tsx:10827:                onClick={(e) => e.stopPropagati
+on()}
+  components\ShortsLabPanel.tsx:10828:            >
+  components\ShortsLabPanel.tsx:10829:                {/* Header */}
+  components\ShortsLabPanel.tsx:10830:                <div
+  components\ShortsLabPanel.tsx:10831:                    className="flex items-cente
+r justify-between p-6 border-b border-slate-800 cursor-move select-none"
+  components\ShortsLabPanel.tsx:10842:                    </div>
+  components\ShortsLabPanel.tsx:10843:                    <button
+> components\ShortsLabPanel.tsx:10844:                        onClick={onClose}
+  components\ShortsLabPanel.tsx:10845:                        className="p-2 hover:bg
+-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+  components\ShortsLabPanel.tsx:10846:                    >
+  components\ShortsLabPanel.tsx:10847:                        <X className="w-6 h-6" 
+/>
+  components\ShortsLabPanel.tsx:10848:                    </button>
+  components\ShortsLabPanel.tsx:10852:                    <div className="inline-flex
+ rounded-xl border border-slate-700 bg-slate-800/60 p-1">
+  components\ShortsLabPanel.tsx:10853:                        <button
+> components\ShortsLabPanel.tsx:10854:                            onClick={() => {
+  components\ShortsLabPanel.tsx:10855:                                setActiveTab('g
+enres');
+  components\ShortsLabPanel.tsx:10856:                            }}
+  components\ShortsLabPanel.tsx:10857:                            className={`px-4 py
+-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'genres'
+  components\ShortsLabPanel.tsx:10858:                                ? 'bg-purple-60
+0 text-white'
+  components\ShortsLabPanel.tsx:10863:                        </button>
+  components\ShortsLabPanel.tsx:10864:                        <button
+> components\ShortsLabPanel.tsx:10865:                            onClick={() => {
+  components\ShortsLabPanel.tsx:10866:                                setActiveTab('r
+ules');
+  components\ShortsLabPanel.tsx:10867:                                setMode('list')
+;
+  components\ShortsLabPanel.tsx:10868:                                setSelectedGenr
+e(null);
+  components\ShortsLabPanel.tsx:10869:                            }}
+  components\ShortsLabPanel.tsx:10877:                        {SHOW_STEP2_RULES_TAB &
+& (
+  components\ShortsLabPanel.tsx:10878:                            <button
+> components\ShortsLabPanel.tsx:10879:                                onClick={() => 
+{
+  components\ShortsLabPanel.tsx:10880:                                    setActiveTa
+b('step2_rules');
+  components\ShortsLabPanel.tsx:10881:                                    setMode('li
+st');
+  components\ShortsLabPanel.tsx:10882:                                    setSelected
+Genre(null);
+  components\ShortsLabPanel.tsx:10883:                                }}
+  components\ShortsLabPanel.tsx:10891:                        )}
+  components\ShortsLabPanel.tsx:10892:                        <button
+> components\ShortsLabPanel.tsx:10893:                            onClick={() => {
+  components\ShortsLabPanel.tsx:10894:                                setActiveTab('s
+cript_rules');
+  components\ShortsLabPanel.tsx:10895:                                setMode('list')
+;
+  components\ShortsLabPanel.tsx:10896:                                setSelectedGenr
+e(null);
+  components\ShortsLabPanel.tsx:10897:                            }}
+  components\ShortsLabPanel.tsx:10904:                        </button>
+  components\ShortsLabPanel.tsx:10905:                        <button
+> components\ShortsLabPanel.tsx:10906:                            onClick={() => {
+  components\ShortsLabPanel.tsx:10907:                                setActiveTab('p
+ost_process');
+  components\ShortsLabPanel.tsx:10908:                                setMode('list')
+;
+  components\ShortsLabPanel.tsx:10909:                                setSelectedGenr
+e(null);
+  components\ShortsLabPanel.tsx:10910:                            }}
+  components\ShortsLabPanel.tsx:10917:                        </button>
+  components\ShortsLabPanel.tsx:10918:                        <button
+> components\ShortsLabPanel.tsx:10919:                            onClick={() => {
+  components\ShortsLabPanel.tsx:10920:                                setActiveTab('c
+haracter_rules');
+  components\ShortsLabPanel.tsx:10921:                                setMode('list')
+;
+  components\ShortsLabPanel.tsx:10922:                                setSelectedGenr
+e(null);
+  components\ShortsLabPanel.tsx:10923:                            }}
+  components\ShortsLabPanel.tsx:10930:                        </button>
+  components\ShortsLabPanel.tsx:10931:                        <button
+> components\ShortsLabPanel.tsx:10932:                            onClick={() => {
+  components\ShortsLabPanel.tsx:10933:                                setActiveTab('w
+inter_accessories');
+  components\ShortsLabPanel.tsx:10934:                                setMode('list')
+;
+  components\ShortsLabPanel.tsx:10935:                                setSelectedGenr
+e(null);
+  components\ShortsLabPanel.tsx:10936:                            }}
+  components\ShortsLabPanel.tsx:10944:                        {SHOW_OUTFIT_SELECTION_
+TAB && (
+  components\ShortsLabPanel.tsx:10945:                            <button
+> components\ShortsLabPanel.tsx:10946:                                onClick={() => 
+{
+  components\ShortsLabPanel.tsx:10947:                                    setActiveTa
+b('outfit_selection');
+  components\ShortsLabPanel.tsx:10948:                                    setMode('li
+st');
+  components\ShortsLabPanel.tsx:10949:                                    setSelected
+Genre(null);
+  components\ShortsLabPanel.tsx:10950:                                }}
+  components\ShortsLabPanel.tsx:10967:                            <div className="fle
+x gap-2 mb-4">
+  components\ShortsLabPanel.tsx:10968:                                <button
+> components\ShortsLabPanel.tsx:10969:                                    onClick={ha
+ndleStartAdd}
+  components\ShortsLabPanel.tsx:10970:                                    className="
+px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medi
+um transition-colors flex items-center gap-2"
+  components\ShortsLabPanel.tsx:10971:                                >
+  components\ShortsLabPanel.tsx:10972:                                    <Plus class
+Name="w-4 h-4" />
+  components\ShortsLabPanel.tsx:10973:                                    새 장르 추가
+  components\ShortsLabPanel.tsx:10974:                                </button>
+  components\ShortsLabPanel.tsx:10975:                                <button
+> components\ShortsLabPanel.tsx:10976:                                    onClick={ha
+ndleReset}
+  components\ShortsLabPanel.tsx:10977:                                    className="
+px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm font-medi
+um transition-colors flex items-center gap-2"
+  components\ShortsLabPanel.tsx:10978:                                >
+  components\ShortsLabPanel.tsx:10979:                                    <RefreshCw 
+className="w-4 h-4" />
+  components\ShortsLabPanel.tsx:10980:                                    기본값으로 초기화
+  components\ShortsLabPanel.tsx:10999:                                    />
+  components\ShortsLabPanel.tsx:11000:                                    <button
+> components\ShortsLabPanel.tsx:11001:                                        onClick
+={handleBackupCreate}
+  components\ShortsLabPanel.tsx:11002:                                        classNa
+me="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-me
+dium transition-colors flex items-center gap-2"
+  components\ShortsLabPanel.tsx:11003:                                    >
+  components\ShortsLabPanel.tsx:11004:                                        <Save c
+lassName="w-4 h-4" />
+  components\ShortsLabPanel.tsx:11005:                                        백업 생성
+  components\ShortsLabPanel.tsx:11026:                                               
+         />
+  components\ShortsLabPanel.tsx:11027:                                               
+         <button
+> components\ShortsLabPanel.tsx:11028:                                               
+             onClick={() => handleBackupRename(backup.id)}
+  components\ShortsLabPanel.tsx:11029:                                               
+             className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 roun
+ded-md text-[11px] font-medium"
+  components\ShortsLabPanel.tsx:11030:                                               
+         >
+  components\ShortsLabPanel.tsx:11031:                                               
+             이름 저장
+  components\ShortsLabPanel.tsx:11032:                                               
+         </button>
+  components\ShortsLabPanel.tsx:11039:                                               
+ <div className="flex gap-2">
+  components\ShortsLabPanel.tsx:11040:                                               
+     <button
+> components\ShortsLabPanel.tsx:11041:                                               
+         onClick={() => handleOpenBackupEditor(backup.id)}
+  components\ShortsLabPanel.tsx:11042:                                               
+         className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounde
+d-lg text-xs font-medium"
+  components\ShortsLabPanel.tsx:11043:                                               
+     >
+  components\ShortsLabPanel.tsx:11044:                                               
+         보기/편집
+  components\ShortsLabPanel.tsx:11045:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11046:                                               
+     <button
+> components\ShortsLabPanel.tsx:11047:                                               
+         onClick={() => handleBackupRestore(backup.id)}
+  components\ShortsLabPanel.tsx:11048:                                               
+         className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rou
+nded-lg text-xs font-medium"
+  components\ShortsLabPanel.tsx:11049:                                               
+     >
+  components\ShortsLabPanel.tsx:11050:                                               
+         복구
+  components\ShortsLabPanel.tsx:11051:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11052:                                               
+     <button
+> components\ShortsLabPanel.tsx:11053:                                               
+         onClick={() => handleBackupDelete(backup.id)}
+  components\ShortsLabPanel.tsx:11054:                                               
+         className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded-l
+g text-xs font-medium"
+  components\ShortsLabPanel.tsx:11055:                                               
+     >
+  components\ShortsLabPanel.tsx:11056:                                               
+         삭제
+  components\ShortsLabPanel.tsx:11057:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11092:                                            <di
+v className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+  components\ShortsLabPanel.tsx:11093:                                               
+ <button
+> components\ShortsLabPanel.tsx:11094:                                               
+     onClick={() => handleStartEdit(genre)}
+  components\ShortsLabPanel.tsx:11095:                                               
+     className="p-2 bg-purple-600/80 hover:bg-purple-500 text-white rounded-lg transi
+tion-colors"
+  components\ShortsLabPanel.tsx:11096:                                               
+     title="수정"
+  components\ShortsLabPanel.tsx:11097:                                               
+ >
+  components\ShortsLabPanel.tsx:11098:                                               
+     <Edit3 className="w-4 h-4" />
+  components\ShortsLabPanel.tsx:11099:                                               
+ </button>
+  components\ShortsLabPanel.tsx:11100:                                               
+ <button
+> components\ShortsLabPanel.tsx:11101:                                               
+     onClick={() => handleDelete(genre.id)}
+  components\ShortsLabPanel.tsx:11102:                                               
+     className="p-2 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg transition
+-colors"
+  components\ShortsLabPanel.tsx:11103:                                               
+     title="삭제"
+  components\ShortsLabPanel.tsx:11104:                                               
+ >
+  components\ShortsLabPanel.tsx:11105:                                               
+     <Trash2 className="w-4 h-4" />
+  components\ShortsLabPanel.tsx:11117:                            {/* Back button */}
+  components\ShortsLabPanel.tsx:11118:                            <button
+> components\ShortsLabPanel.tsx:11119:                                onClick={() => 
+{
+  components\ShortsLabPanel.tsx:11120:                                    setMode('li
+st');
+  components\ShortsLabPanel.tsx:11121:                                    setSelected
+Genre(null);
+  components\ShortsLabPanel.tsx:11122:                                }}
+  components\ShortsLabPanel.tsx:11123:                                className="text
+-sm text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
+  components\ShortsLabPanel.tsx:11326:                                    <div classN
+ame="flex gap-2">
+  components\ShortsLabPanel.tsx:11327:                                        <button
+> components\ShortsLabPanel.tsx:11328:                                            onC
+lick={handlePostProcessReset}
+  components\ShortsLabPanel.tsx:11329:                                            cla
+ssName="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs
+ font-semibold"
+  components\ShortsLabPanel.tsx:11330:                                        >
+  components\ShortsLabPanel.tsx:11331:                                            되돌리
+기
+  components\ShortsLabPanel.tsx:11332:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11333:                                        <button
+> components\ShortsLabPanel.tsx:11334:                                            onC
+lick={handlePostProcessSave}
+  components\ShortsLabPanel.tsx:11335:                                            cla
+ssName="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs fon
+t-semibold"
+  components\ShortsLabPanel.tsx:11336:                                        >
+  components\ShortsLabPanel.tsx:11337:                                            저장
+  components\ShortsLabPanel.tsx:11338:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11525:                                    />
+  components\ShortsLabPanel.tsx:11526:                                    <button
+> components\ShortsLabPanel.tsx:11527:                                        onClick
+={handlePostProcessBackupCreate}
+  components\ShortsLabPanel.tsx:11528:                                        classNa
+me="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medi
+um transition-colors flex items-center gap-2"
+  components\ShortsLabPanel.tsx:11529:                                    >
+  components\ShortsLabPanel.tsx:11530:                                        <Save c
+lassName="w-4 h-4" />
+  components\ShortsLabPanel.tsx:11531:                                        백업 생성
+  components\ShortsLabPanel.tsx:11552:                                               
+         />
+  components\ShortsLabPanel.tsx:11553:                                               
+         <button
+> components\ShortsLabPanel.tsx:11554:                                               
+             onClick={() => handleBackupRename(backup.id)}
+  components\ShortsLabPanel.tsx:11555:                                               
+             className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 roun
+ded-md text-[11px] font-medium"
+  components\ShortsLabPanel.tsx:11556:                                               
+         >
+  components\ShortsLabPanel.tsx:11557:                                               
+             이름 저장
+  components\ShortsLabPanel.tsx:11558:                                               
+         </button>
+  components\ShortsLabPanel.tsx:11565:                                               
+ <div className="flex gap-2">
+  components\ShortsLabPanel.tsx:11566:                                               
+     <button
+> components\ShortsLabPanel.tsx:11567:                                               
+         onClick={() => handleOpenBackupEditor(backup.id)}
+  components\ShortsLabPanel.tsx:11568:                                               
+         className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounde
+d-lg text-xs font-medium"
+  components\ShortsLabPanel.tsx:11569:                                               
+     >
+  components\ShortsLabPanel.tsx:11570:                                               
+         보기/편집
+  components\ShortsLabPanel.tsx:11571:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11572:                                               
+     <button
+> components\ShortsLabPanel.tsx:11573:                                               
+         onClick={() => handleBackupRestore(backup.id)}
+  components\ShortsLabPanel.tsx:11574:                                               
+         className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rou
+nded-lg text-xs font-medium"
+  components\ShortsLabPanel.tsx:11575:                                               
+     >
+  components\ShortsLabPanel.tsx:11576:                                               
+         복구
+  components\ShortsLabPanel.tsx:11577:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11578:                                               
+     <button
+> components\ShortsLabPanel.tsx:11579:                                               
+         onClick={() => handleBackupDelete(backup.id)}
+  components\ShortsLabPanel.tsx:11580:                                               
+         className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded-l
+g text-xs font-medium"
+  components\ShortsLabPanel.tsx:11581:                                               
+     >
+  components\ShortsLabPanel.tsx:11582:                                               
+         삭제
+  components\ShortsLabPanel.tsx:11583:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11601:                                    <div classN
+ame="flex gap-2">
+  components\ShortsLabPanel.tsx:11602:                                        <button
+> components\ShortsLabPanel.tsx:11603:                                            onC
+lick={handlePromptRulesReset}
+  components\ShortsLabPanel.tsx:11604:                                            cla
+ssName="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs
+ font-semibold"
+  components\ShortsLabPanel.tsx:11605:                                        >
+  components\ShortsLabPanel.tsx:11606:                                            기본값
+으로 초기화
+  components\ShortsLabPanel.tsx:11607:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11608:                                        <button
+> components\ShortsLabPanel.tsx:11609:                                            onC
+lick={handlePromptRulesSave}
+  components\ShortsLabPanel.tsx:11610:                                            cla
+ssName="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs
+ font-semibold"
+  components\ShortsLabPanel.tsx:11611:                                        >
+  components\ShortsLabPanel.tsx:11612:                                            저장
+  components\ShortsLabPanel.tsx:11613:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11645:                                    />
+  components\ShortsLabPanel.tsx:11646:                                    <button
+> components\ShortsLabPanel.tsx:11647:                                        onClick
+={handlePromptRulesBackupCreate}
+  components\ShortsLabPanel.tsx:11648:                                        classNa
+me="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-
+medium transition-colors flex items-center gap-2"
+  components\ShortsLabPanel.tsx:11649:                                    >
+  components\ShortsLabPanel.tsx:11650:                                        <Save c
+lassName="w-4 h-4" />
+  components\ShortsLabPanel.tsx:11651:                                        백업 생성
+  components\ShortsLabPanel.tsx:11672:                                               
+         />
+  components\ShortsLabPanel.tsx:11673:                                               
+         <button
+> components\ShortsLabPanel.tsx:11674:                                               
+             onClick={() => handlePromptRulesBackupRename(backup.id)}
+  components\ShortsLabPanel.tsx:11675:                                               
+             className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 roun
+ded-md text-[11px] font-medium"
+  components\ShortsLabPanel.tsx:11676:                                               
+         >
+  components\ShortsLabPanel.tsx:11677:                                               
+             이름 저장
+  components\ShortsLabPanel.tsx:11678:                                               
+         </button>
+  components\ShortsLabPanel.tsx:11684:                                               
+ <div className="flex gap-2">
+  components\ShortsLabPanel.tsx:11685:                                               
+     <button
+> components\ShortsLabPanel.tsx:11686:                                               
+         onClick={() => handleOpenPromptRulesBackupEditor(backup.id)}
+  components\ShortsLabPanel.tsx:11687:                                               
+         className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 rounde
+d-lg text-xs font-medium"
+  components\ShortsLabPanel.tsx:11688:                                               
+     >
+  components\ShortsLabPanel.tsx:11689:                                               
+         보기/편집
+  components\ShortsLabPanel.tsx:11690:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11691:                                               
+     <button
+> components\ShortsLabPanel.tsx:11692:                                               
+         onClick={() => handlePromptRulesBackupRestore(backup.id)}
+  components\ShortsLabPanel.tsx:11693:                                               
+         className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rou
+nded-lg text-xs font-medium"
+  components\ShortsLabPanel.tsx:11694:                                               
+     >
+  components\ShortsLabPanel.tsx:11695:                                               
+         복구
+  components\ShortsLabPanel.tsx:11696:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11697:                                               
+     <button
+> components\ShortsLabPanel.tsx:11698:                                               
+         onClick={() => handlePromptRulesBackupDelete(backup.id)}
+  components\ShortsLabPanel.tsx:11699:                                               
+         className="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded-l
+g text-xs font-medium"
+  components\ShortsLabPanel.tsx:11700:                                               
+     >
+  components\ShortsLabPanel.tsx:11701:                                               
+         삭제
+  components\ShortsLabPanel.tsx:11702:                                               
+     </button>
+  components\ShortsLabPanel.tsx:11756:                                <div className=
+"bg-slate-800/40 border border-slate-700 rounded-xl p-3 space-y-3">
+  components\ShortsLabPanel.tsx:11757:                                    <button
+> components\ShortsLabPanel.tsx:11758:                                        onClick
+={() => setIsStep2PromptViewOpen(true)}
+  components\ShortsLabPanel.tsx:11759:                                        classNa
+me="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font
+-semibold flex items-center justify-center gap-2"
+  components\ShortsLabPanel.tsx:11760:                                    >
+  components\ShortsLabPanel.tsx:11761:                                        <FileTe
+xt className="w-4 h-4" />
+  components\ShortsLabPanel.tsx:11762:                                        전체 프롬프트
+ 보기
+  components\ShortsLabPanel.tsx:11764:                                    <div classN
+ame="grid grid-cols-3 gap-2">
+  components\ShortsLabPanel.tsx:11765:                                        <button
+> components\ShortsLabPanel.tsx:11766:                                            onC
+lick={handleStep2BackupCreate}
+  components\ShortsLabPanel.tsx:11767:                                            cla
+ssName="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs f
+ont-semibold"
+  components\ShortsLabPanel.tsx:11768:                                        >
+  components\ShortsLabPanel.tsx:11769:                                            백업
+  components\ShortsLabPanel.tsx:11770:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11771:                                        <button
+> components\ShortsLabPanel.tsx:11772:                                            onC
+lick={handleStep2BackupRestoreSelected}
+  components\ShortsLabPanel.tsx:11773:                                            cla
+ssName="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-x
+s font-semibold"
+  components\ShortsLabPanel.tsx:11774:                                        >
+  components\ShortsLabPanel.tsx:11775:                                            복원
+  components\ShortsLabPanel.tsx:11776:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11777:                                        <button
+> components\ShortsLabPanel.tsx:11778:                                            onC
+lick={handleStep2RulesSave}
+  components\ShortsLabPanel.tsx:11779:                                            cla
+ssName="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-se
+mibold"
+  components\ShortsLabPanel.tsx:11780:                                        >
+  components\ShortsLabPanel.tsx:11781:                                            저장
+  components\ShortsLabPanel.tsx:11782:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11783:                                    </div>
+  components\ShortsLabPanel.tsx:11784:                                    <button
+> components\ShortsLabPanel.tsx:11785:                                        onClick
+={handleStep2RulesReset}
+  components\ShortsLabPanel.tsx:11786:                                        classNa
+me="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-x
+s font-semibold"
+  components\ShortsLabPanel.tsx:11787:                                    >
+  components\ShortsLabPanel.tsx:11788:                                        기본값으로 초
+기화
+  components\ShortsLabPanel.tsx:11789:                                    </button>
+  components\ShortsLabPanel.tsx:11818:                                               
+             />
+  components\ShortsLabPanel.tsx:11819:                                               
+             <button
+> components\ShortsLabPanel.tsx:11820:                                               
+                 onClick={() => handleStep2BackupRename(backup.id)}
+  components\ShortsLabPanel.tsx:11821:                                               
+                 className="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-20
+0 rounded text-[9px]"
+  components\ShortsLabPanel.tsx:11822:                                               
+             >
+  components\ShortsLabPanel.tsx:11823:                                               
+                 저장
+  components\ShortsLabPanel.tsx:11824:                                               
+             </button>
+  components\ShortsLabPanel.tsx:11826:                                               
+         <div
+  components\ShortsLabPanel.tsx:11827:                                               
+             className="cursor-pointer"
+> components\ShortsLabPanel.tsx:11828:                                               
+             onClick={() => setSelectedStep2BackupId(backup.id)}
+  components\ShortsLabPanel.tsx:11829:                                               
+         >
+  components\ShortsLabPanel.tsx:11830:                                               
+             <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).
+toLocaleString()}</div>
+  components\ShortsLabPanel.tsx:11831:                                               
+         </div>
+  components\ShortsLabPanel.tsx:11832:                                               
+         <div className="flex gap-1">
+  components\ShortsLabPanel.tsx:11833:                                               
+             <button
+> components\ShortsLabPanel.tsx:11834:                                               
+                 onClick={() => handleOpenStep2BackupEditor(backup.id)}
+  components\ShortsLabPanel.tsx:11835:                                               
+                 className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-whi
+te rounded text-[10px] font-semibold"
+  components\ShortsLabPanel.tsx:11836:                                               
+             >
+  components\ShortsLabPanel.tsx:11837:                                               
+                 보기/편집
+  components\ShortsLabPanel.tsx:11838:                                               
+             </button>
+  components\ShortsLabPanel.tsx:11839:                                               
+             <button
+> components\ShortsLabPanel.tsx:11840:                                               
+                 onClick={() => {
+  components\ShortsLabPanel.tsx:11841:                                               
+                     if (selectedStep2BackupId === backup.id) {
+  components\ShortsLabPanel.tsx:11842:                                               
+                         setSelectedStep2BackupId(null);
+  components\ShortsLabPanel.tsx:11843:                                               
+                     }
+  components\ShortsLabPanel.tsx:11844:                                               
+                     handleStep2BackupDelete(backup.id);
+  components\ShortsLabPanel.tsx:11894:                                    <div classN
+ame="grid grid-cols-3 gap-2">
+  components\ShortsLabPanel.tsx:11895:                                        <button
+> components\ShortsLabPanel.tsx:11896:                                            onC
+lick={handleScriptBackupCreate}
+  components\ShortsLabPanel.tsx:11897:                                            cla
+ssName="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs f
+ont-semibold"
+  components\ShortsLabPanel.tsx:11898:                                        >
+  components\ShortsLabPanel.tsx:11899:                                            백업
+  components\ShortsLabPanel.tsx:11900:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11901:                                        <button
+> components\ShortsLabPanel.tsx:11902:                                            onC
+lick={handleScriptBackupRestoreSelected}
+  components\ShortsLabPanel.tsx:11903:                                            cla
+ssName="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-x
+s font-semibold"
+  components\ShortsLabPanel.tsx:11904:                                        >
+  components\ShortsLabPanel.tsx:11905:                                            복원
+  components\ShortsLabPanel.tsx:11906:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11907:                                        <button
+> components\ShortsLabPanel.tsx:11908:                                            onC
+lick={handleScriptRulesSave}
+  components\ShortsLabPanel.tsx:11909:                                            cla
+ssName="px-2 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-se
+mibold"
+  components\ShortsLabPanel.tsx:11910:                                        >
+  components\ShortsLabPanel.tsx:11911:                                            저장
+  components\ShortsLabPanel.tsx:11912:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:11920:                                    />
+  components\ShortsLabPanel.tsx:11921:                                    <button
+> components\ShortsLabPanel.tsx:11922:                                        onClick
+={handleScriptRulesReset}
+  components\ShortsLabPanel.tsx:11923:                                        classNa
+me="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-x
+s font-semibold"
+  components\ShortsLabPanel.tsx:11924:                                    >
+  components\ShortsLabPanel.tsx:11925:                                        기본값으로 초
+기화
+  components\ShortsLabPanel.tsx:11926:                                    </button>
+  components\ShortsLabPanel.tsx:11955:                                               
+             />
+  components\ShortsLabPanel.tsx:11956:                                               
+             <button
+> components\ShortsLabPanel.tsx:11957:                                               
+                 onClick={() => handleScriptBackupRename(backup.id)}
+  components\ShortsLabPanel.tsx:11958:                                               
+                 className="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-20
+0 rounded text-[9px]"
+  components\ShortsLabPanel.tsx:11959:                                               
+             >
+  components\ShortsLabPanel.tsx:11960:                                               
+                 저장
+  components\ShortsLabPanel.tsx:11961:                                               
+             </button>
+  components\ShortsLabPanel.tsx:11963:                                               
+         <div
+  components\ShortsLabPanel.tsx:11964:                                               
+             className="cursor-pointer"
+> components\ShortsLabPanel.tsx:11965:                                               
+             onClick={() => setSelectedScriptBackupId(backup.id)}
+  components\ShortsLabPanel.tsx:11966:                                               
+         >
+  components\ShortsLabPanel.tsx:11967:                                               
+             <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).
+toLocaleString()}</div>
+  components\ShortsLabPanel.tsx:11968:                                               
+         </div>
+  components\ShortsLabPanel.tsx:11969:                                               
+         <div className="flex gap-1">
+  components\ShortsLabPanel.tsx:11970:                                               
+             <button
+> components\ShortsLabPanel.tsx:11971:                                               
+                 onClick={() => handleOpenScriptRulesBackupEditor(backup.id)}
+  components\ShortsLabPanel.tsx:11972:                                               
+                 className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-whi
+te rounded text-[10px] font-semibold"
+  components\ShortsLabPanel.tsx:11973:                                               
+             >
+  components\ShortsLabPanel.tsx:11974:                                               
+                 보기/편집
+  components\ShortsLabPanel.tsx:11975:                                               
+             </button>
+  components\ShortsLabPanel.tsx:11976:                                               
+             <button
+> components\ShortsLabPanel.tsx:11977:                                               
+                 onClick={() => {
+  components\ShortsLabPanel.tsx:11978:                                               
+                     if (selectedScriptBackupId === backup.id) {
+  components\ShortsLabPanel.tsx:11979:                                               
+                         setSelectedScriptBackupId(null);
+  components\ShortsLabPanel.tsx:11980:                                               
+                     }
+  components\ShortsLabPanel.tsx:11981:                                               
+                     handleScriptBackupDelete(backup.id);
+  components\ShortsLabPanel.tsx:12003:                                    <div
+  components\ShortsLabPanel.tsx:12004:                                        classNa
+me="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transi
+tion-colors"
+> components\ShortsLabPanel.tsx:12005:                                        onClick
+={() => setIsFemaleSectionExpanded(!isFemaleSectionExpanded)}
+  components\ShortsLabPanel.tsx:12006:                                    >
+  components\ShortsLabPanel.tsx:12007:                                        <div cl
+assName="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:12008:                                            <Ch
+evronDown
+  components\ShortsLabPanel.tsx:12009:                                               
+ className={`w-5 h-5 text-blue-400 transition-transform ${isFemaleSectionExpanded ? '
+rotate-180' : ''}`}
+  components\ShortsLabPanel.tsx:12013:                                        </div>
+  components\ShortsLabPanel.tsx:12014:                                        <button
+> components\ShortsLabPanel.tsx:12015:                                            onC
+lick={async (e) => {
+  components\ShortsLabPanel.tsx:12016:                                               
+ e.stopPropagation();
+  components\ShortsLabPanel.tsx:12017:                                               
+ try {
+  components\ShortsLabPanel.tsx:12018:                                               
+     if (!onAddFemaleCharacter) return;
+  components\ShortsLabPanel.tsx:12019:                                               
+     const updated = await onAddFemaleCharacter();
+  components\ShortsLabPanel.tsx:12056:                                               
+ <div
+  components\ShortsLabPanel.tsx:12057:                                               
+     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-8
+00/60 transition-colors"
+> components\ShortsLabPanel.tsx:12058:                                               
+     onClick={() => toggleCharacterExpand(char.id)}
+  components\ShortsLabPanel.tsx:12059:                                               
+ >
+  components\ShortsLabPanel.tsx:12060:                                               
+     <div className="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:12061:                                               
+         <ChevronDown
+  components\ShortsLabPanel.tsx:12062:                                               
+             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? '
+rotate-180' : ''}`}
+  components\ShortsLabPanel.tsx:12074:                                               
+     <div className="flex items-center gap-1">
+  components\ShortsLabPanel.tsx:12075:                                               
+         <button
+> components\ShortsLabPanel.tsx:12076:                                               
+             onClick={async (e) => {
+  components\ShortsLabPanel.tsx:12077:                                               
+                 e.stopPropagation();
+  components\ShortsLabPanel.tsx:12078:                                               
+                 handleOpenImportModal('female', char.id);
+  components\ShortsLabPanel.tsx:12079:                                               
+             }}
+  components\ShortsLabPanel.tsx:12080:                                               
+             className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded
+-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+  components\ShortsLabPanel.tsx:12085:                                               
+         {char.id !== 'WomanD' && (
+  components\ShortsLabPanel.tsx:12086:                                               
+             <button
+> components\ShortsLabPanel.tsx:12087:                                               
+                 onClick={async (e) => {
+  components\ShortsLabPanel.tsx:12088:                                               
+                     e.stopPropagation();
+  components\ShortsLabPanel.tsx:12089:                                               
+                     try {
+  components\ShortsLabPanel.tsx:12090:                                               
+                         if (!onDeleteFemaleCharacter) return;
+  components\ShortsLabPanel.tsx:12091:                                               
+                         await onDeleteFemaleCharacter(char.id);
+  components\ShortsLabPanel.tsx:12103:                                               
+         )}
+  components\ShortsLabPanel.tsx:12104:                                               
+         <button
+> components\ShortsLabPanel.tsx:12105:                                               
+             onClick={(e) => handleSingleCharacterSave(e, char.id)}
+  components\ShortsLabPanel.tsx:12106:                                               
+             className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md
+ text-[10px] font-semibold transition-colors"
+  components\ShortsLabPanel.tsx:12107:                                               
+         >
+  components\ShortsLabPanel.tsx:12108:                                               
+             캐릭터 저장
+  components\ShortsLabPanel.tsx:12109:                                               
+         </button>
+  components\ShortsLabPanel.tsx:12206:                                    <div
+  components\ShortsLabPanel.tsx:12207:                                        classNa
+me="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transi
+tion-colors"
+> components\ShortsLabPanel.tsx:12208:                                        onClick
+={() => setIsMaleSectionExpanded(!isMaleSectionExpanded)}
+  components\ShortsLabPanel.tsx:12209:                                    >
+  components\ShortsLabPanel.tsx:12210:                                        <div cl
+assName="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:12211:                                            <Ch
+evronDown
+  components\ShortsLabPanel.tsx:12212:                                               
+ className={`w-5 h-5 text-blue-400 transition-transform ${isMaleSectionExpanded ? 'ro
+tate-180' : ''}`}
+  components\ShortsLabPanel.tsx:12216:                                        </div>
+  components\ShortsLabPanel.tsx:12217:                                        <button
+> components\ShortsLabPanel.tsx:12218:                                            onC
+lick={async (e) => {
+  components\ShortsLabPanel.tsx:12219:                                               
+ e.stopPropagation();
+  components\ShortsLabPanel.tsx:12220:                                               
+ try {
+  components\ShortsLabPanel.tsx:12221:                                               
+     if (!onAddMaleCharacter) return;
+  components\ShortsLabPanel.tsx:12222:                                               
+     const updated = await onAddMaleCharacter();
+  components\ShortsLabPanel.tsx:12259:                                               
+ <div
+  components\ShortsLabPanel.tsx:12260:                                               
+     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-8
+00/60 transition-colors"
+> components\ShortsLabPanel.tsx:12261:                                               
+     onClick={() => toggleCharacterExpand(char.id)}
+  components\ShortsLabPanel.tsx:12262:                                               
+ >
+  components\ShortsLabPanel.tsx:12263:                                               
+     <div className="flex items-center gap-2">
+  components\ShortsLabPanel.tsx:12264:                                               
+         <ChevronDown
+  components\ShortsLabPanel.tsx:12265:                                               
+             className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? '
+rotate-180' : ''}`}
+  components\ShortsLabPanel.tsx:12274:                                               
+     <div className="flex items-center gap-1">
+  components\ShortsLabPanel.tsx:12275:                                               
+         <button
+> components\ShortsLabPanel.tsx:12276:                                               
+             onClick={async (e) => {
+  components\ShortsLabPanel.tsx:12277:                                               
+                 e.stopPropagation();
+  components\ShortsLabPanel.tsx:12278:                                               
+                 handleOpenImportModal('male', char.id);
+  components\ShortsLabPanel.tsx:12279:                                               
+             }}
+  components\ShortsLabPanel.tsx:12280:                                               
+             className="px-2 py-1 bg-blue-600/80 hover:bg-blue-500 text-white rounded
+-md text-[10px] font-semibold transition-colors flex items-center gap-1"
+  components\ShortsLabPanel.tsx:12284:                                               
+         </button>
+  components\ShortsLabPanel.tsx:12285:                                               
+         <button
+> components\ShortsLabPanel.tsx:12286:                                               
+             onClick={async (e) => {
+  components\ShortsLabPanel.tsx:12287:                                               
+                 e.stopPropagation();
+  components\ShortsLabPanel.tsx:12288:                                               
+                 try {
+  components\ShortsLabPanel.tsx:12289:                                               
+                     if (!onDeleteMaleCharacter) return;
+  components\ShortsLabPanel.tsx:12290:                                               
+                     await onDeleteMaleCharacter(char.id);
+  components\ShortsLabPanel.tsx:12301:                                               
+         </button>
+  components\ShortsLabPanel.tsx:12302:                                               
+         <button
+> components\ShortsLabPanel.tsx:12303:                                               
+             onClick={(e) => handleSingleCharacterSave(e, char.id)}
+  components\ShortsLabPanel.tsx:12304:                                               
+             className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-md
+ text-[10px] font-semibold transition-colors"
+  components\ShortsLabPanel.tsx:12305:                                               
+         >
+  components\ShortsLabPanel.tsx:12306:                                               
+             캐릭터 저장
+  components\ShortsLabPanel.tsx:12307:                                               
+         </button>
+  components\ShortsLabPanel.tsx:12428:                                    <div classN
+ame="grid grid-cols-3 gap-2">
+  components\ShortsLabPanel.tsx:12429:                                        <button
+> components\ShortsLabPanel.tsx:12430:                                            onC
+lick={handleCharacterRulesBackupCreate}
+  components\ShortsLabPanel.tsx:12431:                                            cla
+ssName="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg text-xs f
+ont-semibold"
+  components\ShortsLabPanel.tsx:12432:                                        >
+  components\ShortsLabPanel.tsx:12433:                                            백업
+  components\ShortsLabPanel.tsx:12434:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:12435:                                        <button
+> components\ShortsLabPanel.tsx:12436:                                            onC
+lick={handleCharacterRulesBackupRestoreSelected}
+  components\ShortsLabPanel.tsx:12437:                                            cla
+ssName="px-2 py-2 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-x
+s font-semibold"
+  components\ShortsLabPanel.tsx:12438:                                        >
+  components\ShortsLabPanel.tsx:12439:                                            복원
+  components\ShortsLabPanel.tsx:12440:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:12441:                                        <button
+> components\ShortsLabPanel.tsx:12442:                                            onC
+lick={handleCharacterRulesSave}
+  components\ShortsLabPanel.tsx:12443:                                            cla
+ssName="px-2 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-se
+mibold"
+  components\ShortsLabPanel.tsx:12444:                                        >
+  components\ShortsLabPanel.tsx:12445:                                            전체 
+저장
+  components\ShortsLabPanel.tsx:12446:                                        </butto
+n>
+  components\ShortsLabPanel.tsx:12447:                                    </div>
+  components\ShortsLabPanel.tsx:12448:                                    <button
+> components\ShortsLabPanel.tsx:12449:                                        onClick
+={handleCharacterRulesReset}
+  components\ShortsLabPanel.tsx:12450:                                        classNa
+me="w-full px-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-x
+s font-semibold"
+  components\ShortsLabPanel.tsx:12451:                                    >
+  components\ShortsLabPanel.tsx:12452:                                        기본값으로 초
+기화
+  components\ShortsLabPanel.tsx:12453:                                    </button>
+  components\ShortsLabPanel.tsx:12482:                                               
+             />
+  components\ShortsLabPanel.tsx:12483:                                               
+             <button
+> components\ShortsLabPanel.tsx:12484:                                               
+                 onClick={() => {
+  components\ShortsLabPanel.tsx:12485:                                               
+                     const name = (characterRulesBackupEdits[backup.id] || '').trim()
+;
+  components\ShortsLabPanel.tsx:12486:                                               
+                     if (name) onCharacterRulesBackupRename(backup.id, name);
+  components\ShortsLabPanel.tsx:12487:                                               
+                 }}
+  components\ShortsLabPanel.tsx:12488:                                               
+                 className="px-1.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-20
+0 rounded text-[9px]"
+  components\ShortsLabPanel.tsx:12493:                                               
+         <div
+  components\ShortsLabPanel.tsx:12494:                                               
+             className="cursor-pointer"
+> components\ShortsLabPanel.tsx:12495:                                               
+             onClick={() => setSelectedCharacterRulesBackupId(backup.id)}
+  components\ShortsLabPanel.tsx:12496:                                               
+         >
+  components\ShortsLabPanel.tsx:12497:                                               
+             <div className="text-[10px] text-slate-400">{new Date(backup.createdAt).
+toLocaleString()}</div>
+  components\ShortsLabPanel.tsx:12498:                                               
+         </div>
+  components\ShortsLabPanel.tsx:12499:                                               
+         <div className="flex gap-1">
+  components\ShortsLabPanel.tsx:12500:                                               
+             <button
+> components\ShortsLabPanel.tsx:12501:                                               
+                 onClick={() => handleOpenCharacterRulesBackupEditor(backup.id)}
+  components\ShortsLabPanel.tsx:12502:                                               
+                 className="flex-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-whi
+te rounded text-[10px] font-semibold"
+  components\ShortsLabPanel.tsx:12503:                                               
+             >
+  components\ShortsLabPanel.tsx:12504:                                               
+                 보기/편집
+  components\ShortsLabPanel.tsx:12505:                                               
+             </button>
+  components\ShortsLabPanel.tsx:12506:                                               
+             <button
+> components\ShortsLabPanel.tsx:12507:                                               
+                 onClick={() => {
+  components\ShortsLabPanel.tsx:12508:                                               
+                     if (selectedCharacterRulesBackupId === backup.id) {
+  components\ShortsLabPanel.tsx:12509:                                               
+                         setSelectedCharacterRulesBackupId(null);
+  components\ShortsLabPanel.tsx:12510:                                               
+                     }
+  components\ShortsLabPanel.tsx:12511:                                               
+                     handleCharacterRulesBackupDelete(backup.id);
+  components\ShortsLabPanel.tsx:12689:                    <div className="p-6 border-
+t border-slate-800 flex justify-end gap-3">
+  components\ShortsLabPanel.tsx:12690:                        <button
+> components\ShortsLabPanel.tsx:12691:                            onClick={() => hand
+leOpenGuidelineView(selectedGenre || formData)}
+  components\ShortsLabPanel.tsx:12692:                            className="px-6 py-
+2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors
+ flex items-center gap-2"
+  components\ShortsLabPanel.tsx:12693:                        >
+  components\ShortsLabPanel.tsx:12694:                            <FileText className
+="w-4 h-4" />
+  components\ShortsLabPanel.tsx:12695:                            전체보기
+  components\ShortsLabPanel.tsx:12696:                        </button>
+  components\ShortsLabPanel.tsx:12697:                        <button
+> components\ShortsLabPanel.tsx:12698:                            onClick={() => {
+  components\ShortsLabPanel.tsx:12699:                                setMode('list')
+;
+  components\ShortsLabPanel.tsx:12700:                                setSelectedGenr
+e(null);
+  components\ShortsLabPanel.tsx:12701:                            }}
+  components\ShortsLabPanel.tsx:12702:                            className="px-6 py-
+2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colo
+rs"
+  components\ShortsLabPanel.tsx:12705:                        </button>
+  components\ShortsLabPanel.tsx:12706:                        <button
+> components\ShortsLabPanel.tsx:12707:                            onClick={handleSave
+}
+  components\ShortsLabPanel.tsx:12708:                            disabled={isSaving}
+  components\ShortsLabPanel.tsx:12709:                            className="px-6 py-
+2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white rounded-xl f
+ont-medium transition-colors flex items-center gap-2"
+  components\ShortsLabPanel.tsx:12710:                        >
+  components\ShortsLabPanel.tsx:12711:                            {isSaving ? (
+  components\ShortsLabPanel.tsx:12728:                    <div
+  components\ShortsLabPanel.tsx:12729:                        className="fixed inset-
+0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+> components\ShortsLabPanel.tsx:12730:                        onClick={() => setIsGui
+delineViewOpen(false)}
+  components\ShortsLabPanel.tsx:12731:                    >
+  components\ShortsLabPanel.tsx:12732:                        <div
+  components\ShortsLabPanel.tsx:12733:                            className="bg-slate
+-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] fle
+x flex-col"
+> components\ShortsLabPanel.tsx:12734:                            onClick={(e) => e.s
+topPropagation()}
+  components\ShortsLabPanel.tsx:12735:                        >
+  components\ShortsLabPanel.tsx:12736:                            <div className="fle
+x items-center justify-between p-6 border-b border-slate-800">
+  components\ShortsLabPanel.tsx:12737:                                <div>
+  components\ShortsLabPanel.tsx:12738:                                    <h3 classNa
+me="text-xl font-bold text-white">📋 {selectedGuidelineGenre.name} - 전체 지침</h3>
+  components\ShortsLabPanel.tsx:12740:                                </div>
+  components\ShortsLabPanel.tsx:12741:                                <button
+> components\ShortsLabPanel.tsx:12742:                                    onClick={()
+ => setIsGuidelineViewOpen(false)}
+  components\ShortsLabPanel.tsx:12743:                                    className="
+p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors
+"
+  components\ShortsLabPanel.tsx:12744:                                >
+  components\ShortsLabPanel.tsx:12745:                                    <X classNam
+e="w-6 h-6" />
+  components\ShortsLabPanel.tsx:12746:                                </button>
+  components\ShortsLabPanel.tsx:12755:                            <div className="fle
+x justify-end gap-2 p-6 border-t border-slate-800">
+  components\ShortsLabPanel.tsx:12756:                                <button
+> components\ShortsLabPanel.tsx:12757:                                    onClick={ha
+ndleCopyGuidelines}
+  components\ShortsLabPanel.tsx:12758:                                    className="
+px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium f
+lex items-center gap-2"
+  components\ShortsLabPanel.tsx:12759:                                >
+  components\ShortsLabPanel.tsx:12760:                                    <Copy class
+Name="w-4 h-4" />
+  components\ShortsLabPanel.tsx:12761:                                    복사
+  components\ShortsLabPanel.tsx:12762:                                </button>
+  components\ShortsLabPanel.tsx:12763:                                <button
+> components\ShortsLabPanel.tsx:12764:                                    onClick={ha
+ndleDownloadGuidelines}
+  components\ShortsLabPanel.tsx:12765:                                    className="
+px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium
+ flex items-center gap-2"
+  components\ShortsLabPanel.tsx:12766:                                >
+  components\ShortsLabPanel.tsx:12767:                                    <Download c
+lassName="w-4 h-4" />
+  components\ShortsLabPanel.tsx:12768:                                    다운로드
+  components\ShortsLabPanel.tsx:12777:                    <div
+  components\ShortsLabPanel.tsx:12778:                        className="fixed inset-
+0 bg-black/70 backdrop-blur-sm z-[90] flex items-center justify-center p-4"
+> components\ShortsLabPanel.tsx:12779:                        onClick={() => setIsSte
+p2PromptViewOpen(false)}
+  components\ShortsLabPanel.tsx:12780:                    >
+  components\ShortsLabPanel.tsx:12781:                        <div
+  components\ShortsLabPanel.tsx:12782:                            className="bg-slate
+-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] fle
+x flex-col"
+> components\ShortsLabPanel.tsx:12783:                            onClick={(e) => e.s
+topPropagation()}
+  components\ShortsLabPanel.tsx:12784:                        >
+  components\ShortsLabPanel.tsx:12785:                            <div className="fle
+x items-center justify-between p-6 border-b border-slate-800">
+  components\ShortsLabPanel.tsx:12786:                                <div>
+  components\ShortsLabPanel.tsx:12787:                                    <h3 classNa
+me="text-xl font-bold text-white">📋 2단계 프롬프트 - 보기/편집</h3>
+  components\ShortsLabPanel.tsx:12789:                                </div>
+  components\ShortsLabPanel.tsx:12790:                                <button
+> components\ShortsLabPanel.tsx:12791:                                    onClick={()
+ => setIsStep2PromptViewOpen(false)}
+  components\ShortsLabPanel.tsx:12792:                                    className="
+p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors
+"
+  components\ShortsLabPanel.tsx:12793:                                >
+  components\ShortsLabPanel.tsx:12794:                                    <X classNam
+e="w-6 h-6" />
+  components\ShortsLabPanel.tsx:12795:                                </button>
+  components\ShortsLabPanel.tsx:12845:                            <div className="fle
+x justify-end gap-2 p-6 border-t border-slate-800">
+  components\ShortsLabPanel.tsx:12846:                                <button
+> components\ShortsLabPanel.tsx:12847:                                    onClick={()
+ => setIsStep2PromptViewOpen(false)}
+  components\ShortsLabPanel.tsx:12848:                                    className="
+px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium"
+  components\ShortsLabPanel.tsx:12849:                                >
+  components\ShortsLabPanel.tsx:12850:                                    닫기
+  components\ShortsLabPanel.tsx:12851:                                </button>
+  components\ShortsLabPanel.tsx:12852:                                <button
+> components\ShortsLabPanel.tsx:12853:                                    onClick={as
+ync () => {
+  components\ShortsLabPanel.tsx:12854:                                        const f
+ullText = `=== 대본생성 프롬프트 ===\n${step2ScriptPrompt}\n\n=== 캐릭터분석 프롬프트 ===\n${step2Char
+acterPrompt}\n\n=== 이미지프롬프트 생성 프롬프트 ===\n${step2FinalPrompt}`;
+  components\ShortsLabPanel.tsx:12855:                                        try {
+  components\ShortsLabPanel.tsx:12856:                                            awa
+it navigator.clipboard.writeText(fullText);
+  components\ShortsLabPanel.tsx:12857:                                            sho
+wToast('모든 프롬프트가 복사되었습니다.', 'success');
+  components\ShortsLabPanel.tsx:12867:                                </button>
+  components\ShortsLabPanel.tsx:12868:                                <button
+> components\ShortsLabPanel.tsx:12869:                                    onClick={as
+ync () => {
+  components\ShortsLabPanel.tsx:12870:                                        try {
+  components\ShortsLabPanel.tsx:12871:                                            awa
+it onStep2RulesSave({
+  components\ShortsLabPanel.tsx:12872:                                               
+ scriptPrompt: step2ScriptPrompt,
+  components\ShortsLabPanel.tsx:12873:                                               
+ characterPrompt: step2CharacterPrompt,
+  components\ShortsLabPanel.tsx:12899:                <div 
+  components\ShortsLabPanel.tsx:12900:                    className="fixed inset-0 bg
+-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+> components\ShortsLabPanel.tsx:12901:                    onClick={(e) => {
+  components\ShortsLabPanel.tsx:12902:                        e.stopPropagation(); //
+ 🔹 장르매니저가 같이 닫히지 않도록 이벤트 전파 차단
+  components\ShortsLabPanel.tsx:12903:                        if (editingBackupId) ha
+ndleCloseBackupEditor();
+  components\ShortsLabPanel.tsx:12904:                        else if (editingRulesBa
+ckupId) handleClosePromptRulesBackupEditor();
+  components\ShortsLabPanel.tsx:12905:                        else if (editingStep2Ba
+ckupId) handleCloseStep2BackupEditor();
+  components\ShortsLabPanel.tsx:12910:                    <div
+  components\ShortsLabPanel.tsx:12911:                        className="bg-slate-900
+ border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-c
+ol animate-in zoom-in-95 duration-200"
+> components\ShortsLabPanel.tsx:12912:                        onClick={(e) => e.stopP
+ropagation()}
+  components\ShortsLabPanel.tsx:12913:                    >
+  components\ShortsLabPanel.tsx:12914:                        <div className="flex it
+ems-center justify-between p-4 border-b border-slate-800 shrink-0">
+  components\ShortsLabPanel.tsx:12915:                            <div>
+  components\ShortsLabPanel.tsx:12916:                                <h3 className="
+text-lg font-bold text-white">
+  components\ShortsLabPanel.tsx:12924:                            </div>
+  components\ShortsLabPanel.tsx:12925:                            <button
+> components\ShortsLabPanel.tsx:12926:                                onClick={() => 
+{
+  components\ShortsLabPanel.tsx:12927:                                    if (editing
+BackupId) handleCloseBackupEditor();
+  components\ShortsLabPanel.tsx:12928:                                    else if (ed
+itingRulesBackupId) handleClosePromptRulesBackupEditor();
+  components\ShortsLabPanel.tsx:12929:                                    else if (ed
+itingStep2BackupId) handleCloseStep2BackupEditor();
+  components\ShortsLabPanel.tsx:12930:                                    else if (ed
+itingScriptRulesBackupId) handleCloseScriptRulesBackupEditor();
+  components\ShortsLabPanel.tsx:12973:                        <div className="p-4 bor
+der-t border-slate-800 flex justify-end gap-2">
+  components\ShortsLabPanel.tsx:12974:                            <button
+> components\ShortsLabPanel.tsx:12975:                                onClick={() => 
+{
+  components\ShortsLabPanel.tsx:12976:                                    if (editing
+BackupId) handleCloseBackupEditor();
+  components\ShortsLabPanel.tsx:12977:                                    else if (ed
+itingRulesBackupId) handleClosePromptRulesBackupEditor();
+  components\ShortsLabPanel.tsx:12978:                                    else if (ed
+itingStep2BackupId) handleCloseStep2BackupEditor();
+  components\ShortsLabPanel.tsx:12979:                                    else if (ed
+itingScriptRulesBackupId) handleCloseScriptRulesBackupEditor();
+  components\ShortsLabPanel.tsx:12985:                            </button>
+  components\ShortsLabPanel.tsx:12986:                            <button
+> components\ShortsLabPanel.tsx:12987:                                onClick={() => 
+{
+  components\ShortsLabPanel.tsx:12988:                                    if (editing
+BackupId) handleBackupSaveContent();
+  components\ShortsLabPanel.tsx:12989:                                    else if (ed
+itingRulesBackupId) handleSavePromptRulesBackupContent();
+  components\ShortsLabPanel.tsx:12990:                                    else if (ed
+itingStep2BackupId) handleSaveStep2BackupContent();
+  components\ShortsLabPanel.tsx:12991:                                    else if (ed
+itingScriptRulesBackupId) handleSaveScriptRulesBackupContent();
+  components\ShortsLabPanel.tsx:13011:                            </h3>
+  components\ShortsLabPanel.tsx:13012:                            <button
+> components\ShortsLabPanel.tsx:13013:                                onClick={() => 
+setShowImportModal(false)}
+  components\ShortsLabPanel.tsx:13014:                                className="p-1 
+hover:bg-slate-800 rounded-lg transition-colors"
+  components\ShortsLabPanel.tsx:13015:                            >
+  components\ShortsLabPanel.tsx:13016:                                <X className="w
+-5 h-5 text-slate-400" />
+  components\ShortsLabPanel.tsx:13017:                            </button>
+  components\ShortsLabPanel.tsx:13036:                                        <button
+  components\ShortsLabPanel.tsx:13037:                                            key
+={char.id}
+> components\ShortsLabPanel.tsx:13038:                                            onC
+lick={() => handleImportCharacter(char)}
+  components\ShortsLabPanel.tsx:13039:                                            cla
+ssName="w-full p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hove
+r:border-blue-500/50 rounded-xl text-left transition-all group"
+  components\ShortsLabPanel.tsx:13040:                                        >
+  components\ShortsLabPanel.tsx:13041:                                            <di
+v className="flex items-center justify-between">
+  components\ShortsLabPanel.tsx:13042:                                               
+ <div>
+  components\ShortsLabPanel.tsx:13067:                        <div className="px-6 py
+-4 border-t border-slate-800 flex justify-end">
+  components\ShortsLabPanel.tsx:13068:                            <button
+> components\ShortsLabPanel.tsx:13069:                                onClick={() => 
+setShowImportModal(false)}
+  components\ShortsLabPanel.tsx:13070:                                className="px-4
+ py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium t
+ransition-colors"
+  components\ShortsLabPanel.tsx:13071:                            >
+  components\ShortsLabPanel.tsx:13072:                                닫기
+  components\ShortsLabPanel.tsx:13073:                            </button>
+
+

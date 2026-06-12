@@ -36,6 +36,10 @@ ${slotBlock}
 5. action/background/cameraAngle은 영어로 짧고 구체적으로 쓰세요.
 6. longPrompt/shortPrompt/imagePrompt는 출력하지 마세요.
 7. 씬 수는 대본 라인 수와 동일하게 유지하세요.
+8. 원샷(characterIds 1명)은 전체의 약 30~40%(12씬 기준 4~5개)만 사용하세요. 나머지 씬은 대본 라인에 실제로 여러 명이 함께 있을 때 2~3명을 함께 배정해 투샷/쓰리샷을 만드세요. 단, 대본 라인에 1명만 있으면 억지로 추가하지 마세요.
+9. cameraAngle은 매 씬마다 다르게, 다양하게 사용하세요: close-up, full body wide shot, medium close up, over-the-shoulder, low angle, high angle, back view, two-shot wide, group wide shot, dutch angle.
+10. 같은 cameraAngle을 3회 이상 반복하지 마세요. 특히 medium shot 계열은 최대 3회까지만.
+11. POV(1인칭 시점)는 사용하지 마세요. 대신 over-the-shoulder나 wide를 쓰세요.
 
 대본 라인:
 ${scriptLines.map((line, index) => `${index + 1}. ${line}`).join('\n')}

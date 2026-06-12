@@ -766,10 +766,10 @@ export const getPromptConstants = () => {
 
   return {
     ...baseConstants,
-    FEMALE_BODY_A: rules.females[0]?.body || 'slim hourglass figure',
-    FEMALE_BODY_B: rules.females[1]?.body || 'petite and slim frame',
-    FEMALE_BODY_C: rules.females[2]?.body || 'gracefully toned athletic body',
-    FEMALE_BODY_D: rules.females[3]?.body || 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves',
+    FEMALE_BODY_A: rules.females[0]?.body || 'slim waist, hourglass figure, fit and toned feminine body, graceful posture, long legs, well-balanced body proportions, elegant silhouette',
+    FEMALE_BODY_B: rules.females[1]?.body || 'petite and slim frame, slim waist, hourglass figure, graceful posture, long legs, elegant silhouette',
+    FEMALE_BODY_C: rules.females[2]?.body || 'gracefully toned athletic body, slim waist, hourglass figure, fit and toned feminine body, long legs, elegant silhouette',
+    FEMALE_BODY_D: rules.females[3]?.body || 'bright cheerful professional presence, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, slim waist, hourglass figure, fit and toned feminine body, graceful posture, long legs, well-balanced body proportions, elegant silhouette',
     MALE_BODY: rules.males[0]?.body || 'fit athletic build',
 
     MALE_BODY_A: rules.males[0]?.body || 'fit athletic build',
@@ -1042,19 +1042,19 @@ export const getMAMACharacterPresets = () => {
   return {
     FEMALE_A: {
       identity: rules.females[0]?.identity || 'A stunning Korean woman',
-      bodyType: rules.females[0]?.body || 'slim hourglass figure',
+      bodyType: rules.females[0]?.body || 'slim waist, hourglass figure, fit and toned feminine body, graceful posture, long legs, well-balanced body proportions, elegant silhouette',
       style: rules.females[0]?.style || 'sophisticated look',
       outfitFit: rules.females[0]?.outfitFit || 'tight-fitting, form-hugging'
     },
     FEMALE_B: {
       identity: rules.females[1]?.identity || 'A stunning Korean woman',
-      bodyType: rules.females[1]?.body || 'petite and slim frame',
+      bodyType: rules.females[1]?.body || 'petite and slim frame, slim waist, hourglass figure, graceful posture, long legs, elegant silhouette',
       style: rules.females[1]?.style || 'charming presence',
       outfitFit: rules.females[1]?.outfitFit || 'tight-fitting, form-hugging'
     },
     FEMALE_C: {
       identity: rules.females[2]?.identity || 'A stunning Korean woman',
-      bodyType: rules.females[2]?.body || 'gracefully toned athletic body',
+      bodyType: rules.females[2]?.body || 'gracefully toned athletic body, slim waist, hourglass figure, fit and toned feminine body, long legs, elegant silhouette',
       style: rules.females[2]?.style || 'elegant presence',
       outfitFit: rules.females[2]?.outfitFit || 'tight-fitting, form-hugging'
     },
@@ -1067,7 +1067,7 @@ export const getMAMACharacterPresets = () => {
     // 하위 호환성을 위한 기본 FEMALE (Woman A와 동일)
     FEMALE: {
       identity: rules.females[0]?.identity || 'A stunning Korean woman',
-      bodyType: rules.females[0]?.body || 'slim hourglass figure',
+      bodyType: rules.females[0]?.body || 'slim waist, hourglass figure, fit and toned feminine body, graceful posture, long legs, well-balanced body proportions, elegant silhouette',
       style: rules.females[0]?.style || 'sophisticated look',
       outfitFit: rules.females[0]?.outfitFit || 'tight-fitting, form-hugging'
     },
@@ -2048,22 +2048,48 @@ export const buildLabScriptPrompt = (options: LabScriptOptions): string => {
   const narratorSlotId = gender === 'female' ? 'WomanA' : 'ManA';
   const narratorName = slotNames[narratorSlotId] || (gender === 'female' ? '지영' : '준호');
   const narratorSlotLabel = formatSlotDisplay(narratorSlotId, slotNames);
+  const buildDynamicCharacterSection = () => {
+    const rules = getCharacterRules();
 
-  const defaultHairSection = `## 💇 헤어스타일
-- **${formatSlotDisplay('WomanA', slotNames)}**: long soft-wave hairstyle
-- **${formatSlotDisplay('WomanB', slotNames)}**: short chic bob cut
-- **${formatSlotDisplay('WomanD', slotNames)}**: high-bun hairstyle (Professional golf caddy look)
-- **${formatSlotDisplay('ManA', slotNames)}**: short neat hairstyle
-- **${formatSlotDisplay('ManB', slotNames)}**: clean short cut`;
+    const allCharacters = [
+      ...(rules.females || []),
+      ...(rules.males || [])
+    ];
 
-  const defaultCharacterSection = `## 👥 캐릭터 설정 (각 인물별 고유 외모 특징 필수)
-- **${formatSlotDisplay('WomanA', slotNames)}**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성, **세련된 지적인 인상의 얼굴, 날렵한 턱선, 우아한 이목구비**
-- **${formatSlotDisplay('WomanB', slotNames)}**: ${ageLabel} 친구, 활발하고 장난기 있는 성격, **밝고 생기있는 인상의 얼굴, 귀여운 미소, 에너지 넘치는 표정**
-- **${formatSlotDisplay('WomanD', slotNames)}**: 20대 초반 골프 캐디, 밝고 세련되고 아름다운 프로페셔널 여성 (bright, cheerful, sophisticated, and beautiful professional 20-something golf caddy), **청순하고 프로페셔널한 인상**
-  - **말투 규칙**: 캐디는 항상 정중하고 상냥한 **존댓말**(~해요, ~하세요)을 사용하며, 사회초년생의 밝은 에너지가 느껴져야 함.
-- **${formatSlotDisplay('ManA', slotNames)}**: ${ageLabel} 남성, 댄디하고 세련된 신사, **지적인 인상의 얼굴, 부드러운 이목구비, 세련된 분위기의 외모**
-- **${formatSlotDisplay('ManB', slotNames)}**: ${ageLabel} 남성 친구, 솔직하고 유머러스함, **남성적인 인상의 얼굴, 강인한 턱선, 활기찬 표정의 외모**
-- **쌍둥이 방지 규칙**: 두 인물이 함께 등장할 때는 반드시 **서로 다른 얼굴 특징(not twins, distinct faces, different individuals)**을 명시할 것`;
+    return `## 👥 CHARACTER BIBLE (캐릭터 고정 정보)
+아래 캐릭터 정보는 캐릭터 관리 화면의 최신 저장값입니다.
+AI는 이름/헤어/얼굴/체형/피부톤/스타일/의상핏/특징을 새로 만들거나 바꾸면 안 됩니다.
+
+${allCharacters.map(char => `
+### ${char.id}${char.name ? ` (${char.name})` : ''}
+- Identity: ${char.identity || ''}
+- Hair: ${char.hair || ''}
+- Face: ${char.face || ''}
+- Body: ${char.body || ''}
+- Skin Tone: ${char.skinTone || ''}
+- Style: ${char.style || ''}
+- Outfit Fit: ${char.outfitFit || ''}
+- Signature Features: ${char.signatureFeatures || ''}
+- Height: ${char.heightDescription || ''}
+- CharacterId: ${char.characterId || ''}
+`).join('\n')}
+
+절대 규칙:
+1. 위 캐릭터의 이름 변경 금지
+2. 헤어스타일 변경 금지
+3. 얼굴 특징 변경 금지
+4. 체형/피부톤/스타일 변경 금지
+5. 의상 핏 변경 금지
+6. scene.characterIds에 없는 인물 추가 금지
+7. 같은 CharacterId는 모든 씬에서 동일 인물로 유지
+8. 두 명 이상 등장 시 반드시 distinct faces, not twins`;
+  };
+
+
+  const dynamicCharacterSection = buildDynamicCharacterSection();
+
+  const defaultHairSection = dynamicCharacterSection;
+  const defaultCharacterSection = dynamicCharacterSection;
 
   const maleNarratorInstruction = gender === 'male' ? `
 13. **남성 주인공(${narratorName}) 시점 최적화**: 당신은 매너 있는 ${ageLabel} 남성 '${narratorName}'입니다. 
@@ -2265,7 +2291,7 @@ ${characterSection}
 
 **예시 (WomanA의 경우):**
 \`\`\`
-[Person 1: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, wearing ultra-short matte black long-sleeved bodycon micro mini dress, vertical ribbed knit pattern, lightweight stretch ribbed fabric, skin-tight fitted silhouette, classic round crew neckline, snug full-length sleeves extending to wrists, seamless minimalist construction, opaque matte texture, non-reflective finish, micro mini length hemline, high-density knit material, streamlined profile, no closures or hardware, form-fitting architectural seams.]
+[Person 1: A stunning Korean woman in her 40s, sophisticated intellectual face with a sharp jawline and elegant features, long soft-wave hairstyle, perfectly managed sophisticated look, high-seated chest line, extraordinarily voluminous high-projection bust, surprising perky curves, slim waist, hourglass figure, fit and toned feminine body, graceful posture, long legs, well-balanced body proportions, elegant silhouette, wearing ultra-short matte black long-sleeved bodycon micro mini dress, vertical ribbed knit pattern, lightweight stretch ribbed fabric, skin-tight fitted silhouette, classic round crew neckline, snug full-length sleeves extending to wrists, seamless minimalist construction, opaque matte texture, non-reflective finish, micro mini length hemline, high-density knit material, streamlined profile, no closures or hardware, form-fitting architectural seams.]
 \`\`\`
 
 **⚠️ 다중 인물 씬에서도 예외 없음:**
@@ -2405,13 +2431,7 @@ POV 샷은 **특정 캐릭터의 눈으로 보는 시점**입니다.
     "ManA": "${manAOutfit}",
     "ManB": "${manBOutfit}"
   },
-  "characters": [
-    { "id": "WomanA", "name": "${womanAName}", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "long soft-wave hairstyle", "body": "${promptConstants.FEMALE_BODY_A}", "outfit": "${womanAOutfit}", "outfitPrefix": "wearing" },
-    { "id": "WomanB", "name": "${womanBName}", "identity": "A stunning Korean woman in her ${targetAge}", "hair": "short chic bob cut", "body": "${promptConstants.FEMALE_BODY_B}", "outfit": "${womanBOutfit}", "outfitPrefix": "wearing" },
-    { "id": "ManA", "name": "${manAName}", "identity": "A handsome Korean man in his ${targetAge}", "hair": "short neat hairstyle", "body": "${promptConstants.MALE_BODY_A}", "outfit": "${manAOutfit}", "outfitPrefix": "wearing" },
-    { "id": "ManB", "name": "${manBName}", "identity": "A handsome Korean man in his ${targetAge}", "hair": "clean short cut", "body": "${promptConstants.MALE_BODY_B}", "outfit": "${manBOutfit}", "outfitPrefix": "wearing" },
-    { "id": "WomanD", "name": "${womanDName}", "identity": "A stunning Korean woman in her early 20s", "hair": "high-bun hairstyle", "body": "${promptConstants.FEMALE_BODY_D}", "outfit": "${womanDOutfit}", "outfitPrefix": "wearing" }
-  ],
+  "characters": ${charactersExampleJson},
   "scenes": [  // 8~12개 (scriptBody 문장 수와 정확히 동일)
     {
       "sceneNumber": 1,
@@ -2830,6 +2850,43 @@ export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
   const narratorSlotId = gender === 'female' ? 'WomanA' : 'ManA';
   const narratorName = slotNames[narratorSlotId] || (gender === 'female' ? '지영' : '준호');
   const narratorSlotLabel = formatSlotDisplay(narratorSlotId, slotNames);
+  const buildDynamicCharacterSection = () => {
+    const rules = getCharacterRules();
+
+    const allCharacters = [
+      ...(rules.females || []),
+      ...(rules.males || [])
+    ];
+
+    return `## 👥 CHARACTER BIBLE (캐릭터 고정 정보)
+아래 캐릭터 정보는 캐릭터 관리 화면의 최신 저장값입니다.
+AI는 이름/헤어/얼굴/체형/피부톤/스타일/의상핏/특징을 새로 만들거나 바꾸면 안 됩니다.
+
+${allCharacters.map(char => `
+### ${char.id}${char.name ? ` (${char.name})` : ''}
+- Identity: ${char.identity || ''}
+- Hair: ${char.hair || ''}
+- Face: ${char.face || ''}
+- Body: ${char.body || ''}
+- Skin Tone: ${char.skinTone || ''}
+- Style: ${char.style || ''}
+- Outfit Fit: ${char.outfitFit || ''}
+- Signature Features: ${char.signatureFeatures || ''}
+- Height: ${char.heightDescription || ''}
+- CharacterId: ${char.characterId || ''}
+`).join('\n')}
+
+절대 규칙:
+1. 위 캐릭터의 이름 변경 금지
+2. 헤어스타일 변경 금지
+3. 얼굴 특징 변경 금지
+4. 체형/피부톤/스타일 변경 금지
+5. 의상 핏 변경 금지
+6. scene.characterIds에 없는 인물 추가 금지
+7. 같은 CharacterId는 모든 씬에서 동일 인물로 유지
+8. 두 명 이상 등장 시 반드시 distinct faces, not twins`;
+  };
+
   const promptConstants = getPromptConstants();
   const isGolf = isGolfTopic(topic);
   const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode, topic);
@@ -2839,12 +2896,95 @@ export const buildMasterPass1Prompt = (options: MasterPass1Options): string => {
     ? '20대 초반 골프 캐디, 밝고 프로페셔널한 여성' 
     : '20대 초반 여성, 상황에 맞는 역할(상점 직원, 친구, 행인 등)';
 
-  const defaultCharacterSection = `## 👥 캐릭터 설정
-- **${formatSlotDisplay('WomanA', slotNames)}**: ${ageLabel} 주인공, 우아하고 자신감 있는 여성
-- **${formatSlotDisplay('WomanB', slotNames)}**: ${ageLabel} 친구, 활발하고 장난기 있는 성격
-- **${formatSlotDisplay('WomanD', slotNames)}**: ${womanDDescription}
-- **${formatSlotDisplay('ManA', slotNames)}**: ${ageLabel} 남성, 댄디하고 세련된 신사
-- **${formatSlotDisplay('ManB', slotNames)}**: ${ageLabel} 남성 친구, 솔직하고 유머러스함`;
+  const defaultCharacterSection = buildDynamicCharacterSection();
+  const buildLockedCharactersExampleJson = () => {
+    const rules = getCharacterRules();
+
+    const outfitBySlot: Record<string, string> = {
+      WomanA: womanAOutfit,
+      WomanB: womanBOutfit,
+      WomanD: womanDOutfit,
+      ManA: manAOutfit,
+      ManB: manBOutfit
+    };
+
+    const roleBySlot: Record<string, string> = {
+      WomanA: gender === 'female' ? '주인공 (화자)' : '여성 주연',
+      WomanB: '친구',
+      WomanC: '여성 조연',
+      WomanD: '캐디',
+      ManA: gender === 'male' ? '주인공 (화자)' : '남성 주인공',
+      ManB: '남성 친구',
+      ManC: '남성 조연'
+    };
+
+    const slots = [...(rules.females || []), ...(rules.males || [])]
+      .filter((char: any) => outfitBySlot[char.id]);
+
+    return slots.map((char: any) => ({
+      slotId: char.id,
+      identity: char.identity || '',
+      hair: char.hair || '',
+      body: char.body || '',
+      outfit: outfitBySlot[char.id] || '',
+      role: roleBySlot[char.id] || char.name || ''
+    }));
+  };
+
+
+  const buildHairAndBodyRulesText = () => {
+    const rules = getCharacterRules();
+
+    const allCharacters = [
+      ...(rules.females || []),
+      ...(rules.males || [])
+    ];
+
+    return `## 💇 헤어스타일 (캐릭터 패널 기준 - 변경 금지)
+
+${allCharacters.map((char: any) => `- ${char.id}: ${char.hair || 'N/A'}`).join('\n')}
+
+## 🧍 체형 (캐릭터 패널 기준 - 변경 금지)
+
+${allCharacters.map((char: any) => `- ${char.id} body: ${char.body || 'N/A'}`).join('\n')}`;
+  };
+
+  const buildCharactersExampleJson = () => {
+    const rules = getCharacterRules();
+
+    const outfitBySlot: Record<string, string> = {
+      WomanA: womanAOutfit,
+      WomanB: womanBOutfit,
+      WomanD: womanDOutfit,
+      ManA: manAOutfit,
+      ManB: manBOutfit
+    };
+
+    return [
+      ...(rules.females || []),
+      ...(rules.males || [])
+    ]
+    .filter((c:any) => outfitBySlot[c.id])
+    .map((c:any) => ({
+      id: c.id,
+      name: c.name || c.id,
+      identity: c.identity || '',
+      hair: c.hair || '',
+      body: c.body || '',
+      outfit: outfitBySlot[c.id] || '',
+      outfitPrefix: 'wearing'
+    }));
+  };
+
+  const charactersExampleJson = JSON.stringify(buildCharactersExampleJson(), null, 4)
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n');
+  const lockedCharactersExampleJson = JSON.stringify(buildLockedCharactersExampleJson(), null, 4)
+    .split('\n')
+    .map((line) => `  ${line}`)
+    .join('\n');
+
 
   const promptRules = getActivePromptRules();
   const promptSections = promptRules.promptSections || {};
@@ -2928,19 +3068,7 @@ ${masterOutfitSection}
 - cheap, vulgar, tacky 느낌은 피하고 refined, elegant, polished, luxurious, flattering silhouette를 우선하세요.
 - 과도한 노출 자체보다 몸매 라인을 아름답게 정리해주는 세련된 핏을 우선하세요.
 
-## 💇 헤어스타일 (고정값 - 변경 금지)
-- WomanA: long soft-wave hairstyle
-- WomanB: short chic bob cut
-- WomanD: high-bun hairstyle
-- ManA: short neat hairstyle
-- ManB: clean short cut
-
-## 🧍 체형 (고정값 - 변경 금지)
-- WomanA body: ${promptConstants.FEMALE_BODY_A}
-- WomanB body: ${promptConstants.FEMALE_BODY_B}
-- WomanD body: ${promptConstants.FEMALE_BODY_D}
-- ManA body: ${promptConstants.MALE_BODY_A}
-- ManB body: ${promptConstants.MALE_BODY_B}
+${buildHairAndBodyRulesText()}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 핵심 규칙
@@ -2968,48 +3096,7 @@ ${additionalContext ? `8. 추가 요청: ${additionalContext}` : ''}
   "foreshadowing": "복선",
   "narrator": { "slot": "${narratorSlotId}", "name": "${narratorName}" },
   "emotionFlow": "${genreGuide?.emotionCurve || ''}",
-  "lockedCharacters": [
-    {
-      "slotId": "WomanA",
-      "identity": "A stunning Korean woman in her ${targetAge}, sophisticated intellectual face with a sharp jawline and elegant features",
-      "hair": "long soft-wave hairstyle",
-      "body": "${promptConstants.FEMALE_BODY_A}",
-      "outfit": "${womanAOutfit}",
-      "role": "주인공 (화자)"
-    },
-    {
-      "slotId": "WomanB",
-      "identity": "A stunning Korean woman in her ${targetAge}, bright cheerful face with cute smile and energetic expression",
-      "hair": "short chic bob cut",
-      "body": "${promptConstants.FEMALE_BODY_B}",
-      "outfit": "${womanBOutfit}",
-      "role": "친구"
-    },
-    {
-      "slotId": "WomanD",
-      "identity": "A stunning Korean woman in her early 20s, innocent and professional appearance",
-      "hair": "high-bun hairstyle",
-      "body": "${promptConstants.FEMALE_BODY_D}",
-      "outfit": "${womanDOutfit}",
-      "role": "캐디"
-    },
-    {
-      "slotId": "ManA",
-      "identity": "A handsome Korean man in his ${targetAge}, intellectual face with gentle features and refined demeanor",
-      "hair": "short neat hairstyle",
-      "body": "${promptConstants.MALE_BODY_A}",
-      "outfit": "${manAOutfit}",
-      "role": "남성 주인공"
-    },
-    {
-      "slotId": "ManB",
-      "identity": "A handsome Korean man in his ${targetAge}, masculine face with strong jawline and vibrant expression",
-      "hair": "clean short cut",
-      "body": "${promptConstants.MALE_BODY_B}",
-      "outfit": "${manBOutfit}",
-      "role": "남성 친구"
-    }
-  ],
+  "lockedCharacters": ${lockedCharactersExampleJson},
   "lockedLocations": [
     {
       "id": "LOC_1",
@@ -4036,3 +4123,10 @@ export default {
   assignOutfitsToCharacters,
   applyCharacterInfoToScenes
 };
+
+
+
+
+
+
+

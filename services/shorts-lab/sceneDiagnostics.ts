@@ -10,6 +10,7 @@ import type { Scene } from '../../types';
 /** 런타임에 동적으로 붙는 필드까지 포함한 느슨한 Scene 타입 */
 export type DiagnosableScene = Partial<Scene> & {
   sceneNumber?: number;
+  number?: number;          // 런타임 scene의 실제 번호 필드
   shortPrompt?: string;
   longPrompt?: string;
   prompt?: string;          // 레거시 fallback
@@ -30,6 +31,7 @@ export type DiagnosticSeverity = 'error' | 'warning' | 'info';
 export interface SceneDiagnosticIssue {
   severity: DiagnosticSeverity;
   sceneNumber?: number;
+  number?: number;          // 런타임 scene의 실제 번호 필드
   code: string;
   message: string;
 }
@@ -38,6 +40,13 @@ export interface SceneDiagnosticsContext {
   /** 슬롯 규칙에 존재하는 캐릭터 ID 목록 (있으면 캐릭터 ID 유효성 검사) */
   knownCharacterIds?: string[];
   /** 기대 Person 블록 수 검사를 위한 prompt 내부 Person 카운트 함수(선택) */
+}
+
+/** 런타임 scene 번호: number(실제) -> sceneNumber(타입정의) 순으로 해석 */
+export function resolveSceneNumber(scene: DiagnosableScene): number | undefined {
+  if (typeof scene.number === 'number') return scene.number;
+  if (typeof scene.sceneNumber === 'number') return scene.sceneNumber;
+  return undefined;
 }
 
 /** 코드에서 일관되게 쓰이는 프롬프트 우선순위: longPrompt -> shortPrompt -> prompt */
@@ -70,13 +79,13 @@ export function diagnoseScene(
   context: SceneDiagnosticsContext = {}
 ): SceneDiagnosticIssue[] {
   const issues: SceneDiagnosticIssue[] = [];
-  const sceneNumber = typeof scene.sceneNumber === 'number' ? scene.sceneNumber : undefined;
+  const sceneNumber = resolveSceneNumber(scene);
   const add = (severity: DiagnosticSeverity, code: string, message: string) =>
     issues.push({ severity, sceneNumber, code, message });
 
   // 1. scene number 누락
-  if (typeof scene.sceneNumber !== 'number') {
-    add('error', 'SCENE_NUMBER_MISSING', 'sceneNumber가 없거나 숫자가 아닙니다.');
+  if (sceneNumber === undefined) {
+    add('error', 'SCENE_NUMBER_MISSING', 'scene 번호(number/sceneNumber)가 없거나 숫자가 아닙니다.');
   }
 
   // 2. script/text 누락
@@ -175,3 +184,4 @@ export function summarizeDiagnostics(issues: SceneDiagnosticIssue[]): {
   }
   return { errors, warnings, infos, total: issues.length };
 }
+

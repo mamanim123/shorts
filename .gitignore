@@ -42,3 +42,13 @@ puppeteer_user_data/
 nul
 **/nul
 .tmp.driveupload/ 
+
+# root debug/temp artifacts (Phase: dependency-safety cleanup)
+debug_*
+temp_*
+grok_*
+demo_*
+test_output*
+*.bak
+*_backup_*
+root_cleanup_*

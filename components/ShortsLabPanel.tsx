@@ -46,6 +46,8 @@ import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
 import { fetchPromptEnhancementSettings } from '../services/promptEnhancementUtils';
 import { runShortsLabV4FromStoryContext } from '../services/shortslab-v4/v4FlowService';
 import { generateV4StorylinePackage } from '../services/shortslab-v4/v4StorylineService';
+import { diagnoseScenes, summarizeDiagnostics } from '../services/shorts-lab/sceneDiagnostics';
+
 
 
 // ============================================
@@ -1663,6 +1665,33 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 대본 입력 상태
     const [scriptInput, setScriptInput] = useState('');
     const [scenes, setScenes] = useState<Scene[]>([]);
+
+        // [Phase 1] 읽기 전용 scene 진단 - 콘솔 출력만. 기존 동작/프롬프트 변경 없음.
+    useEffect(() => {
+        if (!scenes || scenes.length === 0) return;
+        try {
+            const knownCharacterIds = [
+                ...(characterRules?.females || []),
+                ...(characterRules?.males || []),
+            ].map((s: any) => s?.id).filter(Boolean);
+            const issues = diagnoseScenes(scenes as any, { knownCharacterIds });
+            const summary = summarizeDiagnostics(issues);
+            if (summary.total > 0) {
+                console.groupCollapsed(
+                    `[ShortsLab 진단] errors=${summary.errors} warnings=${summary.warnings} infos=${summary.infos}`
+                );
+                issues.forEach((i) =>
+                    console.log(`[${i.severity}] scene ${i.sceneNumber ?? '-'} (${i.code}): ${i.message}`)
+                );
+                console.groupEnd();
+            } else {
+                console.log('[ShortsLab 진단] 문제 없음');
+            }
+        } catch (e) {
+            console.warn('[ShortsLab 진단] 진단 중 오류(무시됨):', e);
+        }
+    }, [scenes, characterRules]);
+
 
     // AI 대본 생성 상태 (신규!)
     const [aiTopic, setAiTopic] = useState('');

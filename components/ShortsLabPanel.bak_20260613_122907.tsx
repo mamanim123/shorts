@@ -26,7 +26,7 @@ import { genreManager as legacyGenreManager, getGenreGuideline as getLegacyGenre
 
 import { parseJsonFromText } from '../services/jsonParse';
 import { buildCharacterExtractionPrompt, buildManualSceneDecompositionPrompt, parseCharacterExtractionResponse, parseManualSceneDecompositionResponse } from '../services/manualSceneBuilder';
-import { generateImage, generateImagePollinations, generateImageWithImagen, editImage, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
+import { generateImage, generateImageWithImagen, editImage, initGeminiService, setSessionApiKey } from './master-studio/services/geminiService';
 import { getBlob } from './master-studio/services/dbService';
 import { enhancePromptWithSafeGlamour, generateBenchmarkStorylinePackage } from '../services/geminiService';
 import { showToast } from './Toast';
@@ -1722,7 +1722,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
     // 이미지 생성 상태 (신규!)
     const [imageModel] = useState<string>('gemini-2.5-flash-image');
-    const [useFreeImageGen, setUseFreeImageGen] = useState<boolean>(() => localStorage.getItem('useFreeImageGen') === 'true');
     const [generatingId, setGeneratingId] = useState<string | null>(null);
     const [aiForwardingId, setAiForwardingId] = useState<string | null>(null);
     const [gensparkForwardingId, setGensparkForwardingId] = useState<string | null>(null);
@@ -3013,9 +3012,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             let finalBase64Image: string | null = null;
 
             // Step 1: Generate base image using Gemini (gemini-2.5-flash-image)
-            result = useFreeImageGen
-                ? await generateImagePollinations(enhancedPrompt, { aspectRatio: "9:16", seed: seedToUse })
-                : await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
+            result = await generateImage(enhancedPrompt, { aspectRatio: "9:16", model: imageModel, seed: seedToUse }, safetySettings);
 
             // Extract base64 from result
             if (result && 'generatedImages' in result && result.generatedImages?.length > 0) {
@@ -7536,13 +7533,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             <p className="text-xs text-slate-400">프롬프트 고정 문구 테스트</p>
                         </div>
 
-                        <button
-                            data-id="toggle-free-imggen"
-                            onClick={() => { const v = !useFreeImageGen; setUseFreeImageGen(v); localStorage.setItem('useFreeImageGen', String(v)); }}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${useFreeImageGen ? 'bg-pink-600/80 hover:bg-pink-500 text-white' : 'bg-slate-700/80 hover:bg-slate-600 text-slate-200'}`}
-                        >
-                            {useFreeImageGen ? '🌸 무료' : '🤖 Gemini'}
-                        </button>
                         <button
                             onClick={handleLoadFolders}
                             className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"

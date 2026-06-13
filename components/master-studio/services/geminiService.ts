@@ -320,6 +320,34 @@ export const fetchAvailableModels = async (): Promise<string[]> => {
     }
 };
 
+// [NEW] Pollinations 무료 이미지 생성 (API 키 불필요, base64 반환)
+export const generateImagePollinations = async (
+    prompt: string,
+    config: { aspectRatio?: string; seed?: number; model?: string }
+): Promise<{ images: string[] }> => {
+    const isVertical = (config.aspectRatio || '9:16') === '9:16';
+    const width = isVertical ? 1080 : 1920;
+    const height = isVertical ? 1920 : 1080;
+    const model = config.model || 'flux';
+    const seed = config.seed ?? Math.floor(Math.random() * 2147483647);
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`
+        + `?width=${width}&height=${height}&model=${model}&seed=${seed}&nologo=true`;
+
+    console.log('[Pollinations] generating:', url.substring(0, 120));
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Pollinations ${res.status}`);
+    const blob = await res.blob();
+    const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(blob);
+    });
+    // "data:image/jpeg;base64,XXXX" 에서 base64 부분만 추출
+    const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+    return { images: [base64] };
+};
+
 export const generateImage = async (prompt: string, config: any, safetySettings?: any, imageParts?: { inlineData: { data: string, mimeType: string } }[]): Promise<GenerateContentResponse> => {
     // [FIX] Use raw prompt as server already enhanced it
     const finalPrompt = prompt;

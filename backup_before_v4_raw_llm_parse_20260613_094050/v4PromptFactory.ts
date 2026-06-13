@@ -101,7 +101,6 @@ export const buildV4Scenes = (params: {
   outfitMap: Map<string, V4OutfitEntry>;
   targetAge: string;
   lockBackgroundToFirst?: boolean;
-  useRawLlmParsing?: boolean;
 }): V4PanelScene[] => {
   const characterRules = getCharacterRules();
   const baseBackground = params.lockBackgroundToFirst
@@ -125,7 +124,7 @@ export const buildV4Scenes = (params: {
       return `[${label}: ${appearance}]`;
     });
 
-    const processedPrompt = [
+    const prompt = [
       'unfiltered raw photograph',
       cameraAngle,
       blocks.join(' '),
@@ -133,11 +132,6 @@ export const buildV4Scenes = (params: {
       background ? `in ${background}` : '',
       TECH_TAIL
     ].filter(Boolean).join(', ');
-
-    const rawLlmPrompt = String(scene.imagePrompt || scene.rawPrompt || '').trim();
-    const prompt = params.useRawLlmParsing && rawLlmPrompt
-      ? rawLlmPrompt
-      : processedPrompt;
 
     return {
       number: scene.sceneNumber || index + 1,
@@ -166,9 +160,7 @@ export const buildV4Scenes = (params: {
       lipSyncEmotion: '',
       lipSyncTiming: undefined,
       shortPromptKo: '',
-      longPromptKo: '',
-      rawPrompt: scene.rawPrompt || scene.imagePrompt || '',
-      processedPrompt
+      longPromptKo: ''
     };
   });
 };

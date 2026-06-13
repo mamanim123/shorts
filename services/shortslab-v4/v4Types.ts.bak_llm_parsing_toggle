@@ -33,8 +33,6 @@ export interface V4ScenePlan {
   background: string;
   cameraAngle: string;
   summary?: string;
-  imagePrompt?: string;
-  rawPrompt?: string;
 }
 
 export interface V4OutfitEntry {
@@ -90,7 +88,6 @@ export interface V4FlowInput {
   selectedStoryContext?: string;
   benchmarkSource?: string;
   useRandomOutfits: boolean;
-  useRawLlmParsing?: boolean;
   outfitsData?: any[];
   allowedOutfitCategories?: string[];
   imagePromptLanguage?: 'en' | 'ko';

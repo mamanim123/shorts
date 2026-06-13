@@ -98,13 +98,7 @@ export const resolveV4Outfits = async (params: {
     skipFolderCreation: true
   });
 
-  console.log('[V4 OUTFIT DEBUG] usedSlotIds:', used);
-  console.log('[V4 OUTFIT DEBUG] rawText:', rawText);
-
   const parsed = parseJsonFromText<any>(rawText, ['lockedOutfits']);
-
-  console.log('[V4 OUTFIT DEBUG] parsed:', parsed);
-  console.log('[V4 OUTFIT DEBUG] parsed.lockedOutfits:', parsed?.lockedOutfits);
   const outfitMap = normalizeOutfitMap(parsed?.lockedOutfits || parsed, used);
 
   if (outfitMap.size === 0) {

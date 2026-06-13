@@ -2803,44 +2803,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 이미지 생성 핸들러 (신규!)
     // ============================================
 
-
-    const handleThreeViewTest = (sceneNumber: number) => {
-        const scene = scenes.find(s => s.number === sceneNumber);
-        if (!scene) {
-            showToast('?? ?? ? ????.', 'warning');
-            return;
-        }
-
-        const packs = (scene.characterIds || []).map(charId => {
-            const casting = characterCastings.get(charId);
-            const refs = casting?.referenceImageUrls || {};
-            return {
-                slotId: charId,
-                name: casting?.name || '',
-                identitySummary: casting?.identitySummary || '',
-                front: !!refs.front,
-                angle45: !!refs.angle45,
-                back: !!refs.back,
-                frontUrl: refs.front || '',
-                angle45Url: refs.angle45 || '',
-                backUrl: refs.back || ''
-            };
-        });
-
-        const total = packs.reduce((sum, p) =>
-            sum + (p.front ? 1 : 0) + (p.angle45 ? 1 : 0) + (p.back ? 1 : 0), 0
-        );
-
-        console.log('=== 3?? ??? ===', {
-            sceneNumber,
-            characterCount: packs.length,
-            referenceCount: total,
-            packs
-        });
-
-        showToast(`3?? ??: ??? ${packs.length}? / ?? ${total}?`, 'info');
-    };
-
     const handleGenerateImage = async (prompt: string, id: string, sceneNumber?: number) => {
         if (generatingId) return;
         setGeneratingId(id);
@@ -8712,15 +8674,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                             )}
                                             {/* 액션 버튼 오버레이 */}
                                             <div className="absolute bottom-2 left-2 right-2 flex gap-1">
-                                                <button onClick={() => handleGenerateImage(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={generatingId === `scene-${scene.number}`} className="flex-[0.65] py-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                                <button onClick={() => handleGenerateImage(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={generatingId === `scene-${scene.number}`} className="flex-1 py-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50">
                                                     {generatingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
-                                                </button>
-                                                <button
-                                                    onClick={() => handleThreeViewTest(scene.number)}
-                                                    className="flex-[0.35] py-2 bg-cyan-600/90 hover:bg-cyan-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center"
-                                                    title="3면도 확인"
-                                                >
-                                                    3면도
                                                 </button>
                                                 <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={aiForwardingId === `scene-${scene.number}`} className="p-2 bg-purple-600/90 hover:bg-purple-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="AI 생성">
                                                     {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}

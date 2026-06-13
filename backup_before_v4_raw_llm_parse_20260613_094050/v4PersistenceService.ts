@@ -27,7 +27,6 @@ export const saveV4Result = async (params: {
     targetAge: params.input.targetAge,
     gender: params.input.gender,
     outfitMode: params.input.useRandomOutfits ? 'random' : 'llm',
-    parseMode: params.input.useRawLlmParsing ? 'raw-llm' : 'processed',
     scriptBody: params.scriptBody,
     scenePlans: params.scenePlans,
     scenes: params.scenes,

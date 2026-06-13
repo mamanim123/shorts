@@ -89,8 +89,7 @@ export const runShortsLabV4Flow = async (input: V4FlowInput): Promise<V4FlowResu
     scenePlans,
     outfitMap,
     targetAge: input.targetAge,
-    lockBackgroundToFirst: input.lockBackgroundToFirst ?? false,
-    useRawLlmParsing: input.useRawLlmParsing ?? false
+    lockBackgroundToFirst: input.lockBackgroundToFirst ?? false
   });
 
   const validationIssues = validateV4Scenes({
@@ -166,8 +165,7 @@ export const runShortsLabV4FromStoryContext = async (input: V4FlowInput): Promis
     scenePlans,
     outfitMap,
     targetAge: input.targetAge,
-    lockBackgroundToFirst: input.lockBackgroundToFirst ?? false,
-    useRawLlmParsing: input.useRawLlmParsing ?? false
+    lockBackgroundToFirst: input.lockBackgroundToFirst ?? false
   });
 
   const validationIssues = validateV4Scenes({

@@ -1672,7 +1672,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // 겨울 악세서리 자동 적용 토글 (입력 탭 전용)
     const [enableWinterAccessories, setEnableWinterAccessories] = useState(false);
     const [useRandomOutfits, setUseRandomOutfits] = useState(true);
-    const [useRawLlmParsing, setUseRawLlmParsing] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isMasterGenerating, setIsMasterGenerating] = useState(false);
     const [isV4Generating, setIsV4Generating] = useState(false);
@@ -2802,44 +2801,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
     // ============================================
     // 이미지 생성 핸들러 (신규!)
     // ============================================
-
-
-    const handleThreeViewTest = (sceneNumber: number) => {
-        const scene = scenes.find(s => s.number === sceneNumber);
-        if (!scene) {
-            showToast('?? ?? ? ????.', 'warning');
-            return;
-        }
-
-        const packs = (scene.characterIds || []).map(charId => {
-            const casting = characterCastings.get(charId);
-            const refs = casting?.referenceImageUrls || {};
-            return {
-                slotId: charId,
-                name: casting?.name || '',
-                identitySummary: casting?.identitySummary || '',
-                front: !!refs.front,
-                angle45: !!refs.angle45,
-                back: !!refs.back,
-                frontUrl: refs.front || '',
-                angle45Url: refs.angle45 || '',
-                backUrl: refs.back || ''
-            };
-        });
-
-        const total = packs.reduce((sum, p) =>
-            sum + (p.front ? 1 : 0) + (p.angle45 ? 1 : 0) + (p.back ? 1 : 0), 0
-        );
-
-        console.log('=== 3?? ??? ===', {
-            sceneNumber,
-            characterCount: packs.length,
-            referenceCount: total,
-            packs
-        });
-
-        showToast(`3?? ??: ??? ${packs.length}? / ?? ${total}?`, 'info');
-    };
 
     const handleGenerateImage = async (prompt: string, id: string, sceneNumber?: number) => {
         if (generatingId) return;
@@ -5276,7 +5237,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 selectedStoryContext: storyContext,
                 benchmarkSource,
                 useRandomOutfits,
-                useRawLlmParsing,
                 allowedOutfitCategories: getAllowedOutfitCategoriesForGenre(aiGenre),
                 imagePromptLanguage: settings.imagePromptLanguage,
                 lockBackgroundToFirst: false
@@ -6492,26 +6452,18 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             outfit: item.outfit
                         }));
                 const fixed = validateAndFixPrompt(normalizedPrompt, shotType, fallbackCharacters, { useGenderGuard: settings.useGenderGuard });
-                let mergedPrompt = useRawLlmParsing
-                    ? String(scene.imagePrompt || scene.prompt || scene.longPrompt || scene.shortPrompt || scene.longPromptKo || scene.shortPromptKo || '').trim()
-                    : fixed.fixedPrompt;
-
-                if (!mergedPrompt) {
-                    mergedPrompt = fixed.fixedPrompt;
-                }
+                let mergedPrompt = fixed.fixedPrompt;
 
                 // 악세서리 적용
                 if (accessoryMapInput.size > 0) {
                     mergedPrompt = applyAccessoriesToPrompt(mergedPrompt, sceneCharacterIds, accessoryMapInput);
                 }
 
-                if (!useRawLlmParsing && selectedGenreData?.postProcessConfig?.useSafeGlamour) {
+                if (selectedGenreData?.postProcessConfig?.useSafeGlamour) {
                     mergedPrompt = enhancePromptWithSafeGlamour(mergedPrompt);
                 }
                 const cleanupPatterns = selectedGenreData?.postProcessConfig?.cleanupPatterns || [];
-                if (!useRawLlmParsing) {
-                    mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
-                }
+                mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
 
                 const narrationText = typeof scene.narration === 'string'
                     ? scene.narration
@@ -7768,34 +7720,41 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             </div>
 
                             {activeTab === 'input' && (
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div className="flex items-center justify-between p-2 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                        <span className="text-xs font-medium text-slate-300">{"\uaca8\uc6b8\uc544\uc774\ud15c"}</span>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">겨울 악세서리 추가</span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">여성 전용</span>
+                                        </div>
                                         <button
                                             onClick={() => setEnableWinterAccessories(!enableWinterAccessories)}
-                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'}`}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enableWinterAccessories ? 'bg-purple-600' : 'bg-slate-700'
+                                                }`}
                                         >
-                                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enableWinterAccessories ? 'translate-x-5' : 'translate-x-1'}`} />
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enableWinterAccessories ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                            />
                                         </button>
                                     </div>
-
-                                    <div className="flex items-center justify-between p-2 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                        <span className="text-xs font-medium text-slate-300">{"\uc758\uc0c1LLM"}</span>
+                                    <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-slate-300">
+                                                {useRandomOutfits ? '의상 랜덤 선택' : '의상 LLM 선택'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">
+                                                {useRandomOutfits ? 'ON: 랜덤 선택' : 'ON: LLM 선택'}
+                                            </span>
+                                        </div>
                                         <button
                                             onClick={() => setUseRandomOutfits(!useRandomOutfits)}
-                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${!useRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'}`}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${useRandomOutfits ? 'bg-emerald-600' : 'bg-slate-700'
+                                                }`}
                                         >
-                                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${!useRandomOutfits ? 'translate-x-5' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-2 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                        <span className="text-xs font-medium text-slate-300">{"LLM\ud30c\uc2f1"}</span>
-                                        <button
-                                            onClick={() => setUseRawLlmParsing(!useRawLlmParsing)}
-                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${useRawLlmParsing ? 'bg-cyan-600' : 'bg-slate-700'}`}
-                                        >
-                                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${useRawLlmParsing ? 'translate-x-5' : 'translate-x-1'}`} />
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useRandomOutfits ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                            />
                                         </button>
                                     </div>
                                 </div>
@@ -8712,15 +8671,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                             )}
                                             {/* 액션 버튼 오버레이 */}
                                             <div className="absolute bottom-2 left-2 right-2 flex gap-1">
-                                                <button onClick={() => handleGenerateImage(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={generatingId === `scene-${scene.number}`} className="flex-[0.65] py-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                                <button onClick={() => handleGenerateImage(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={generatingId === `scene-${scene.number}`} className="flex-1 py-2 bg-emerald-600/90 hover:bg-emerald-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50">
                                                     {generatingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />} 이미지 생성
-                                                </button>
-                                                <button
-                                                    onClick={() => handleThreeViewTest(scene.number)}
-                                                    className="flex-[0.35] py-2 bg-cyan-600/90 hover:bg-cyan-500 backdrop-blur-md text-white text-[10px] font-bold rounded-lg transition-all flex items-center justify-center"
-                                                    title="3면도 확인"
-                                                >
-                                                    3면도
                                                 </button>
                                                 <button onClick={() => handleForwardPromptToImageAI(scene.prompt, `scene-${scene.number}`, scene.number)} disabled={aiForwardingId === `scene-${scene.number}`} className="p-2 bg-purple-600/90 hover:bg-purple-500 backdrop-blur-md text-white rounded-lg transition-all disabled:opacity-50" title="AI 생성">
                                                     {aiForwardingId === `scene-${scene.number}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}

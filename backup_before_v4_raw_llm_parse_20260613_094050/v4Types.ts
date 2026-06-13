@@ -33,8 +33,6 @@ export interface V4ScenePlan {
   background: string;
   cameraAngle: string;
   summary?: string;
-  imagePrompt?: string;
-  rawPrompt?: string;
 }
 
 export interface V4OutfitEntry {

@@ -117,18 +117,6 @@ export const fetchCharacters = async (): Promise<CharacterItem[]> => {
   }
 };
 
-export const deleteCharacterFolder = async (id: string): Promise<boolean> => {
-  try {
-    const folderName = id.replace(/^aistudio-/, '');
-    const response = await fetch('http://localhost:3002/api/characters/' + encodeURIComponent(folderName), {
-      method: 'DELETE',
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-};
-
 export const saveCharacters = async (characters: CharacterItem[]): Promise<boolean> => {
   const aiStudioCharacters = characters.filter((character) => character.sourceType === 'ai-studio');
   const serverCharacters = characters.filter((character) => character.sourceType !== 'ai-studio');

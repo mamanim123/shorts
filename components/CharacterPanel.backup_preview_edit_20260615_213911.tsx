@@ -652,8 +652,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const blobToUrl = async (blobId?: string) => {
         if (!blobId) return null;
-        // http(s) URL 또는 data: 면 그대로 사용 (AI Studio 캐릭터는 서버 URL)
-        if (/^(https?:|data:|blob:)/i.test(blobId)) return blobId;
         try {
           const blob = await getBlob(blobId);
           if (!blob) return null;

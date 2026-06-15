@@ -21,7 +21,7 @@ import { getBlob } from './master-studio/services/dbService';
 import { UNIFIED_OUTFIT_LIST, HAIR_PRESETS, BODY_PRESETS } from '../constants';
 import { applyBaseOverrides, fetchOutfitCatalog, fetchOutfitPreviewMap, getOutfitBaseOverrides, saveOutfitCatalog, saveOutfitPreviewImage, saveOutfitPreviewMap, setOutfitBaseOverrides } from '../services/outfitService';
 import type { OutfitBaseOverrides, OutfitCategory, OutfitItem } from '../services/outfitService';
-import { fetchCharacters, saveCharacters, deleteCharacterFolder } from '../services/characterService';
+import { fetchCharacters, saveCharacters } from '../services/characterService';
 import { getAppStorageCachedValue, setAppStorageValue } from '../services/appStorageService';
 import { fetchExtractionCache, fetchExtractionImageData, resetExtractionCache, saveExtractionCache, saveExtractionImage } from '../services/extractionCacheService';
 import type { ExtractedOutfit, ExtractedFeature } from '../services/extractionCacheService';
@@ -652,8 +652,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
       const blobToUrl = async (blobId?: string) => {
         if (!blobId) return null;
-        // http(s) URL 또는 data: 면 그대로 사용 (AI Studio 캐릭터는 서버 URL)
-        if (/^(https?:|data:|blob:)/i.test(blobId)) return blobId;
         try {
           const blob = await getBlob(blobId);
           if (!blob) return null;
@@ -1062,10 +1060,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     if (!window.confirm(`"${target.name}" 캐릭터를 삭제할까요?`)) return;
     const updated = characters.filter((char) => char.id !== id);
     setCharacters(updated);
-    // AI Studio 캐릭터는 서버 폴더(generated_scripts/characters)도 삭제
-    if (target.sourceType === 'ai-studio') {
-      try { await deleteCharacterFolder(target.id); } catch (e) { /* noop */ }
-    }
     await saveCharactersToBE(updated);
     if (selectedCharacterId === id) {
       setSelectedCharacterId(null);

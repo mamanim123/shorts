@@ -2044,34 +2044,6 @@ app.get('/api/characters', (req, res) => {
     }
 });
 
-// 캐릭터 폴더 삭제 (AI Studio 캐릭터의 turnaround 폴더 제거)
-app.delete('/api/characters/:folderName', (req, res) => {
-    try {
-        const raw = decodeURIComponent(req.params.folderName || '').replace(/^aistudio-/, '');
-        const safe = path.basename(raw); // 경로 탈출 방지
-        if (!safe || safe !== raw) {
-            return res.status(400).json({ success: false, error: 'invalid folder name' });
-        }
-        const targetDir = path.join(GENERATED_DIR, 'characters', safe);
-        if (fs.existsSync(targetDir)) {
-            fs.rmSync(targetDir, { recursive: true, force: true });
-            console.log('[Characters] 폴더 삭제됨:', safe);
-        }
-        // CHARACTERS_FILE 목록에서도 해당 id 제거
-        try {
-            let parsed = { characters: [] };
-            try { parsed = JSON.parse(fs.readFileSync(CHARACTERS_FILE, 'utf8')); } catch (e) {}
-            if (Array.isArray(parsed.characters)) {
-                parsed.characters = parsed.characters.filter(c => c.id !== safe && c.id !== raw);
-                fs.writeFileSync(CHARACTERS_FILE, JSON.stringify(parsed, null, 2), 'utf8');
-            }
-        } catch (e) {}
-        res.json({ success: true, deleted: safe });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
 app.post('/api/characters', (req, res) => {
     try {
         const { characters } = req.body;

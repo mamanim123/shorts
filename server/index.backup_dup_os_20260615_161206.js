@@ -4804,7 +4804,8 @@ app.post('/api/video/generate-smart', async (req, res) => {
 //         return res.status(500).json({ error: error.message || 'Grok 영상 생성 실패' });
 //     }
 // });
-        // [removed duplicate os declaration - using top-level import os]
+
+const os = await import('os');
 const DOWNLOAD_WATCH_DIR = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
 
 app.get('/api/video/temp-preview/:fileName', (req, res) => {

@@ -3,7 +3,6 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { exec } from 'child_process';
@@ -3498,7 +3497,7 @@ app.post('/api/image/ai-generate', async (req, res) => {
             if (!match) return null;
             const mime = match[1] || 'image/png';
             const ext = mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png';
-            const tempPath = path.join(os.tmpdir(), `shortslab_ref_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
+            const tempPath = path.join(require('os').tmpdir(), `shortslab_ref_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
             fs.writeFileSync(tempPath, Buffer.from(match[2], 'base64'));
             return tempPath;
         }
@@ -4804,7 +4803,8 @@ app.post('/api/video/generate-smart', async (req, res) => {
 //         return res.status(500).json({ error: error.message || 'Grok 영상 생성 실패' });
 //     }
 // });
-        // [removed duplicate os declaration - using top-level import os]
+
+const os = await import('os');
 const DOWNLOAD_WATCH_DIR = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
 
 app.get('/api/video/temp-preview/:fileName', (req, res) => {
@@ -5022,7 +5022,7 @@ app.post('/api/video/import-specific', async (req, res) => {
 // 다운로드 폴더 경로 확인 API
 app.get('/api/video/download-folder-info', (req, res) => {
     try {
-        const os = os;
+        const os = require('os');
         const downloadDir = process.env.DOWNLOAD_DIR || path.join(os.homedir(), 'Downloads');
         const exists = fs.existsSync(downloadDir);
 

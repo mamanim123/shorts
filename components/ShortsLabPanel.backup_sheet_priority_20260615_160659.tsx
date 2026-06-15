@@ -3383,11 +3383,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 }
 
                 const refs = casting.referenceImageUrls;
-                // [합본 우선] 3면 합본(referenceImageUrl=sheet)을 1순위로 첨부, 없으면 개별 view 폴백
                 const imageUrl =
-                    casting.referenceImageUrl ||
                     refs?.[preferredView] ||
                     refs?.[casting.referenceViewPreference || 'front'] ||
+                    casting.referenceImageUrl ||
                     refs?.front ||
                     refs?.angle45 ||
                     refs?.back ||

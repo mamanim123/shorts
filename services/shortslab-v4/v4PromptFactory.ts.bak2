@@ -135,18 +135,8 @@ export const buildV4Scenes = (params: {
     ].filter(Boolean).join(', ');
 
     const rawLlmPrompt = String(scene.imagePrompt || scene.rawPrompt || '').trim();
-    const outfitLock = characterIds
-      .map((id) => {
-        const o = params.outfitMap.get(id);
-        return o ? `wearing ${o.prompt || o.name}` : '';
-      })
-      .filter(Boolean)
-      .join(', ');
-    const onModePrompt = outfitLock
-      ? `${rawLlmPrompt}, ${outfitLock}, exact outfit colors, no hue shift, no color variation, ${TECH_TAIL}`
-      : rawLlmPrompt;
     const prompt = params.useRawLlmParsing && rawLlmPrompt
-      ? onModePrompt
+      ? rawLlmPrompt
       : processedPrompt;
 
     return {

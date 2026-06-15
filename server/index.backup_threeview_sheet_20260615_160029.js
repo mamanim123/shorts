@@ -1937,29 +1937,6 @@ app.post('/api/save-character-turnaround', async (req, res) => {
         saveBase64Png('front.png', turnaroundImages.front);
         saveBase64Png('angle45.png', turnaroundImages.angle45);
         saveBase64Png('back.png', turnaroundImages.back);
-
-        // [3면 합본] front+angle45+back 를 가로로 이어붙여 threeview.png 생성
-        let threeviewCreated = false;
-        try {
-            const decode = (d) => d ? Buffer.from(String(d).replace(/^data:image\/\w+;base64,/, ''), 'base64') : null;
-            const parts = [turnaroundImages.front, turnaroundImages.angle45, turnaroundImages.back]
-                .map(decode).filter(Boolean);
-            if (parts.length > 0) {
-                const CELL_W = 512, CELL_H = 768;
-                const resized = await Promise.all(parts.map(buf =>
-                    sharp(buf).resize(CELL_W, CELL_H, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toBuffer()
-                ));
-                const canvas = sharp({
-                    create: { width: CELL_W * resized.length, height: CELL_H, channels: 3, background: { r: 255, g: 255, b: 255 } }
-                });
-                const composite = resized.map((buf, i) => ({ input: buf, left: i * CELL_W, top: 0 }));
-                await canvas.composite(composite).png().toFile(path.join(targetDir, 'threeview.png'));
-                threeviewCreated = true;
-                console.log('[Turnaround] threeview.png 합본 생성 완료 (' + resized.length + '면)');
-            }
-        } catch (e) {
-            console.warn('[Turnaround] threeview 합본 생성 실패:', e.message);
-        }
         if (sourceImageData) {
             saveBase64Png('source.png', sourceImageData);
         }
@@ -1972,8 +1949,7 @@ app.post('/api/save-character-turnaround', async (req, res) => {
                 source: sourceImageData ? 'source.png' : null,
                 front: 'front.png',
                 angle45: 'angle45.png',
-                back: 'back.png',
-                threeview: threeviewCreated ? 'threeview.png' : null
+                back: 'back.png'
             },
             metadata: metadata || {}
         };
@@ -1994,7 +1970,6 @@ app.post('/api/save-character-turnaround', async (req, res) => {
                 front: `/generated_scripts/characters/${folderName}/front.png`,
                 angle45: `/generated_scripts/characters/${folderName}/angle45.png`,
                 back: `/generated_scripts/characters/${folderName}/back.png`,
-                threeview: threeviewCreated ? `/generated_scripts/characters/${folderName}/threeview.png` : null,
                 meta: `/generated_scripts/characters/${folderName}/character.json`
             }
         });

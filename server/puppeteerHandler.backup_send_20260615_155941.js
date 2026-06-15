@@ -1905,28 +1905,8 @@ async function sendPromptToPage(activePage, config, prompt, serviceName, files =
 
     // GEMINI, CLAUDE, GENSPARK는 Enter로 전송
     if (serviceName === 'CLAUDE' || serviceName === 'GEMINI' || serviceName === 'GENSPARK') {
-        console.log(`[Puppeteer] Sending to ${serviceName}...`);
-        let sent = false;
-        if (serviceName === 'GEMINI' && config.selectors.sendBtn) {
-            try {
-                await new Promise(r => setTimeout(r, 800));
-                sent = await activePage.evaluate((sel) => {
-                    const btns = Array.from(document.querySelectorAll(sel));
-                    let target = btns.find(b => !b.disabled && b.getAttribute('aria-disabled') !== 'true');
-                    if (!target) {
-                        const icon = document.querySelector('mat-icon[fonticon="arrow_upward"]');
-                        if (icon) target = icon.closest('button');
-                    }
-                    if (target && !target.disabled) { target.click(); return true; }
-                    return false;
-                }, config.selectors.sendBtn);
-                if (sent) console.log('[Puppeteer] OK Send button clicked.');
-            } catch (e) { console.warn('[Puppeteer] Send btn click failed:', e.message); }
-        }
-        if (!sent) {
-            console.log('[Puppeteer] Falling back to Enter key...');
-            await activePage.keyboard.press('Enter');
-        }
+        console.log(`[Puppeteer] Sending to ${serviceName} via Enter key...`);
+        await activePage.keyboard.press('Enter');
     } else {
         try {
             await activePage.click(config.selectors.sendBtn, { timeout: 3000 });

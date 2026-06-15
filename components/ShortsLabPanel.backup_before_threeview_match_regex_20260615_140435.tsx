@@ -2873,13 +2873,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const directNameMatch = chars.find((c) => c.name && slotRule?.name && c.name === slotRule.name);
             const matched = slotRule?.characterId
                 ? chars.find((c) => c.id === slotRule.characterId)
-                : (
-                    directNameMatch ||
-                    chars.find((c) => c.name && slotRule?.name && c.name.includes(slotRule.name)) ||
-                    chars.find((c) => c.name && slotRule?.name && slotRule.name.includes(c.name)) ||
-                    chars.find((c) => (slotId.startsWith('Woman') ? c.gender === 'female' : slotId.startsWith('Man') ? c.gender === 'male' : true)) ||
-                    chars[0]
-                );
+                : directNameMatch;
 
             console.log('SLOT MATCH:', {
                 slotId,
@@ -3319,85 +3313,27 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
         const aiCharacterIds = inferAiCharacterIds();
 
-        const aiReferenceImages = (await Promise.all(aiCharacterIds
-            .map(async (charId) => {
-                let casting = characterCastings.get(charId);
-                const preferredView = pickAiReferenceViewFromCamera(currentAiScene?.cameraAngle || currentAiScene?.camera || '');
-
-                if (!casting) {
-                    const rules = getCharacterRules();
-                    const allSlotRules = [...(rules?.females || []), ...(rules?.males || [])];
-                    const slotRule = allSlotRules.find((r) => r.id === charId);
-
-                    let chars = savedCharacters;
-                    if (!chars || chars.length === 0) {
-                        chars = await loadSavedCharacters();
-                    }
-
-                    const directNameMatch = chars.find((c) => c.name && slotRule?.name && c.name === slotRule.name);
-                    const matched = slotRule?.characterId
-                        ? chars.find((c) => c.id === slotRule.characterId)
-                        : (
-                            directNameMatch ||
-                            chars.find((c) => c.name && slotRule?.name && c.name.includes(slotRule.name)) ||
-                            chars.find((c) => c.name && slotRule?.name && slotRule.name.includes(c.name)) ||
-                            chars.find((c) => (charId.startsWith('Woman') ? c.gender === 'female' : charId.startsWith('Man') ? c.gender === 'male' : true)) ||
-                            chars[0]
-                        );
-
-                    if (matched) {
-                        const frontUrl = await blobToDataUrl(matched.turnaroundImageIds?.front || matched.generatedImageId);
-                        const angle45Url = await blobToDataUrl(matched.turnaroundImageIds?.angle45);
-                        const backUrl = await blobToDataUrl(matched.turnaroundImageIds?.back);
-                        const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
-                        const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl;
-
-                        if (referenceImageUrl) {
-                            casting = {
-                                characterId: matched.id,
-                                referenceImageUrl,
-                                referenceImageUrls: {
-                                    front: frontUrl || undefined,
-                                    angle45: angle45Url || undefined,
-                                    back: backUrl || undefined,
-                                },
-                                referenceViewPreference: matched.referencePreference?.defaultView || 'front',
-                                identitySummary: buildCastingIdentitySummary(matched),
-                                name: matched.name,
-                            };
-
-                            setCharacterCastings((prev) => {
-                                const next = new Map(prev);
-                                next.set(charId, casting!);
-                                return next;
-                            });
-
-                            console.log('[ShortsLab] AI auto-attached three-view casting:', charId, matched.name);
-                        }
-                    }
-                }
-
+        const aiReferenceImages = aiCharacterIds
+            .map((charId) => {
+                const casting = characterCastings.get(charId);
                 if (!casting) {
                     console.warn('[ShortsLab] Missing casting for AI reference:', charId, 'available:', Array.from(characterCastings.keys()));
                     return null;
                 }
-
                 const refs = casting.referenceImageUrls;
-                // [합본 우선] 3면 합본(referenceImageUrl=sheet)을 1순위로 첨부, 없으면 개별 view 폴백
+                const preferredView = pickAiReferenceViewFromCamera(currentAiScene?.cameraAngle || currentAiScene?.camera || '');
                 const imageUrl =
-                    casting.referenceImageUrl ||
                     refs?.[preferredView] ||
                     refs?.[casting.referenceViewPreference || 'front'] ||
+                    casting.referenceImageUrl ||
                     refs?.front ||
                     refs?.angle45 ||
                     refs?.back ||
                     '';
-
                 if (!imageUrl) {
                     console.warn('[ShortsLab] Missing reference image url for AI reference:', charId, casting);
                     return null;
                 }
-
                 return {
                     slotId: charId,
                     label: charId.replace('Woman', 'Woman ').replace('Man', 'Man '),
@@ -3405,7 +3341,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     identitySummary: String(casting.identitySummary || '').trim()
                 };
             })
-        )).filter(Boolean) || [];
+            .filter(Boolean) || [];
 
         console.log('[ShortsLab] AI sceneNumber:', sceneNumber);
         console.log('[ShortsLab] AI scene characterIds:', currentAiScene?.characterIds);
@@ -13380,10 +13316,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
-
-
-
-
 
 
 

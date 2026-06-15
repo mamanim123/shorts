@@ -149,7 +149,6 @@ const SERVICES = {
         url: 'https://gemini.google.com/app',
         selectors: {
             input: 'div[contenteditable="true"], div[role="textbox"]',
-        sendBtn: 'button[aria-label*="보내기"], button[aria-label*="Send"], button[aria-label*="Submit"], button[mattooltip*="Send"], button:has(mat-icon[fonticon="arrow_upward"]), button[aria-label*="제출"]',
             sendBtn: 'button[aria-label="Send"], button[aria-label*="Send"], .send-button, button[data-testid="send-button"]',
             response: 'model-response, .model-response-text',
         }
@@ -1905,28 +1904,8 @@ async function sendPromptToPage(activePage, config, prompt, serviceName, files =
 
     // GEMINI, CLAUDE, GENSPARK는 Enter로 전송
     if (serviceName === 'CLAUDE' || serviceName === 'GEMINI' || serviceName === 'GENSPARK') {
-        console.log(`[Puppeteer] Sending to ${serviceName}...`);
-        let sent = false;
-        if (serviceName === 'GEMINI' && config.selectors.sendBtn) {
-            try {
-                await new Promise(r => setTimeout(r, 800));
-                sent = await activePage.evaluate((sel) => {
-                    const btns = Array.from(document.querySelectorAll(sel));
-                    let target = btns.find(b => !b.disabled && b.getAttribute('aria-disabled') !== 'true');
-                    if (!target) {
-                        const icon = document.querySelector('mat-icon[fonticon="arrow_upward"]');
-                        if (icon) target = icon.closest('button');
-                    }
-                    if (target && !target.disabled) { target.click(); return true; }
-                    return false;
-                }, config.selectors.sendBtn);
-                if (sent) console.log('[Puppeteer] OK Send button clicked.');
-            } catch (e) { console.warn('[Puppeteer] Send btn click failed:', e.message); }
-        }
-        if (!sent) {
-            console.log('[Puppeteer] Falling back to Enter key...');
-            await activePage.keyboard.press('Enter');
-        }
+        console.log(`[Puppeteer] Sending to ${serviceName} via Enter key...`);
+        await activePage.keyboard.press('Enter');
     } else {
         try {
             await activePage.click(config.selectors.sendBtn, { timeout: 3000 });
@@ -2316,9 +2295,7 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
         throw new Error("Image capture is currently supported for GEMINI and GENSPARK services.");
     }
 
-    const { requestToken, storyId, sceneNumber, attempt = 1, referenceImages = [] } = options;
-    const uploadFiles = Array.isArray(referenceImages) ? referenceImages.filter(Boolean) : [];
-    console.log('[Puppeteer Image] Reference upload files:', uploadFiles.length);
+    const { requestToken, storyId, sceneNumber, attempt = 1 } = options;
     const captureLabel = `[${storyId || 'unknown'}:${sceneNumber ?? '?'}|attempt-${attempt}]`;
 
     const releaseLock = await acquireLock();
@@ -2387,7 +2364,7 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
         ? `Generate the following image immediately. Do not ask for confirmation or provide any warning about credits. Just start the generation process now:\n\n${prompt}` 
         : `Generate this image:\n\n${prompt}${requestToken ? `\n\n(Token: ${requestToken})` : ''}`;
         
-    await sendPromptToPage(scriptPage, config, imagePrompt, serviceName, uploadFiles);
+    await sendPromptToPage(scriptPage, config, imagePrompt, serviceName);
     console.log(`[Puppeteer] 🎨 Waiting for ${serviceName} response...`);
 
     // [Genspark 특화 대기 및 상호작용 로직]

@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import fs from 'fs';
@@ -1937,29 +1937,6 @@ app.post('/api/save-character-turnaround', async (req, res) => {
         saveBase64Png('front.png', turnaroundImages.front);
         saveBase64Png('angle45.png', turnaroundImages.angle45);
         saveBase64Png('back.png', turnaroundImages.back);
-
-        // [3면 합본] front+angle45+back 를 가로로 이어붙여 threeview.png 생성
-        let threeviewCreated = false;
-        try {
-            const decode = (d) => d ? Buffer.from(String(d).replace(/^data:image\/\w+;base64,/, ''), 'base64') : null;
-            const parts = [turnaroundImages.front, turnaroundImages.angle45, turnaroundImages.back]
-                .map(decode).filter(Boolean);
-            if (parts.length > 0) {
-                const CELL_W = 512, CELL_H = 768;
-                const resized = await Promise.all(parts.map(buf =>
-                    sharp(buf).resize(CELL_W, CELL_H, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toBuffer()
-                ));
-                const canvas = sharp({
-                    create: { width: CELL_W * resized.length, height: CELL_H, channels: 3, background: { r: 255, g: 255, b: 255 } }
-                });
-                const composite = resized.map((buf, i) => ({ input: buf, left: i * CELL_W, top: 0 }));
-                await canvas.composite(composite).png().toFile(path.join(targetDir, 'threeview.png'));
-                threeviewCreated = true;
-                console.log('[Turnaround] threeview.png 합본 생성 완료 (' + resized.length + '면)');
-            }
-        } catch (e) {
-            console.warn('[Turnaround] threeview 합본 생성 실패:', e.message);
-        }
         if (sourceImageData) {
             saveBase64Png('source.png', sourceImageData);
         }
@@ -1972,8 +1949,7 @@ app.post('/api/save-character-turnaround', async (req, res) => {
                 source: sourceImageData ? 'source.png' : null,
                 front: 'front.png',
                 angle45: 'angle45.png',
-                back: 'back.png',
-                threeview: threeviewCreated ? 'threeview.png' : null
+                back: 'back.png'
             },
             metadata: metadata || {}
         };
@@ -1994,7 +1970,6 @@ app.post('/api/save-character-turnaround', async (req, res) => {
                 front: `/generated_scripts/characters/${folderName}/front.png`,
                 angle45: `/generated_scripts/characters/${folderName}/angle45.png`,
                 back: `/generated_scripts/characters/${folderName}/back.png`,
-                threeview: threeviewCreated ? `/generated_scripts/characters/${folderName}/threeview.png` : null,
                 meta: `/generated_scripts/characters/${folderName}/character.json`
             }
         });
@@ -3488,42 +3463,10 @@ app.post('/api/video/generate-grok', async (req, res) => {
 
 app.post('/api/image/ai-generate', async (req, res) => {
     const { prompt, service, storyId, sceneNumber, autoCapture, title, referenceImages } = req.body || {};
-    const toLocalReferenceFile = (value) => {
-        const raw = typeof value === 'string' ? value : value?.imageUrl;
-        if (!raw) return null;
-
-        if (raw.startsWith('data:')) {
-            const match = raw.match(/^data:(.*?);base64,(.*)$/);
-            if (!match) return null;
-            const mime = match[1] || 'image/png';
-            const ext = mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png';
-            const tempPath = path.join(require('os').tmpdir(), `shortslab_ref_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
-            fs.writeFileSync(tempPath, Buffer.from(match[2], 'base64'));
-            return tempPath;
-        }
-
-        if (/^https?:\/\//i.test(raw)) {
-            try {
-                const url = new URL(raw);
-                const pathname = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
-                if (pathname.startsWith('generated_scripts/')) {
-                    return path.join(process.cwd(), pathname);
-                }
-            } catch {}
-            return raw;
-        }
-
-        if (raw.startsWith('/generated_scripts/')) {
-            return path.join(process.cwd(), decodeURIComponent(raw.replace(/^\/+/, '')));
-        }
-
-        return raw;
-    };
-
     const referenceFiles = Array.isArray(referenceImages)
-        ? referenceImages.map(toLocalReferenceFile).filter(Boolean)
+        ? referenceImages.map((item) => typeof item === 'string' ? item : item?.imageUrl).filter(Boolean)
         : [];
-    console.log('[ImageAI] Reference files:', referenceFiles.length, referenceFiles);
+    console.log('[ImageAI] Reference files:', referenceFiles.length);
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
         return res.status(400).json({ error: "Prompt is required" });
     }
@@ -5393,4 +5336,3 @@ app.get('/api/usage-stats', (req, res) => {
 app.listen(PORT, () => {
     console.log(`[Server] 🚀 Script generator server running at http://localhost:${PORT}`);
 });
-

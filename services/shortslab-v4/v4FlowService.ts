@@ -46,7 +46,9 @@ const normalizeAssignedScenes = (params: {
       action: scene?.action || 'standing naturally in a cinematic candid moment',
       background: scene?.background || '',
       cameraAngle: scene?.cameraAngle || 'full body wide shot',
-      summary: scene?.summary || line
+      summary: scene?.summary || line,
+      imagePrompt: scene?.imagePrompt || '',
+      rawPrompt: scene?.rawPrompt || scene?.imagePrompt || ''
     };
   });
 };

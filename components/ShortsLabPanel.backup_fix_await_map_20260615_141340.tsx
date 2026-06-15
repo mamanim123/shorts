@@ -3319,8 +3319,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
         const aiCharacterIds = inferAiCharacterIds();
 
-        const aiReferenceImages = (await Promise.all(aiCharacterIds
-            .map(async (charId) => {
+        const aiReferenceImages = aiCharacterIds
+            .map((charId) => {
                 let casting = characterCastings.get(charId);
                 const preferredView = pickAiReferenceViewFromCamera(currentAiScene?.cameraAngle || currentAiScene?.camera || '');
 
@@ -3383,11 +3383,10 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 }
 
                 const refs = casting.referenceImageUrls;
-                // [합본 우선] 3면 합본(referenceImageUrl=sheet)을 1순위로 첨부, 없으면 개별 view 폴백
                 const imageUrl =
-                    casting.referenceImageUrl ||
                     refs?.[preferredView] ||
                     refs?.[casting.referenceViewPreference || 'front'] ||
+                    casting.referenceImageUrl ||
                     refs?.front ||
                     refs?.angle45 ||
                     refs?.back ||
@@ -3405,7 +3404,7 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     identitySummary: String(casting.identitySummary || '').trim()
                 };
             })
-        )).filter(Boolean) || [];
+            .filter(Boolean) || [];
 
         console.log('[ShortsLab] AI sceneNumber:', sceneNumber);
         console.log('[ShortsLab] AI scene characterIds:', currentAiScene?.characterIds);
@@ -13380,10 +13379,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
-
-
-
-
 
 
 

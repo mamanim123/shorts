@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ShortsLabPanel.tsx
  * 쇼츠 영상 제작을 위한 테스트 패널 V2
  * 
@@ -12445,37 +12445,6 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
                                                             {formatSlotLabel(char.id, idx, 'female', char.name)}
-                                                                                                                        {/* [의상규칙 통합] 3면도 생성 영역 */}
-                                                            <div className="mt-2 bg-fuchsia-900/15 border border-fuchsia-700/30 rounded-lg p-3 space-y-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
-                                                                    <span className="text-xs font-semibold text-fuchsia-300">3면도 생성 (정면/45도/뒷모습)</span>
-                                                                </div>
-                                                                <label className="flex flex-col items-center justify-center py-4 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-fuchsia-500/50 transition-all">
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        className="hidden"
-                                                                        onChange={(e) => { const f = e.target.files?.[0] || null; handleRuleTurnaroundSourceUpload(char.id, f); e.target.value = ''; }}
-                                                                    />
-                                                                    {turnaroundSourceMap[char.id] ? (
-                                                                        <img src={turnaroundSourceMap[char.id]} alt="source" className="max-h-28 rounded-md object-contain" />
-                                                                    ) : (
-                                                                        <span className="text-[10px] text-slate-500">기준 인물 사진 드래그 또는 클릭</span>
-                                                                    )}
-                                                                </label>
-                                                                {turnaroundProgressMap[char.id] && (
-                                                                    <div className="text-[10px] text-fuchsia-300 text-center">{turnaroundProgressMap[char.id]}</div>
-                                                                )}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleGenerateRuleTurnaround(char.name, char.id)}
-                                                                    disabled={generatingTurnaroundId === char.id || !turnaroundSourceMap[char.id] || !char.name?.trim()}
-                                                                    className="w-full py-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-lg transition-all"
-                                                                >
-                                                                    {generatingTurnaroundId === char.id ? '생성 중...' : '3면도 생성 후 저장'}
-                                                                </button>
-                                                            </div>
                                                             {char.id === 'WomanD' && (
                                                                 <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
                                                             )}

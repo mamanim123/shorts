@@ -2065,7 +2065,40 @@ app.get('/api/characters', (req, res) => {
 // [1단계 통합] 캐릭터 정체성은 폴더가 단일 진실이므로, localStorage 캐릭터 목록으로
 // 폴더 정보를 덮어쓰지 않는다. 클라이언트 호환을 위해 success 만 반환 (no-op).
 app.post('/api/characters', (req, res) => {
-    res.json({ success: true, noop: true, message: 'characters are managed by folder scan' });
+    // [수정복구] 폴더가 이미 존재하는 캐릭터의 텍스트 메타만 업데이트한다.
+    // 이미지(files/threeview/source)는 건드리지 않으며, 폴더 없는 껍데기는 무시한다.
+    try {
+        const incoming = Array.isArray(req.body) ? req.body
+            : (Array.isArray(req.body?.characters) ? req.body.characters : []);
+        const charsRoot = path.join(GENERATED_DIR, 'characters');
+        let updated = 0;
+        const TEXT_FIELDS = ['name', 'age', 'gender', 'face', 'hair', 'body', 'style', 'bodyTuning', 'identitySpec', 'description'];
+
+        for (const c of incoming) {
+            const id = String(c?.id || '').trim();
+            if (!id || id.includes('..') || id.includes('/') || id.includes('\\\\')) continue;
+            const charDir = path.join(charsRoot, id);
+            const metaPath = path.join(charDir, 'character.json');
+            if (!fs.existsSync(charDir) || !fs.existsSync(metaPath)) continue; // 폴더 없으면 무시
+
+            let meta = {};
+            try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8')) || {}; } catch (e) { meta = {}; }
+            if (!meta.metadata || typeof meta.metadata !== 'object') meta.metadata = {};
+
+            for (const f of TEXT_FIELDS) {
+                if (c[f] !== undefined && c[f] !== null) {
+                    meta[f] = c[f];
+                    meta.metadata[f] = c[f];
+                }
+            }
+            meta.updatedAt = new Date().toISOString();
+            fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+            updated++;
+        }
+        res.json({ success: true, updated, message: '폴더 캐릭터 텍스트 메타 업데이트 완료' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // [3단계] 캐릭터 폴더 삭제 (정체성 단일 진실 = 폴더이므로 폴더를 지워야 실제 삭제됨)

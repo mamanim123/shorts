@@ -10966,7 +10966,90 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     };
 
-    const updateCharacterRulesField = (gender: 'female' | 'male', id: string, field: string, value: string | boolean) => {
+    // ============ [의상규칙 통합] 캐릭터 카드에서 직접 3면도 생성 ============
+  const [turnaroundSourceMap, setTurnaroundSourceMap] = useState<Record<string, string>>({});
+  const [generatingTurnaroundId, setGeneratingTurnaroundId] = useState<string | null>(null);
+  const [turnaroundProgressMap, setTurnaroundProgressMap] = useState<Record<string, string>>({});
+
+  const RULE_TURNAROUND_VIEWS: Array<{ key: 'front' | 'angle45' | 'back'; label: string; instruction: string }> = [
+    { key: 'front',   label: '정면',   instruction: 'Generate a clean front view (facing the camera directly), full body, plain neutral background, of this exact same person.' },
+    { key: 'angle45', label: '45도',   instruction: 'Generate a 45-degree angle view, full body, plain neutral background, of this exact same person.' },
+    { key: 'back',    label: '뒷모습', instruction: 'Generate a back view (facing away), full body, plain neutral background, of this exact same person.' },
+  ];
+
+  const handleRuleTurnaroundSourceUpload = (charId: string, file: File | null) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setTurnaroundSourceMap(prev => ({ ...prev, [charId]: String(reader.result || '') }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerateRuleTurnaround = async (charName: string, charId: string) => {
+    const source = turnaroundSourceMap[charId];
+    if (!source) { showToast('기준 인물 사진을 먼저 업로드하세요.', 'warning'); return; }
+    if (!charName || !charName.trim()) { showToast('캐릭터 이름(Name Korean)을 먼저 입력하세요.', 'warning'); return; }
+
+    setGeneratingTurnaroundId(charId);
+    try {
+      const turnaroundImages: Record<string, string> = {};
+      for (let i = 0; i < RULE_TURNAROUND_VIEWS.length; i++) {
+        const view = RULE_TURNAROUND_VIEWS[i];
+        setTurnaroundProgressMap(prev => ({ ...prev, [charId]: `${view.label} 생성 중 (${i + 1}/3)` }));
+
+        const aiGenRes = await fetch('http://localhost:3002/api/image/ai-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: view.instruction,
+            service: 'GEMINI',
+            storyId: `__character_turnaround_tmp__/${view.key}`,
+            sceneNumber: 1,
+            autoCapture: true,
+            title: `turnaround-${view.key}`,
+            referenceImages: [{ imageUrl: source }],
+          }),
+        });
+        const payload = await aiGenRes.json();
+        if (!payload?.success || !payload?.url) throw new Error(payload?.error || `${view.label} 생성 실패`);
+        const genUrl = payload.url.startsWith('http') ? payload.url : `http://localhost:3002${payload.url}`;
+        const blob = await fetch(genUrl).then(r => r.blob());
+        const dataUrl: string = await new Promise((resolve) => {
+          const rd = new FileReader();
+          rd.onload = () => resolve(String(rd.result || ''));
+          rd.readAsDataURL(blob);
+        });
+        turnaroundImages[view.key] = dataUrl;
+      }
+
+      setTurnaroundProgressMap(prev => ({ ...prev, [charId]: '저장 중...' }));
+      const saveRes = await fetch('http://localhost:3002/api/save-character-turnaround', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterName: charName.trim(),
+          sourceImageData: source,
+          turnaroundImages,
+          metadata: { slotId: charId, source: 'outfit-rule' },
+        }),
+      });
+      const saved = await saveRes.json();
+      if (!saved?.success) throw new Error(saved?.error || '3면도 저장 실패');
+
+      showToast(`${charName} 3면도 생성/저장 완료`, 'success');
+      setTurnaroundProgressMap(prev => ({ ...prev, [charId]: '' }));
+      setTurnaroundSourceMap(prev => { const n = { ...prev }; delete n[charId]; return n; });
+    } catch (err) {
+      console.error('3면도 생성 실패:', err);
+      showToast(err instanceof Error ? err.message : '3면도 생성 실패', 'error');
+      setTurnaroundProgressMap(prev => ({ ...prev, [charId]: '' }));
+    } finally {
+      setGeneratingTurnaroundId(null);
+    }
+  };
+  // ============ [의상규칙 통합] 끝 ============
+  const updateCharacterRulesField = (gender: 'female' | 'male', id: string, field: string, value: string | boolean) => {
         setCharacterRulesState(prev => ({
             ...prev,
             [gender === 'female' ? 'females' : 'males']: prev[gender === 'female' ? 'females' : 'males'].map(char =>
@@ -12362,6 +12445,37 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                         />
                                                         <div className="text-sm font-semibold text-slate-200">
                                                             {formatSlotLabel(char.id, idx, 'female', char.name)}
+                                                                                                                        {/* [의상규칙 통합] 3면도 생성 영역 */}
+                                                            <div className="mt-2 bg-fuchsia-900/15 border border-fuchsia-700/30 rounded-lg p-3 space-y-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
+                                                                    <span className="text-xs font-semibold text-fuchsia-300">3면도 생성 (정면/45도/뒷모습)</span>
+                                                                </div>
+                                                                <label className="flex flex-col items-center justify-center py-4 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-fuchsia-500/50 transition-all">
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        className="hidden"
+                                                                        onChange={(e) => { const f = e.target.files?.[0] || null; handleRuleTurnaroundSourceUpload(char.id, f); e.target.value = ''; }}
+                                                                    />
+                                                                    {turnaroundSourceMap[char.id] ? (
+                                                                        <img src={turnaroundSourceMap[char.id]} alt="source" className="max-h-28 rounded-md object-contain" />
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-slate-500">기준 인물 사진 드래그 또는 클릭</span>
+                                                                    )}
+                                                                </label>
+                                                                {turnaroundProgressMap[char.id] && (
+                                                                    <div className="text-[10px] text-fuchsia-300 text-center">{turnaroundProgressMap[char.id]}</div>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleGenerateRuleTurnaround(char.name, char.id)}
+                                                                    disabled={generatingTurnaroundId === char.id || !turnaroundSourceMap[char.id] || !char.name?.trim()}
+                                                                    className="w-full py-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-lg transition-all"
+                                                                >
+                                                                    {generatingTurnaroundId === char.id ? '생성 중...' : '3면도 생성 후 저장'}
+                                                                </button>
+                                                            </div>
                                                             {char.id === 'WomanD' && (
                                                                 <span className="ml-2 text-[10px] bg-emerald-600/20 text-emerald-400 px-2 py-0.5 rounded">캐디</span>
                                                             )}
@@ -12471,7 +12585,38 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                                     placeholder="tight-fitting, form-hugging"
                                                                 />
                                                             </div>
-                                                        {char.id === 'WomanD' && (
+                                                                                                                    {/* [의상규칙 통합] 3면도 생성 영역 */}
+                                                            <div className="mt-2 bg-fuchsia-900/15 border border-fuchsia-700/30 rounded-lg p-3 space-y-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
+                                                                    <span className="text-xs font-semibold text-fuchsia-300">3면도 생성 (정면/45도/뒷모습)</span>
+                                                                </div>
+                                                                <label className="flex flex-col items-center justify-center py-4 border-2 border-dashed border-slate-700 rounded-lg cursor-pointer hover:border-fuchsia-500/50 transition-all">
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        className="hidden"
+                                                                        onChange={(e) => { const f = e.target.files?.[0] || null; handleRuleTurnaroundSourceUpload(char.id, f); e.target.value = ''; }}
+                                                                    />
+                                                                    {turnaroundSourceMap[char.id] ? (
+                                                                        <img src={turnaroundSourceMap[char.id]} alt="source" className="max-h-28 rounded-md object-contain" />
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-slate-500">기준 인물 사진 드래그 또는 클릭</span>
+                                                                    )}
+                                                                </label>
+                                                                {turnaroundProgressMap[char.id] && (
+                                                                    <div className="text-[10px] text-fuchsia-300 text-center">{turnaroundProgressMap[char.id]}</div>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleGenerateRuleTurnaround(char.name, char.id)}
+                                                                    disabled={generatingTurnaroundId === char.id || !turnaroundSourceMap[char.id] || !char.name?.trim()}
+                                                                    className="w-full py-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-lg transition-all"
+                                                                >
+                                                                    {generatingTurnaroundId === char.id ? '생성 중...' : '3면도 생성 후 저장'}
+                                                                </button>
+                                                            </div>
+                                                            {char.id === 'WomanD' && (
                                                                 <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
                                                                     <div className="flex items-center gap-2">
                                                                         <Lock className="w-3.5 h-3.5 text-emerald-400" />

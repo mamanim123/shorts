@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ImageDropzone from './ImageDropzone';
 import Spinner from './Spinner';
 import { CameraSettings } from './CameraControls';
-import { CharacterCollection } from '../../types';
-import { getAppStorageValue } from '../../services/appStorageService';
 
 export interface SceneFrame {
     sceneNumber: number;
@@ -39,21 +37,6 @@ const FrameGenerator: React.FC<FrameGeneratorProps> = ({ onGenerate, isGeneratin
         }))
     );
     const [maintainConsistency, setMaintainConsistency] = useState(true);
-    const [savedCharacters, setSavedCharacters] = useState<CharacterCollection[]>([]);
-    const [selectedCharacterId, setSelectedCharacterId] = useState('');
-
-    useEffect(() => {
-        const loadCharacters = async () => {
-            try {
-                const saved = await getAppStorageValue<CharacterCollection[] | null>('characterCollection', null);
-                setSavedCharacters(Array.isArray(saved) ? saved : []);
-            } catch (err) {
-                console.error('[FrameGenerator] 캐릭터 목록 로드 실패:', err);
-            }
-        };
-
-        loadCharacters();
-    }, []);
 
     const handleCharacterImageDrop = (file: File) => {
         if (characterImageUrl) URL.revokeObjectURL(characterImageUrl);

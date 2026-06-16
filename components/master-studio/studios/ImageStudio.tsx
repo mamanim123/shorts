@@ -847,15 +847,43 @@ Use a plain fitted base outfit so the body silhouette remains visible.
 Do not add text, split panels, extra people, props, accessories, or scenery.
 Output one single image for this viewpoint only.`;
 
-                const response = await editImage(
-                    turnaroundPrompt,
-                    referencePart,
-                    { aspectRatio: '9:16', model: effectiveModel },
-                    safetySettings
-                );
+                // [2단계] API 키(editImage) 대신 Puppeteer(/api/image/ai-generate)로 생성
+                const aiGenRes = await fetch('http://localhost:3002/api/image/ai-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: turnaroundPrompt,
+                        service: 'GEMINI',
+                        storyId: `__character_turnaround__/${key}`,
+                        sceneNumber: 1,
+                        autoCapture: true,
+                        title: `turnaround-${key}`,
+                        referenceImages: [
+                            { imageUrl: `data:${sourceImage.file.type || 'image/png'};base64,${sourceBase64}` }
+                        ]
+                    })
+                });
+                const aiGenPayload = await aiGenRes.json().catch(() => ({}));
+                if (!aiGenRes.ok || !aiGenPayload?.url) {
+                    throw new Error(`${meta.label} 이미지 생성에 실패했습니다.${aiGenPayload?.error ? ' (' + aiGenPayload.error + ')' : ''}`);
+                }
 
-                const imagePartData = extractImagePartData(response);
-                if (!imagePartData) {
+                // 생성된 파일 URL → base64 변환 (기존 stored 흐름에 재사용)
+                const genImageUrl = aiGenPayload.url.startsWith('http')
+                    ? aiGenPayload.url
+                    : `http://localhost:3002${aiGenPayload.url}`;
+                const genBlob = await fetch(genImageUrl).then(r => r.blob());
+                const genBase64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const result = reader.result as string;
+                        resolve(result.includes(',') ? result.split(',')[1] : result);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(genBlob);
+                });
+                const imagePartData = { data: genBase64, mimeType: genBlob.type || 'image/png' };
+                if (!imagePartData.data) {
                     throw new Error(`${meta.label} 이미지 생성에 실패했습니다.`);
                 }
 

@@ -2068,6 +2068,26 @@ app.post('/api/characters', (req, res) => {
     res.json({ success: true, noop: true, message: 'characters are managed by folder scan' });
 });
 
+// [3단계] 캐릭터 폴더 삭제 (정체성 단일 진실 = 폴더이므로 폴더를 지워야 실제 삭제됨)
+app.delete('/api/characters/:id', (req, res) => {
+    try {
+        const id = decodeURIComponent(req.params.id || '');
+        if (!id || id.includes('..') || id.includes('/') || id.includes('\\')) {
+            return res.status(400).json({ success: false, error: '잘못된 캐릭터 ID' });
+        }
+        const charDir = path.join(GENERATED_DIR, 'characters', id);
+        if (!fs.existsSync(charDir)) {
+            return res.status(404).json({ success: false, error: '캐릭터 폴더를 찾을 수 없습니다.' });
+        }
+        fs.rmSync(charDir, { recursive: true, force: true });
+        console.log('[Character] 폴더 삭제 완료:', id);
+        res.json({ success: true, deletedId: id });
+    } catch (error) {
+        console.error('캐릭터 폴더 삭제 실패:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ---------------------------------------------------------
 // 의상 미리보기 이미지 저장 API
 // ---------------------------------------------------------

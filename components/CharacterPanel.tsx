@@ -104,6 +104,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 }) => {
   // 탭 상태
   const [activeTab, setActiveTab] = useState<'select' | 'manage' | 'outfit'>('select');
+  // [3-2단계] 3면도 생성용 소스 이미지 + 진행 상태
+  const [turnaroundSource, setTurnaroundSource] = useState<{ dataUrl: string; mime: string } | null>(null);
+  const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
+  const [turnaroundProgress, setTurnaroundProgress] = useState<string>('');
 
   // 데이터 상태
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -970,13 +974,13 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       const cache = await fetchExtractionCache();
       if (!isMounted) return;
       setExtractedOutfit(cache.extractedOutfit ?? null);
-      setExtractedFace(cache.extractedFace ?? null);
-      setExtractedHair(cache.extractedHair ?? null);
-      setExtractedBody(cache.extractedBody ?? null);
+      setExtractedFace(null); // [정리] 탭 진입 시 옛 분석결과 자동복원 안 함
+      setExtractedHair(null);
+      setExtractedBody(null);
       setGeneratedOutfitImage(cache.generatedOutfitImage ?? null);
-      setGeneratedFaceImage(cache.generatedFaceImage ?? null);
-      setGeneratedHairImage(cache.generatedHairImage ?? null);
-      setGeneratedBodyImage(cache.generatedBodyImage ?? null);
+      setGeneratedFaceImage(null);
+      setGeneratedHairImage(null);
+      setGeneratedBodyImage(null);
       setLastOutfitImageData(cache.lastOutfitImageData ?? null);
       setLastFaceImageData(cache.lastFaceImageData ?? null);
       setLastHairImageData(cache.lastHairImageData ?? null);
@@ -1058,6 +1062,34 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const target = characters.find((char) => char.id === id);
     if (!target) return;
     if (!window.confirm(`"${target.name}" 캐릭터를 삭제할까요?`)) return;
+
+    // [3단계] 폴더 기반 캐릭터(서버 폴더 = 단일 진실)는 폴더를 지워야 실제 삭제됨
+    const isFolderCharacter = (target as any).sourceType === 'ai-studio'
+      || /^\d{4}-\d{2}-\d{2}T/.test(String(id));
+    if (isFolderCharacter) {
+      try {
+        const res = await fetch(`http://localhost:3002/api/characters/${encodeURIComponent(id)}`, {
+          method: 'DELETE'
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload?.success) {
+          throw new Error(payload?.error || '폴더 삭제 실패');
+        }
+        const refreshed = await fetchCharacters();
+        setCharacters(refreshed as any);
+        if (selectedCharacterId === id) {
+          setSelectedCharacterId(null);
+          onCharacterSelect?.(null, selectedSlot);
+        }
+        showToast('캐릭터가 삭제되었습니다.', 'success');
+      } catch (err) {
+        console.error('캐릭터 폴더 삭제 실패:', err);
+        showToast(err instanceof Error ? err.message : '캐릭터 삭제에 실패했습니다.', 'error');
+      }
+      return;
+    }
+
+    // 비-폴더 캐릭터(레거시): 기존 방식
     const updated = characters.filter((char) => char.id !== id);
     setCharacters(updated);
     await saveCharactersToBE(updated);
@@ -1067,6 +1099,103 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
     showToast('캐릭터가 삭제되었습니다.', 'success');
   }, [characters, onCharacterSelect, saveCharactersToBE, selectedCharacterId, selectedSlot]);
+
+  // [3-2단계] 캐릭터관리 탭에서 직접 3면도 생성 (Puppeteer 방식, API 키 불필요)
+  const TURNAROUND_VIEWS: Array<{ key: 'front' | 'angle45' | 'back'; label: string; instruction: string }> = [
+    { key: 'front', label: '정면', instruction: 'Generate a front view (facing the camera directly) of this exact same person.' },
+    { key: 'angle45', label: '45도', instruction: 'Generate a 3/4 view (rotated 45 degrees) of this exact same person.' },
+    { key: 'back', label: '뒷모습', instruction: 'Generate a back view (facing away from the camera) of this exact same person.' },
+  ];
+
+  const handleGenerateTurnaroundInPanel = useCallback(async () => {
+    if (!turnaroundSource) {
+      showToast('먼저 캐릭터 기준 이미지를 업로드해주세요.', 'warning');
+      return;
+    }
+    if (!newCharacter.name.trim()) {
+      showToast('캐릭터 이름을 먼저 입력해주세요.', 'warning');
+      return;
+    }
+    setIsGeneratingTurnaround(true);
+    setTurnaroundProgress('');
+    try {
+      const turnaroundImages: Record<string, string> = {};
+      for (let i = 0; i < TURNAROUND_VIEWS.length; i++) {
+        const view = TURNAROUND_VIEWS[i];
+        setTurnaroundProgress(`${view.label} 생성 중... (${i + 1}/${TURNAROUND_VIEWS.length})`);
+        const prompt = `${view.instruction}
+Preserve the exact same face, body shape, proportions, height impression, hairstyle, hair volume, and overall identity from the reference image.
+Keep the character alone, centered, standing in a neutral pose, with arms relaxed naturally.
+Use a clean studio background, full-body framing, photorealistic fashion turnaround sheet style.
+Use a plain fitted base outfit so the body silhouette remains visible.
+Do not add text, split panels, extra people, props, accessories, or scenery.
+Output one single image for this viewpoint only.`;
+
+        const res = await fetch('http://localhost:3002/api/image/ai-generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            service: 'GEMINI',
+            storyId: `__character_turnaround_tmp__/${view.key}`,
+            sceneNumber: 1,
+            autoCapture: true,
+            title: `turnaround-${view.key}`,
+            referenceImages: [{ imageUrl: turnaroundSource.dataUrl }]
+          })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload?.url) {
+          throw new Error(`${view.label} 생성 실패${payload?.error ? ' (' + payload.error + ')' : ''}`);
+        }
+        const imgUrl = payload.url.startsWith('http') ? payload.url : `http://localhost:3002${payload.url}`;
+        const blob = await fetch(imgUrl).then(r => r.blob());
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        turnaroundImages[view.key] = dataUrl;
+      }
+
+      setTurnaroundProgress('캐릭터 폴더에 저장 중...');
+      const saveRes = await fetch('http://localhost:3002/api/save-character-turnaround', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterName: newCharacter.name.trim(),
+          sourceImageData: turnaroundSource.dataUrl,
+          turnaroundImages,
+          metadata: {
+            age: newCharacter.age,
+            gender: newCharacter.gender,
+            face: newCharacter.face,
+            hair: newCharacter.hair,
+            body: newCharacter.body,
+            style: newCharacter.style
+          }
+        })
+      });
+      const savePayload = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || !savePayload?.success) {
+        throw new Error(savePayload?.error || '캐릭터 폴더 저장 실패');
+      }
+
+      const refreshed = await fetchCharacters();
+      setCharacters(refreshed as any);
+      setTurnaroundSource(null);
+      setTurnaroundProgress('');
+      showToast(`${newCharacter.name} 3면도가 생성되어 저장되었습니다.`, 'success');
+      setActiveTab('select');
+    } catch (err) {
+      console.error('3면도 생성 실패:', err);
+      showToast(err instanceof Error ? err.message : '3면도 생성에 실패했습니다.', 'error');
+    } finally {
+      setIsGeneratingTurnaround(false);
+      setTurnaroundProgress('');
+    }
+  }, [turnaroundSource, newCharacter]);
 
   // ---------------------------------------------------------
   // 프롬프트 복사 핸들러
@@ -2542,7 +2671,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   <p className="text-[10px] mt-1">캐릭터관리 탭에서 새로 만들어보세요!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
                   {characters.map(char => (
                     <div
                       key={char.id}
@@ -3080,6 +3209,54 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* [3-2단계] 3면도 생성 영역 (API 키 불필요, Puppeteer 방식) */}
+            <div className="bg-slate-800/40 border border-purple-700/40 rounded-xl p-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-purple-300" />
+                <span className="text-[11px] font-bold text-purple-200">3면도 생성 (정면/45도/뒷모습)</span>
+              </div>
+              <label
+                className="flex flex-col items-center justify-center py-5 border-2 border-dashed border-slate-700 hover:border-purple-500/60 hover:bg-purple-500/5 rounded-xl cursor-pointer transition-all"
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setTurnaroundSource({ dataUrl: reader.result as string, mime: file.type || 'image/png' });
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                {turnaroundSource ? (
+                  <img src={turnaroundSource.dataUrl} alt="기준 이미지" className="max-h-28 rounded-lg object-contain" />
+                ) : (
+                  <>
+                    <Upload size={20} className="text-slate-500 mb-1" />
+                    <span className="text-[10px] text-slate-500">기준 인물 사진 드래그 또는 클릭</span>
+                  </>
+                )}
+              </label>
+              {turnaroundProgress && (
+                <div className="text-[10px] text-purple-300 text-center animate-pulse">{turnaroundProgress}</div>
+              )}
+              <button
+                onClick={handleGenerateTurnaroundInPanel}
+                disabled={isGeneratingTurnaround || !turnaroundSource || !newCharacter.name.trim()}
+                className="w-full py-2.5 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-lg shadow transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                {isGeneratingTurnaround ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {isGeneratingTurnaround ? '3면도 생성 중...' : '3면도 생성 후 저장'}
+              </button>
+              <div className="text-[9px] text-slate-500 text-center">
+                이름을 입력하고 기준 사진을 올린 뒤 생성하세요. 캐릭터 폴더에 자동 저장됩니다.
+              </div>
             </div>
 
             <button

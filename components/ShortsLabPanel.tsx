@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ShortsLabPanel.tsx
  * 쇼츠 영상 제작을 위한 테스트 패널 V2
  * 
@@ -7711,7 +7711,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     // ============================================
 
         return (
-        <div className="h-full flex flex-col bg-slate-950 text-white overflow-hidden">
+        <div className="h-full flex-1 min-w-0 flex flex-col bg-slate-950 text-white overflow-hidden">
             <div className="flex-shrink-0 border-b border-slate-800 p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -8170,7 +8170,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         {/* 오른쪽: 캐릭터 및 의상 관리 패널 (4/12) */}
                         <div className={activeTab === 'manual'
                             ? 'w-full flex-1 min-w-[420px]'
-                            : 'w-full lg:w-[400px] flex-shrink-0'}
+                            : 'w-full lg:flex-1 lg:min-w-0'}
                         >
                             {activeTab === 'manual' ? (
                                 <div className="flex flex-col gap-4">
@@ -8292,7 +8292,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         </div>
 
                         {/* [NEW] Character Casting Panel */}
-                        <div className="mt-4 pt-4 border-t border-slate-700">
+                        <div className="hidden mt-4 pt-4 border-t border-slate-700">
                             <button
                                 onClick={() => setShowCastingPanel(!showCastingPanel)}
                                 className="flex items-center justify-between w-full text-left mb-3"

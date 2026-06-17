@@ -2037,16 +2037,10 @@ app.get('/api/characters', (req, res) => {
                     name: meta.name || folderName,
                     age: md.age || meta.age || '40s',
                     gender: md.gender || meta.gender || 'female',
-                    face: md.face || meta.face || '',
-                    hair: md.hair || meta.hair || '',
-                    body: md.body || meta.body || '',
-                    style: md.style || meta.style || '',
-                    identity: md.identity || meta.identity || meta.description || '',
-                    outfitFit: md.outfitFit || meta.outfitFit || '',
-                    bodyTuning: md.bodyTuning || meta.bodyTuning,
-                    identitySpec: md.identitySpec || meta.identitySpec,
-                    referencePreference: md.referencePreference || meta.referencePreference,
-                    wardrobeProfile: md.wardrobeProfile || meta.wardrobeProfile,
+                    face: md.face || '',
+                    hair: md.hair || '',
+                    body: md.body || '',
+                    style: md.style || '',
                     createdAt: meta.createdAt || new Date().toISOString(),
                     sourceType: 'ai-studio',
                     generatedImageId: url(frontFile),
@@ -2078,22 +2072,7 @@ app.post('/api/characters', (req, res) => {
             : (Array.isArray(req.body?.characters) ? req.body.characters : []);
         const charsRoot = path.join(GENERATED_DIR, 'characters');
         let updated = 0;
-        const TEXT_FIELDS = [
-            'name',
-            'age',
-            'gender',
-            'face',
-            'hair',
-            'body',
-            'style',
-            'identity',
-            'outfitFit',
-            'bodyTuning',
-            'identitySpec',
-            'referencePreference',
-            'wardrobeProfile',
-            'description'
-        ];
+        const TEXT_FIELDS = ['name', 'age', 'gender', 'face', 'hair', 'body', 'style', 'bodyTuning', 'identitySpec', 'description'];
 
         for (const c of incoming) {
             const id = String(c?.id || '').trim();

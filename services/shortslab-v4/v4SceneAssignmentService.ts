@@ -40,6 +40,8 @@ ${slotBlock}
 9. cameraAngle은 매 씬마다 다르게, 다양하게 사용하세요: close-up, full body wide shot, medium close up, over-the-shoulder, low angle, high angle, back view, two-shot wide, group wide shot, dutch angle.
 10. 같은 cameraAngle을 3회 이상 반복하지 마세요. 특히 medium shot 계열은 최대 3회까지만.
 11. POV(1인칭 시점)는 사용하지 마세요. 대신 over-the-shoulder나 wide를 쓰세요.
+12. 절대 JSON 외의 주석/설명/텍스트를 넣지 마세요. 모든 줄은 유효한 JSON이어야 하며, sceneNumber 등 어떤 값 뒤에도 주석을 붙이지 마세요.
+12. 절대 JSON 외의 주석/설명/텍스트를 넣지 마세요. 모든 줄은 유효한 JSON이어야 하며, sceneNumber 등 어떤 값 뒤에도 주석을 붙이지 마세요.
 
 대본 라인:
 ${scriptLines.map((line, index) => `${index + 1}. ${line}`).join('\n')}

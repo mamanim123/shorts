@@ -199,9 +199,73 @@ export const parseJsonFromText = <T = any>(text: string, keys: string[] = []): T
           return JSON.parse(repaired) as T;
         } catch (error4) {
           console.debug('[jsonParse] preprocess+jsonrepair failed', error4);
+          // 5단계: 최후의 부분 복구 - scenes 객체를 개별 추출
+          try {
+            const salvaged = salvageScenes(jsonText);
+            if (salvaged) {
+              console.warn('[jsonParse] salvaged scenes via field extraction:', salvaged.scenes?.length);
+              return salvaged as T;
+            }
+          } catch (error5) {
+            console.debug('[jsonParse] salvage failed', error5);
+          }
           return null;
         }
       }
     }
   }
+};
+
+// 최후의 부분 복구: JSON 문법이 깨져도 scenes 객체를 필드 단위로 긁어낸다.
+// LLM이 키 없는 잡텍스트/누락 쉼표/깨진 따옴표를 넣어도 원하는 필드만 추출해 살린다.
+export const salvageScenes = (text: string): { scenes: any[] } | null => {
+  if (!text) return null;
+
+  const grabStr = (block: string, key: string): string => {
+    const m = block.match(new RegExp('"' + key + '"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|\\}|$)'));
+    return m ? m[1].replace(/\\"/g, '"').trim() : '';
+  };
+  const grabNum = (block: string, key: string): number | undefined => {
+    const m = block.match(new RegExp('"' + key + '"\\s*:\\s*(\\d+)'));
+    return m ? parseInt(m[1], 10) : undefined;
+  };
+  const grabIds = (block: string): string[] => {
+    const m = block.match(/"characterIds"\s*:\s*\[([\s\S]*?)\]/);
+    if (!m) return [];
+    return Array.from(m[1].matchAll(/"([^"]+)"/g)).map((x) => x[1].trim()).filter(Boolean);
+  };
+
+  // scenes 배열 영역만 잘라낸다
+  const arrMatch = text.match(/"scenes"\s*:\s*\[([\s\S]*)\]/);
+  const region = arrMatch ? arrMatch[1] : text;
+
+  // 객체 단위로 분리 ( "sceneNumber" 키를 기준으로 블록 시작점을 잡는다 )
+  const blocks: string[] = [];
+  const starts: number[] = [];
+  const re = /"sceneNumber"\s*:/g;
+  let mm: RegExpExecArray | null;
+  while ((mm = re.exec(region)) !== null) {
+    // 블록 시작은 직전의 '{'
+    let braceIdx = region.lastIndexOf('{', mm.index);
+    starts.push(braceIdx >= 0 ? braceIdx : mm.index);
+  }
+  for (let i = 0; i < starts.length; i += 1) {
+    const end = i + 1 < starts.length ? starts[i + 1] : region.length;
+    blocks.push(region.substring(starts[i], end));
+  }
+
+  if (!blocks.length) return null;
+
+  const scenes = blocks.map((block, idx) => ({
+    sceneNumber: grabNum(block, 'sceneNumber') ?? idx + 1,
+    scriptLine: grabStr(block, 'scriptLine'),
+    characterIds: grabIds(block),
+    action: grabStr(block, 'action'),
+    background: grabStr(block, 'background'),
+    cameraAngle: grabStr(block, 'cameraAngle'),
+    summary: grabStr(block, 'summary'),
+    imagePrompt: grabStr(block, 'imagePrompt')
+  }));
+
+  return { scenes };
 };

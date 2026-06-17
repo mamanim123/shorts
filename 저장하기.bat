@@ -1,2 +1,2 @@
 @echo off
-powershell -NoExit -ExecutionPolicy Bypass -File "%~dp0????.ps1"
+powershell -ExecutionPolicy Bypass -NoExit -File "%~dp0저장하기.ps1"

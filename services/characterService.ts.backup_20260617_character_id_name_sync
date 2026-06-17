@@ -53,8 +53,6 @@ const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }):
   hair: character.hair || '',
   body: character.body || '',
   style: character.style || '',
-  identity: character.identity || '',
-  outfitFit: character.outfitFit || '',
   bodyTuning: character.bodyTuning,
   createdAt: character.createdAt || new Date().toISOString(),
   generatedImageId: character.generatedImageId,
@@ -64,8 +62,6 @@ const normalizeCharacter = (character: Partial<CharacterItem> & { id: string }):
   identitySpec: character.identitySpec,
   referencePreference: character.referencePreference,
   wardrobeProfile: character.wardrobeProfile,
-  threeviewUrl: character.threeviewUrl,
-  sourceUrl: character.sourceUrl,
 });
 
 const normalizeCharacters = (characters: Array<Partial<CharacterItem> & { id: string }>): CharacterItem[] =>
@@ -95,13 +91,11 @@ export const fetchCharacters = async (): Promise<CharacterItem[]> => {
     name: char.name || '',
     age: char.age || '30대',
     gender: char.gender || 'female',
-	    face: char.face || char.description || 'AI Studio character',
-	    hair: char.hair || '',
-	    body: char.body || '',
-	    style: char.style || char.description || '',
-	    identity: char.description || '',
-	    outfitFit: char.wardrobeProfile?.baseWardrobeNote || '',
-	    bodyTuning: char.bodyTuning,
+    face: char.face || char.description || 'AI Studio character',
+    hair: char.hair || '',
+    body: char.body || '',
+    style: char.style || char.description || '',
+    bodyTuning: char.bodyTuning,
     createdAt: char.approvedAt ? new Date(char.approvedAt).toISOString() : new Date().toISOString(),
     generatedImageId: char.turnaroundImageIds?.front || char.generatedImageId,
     turnaroundImageIds: char.turnaroundImageIds,
@@ -140,12 +134,8 @@ export const deleteCharacterFolder = async (id: string): Promise<boolean> => {
 };
 
 export const saveCharacters = async (characters: CharacterItem[]): Promise<boolean> => {
-  const aiStudioCharacters = characters.filter((character) =>
-    character.sourceType === 'ai-studio' && character.id.startsWith('aistudio-')
-  );
-  const serverCharacters = characters.filter((character) =>
-    !(character.sourceType === 'ai-studio' && character.id.startsWith('aistudio-'))
-  );
+  const aiStudioCharacters = characters.filter((character) => character.sourceType === 'ai-studio');
+  const serverCharacters = characters.filter((character) => character.sourceType !== 'ai-studio');
 
   const existingAiStudioCollections = getStorageValue<CharacterCollection[]>('characterCollection', []);
   
@@ -169,9 +159,8 @@ export const saveCharacters = async (characters: CharacterItem[]): Promise<boole
         face: updateChar.face,
         hair: updateChar.hair,
         body: updateChar.body,
-	        style: updateChar.style,
-	        outfitFit: updateChar.outfitFit,
-	        bodyTuning: updateChar.bodyTuning,
+        style: updateChar.style,
+        bodyTuning: updateChar.bodyTuning,
         identitySpec: updateChar.identitySpec,
         referencePreference: updateChar.referencePreference,
         wardrobeProfile: updateChar.wardrobeProfile,

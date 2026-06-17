@@ -110,7 +110,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [turnaroundSource, setTurnaroundSource] = useState<{ dataUrl: string; mime: string } | null>(null);
   const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
   const [turnaroundProgress, setTurnaroundProgress] = useState<string>('');
-  const [isDraggingTurnaround, setIsDraggingTurnaround] = useState(false);
 
   // 데이터 상태
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -1157,20 +1156,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     { key: 'back', label: '뒷모습', instruction: 'Generate a back view (facing away from the camera) of this exact same person.' },
   ];
 
-  const handleTurnaroundSourceFile = useCallback((file: File | null | undefined) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      showToast('이미지 파일만 업로드할 수 있습니다.', 'warning');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setTurnaroundSource({ dataUrl: reader.result as string, mime: file.type || 'image/png' });
-      setTurnaroundProgress('');
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
   const handleGenerateTurnaroundInPanel = useCallback(async () => {
     if (!turnaroundSource) {
       showToast('먼저 캐릭터 기준 이미지를 업로드해주세요.', 'warning');
@@ -1248,21 +1233,12 @@ Output one single image for this viewpoint only.`;
         throw new Error(savePayload?.error || '캐릭터 폴더 저장 실패');
       }
 
-	      const refreshed = await fetchCharacters();
-	      setCharacters(refreshed as any);
-	      onCharactersSaved?.(refreshed as any);
-	      const savedCharacter = savePayload.folderName
-	        ? refreshed.find((char) => char.id === savePayload.folderName)
-	        : refreshed.find((char) => char.name === newCharacter.name.trim());
-	      if (savedCharacter) {
-	        setSelectedCharacterId(savedCharacter.id);
-	        onCharacterAdded?.(savedCharacter);
-	        onCharacterSelect?.(savedCharacter, effectiveSelectedSlot);
-	      }
-	      setTurnaroundSource(null);
-	      setTurnaroundProgress('');
-	      showToast(`${newCharacter.name} 3면도가 생성되어 저장되었습니다.`, 'success');
-	      setActiveTab('select');
+      const refreshed = await fetchCharacters();
+      setCharacters(refreshed as any);
+      setTurnaroundSource(null);
+      setTurnaroundProgress('');
+      showToast(`${newCharacter.name} 3면도가 생성되어 저장되었습니다.`, 'success');
+      setActiveTab('select');
     } catch (err) {
       console.error('3면도 생성 실패:', err);
       showToast(err instanceof Error ? err.message : '3면도 생성에 실패했습니다.', 'error');
@@ -1270,7 +1246,7 @@ Output one single image for this viewpoint only.`;
       setIsGeneratingTurnaround(false);
       setTurnaroundProgress('');
     }
-	  }, [turnaroundSource, newCharacter, effectiveSelectedSlot, onCharacterAdded, onCharacterSelect, onCharactersSaved]);
+  }, [turnaroundSource, newCharacter]);
 
   // ---------------------------------------------------------
   // 프롬프트 복사 핸들러
@@ -3049,50 +3025,33 @@ Output one single image for this viewpoint only.`;
               <div className="flex items-center gap-2">
                 <Sparkles size={14} className="text-purple-300" />
                 <span className="text-[11px] font-bold text-purple-200">3면도 생성 (정면/45도/뒷모습)</span>
-	              </div>
-	              <label
-	                className={`flex flex-col items-center justify-center py-5 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isDraggingTurnaround
-	                  ? 'border-purple-400 bg-purple-500/10 scale-[1.01]'
-	                  : 'border-slate-700 hover:border-purple-500/60 hover:bg-purple-500/5'
-	                  }`}
-	                onDragOver={(e) => {
-	                  e.preventDefault();
-	                  e.stopPropagation();
-	                  setIsDraggingTurnaround(true);
-	                }}
-	                onDragLeave={(e) => {
-	                  e.preventDefault();
-	                  e.stopPropagation();
-	                  if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-	                  setIsDraggingTurnaround(false);
-	                }}
-	                onDrop={(e) => {
-	                  e.preventDefault();
-	                  e.stopPropagation();
-	                  setIsDraggingTurnaround(false);
-	                  handleTurnaroundSourceFile(e.dataTransfer.files?.[0]);
-	                }}
-	              >
-	                <input
-	                  type="file"
-	                  accept="image/*"
-	                  className="hidden"
-	                  onChange={(e) => {
-	                    handleTurnaroundSourceFile(e.target.files?.[0]);
-	                    e.target.value = '';
-	                  }}
-	                />
-	                {turnaroundSource ? (
-	                  <img src={turnaroundSource.dataUrl} alt="기준 이미지" className="max-h-28 rounded-lg object-contain" />
-	                ) : (
-	                  <>
-	                    <Upload size={20} className={`${isDraggingTurnaround ? 'text-purple-300 animate-bounce' : 'text-slate-500'} mb-1`} />
-	                    <span className={`text-[10px] ${isDraggingTurnaround ? 'text-purple-300' : 'text-slate-500'}`}>
-	                      {isDraggingTurnaround ? '여기에 이미지를 놓으세요' : '기준 인물 사진 드래그 또는 클릭'}
-	                    </span>
-	                  </>
-	                )}
-	              </label>
+              </div>
+              <label
+                className="flex flex-col items-center justify-center py-5 border-2 border-dashed border-slate-700 hover:border-purple-500/60 hover:bg-purple-500/5 rounded-xl cursor-pointer transition-all"
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setTurnaroundSource({ dataUrl: reader.result as string, mime: file.type || 'image/png' });
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                {turnaroundSource ? (
+                  <img src={turnaroundSource.dataUrl} alt="기준 이미지" className="max-h-28 rounded-lg object-contain" />
+                ) : (
+                  <>
+                    <Upload size={20} className="text-slate-500 mb-1" />
+                    <span className="text-[10px] text-slate-500">기준 인물 사진 드래그 또는 클릭</span>
+                  </>
+                )}
+              </label>
               {turnaroundProgress && (
                 <div className="text-[10px] text-purple-300 text-center animate-pulse">{turnaroundProgress}</div>
               )}

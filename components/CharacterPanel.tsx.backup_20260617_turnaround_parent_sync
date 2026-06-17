@@ -1248,21 +1248,12 @@ Output one single image for this viewpoint only.`;
         throw new Error(savePayload?.error || '캐릭터 폴더 저장 실패');
       }
 
-	      const refreshed = await fetchCharacters();
-	      setCharacters(refreshed as any);
-	      onCharactersSaved?.(refreshed as any);
-	      const savedCharacter = savePayload.folderName
-	        ? refreshed.find((char) => char.id === savePayload.folderName)
-	        : refreshed.find((char) => char.name === newCharacter.name.trim());
-	      if (savedCharacter) {
-	        setSelectedCharacterId(savedCharacter.id);
-	        onCharacterAdded?.(savedCharacter);
-	        onCharacterSelect?.(savedCharacter, effectiveSelectedSlot);
-	      }
-	      setTurnaroundSource(null);
-	      setTurnaroundProgress('');
-	      showToast(`${newCharacter.name} 3면도가 생성되어 저장되었습니다.`, 'success');
-	      setActiveTab('select');
+      const refreshed = await fetchCharacters();
+      setCharacters(refreshed as any);
+      setTurnaroundSource(null);
+      setTurnaroundProgress('');
+      showToast(`${newCharacter.name} 3면도가 생성되어 저장되었습니다.`, 'success');
+      setActiveTab('select');
     } catch (err) {
       console.error('3면도 생성 실패:', err);
       showToast(err instanceof Error ? err.message : '3면도 생성에 실패했습니다.', 'error');
@@ -1270,7 +1261,7 @@ Output one single image for this viewpoint only.`;
       setIsGeneratingTurnaround(false);
       setTurnaroundProgress('');
     }
-	  }, [turnaroundSource, newCharacter, effectiveSelectedSlot, onCharacterAdded, onCharacterSelect, onCharactersSaved]);
+  }, [turnaroundSource, newCharacter]);
 
   // ---------------------------------------------------------
   // 프롬프트 복사 핸들러

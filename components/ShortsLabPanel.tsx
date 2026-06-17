@@ -40,6 +40,7 @@ import { UNIFIED_OUTFIT_LIST, ACCESSORY_PRESETS } from '../constants';
 import { fetchCharacters, saveCharacters } from '../services/characterService';
 import type { CharacterItem } from '../services/characterService';
 import { shortsLabCharacterRulesManager, getCharacterRules } from '../services/shortsLabCharacterRulesManager';
+import type { CharacterSlotRule } from '../services/shortsLabCharacterRulesDefaults';
 import { renderHighlightedByElement, PromptLegend, buildElementAnalysisPrompt, ElementAnalysis, getProblemExplanation } from '../utils/promptHighlightSystem';
 import { usePromptEditModal } from '../hooks/usePromptEditModal';
 import { PromptEditModal, DetailedAnalysis } from './PromptEditModal';
@@ -236,7 +237,7 @@ const getCharacterGender = (id: string): 'female' | 'male' => {
     return id.toLowerCase().includes('man') ? 'male' : 'female';
 };
 
-const normalizeSlotToken = (value: string) => value.replace(/[\s_]+/g, '').trim();
+const normalizeSlotToken = (value: string) => value.replace(/[\s_-]+/g, '').trim();
 
 const normalizeSlotId = (value: string): string => {
     const normalized = normalizeSlotToken(value);
@@ -6240,19 +6241,36 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         }
     }, [editingMasterProfileSlotId, masterCharacterProfiles, masterProfileDraft, savedCharacters, updateCharacter]);
 
-    const loadSavedCharacters = useCallback(async () => {
-        try {
-            const chars = await fetchCharacters();
-            setSavedCharacters(chars);
-            return chars;
+	    const loadSavedCharacters = useCallback(async () => {
+	        try {
+	            const chars = await fetchCharacters();
+	            setSavedCharacters(chars);
+	            return chars;
         } catch (error) {
             console.error('Failed to load saved characters:', error);
             return [] as CharacterItem[];
-        }
-    }, []);
+	        }
+	    }, []);
 
-    const syncSavedCharactersToMasterProfiles = useCallback((characters: CharacterItem[]) => {
-        setSavedCharacters(characters);
+	    const buildCharacterRulePatch = useCallback((matched: CharacterItem, rule: CharacterSlotRule): Partial<CharacterSlotRule> => ({
+	        characterId: matched.id,
+	        name: matched.name || rule.name || '',
+	        identity: matched.identity || matched.face || matched.identitySpec?.faceShape || rule.identity,
+	        face: matched.face || matched.identitySpec?.faceShape || rule.face,
+	        hair: matched.hair || matched.identitySpec?.hairDescription || rule.hair,
+	        body: matched.body || matched.identitySpec?.bodyType || rule.body,
+	        style: matched.style || matched.identitySpec?.styleCore || rule.style,
+	        outfitFit: matched.outfitFit || rule.outfitFit,
+	        skinTone: matched.identitySpec?.skinTone || rule.skinTone,
+	        signatureFeatures: matched.identitySpec?.signatureFeatures || rule.signatureFeatures,
+	        bustDescription: matched.identitySpec?.bustDescription || rule.bustDescription,
+	        heightDescription: matched.identitySpec?.heightDescription || rule.heightDescription,
+	        referenceViewPreference: matched.referencePreference?.defaultView || rule.referenceViewPreference,
+	        preserveIdentityOnly: matched.wardrobeProfile?.outfitChangePolicy === 'outfit-only' || rule.preserveIdentityOnly
+	    }), []);
+
+	    const syncSavedCharactersToMasterProfiles = useCallback((characters: CharacterItem[]) => {
+	        setSavedCharacters(characters);
         
         // 1. 마스터 프로필(미리보기) 업데이트
         setMasterCharacterProfiles((prev) => prev.map((profile) => {
@@ -6275,26 +6293,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         try {
             const currentRules = getCharacterRules();
             if (currentRules) {
-                const updateRuleList = (rules: CharacterSlotRule[]) => rules.map(rule => {
-                    // 1순위: characterId로 매칭, 2순위: 이름으로 매칭 (최초 링크용)
-                    const matched = characters.find(c => 
-                        (rule.characterId && c.id === rule.characterId) || 
-                        (!rule.characterId && c.name && c.name === rule.name)
-                    );
-                    if (!matched) return rule;
-                    return {
-                        ...rule,
-                        characterId: matched.id, // [LINK] ID 저장
-                        name: matched.name || rule.name,
-                        identity: matched.face || matched.identitySpec?.faceShape || rule.identity,
-                        face: matched.face || matched.identitySpec?.faceShape || rule.face,
-                        hair: matched.hair || matched.identitySpec?.hairDescription || rule.hair,
-                        body: matched.body || matched.identitySpec?.bodyType || rule.body,
-                        style: matched.style || matched.identitySpec?.styleCore || rule.style,
-                        skinTone: matched.identitySpec?.skinTone || rule.skinTone,
-                        signatureFeatures: matched.identitySpec?.signatureFeatures || rule.signatureFeatures
-                    };
-                });
+	                const updateRuleList = (rules: CharacterSlotRule[]) => rules.map(rule => {
+	                    const matched = rule.characterId
+	                        ? characters.find(c => c.id === rule.characterId)
+	                        : undefined;
+	                    if (!matched) return rule;
+	                    return { ...rule, ...buildCharacterRulePatch(matched, rule) };
+	                });
 
                 const updatedFemales = updateRuleList(currentRules.females || []);
                 const updatedMales = updateRuleList(currentRules.males || []);
@@ -6325,7 +6330,35 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             });
             return next;
         });
-    }, [buildCastingIdentitySummary, masterCharacterProfiles, updateCharacterRules]);
+	    }, [buildCastingIdentitySummary, buildCharacterRulePatch, masterCharacterProfiles, updateCharacterRules]);
+
+	    const handleCharacterDeletedFromLibrary = useCallback(async (deleted: CharacterItem) => {
+	        const currentRules = getCharacterRules();
+	        const clearDeletedLink = (rules: CharacterSlotRule[]) => rules.map((rule) => {
+	            if (rule.characterId !== deleted.id) return rule;
+	            return { ...rule, characterId: undefined };
+	        });
+
+	        await updateCharacterRules({
+	            ...currentRules,
+	            females: clearDeletedLink(currentRules.females || []),
+	            males: clearDeletedLink(currentRules.males || [])
+	        });
+
+	        setMasterCharacterProfiles((prev) => prev.map((profile) => (
+	            profile.characterId === deleted.id
+	                ? { ...profile, characterId: undefined }
+	                : profile
+	        )));
+
+	        setCharacterCastings((prev) => {
+	            const next = new Map(prev);
+	            Array.from(next.entries()).forEach(([slotId, casting]) => {
+	                if (casting.characterId === deleted.id) next.delete(slotId);
+	            });
+	            return next;
+	        });
+	    }, [updateCharacterRules]);
 
     const blobToDataUrl = useCallback(async (blobId?: string) => {
         if (!blobId) return '';
@@ -6406,10 +6439,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         return canvas.toDataURL('image/png');
     }, []);
 
-    async function applyCharacterToMasterProfile(slotId: string, char: CharacterItem) {
-        await shortsLabCharacterRulesManager.importCharacter(char, slotId);
+	    async function applyCharacterToMasterProfile(slotId: string, char: CharacterItem) {
+	        await shortsLabCharacterRulesManager.importCharacter(char, slotId);
+	        setSavedCharacters((prev) => {
+	            const exists = prev.some((item) => item.id === char.id);
+	            return exists
+	                ? prev.map((item) => item.id === char.id ? { ...item, ...char } : item)
+	                : [char, ...prev];
+	        });
 
-        try {
+	        try {
             const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
             const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
             const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
@@ -6474,14 +6513,20 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         }));
     }
 
-    useEffect(() => {
-        // [FIX] Always reload on preview tab entry (was: only loaded once when length===0)
-        if (activeTab === 'preview') {
-            void loadSavedCharacters();
-        }
-    }, [activeTab, loadSavedCharacters]);
+	    useEffect(() => {
+	        // [FIX] Always reload on preview tab entry (was: only loaded once when length===0)
+	        if (activeTab === 'preview') {
+	            void loadSavedCharacters();
+	        }
+	    }, [activeTab, loadSavedCharacters]);
 
-    // ============================================
+	    useEffect(() => {
+	        if (showGenreModal) {
+	            void loadSavedCharacters();
+	        }
+	    }, [showGenreModal, loadSavedCharacters]);
+
+	    // ============================================
     // [신규] 캐릭터 정보 적용 버튼 핸들러
     // ============================================
     const handleApplyCharacterInfo = async () => {
@@ -7493,6 +7538,18 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                             if (scriptObj.lockedOutfits || parsed.lockedOutfits) {
                                 explicitLockedOutfits = normalizeLockedOutfits(scriptObj.lockedOutfits || parsed.lockedOutfits);
                             }
+                            // [fix] outfitMap 키로 저장된 경우도 복원 (lockedOutfits 없을 때)
+                            if (!explicitLockedOutfits || Object.keys(explicitLockedOutfits).length === 0) {
+                                const om = scriptObj.outfitMap || parsed.outfitMap;
+                                if (om && typeof om === 'object') {
+                                    const fromOutfitMap: Record<string, string> = {};
+                                    Object.entries(om).forEach(([slot, v]: [string, any]) => {
+                                        const nm = (v && typeof v === 'object') ? (v.name || v.prompt) : v;
+                                        if (nm) fromOutfitMap[slot] = String(nm);
+                                    });
+                                    if (Object.keys(fromOutfitMap).length > 0) explicitLockedOutfits = fromOutfitMap;
+                                }
+                            }
                             
                             const rawScript = scriptObj.scriptBody || scriptObj.script || '';
                             if (rawScript) {
@@ -8270,16 +8327,25 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                     )}
                                 </div>
                             ) : (
-                                <CharacterPanel
-                                    selectedSlot={settings.selectedSlot}
-                                    onCharacterAdded={handleCharacterAddedToRules}
-                                    onCharactersSaved={syncSavedCharactersToMasterProfiles}
-                                    onCharacterSelect={(char, slot) => {
-                                        if (char) {
-                                            updateSetting('selectedSlot', slot as any);
-                                            updateSetting('useSlotSystem', true);
-                                        }
-                                    }}
+	                                <CharacterPanel
+	                                    selectedSlot={settings.selectedSlot}
+	                                    onCharacterAdded={handleCharacterAddedToRules}
+	                                    onCharactersSaved={syncSavedCharactersToMasterProfiles}
+	                                    onCharacterDeleted={handleCharacterDeletedFromLibrary}
+	                                    onCharacterSelect={async (char, slot) => {
+	                                        if (char) {
+	                                            const normalizedSlot = normalizeSlotId(slot) || slot;
+	                                            updateSetting('selectedSlot', slot as any);
+	                                            updateSetting('useSlotSystem', true);
+	                                            try {
+	                                                await applyCharacterToMasterProfile(normalizedSlot, char);
+	                                                await refreshCharacterRules();
+	                                            } catch (error) {
+	                                                console.error('Failed to apply selected character to slot:', error);
+	                                                showToast('캐릭터 슬롯 연결에 실패했습니다.', 'error');
+	                                            }
+	                                        }
+	                                    }}
                                     onOutfitSelect={(outfit) => {
                                         if (outfit) {
                                             updateSetting('selectedOutfit', outfit.prompt);
@@ -9503,9 +9569,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             )}
 
             {/* Genre Management Modal */}
-            {showGenreModal && (
-                <GenreManagementModal
-                    genres={labGenres}
+	            {showGenreModal && (
+	                <GenreManagementModal
+	                    threeviewMap={Object.fromEntries(savedCharacters.filter(c => c.id && c.threeviewUrl).map(c => [c.id, c.threeviewUrl as string]))}
+	                    savedCharacters={savedCharacters}
+	                    genres={labGenres}
                     selectedGenreId={aiGenre}
                     backups={labGenreBackups}
                     outfitCategories={outfitCatalog.categories || []}
@@ -9646,13 +9714,12 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         // [FORCE SYNC] 의상 규칙의 상세 정보를 마스터 프로필(미리보기)에 즉시 강제 주입
                         const allCharacterRules = [...(updatedRules.females || []), ...(updatedRules.males || [])];
                         
-                        setMasterCharacterProfiles(prev => {
-                            const next = prev.map(profile => {
-                                const rule = allCharacterRules.find(r => 
-                                    (r.characterId && r.characterId === profile.characterId) || 
-                                    (r.id === profile.slotId) ||
-                                    (r.name && r.name === profile.name)
-                                );
+	                        setMasterCharacterProfiles(prev => {
+	                            const next = prev.map(profile => {
+	                                const rule = allCharacterRules.find(r => 
+	                                    (r.characterId && r.characterId === profile.characterId) || 
+	                                    (r.id === profile.slotId)
+	                                );
                                 
                                 if (!rule) return profile;
 
@@ -9674,12 +9741,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                         // [SERVER SYNC] 서버의 캐릭터 정보(AI Studio 연동 데이터)도 상세 명세 업데이트
                         try {
-                            const currentCharacters = await fetchCharacters();
-                            const updatedCharacters = currentCharacters.map(char => {
-                                const matchedRule = allCharacterRules.find(r => 
-                                    (char.id && r.characterId === char.id) || 
-                                    (char.name && r.name === char.name)
-                                );
+	                            const currentCharacters = await fetchCharacters();
+	                            const updatedCharacters = currentCharacters.map(char => {
+	                                const matchedRule = allCharacterRules.find(r => 
+	                                    char.id && r.characterId === char.id
+	                                );
                                 
                                 if (!matchedRule) return char;
 
@@ -9690,8 +9756,10 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                     face: matchedRule.face || char.face,
                                     hair: matchedRule.hair || char.hair,
                                     body: matchedRule.body || char.body,
-                                    style: matchedRule.style || char.style,
-                                    identitySpec: {
+	                                    style: matchedRule.style || char.style,
+	                                    identity: matchedRule.identity || char.identity,
+	                                    outfitFit: matchedRule.outfitFit || char.outfitFit,
+	                                    identitySpec: {
                                         ...char.identitySpec,
                                         faceShape: matchedRule.face || char.identitySpec?.faceShape,
                                         hairDescription: matchedRule.hair || char.identitySpec?.hairDescription,
@@ -9736,11 +9804,16 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                         await updateCharacterRulesBackupContent(id, rulesInput);
                         showToast('백업 내용이 저장되었습니다.', 'success');
                     }}
-                    onAddFemaleCharacter={addFemaleCharacter}
-                    onAddMaleCharacter={addMaleCharacter}
-                    onDeleteFemaleCharacter={deleteFemaleCharacter}
-                    onDeleteMaleCharacter={deleteMaleCharacter}
-                />
+	                    onAddFemaleCharacter={addFemaleCharacter}
+	                    onAddMaleCharacter={addMaleCharacter}
+	                    onDeleteFemaleCharacter={deleteFemaleCharacter}
+	                    onDeleteMaleCharacter={deleteMaleCharacter}
+	                    onCharacterImportToSlot={async (slotId, character) => {
+	                        const normalizedSlot = normalizeSlotId(slotId) || slotId;
+	                        await applyCharacterToMasterProfile(normalizedSlot, character);
+	                        await refreshCharacterRules();
+	                    }}
+	                />
             )}
 
             {/* 프롬프트 수정 모달 */}
@@ -9876,6 +9949,8 @@ const ToggleItem: React.FC<ToggleItemProps> = ({ checked, onChange, label, descr
 // ============================================
 
 interface GenreManagementModalProps {
+    threeviewMap?: Record<string, string>;
+    savedCharacters?: CharacterItem[];
     genres: LabGenreGuidelineEntry[];
     selectedGenreId?: string;
     backups: {
@@ -9953,9 +10028,12 @@ interface GenreManagementModalProps {
     onAddMaleCharacter?: () => Promise<any>;
     onDeleteFemaleCharacter?: (id: string) => Promise<any>;
     onDeleteMaleCharacter?: (id: string) => Promise<any>;
+    onCharacterImportToSlot?: (slotId: string, character: CharacterItem) => Promise<void>;
 }
 
 const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
+    threeviewMap = {},
+    savedCharacters = [],
     genres,
     selectedGenreId,
     backups,
@@ -10009,7 +10087,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     onAddFemaleCharacter,
     onAddMaleCharacter,
     onDeleteFemaleCharacter,
-    onDeleteMaleCharacter
+    onDeleteMaleCharacter,
+    onCharacterImportToSlot
 }) => {
     const SHOW_STEP2_RULES_TAB = false;
     const SHOW_OUTFIT_SELECTION_TAB = false;
@@ -10112,29 +10191,45 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
     const [scriptBackupEditError, setScriptBackupEditError] = useState<string | null>(null);
 
     // Character Rules State (v2.0: 동적 배열 구조)
-    const [characterRulesState, setCharacterRulesState] = useState<{
-        females: Array<{
-            id: string;
-            name: string;
-            identity: string;
-            hair: string;
-            body: string;
-            style: string;
-            outfitFit: string;
-            isFixedAge?: boolean;
-            fixedAge?: string;
-        }>;
-        males: Array<{
-            id: string;
-            name: string;
-            identity: string;
-            hair: string;
-            body: string;
-            style: string;
-            outfitFit: string;
-            isFixedAge?: boolean;
-            fixedAge?: string;
-        }>;
+	    const [characterRulesState, setCharacterRulesState] = useState<{
+	        females: Array<{
+	            id: string;
+	            characterId?: string;
+	            name: string;
+	            identity: string;
+	            face?: string;
+	            hair: string;
+	            body: string;
+	            style: string;
+	            outfitFit: string;
+	            skinTone?: string;
+	            signatureFeatures?: string;
+	            bustDescription?: string;
+	            heightDescription?: string;
+	            referenceViewPreference?: 'front' | 'angle45' | 'back';
+	            preserveIdentityOnly?: boolean;
+	            isFixedAge?: boolean;
+	            fixedAge?: string;
+	        }>;
+	        males: Array<{
+	            id: string;
+	            characterId?: string;
+	            name: string;
+	            identity: string;
+	            face?: string;
+	            hair: string;
+	            body: string;
+	            style: string;
+	            outfitFit: string;
+	            skinTone?: string;
+	            signatureFeatures?: string;
+	            bustDescription?: string;
+	            heightDescription?: string;
+	            referenceViewPreference?: 'front' | 'angle45' | 'back';
+	            preserveIdentityOnly?: boolean;
+	            isFixedAge?: boolean;
+	            fixedAge?: string;
+	        }>;
         common: {
             negativePrompt: string;
             qualityTags: string;
@@ -10862,10 +10957,14 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
         }
     }, []);
 
-    const handleImportCharacter = useCallback(async (char: CharacterItem) => {
-        try {
-            await shortsLabCharacterRulesManager.importCharacter(char, importTargetSlotId);
-            const refreshedRules = getCharacterRules();
+	    const handleImportCharacter = useCallback(async (char: CharacterItem) => {
+	        try {
+	            if (onCharacterImportToSlot) {
+	                await onCharacterImportToSlot(importTargetSlotId, char);
+	            } else {
+	                await shortsLabCharacterRulesManager.importCharacter(char, importTargetSlotId);
+	            }
+	            const refreshedRules = getCharacterRules();
             setCharacterRulesState({
                 females: (refreshedRules.females || []).map((item) => ({
                     ...item,
@@ -10890,13 +10989,38 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
             const message = err instanceof Error ? err.message : '캐릭터 가져오기 실패';
             showToast(message, 'error');
         }
-    }, [importTargetSlotId]);
+	    }, [importTargetSlotId, onCharacterImportToSlot]);
 
     // Character Rules Handlers
     const handleCharacterRulesSave = async () => {
         if (!onCharacterRulesSave) return;
         try {
             await onCharacterRulesSave(characterRulesState);
+            // [통합] 의상규칙 텍스트 수정을 배정된 폴더 캐릭터(character.json)에도 반영
+            try {
+                const allRules = [...(characterRulesState.females || []), ...(characterRulesState.males || [])];
+                const folderChars = savedCharacters.length > 0 ? savedCharacters : await loadSavedCharacters();
+                const updatedFolderChars = folderChars.map((fc) => {
+                    const rule = allRules.find((r: any) => r.characterId && r.characterId === fc.id);
+                    if (!rule) return fc;
+                    return {
+                        ...fc,
+	                        name: (rule as any).name || fc.name,
+	                        identity: (rule as any).identity || fc.identity,
+	                        outfitFit: (rule as any).outfitFit || fc.outfitFit,
+	                        hair: (rule as any).hair || fc.hair,
+	                        body: (rule as any).body || fc.body,
+	                        style: (rule as any).style || fc.style,
+                    };
+                });
+                const changed = updatedFolderChars.some((fc, i) => fc !== folderChars[i]);
+                if (changed) {
+                    await saveCharacters(updatedFolderChars);
+                    await loadSavedCharacters();
+                }
+            } catch (syncErr) {
+                console.warn('[통합] 의상규칙→폴더 동기화 실패:', syncErr);
+            }
             setCharacterRulesDirty(false);
             setCharacterRulesEditError(null);
             setDirtyCharacterIds(new Set());
@@ -11040,6 +11164,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
       showToast(`${charName} 3면도 생성/저장 완료`, 'success');
       setTurnaroundProgressMap(prev => ({ ...prev, [charId]: '' }));
       setTurnaroundSourceMap(prev => { const n = { ...prev }; delete n[charId]; return n; });
+      await loadSavedCharacters(); // [미리보기] 생성 직후 폴더 목록 새로고침
     } catch (err) {
       console.error('3면도 생성 실패:', err);
       showToast(err instanceof Error ? err.message : '3면도 생성 실패', 'error');
@@ -12430,10 +12555,14 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                     {isFemaleSectionExpanded && (
                                         <div className="px-4 pb-4 space-y-3">
-                                    {characterRulesState.females.map((char, idx) => {
-                                        const isExpanded = expandedCharacters.has(char.id);
-                                        const isDirty = dirtyCharacterIds.has(char.id);
-                                        return (
+	                                    {characterRulesState.females.map((char, idx) => {
+	                                        const isExpanded = expandedCharacters.has(char.id);
+	                                        const isDirty = dirtyCharacterIds.has(char.id);
+	                                        const linkedCharacter = char.characterId
+	                                            ? savedCharacters.find((item) => item.id === char.characterId)
+	                                            : undefined;
+	                                        const linkedThreeviewUrl = linkedCharacter?.threeviewUrl || (char.characterId ? threeviewMap[char.characterId] : '');
+	                                        return (
                                             <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
                                                 <div
                                                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
@@ -12584,6 +12713,15 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                                 >
                                                                     {generatingTurnaroundId === char.id ? '생성 중...' : '3면도 생성 후 저장'}
                                                                 </button>
+	                                                                {linkedThreeviewUrl ? (
+	                                                                    <div className="mt-2">
+	                                                                        <div className="text-[10px] text-fuchsia-300 mb-1">저장된 3면도</div>
+	                                                                        <img src={linkedThreeviewUrl} alt="3면도 합본" className="w-full rounded-md border border-fuchsia-700/30 object-contain" />
+	                                                                        <div className="mt-1 text-[9px] text-slate-500 truncate" title={char.characterId}>연결 ID: {char.characterId}</div>
+	                                                                    </div>
+	                                                                ) : (
+                                                                    <div className="mt-2 text-[10px] text-slate-600 text-center">아직 저장된 3면도 없음</div>
+                                                                )}
                                                             </div>
                                                             {char.id === 'WomanD' && (
                                                                 <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3 space-y-2">
@@ -12664,10 +12802,14 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                     </div>
                                     {isMaleSectionExpanded && (
                                         <div className="px-4 pb-4 space-y-3">
-                                    {characterRulesState.males.map((char, idx) => {
-                                        const isExpanded = expandedCharacters.has(char.id);
-                                        const isDirty = dirtyCharacterIds.has(char.id);
-                                        return (
+	                                    {characterRulesState.males.map((char, idx) => {
+	                                        const isExpanded = expandedCharacters.has(char.id);
+	                                        const isDirty = dirtyCharacterIds.has(char.id);
+	                                        const linkedCharacter = char.characterId
+	                                            ? savedCharacters.find((item) => item.id === char.characterId)
+	                                            : undefined;
+	                                        const linkedThreeviewUrl = linkedCharacter?.threeviewUrl || (char.characterId ? threeviewMap[char.characterId] : '');
+	                                        return (
                                             <div key={char.id} className="bg-slate-800/40 border border-slate-700 rounded-xl overflow-hidden">
                                                 <div
                                                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/60 transition-colors"
@@ -12773,17 +12915,26 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                                                     placeholder="dandy and refined presence"
                                                                 />
                                                             </div>
-                                                            <div>
-                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
-                                                                <input
+	                                                            <div>
+	                                                                <label className="text-xs text-slate-400 mb-1 block">Outfit Fit</label>
+	                                                                <input
                                                                     type="text"
                                                                     value={char.outfitFit}
                                                                     onChange={(e) => updateCharacterRulesField('male', char.id, 'outfitFit', e.target.value)}
                                                                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    placeholder="tailored slim-fit"
-                                                                />
-                                                            </div>
-                                                        </div>
+	                                                                    placeholder="tailored slim-fit"
+	                                                                />
+	                                                            </div>
+	                                                            {linkedThreeviewUrl ? (
+	                                                                <div className="mt-2">
+	                                                                    <div className="text-[10px] text-blue-300 mb-1">저장된 3면도</div>
+	                                                                    <img src={linkedThreeviewUrl} alt="3면도 합본" className="w-full rounded-md border border-blue-700/30 object-contain" />
+	                                                                    <div className="mt-1 text-[9px] text-slate-500 truncate" title={char.characterId}>연결 ID: {char.characterId}</div>
+	                                                                </div>
+	                                                            ) : (
+	                                                                <div className="mt-2 text-[10px] text-slate-600 text-center">연결된 3면도 없음</div>
+	                                                            )}
+	                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -13445,23 +13596,35 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {importableCharacters.map((char) => (
-                                        <button
-                                            key={char.id}
-                                            onClick={() => handleImportCharacter(char)}
-                                            className="w-full p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-blue-500/50 rounded-xl text-left transition-all group"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">
-                                                        {char.name}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500 mt-1">
-                                                        {char.age} · {char.gender === 'female' ? '여성' : '남성'}
-                                                    </div>
-                                                    {char.sourceType === 'ai-studio' && (
-                                                        <div className="text-[10px] text-cyan-400 mt-1">
-                                                            AI Studio 저장 캐릭터
+	                                    {importableCharacters.map((char) => (
+	                                        <button
+	                                            key={char.id}
+	                                            onClick={() => handleImportCharacter(char)}
+	                                            className="w-full p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-blue-500/50 rounded-xl text-left transition-all group"
+	                                        >
+	                                            <div className="flex items-center justify-between gap-3">
+	                                                {char.threeviewUrl || char.generatedImageId ? (
+	                                                    <img
+	                                                        src={char.threeviewUrl || char.generatedImageId}
+	                                                        alt={char.name || char.id}
+	                                                        className="w-16 h-16 rounded-lg border border-slate-700 object-cover bg-slate-950 flex-shrink-0"
+	                                                    />
+	                                                ) : (
+	                                                    <div className="w-16 h-16 rounded-lg border border-dashed border-slate-700 bg-slate-950 flex items-center justify-center flex-shrink-0">
+	                                                        <ImageIcon className="w-5 h-5 text-slate-600" />
+	                                                    </div>
+	                                                )}
+	                                                <div className="min-w-0 flex-1">
+	                                                    <div className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">
+	                                                        {char.name || '이름 없음'}
+	                                                    </div>
+	                                                    <div className="text-xs text-slate-500 mt-1">
+	                                                        {char.age} · {char.gender === 'female' ? '여성' : '남성'}
+	                                                    </div>
+	                                                    <div className="text-[9px] text-slate-600 mt-1 truncate" title={char.id}>ID: {char.id}</div>
+	                                                    {char.sourceType === 'ai-studio' && (
+	                                                        <div className="text-[10px] text-cyan-400 mt-1">
+	                                                            AI Studio 저장 캐릭터
                                                         </div>
                                                     )}
                                                 </div>

@@ -1913,7 +1913,7 @@ app.post('/api/save-character-image', async (req, res) => {
 
 app.post('/api/save-character-turnaround', async (req, res) => {
     try {
-        const { characterName, sourceImageData, turnaroundImages, metadata, characterId, targetFolderName } = req.body || {};
+        const { characterName, sourceImageData, turnaroundImages, metadata } = req.body || {};
         if (!characterName || typeof characterName !== 'string') {
             return res.status(400).json({ success: false, error: '캐릭터 이름이 없습니다.' });
         }
@@ -1921,20 +1921,10 @@ app.post('/api/save-character-turnaround', async (req, res) => {
             return res.status(400).json({ success: false, error: '3면도 이미지 데이터가 없습니다.' });
         }
 
-        const requestedId = String(targetFolderName || characterId || '').trim();
-        const canUseRequestedId = requestedId
-            && !requestedId.includes('..')
-            && !requestedId.includes('/')
-            && !requestedId.includes('\\');
-        const safeName = sanitizeFolderName(characterName) || 'character';
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const folderName = canUseRequestedId ? requestedId : `${timestamp}_${safeName}`;
+        const safeName = sanitizeFolderName(characterName) || 'character';
+        const folderName = `${timestamp}_${safeName}`;
         const targetDir = path.join(CHARACTER_TURNAROUND_DIR, folderName);
-        const metaPath = path.join(targetDir, 'character.json');
-        let previousMeta = {};
-        if (fs.existsSync(metaPath)) {
-            try { previousMeta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) || {}; } catch (e) { previousMeta = {}; }
-        }
         fs.mkdirSync(targetDir, { recursive: true });
 
         const saveBase64Png = (filename, imageData) => {
@@ -1975,12 +1965,9 @@ app.post('/api/save-character-turnaround', async (req, res) => {
             saveBase64Png('source.png', sourceImageData);
         }
 
-        const nowIso = new Date().toISOString();
         const meta = {
-            ...previousMeta,
             name: characterName,
-            createdAt: previousMeta.createdAt || nowIso,
-            updatedAt: nowIso,
+            createdAt: new Date().toISOString(),
             folderName,
             files: {
                 source: sourceImageData ? 'source.png' : null,
@@ -1989,21 +1976,17 @@ app.post('/api/save-character-turnaround', async (req, res) => {
                 back: 'back.png',
                 threeview: threeviewCreated ? 'threeview.png' : null
             },
-            metadata: {
-                ...(previousMeta.metadata || {}),
-                ...(metadata || {})
-            }
+            metadata: metadata || {}
         };
 
         fs.writeFileSync(
-            metaPath,
+            path.join(targetDir, 'character.json'),
             JSON.stringify(meta, null, 2),
             'utf8'
         );
 
         res.json({
             success: true,
-            updated: !!canUseRequestedId,
             folderName,
             folderPath: path.join('generated_scripts', 'characters', folderName),
             folderUrl: `/generated_scripts/characters/${folderName}`,

@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Copy, Check, Sparkles, Settings2, Eye, Scissors, RefreshCw, Wand2, Loader2, Folder, Image as ImageIcon, Bot, Maximize2, Trash2, Download, Edit3, Unlock, X, Plus, Save, Lock, ChevronDown, FileText, Zap, Video } from 'lucide-react';
 import { HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory, buildMasterPass1Prompt, buildMasterPass2Prompt, validateProfileConsistency, sanitizeWinterVisualContent } from '../services/labPromptBuilder';
+import { buildLabScriptPrompt, buildLabScriptOnlyPrompt, enhanceScenePrompt, extractNegativePrompt, validateAndFixPrompt, applyWinterLookToExistingPrompt, PROMPT_CONSTANTS, convertAgeToEnglish, isWinterTopic, convertToTightLongSleeveWithShoulderLine, getStoryStageBySceneNumber, getExpressionForScene, getCameraPromptForScene, selectWinterItems, getExpressionKeywordMap, getWinterAccessoryPool, translateActionToEnglish, pickFemaleOutfit, pickMaleOutfit, resetAngleHistory, buildMasterPass1Prompt, buildMasterPass2Prompt, validateProfileConsistency } from '../services/labPromptBuilder';
 import type { LabGenreGuidelineEntry, LabGenreGuideline, CharacterInfo, MasterPass1Result, MasterLockedCharacter, MasterLockedLocation, MasterVisualStyleDNA } from '../services/labPromptBuilder';
 import { useShortsLabGenreManager } from '../hooks/useShortsLabGenreManager';
 import { useShortsLabPromptRulesManager } from '../hooks/useShortsLabPromptRulesManager';
@@ -1734,7 +1734,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         accessory?: string; // [NEW] 악세서리 추가
     }>>([]);
     const [masterOutfitMap, setMasterOutfitMap] = useState<Map<string, { name: string; prompt: string }>>(new Map());
-    const [showMasterProfilePanel, setShowMasterProfilePanel] = useState(false);
     const [editingMasterProfileSlotId, setEditingMasterProfileSlotId] = useState<string | null>(null);
     const [masterProfileDraft, setMasterProfileDraft] = useState<MasterProfileDraft>({
         name: '',
@@ -2800,62 +2799,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         setAppStorageValue('shorts-lab-winter-accessories', enableWinterAccessories);
     }, [enableWinterAccessories]);
 
-    React.useEffect(() => {
-        if (enableWinterAccessories) return;
-        const sanitizeSceneValue = (value: string | undefined, fallback = '') =>
-            sanitizeWinterVisualContent(value || '', fallback);
-
-        setScenes(prev => {
-            let changed = false;
-            const next = prev.map(scene => {
-                const sanitized = {
-                    ...scene,
-                    prompt: sanitizeSceneValue(scene.prompt, 'bright sunlit golf course with fresh green fairway, clear daylight'),
-                    longPrompt: sanitizeSceneValue((scene as any).longPrompt, ''),
-                    shortPrompt: sanitizeSceneValue((scene as any).shortPrompt, ''),
-                    longPromptKo: sanitizeSceneValue(scene.longPromptKo, ''),
-                    shortPromptKo: sanitizeSceneValue(scene.shortPromptKo, ''),
-                    summary: sanitizeSceneValue(scene.summary, scene.summary || ''),
-                    camera: sanitizeSceneValue(scene.camera, ''),
-                    outfit: sanitizeSceneValue(scene.outfit, ''),
-                    videoPrompt: sanitizeSceneValue(scene.videoPrompt, '')
-                };
-                if (
-                    sanitized.prompt !== scene.prompt ||
-                    sanitized.longPrompt !== (scene as any).longPrompt ||
-                    sanitized.shortPrompt !== (scene as any).shortPrompt ||
-                    sanitized.longPromptKo !== scene.longPromptKo ||
-                    sanitized.shortPromptKo !== scene.shortPromptKo ||
-                    sanitized.summary !== scene.summary ||
-                    sanitized.camera !== scene.camera ||
-                    sanitized.outfit !== scene.outfit ||
-                    sanitized.videoPrompt !== scene.videoPrompt
-                ) {
-                    changed = true;
-                }
-                return sanitized;
-            });
-            return changed ? next : prev;
-        });
-
-        setMasterOutfitMap(prev => {
-            let changed = false;
-            const next = new Map<string, { name: string; prompt: string }>();
-            prev.forEach((value, key) => {
-                const sanitized = {
-                    ...value,
-                    name: sanitizeWinterVisualContent(value.name || '', 'elegant warm-season golf outfit'),
-                    prompt: sanitizeWinterVisualContent(value.prompt || '', 'elegant warm-season golf outfit')
-                };
-                if (sanitized.name !== value.name || sanitized.prompt !== value.prompt) {
-                    changed = true;
-                }
-                next.set(key, sanitized);
-            });
-            return changed ? next : prev;
-        });
-    }, [enableWinterAccessories]);
-
     // [NEW] Settings 저장 (시드 고정 설정 포함)
     React.useEffect(() => {
         setAppStorageValue('shorts-lab-settings', settings);
@@ -2928,24 +2871,26 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
         for (const slotId of (scene.characterIds || [])) {
             const slotRule = allSlotRules.find((r) => r.id === slotId);
-            const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
-            const linkedCharacterId = slotRule?.characterId || profile?.characterId || '';
-            const matched = linkedCharacterId
-                ? chars.find((c) => c.id === linkedCharacterId)
-                : chars.find((c) => c.id === slotId);
+            const directNameMatch = chars.find((c) => c.name && slotRule?.name && c.name === slotRule.name);
+            const matched = slotRule?.characterId
+                ? chars.find((c) => c.id === slotRule.characterId)
+                : (
+                    directNameMatch ||
+                    chars.find((c) => c.name && slotRule?.name && c.name.includes(slotRule.name)) ||
+                    chars.find((c) => c.name && slotRule?.name && slotRule.name.includes(c.name)) ||
+                    chars.find((c) => (slotId.startsWith('Woman') ? c.gender === 'female' : slotId.startsWith('Man') ? c.gender === 'male' : true)) ||
+                    chars[0]
+                );
 
             console.log('SLOT MATCH:', {
                 slotId,
                 slotRule,
-                linkedCharacterId,
                 matched,
-                reason: linkedCharacterId ? 'characterId' : 'no linked characterId'
+                reason: slotRule?.characterId ? 'characterId' : 'name fallback'
             });
 
             if (matched) {
                 await applyCharacterToMasterProfile(slotId, matched);
-            } else {
-                showToast(`${slotId} 슬롯에 연결된 저장 캐릭터가 없어 3면도를 연결하지 않았습니다.`, 'warning');
             }
         }
 
@@ -3381,19 +3326,47 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const preferredView = pickAiReferenceViewFromCamera(currentAiScene?.cameraAngle || currentAiScene?.camera || '');
 
                 if (!casting) {
-                    const matched = await resolveStoredCharacterForSlot(charId);
+                    const rules = getCharacterRules();
+                    const allSlotRules = [...(rules?.females || []), ...(rules?.males || [])];
+                    const slotRule = allSlotRules.find((r) => r.id === charId);
 
-                    if (!matched) {
-                        console.warn('[ShortsLab] AI reference skipped: slot has no linked characterId or linked character is missing.', {
-                            slotId: charId,
-                            characterCastings: Array.from(characterCastings.keys())
-                        });
+                    let chars = savedCharacters;
+                    if (!chars || chars.length === 0) {
+                        chars = await loadSavedCharacters();
                     }
 
-                    if (matched) {
-                        casting = await buildCharacterCastingFromItem(matched);
+                    const directNameMatch = chars.find((c) => c.name && slotRule?.name && c.name === slotRule.name);
+                    const matched = slotRule?.characterId
+                        ? chars.find((c) => c.id === slotRule.characterId)
+                        : (
+                            directNameMatch ||
+                            chars.find((c) => c.name && slotRule?.name && c.name.includes(slotRule.name)) ||
+                            chars.find((c) => c.name && slotRule?.name && slotRule.name.includes(c.name)) ||
+                            chars.find((c) => (charId.startsWith('Woman') ? c.gender === 'female' : charId.startsWith('Man') ? c.gender === 'male' : true)) ||
+                            chars[0]
+                        );
 
-                        if (casting?.referenceImageUrl) {
+                    if (matched) {
+                        const frontUrl = await blobToDataUrl(matched.turnaroundImageIds?.front || matched.generatedImageId);
+                        const angle45Url = await blobToDataUrl(matched.turnaroundImageIds?.angle45);
+                        const backUrl = await blobToDataUrl(matched.turnaroundImageIds?.back);
+                        const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
+                        const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl;
+
+                        if (referenceImageUrl) {
+                            casting = {
+                                characterId: matched.id,
+                                referenceImageUrl,
+                                referenceImageUrls: {
+                                    front: frontUrl || undefined,
+                                    angle45: angle45Url || undefined,
+                                    back: backUrl || undefined,
+                                },
+                                referenceViewPreference: matched.referencePreference?.defaultView || 'front',
+                                identitySummary: buildCastingIdentitySummary(matched),
+                                name: matched.name,
+                            };
+
                             setCharacterCastings((prev) => {
                                 const next = new Map(prev);
                                 next.set(charId, casting!);
@@ -3411,14 +3384,14 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 }
 
                 const refs = casting.referenceImageUrls;
-                // 장면 카메라에 맞는 개별 3면도 view를 먼저 첨부한다. 합본은 마지막 폴백이다.
+                // [합본 우선] 3면 합본(referenceImageUrl=sheet)을 1순위로 첨부, 없으면 개별 view 폴백
                 const imageUrl =
+                    casting.referenceImageUrl ||
                     refs?.[preferredView] ||
                     refs?.[casting.referenceViewPreference || 'front'] ||
                     refs?.front ||
                     refs?.angle45 ||
                     refs?.back ||
-                    casting.referenceImageUrl ||
                     '';
 
                 if (!imageUrl) {
@@ -3440,10 +3413,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
         console.log('[ShortsLab] AI inferred characterIds:', aiCharacterIds);
         console.log('[ShortsLab] AI characterCastings keys:', Array.from(characterCastings.keys()));
         console.log('[ShortsLab] AI referenceImages:', aiReferenceImages.length);
-        const skippedReferenceIds = aiCharacterIds.filter((charId) => !aiReferenceImages.some((ref: any) => ref?.slotId === charId));
-        if (skippedReferenceIds.length > 0) {
-            showToast(`연결된 저장 캐릭터가 없어 참조 이미지 첨부를 건너뜀: ${skippedReferenceIds.join(', ')}`, 'warning');
-        }
 
         if (!promptToSend || !promptToSend.trim()) {
             showToast('전송할 프롬프트가 없습니다.', 'warning');
@@ -4002,24 +3971,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
             const generatedText = sceneData.rawResponse || sceneData.text || sceneData.result || '';
 
             const parsedResult = parseManualSceneDecompositionResponse(generatedText);
-            let llmLockedOutfits = normalizeLockedOutfits(parsedResult.lockedOutfits || {});
-            let scenesSource = parsedResult.scenes || [];
-            if (!enableWinterAccessories) {
-                llmLockedOutfits = Object.fromEntries(
-                    Object.entries(llmLockedOutfits).map(([slotId, outfit]) => [
-                        slotId,
-                        sanitizeWinterVisualContent(String(outfit || ''), 'elegant warm-season golf outfit')
-                    ])
-                );
-                scenesSource = scenesSource.map((scene: any) => ({
-                    ...scene,
-                    background: sanitizeWinterVisualContent(scene.background || '', 'bright sunlit golf course with fresh green fairway'),
-                    action: sanitizeWinterVisualContent(scene.action || '', 'standing naturally in clear daylight'),
-                    summary: sanitizeWinterVisualContent(scene.summary || '', ''),
-                    longPrompt: sanitizeWinterVisualContent(scene.longPrompt || '', ''),
-                    shortPrompt: sanitizeWinterVisualContent(scene.shortPrompt || '', '')
-                }));
-            }
+            const llmLockedOutfits = normalizeLockedOutfits(parsedResult.lockedOutfits || {});
+            const scenesSource = parsedResult.scenes || [];
 
             if (scenesSource.length === 0) {
                 throw new Error('씬 분해 결과가 비어있습니다.');
@@ -4240,10 +4193,6 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     mergedPrompt = applyPostProcessAffixes(mergedPrompt, postProcessConfig);
                 }
 
-                if (!enableWinterAccessories) {
-                    mergedPrompt = sanitizeWinterVisualContent(mergedPrompt, 'bright sunlit golf course with fresh green fairway, clear daylight');
-                }
-
                 return {
                     number: sceneNumber,
                     text: sceneText,
@@ -4251,8 +4200,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                     imageUrl: undefined,
                     shortPromptKo: '',
                     longPromptKo: '',
-                    summary: !enableWinterAccessories ? sanitizeWinterVisualContent(scene.summary || sceneText, sceneText) : (scene.summary || sceneText),
-                    camera: !enableWinterAccessories ? sanitizeWinterVisualContent(scene.background || '', '') : (scene.background || ''),
+                    summary: scene.summary || sceneText,
+                    camera: scene.background || '',
                     shotType,
                     age: '',
                     outfit: '',
@@ -4654,7 +4603,6 @@ ${scriptInput}
             });
 
             setMasterCharacterProfiles(profiles);
-            setShowMasterProfilePanel(true);
             setMasterOutfitMap(outfitMap);
             const storageFolderName = resolvedFolderName || currentFolderName;
             if (storageFolderName) {
@@ -5493,8 +5441,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         try {
             const result = await generateBenchmarkStorylinePackage(
                 aiTopic.trim() || benchmarkSource.trim(),
-                benchmarkSource.trim() || undefined,
-                { enableWinterAccessories }
+                benchmarkSource.trim() || undefined
             );
 
             setBenchmarkAnalysis(result.analysis);
@@ -5563,8 +5510,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 useRawLlmParsing,
                 allowedOutfitCategories: getAllowedOutfitCategoriesForGenre(aiGenre),
                 imagePromptLanguage: settings.imagePromptLanguage,
-                lockBackgroundToFirst: false,
-                enableWinterAccessories
+                lockBackgroundToFirst: false
             });
 
             setScriptInput(result.scriptBody);
@@ -5577,22 +5523,20 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             try {
                 const rulesForCasting = getCharacterRules();
                 const allSlotRules = [...(rulesForCasting.females || []), ...(rulesForCasting.males || [])];
-                const missingCastings: string[] = [];
+                const chars = savedCharacters.length > 0 ? savedCharacters : await loadSavedCharacters();
                 for (const slotId of (result.slotIds || [])) {
-                    const matched = await resolveStoredCharacterForSlot(slotId);
-                    if (!matched) {
-                        missingCastings.push(slotId);
-                        continue;
-                    }
                     const slotRule = allSlotRules.find((r) => r.id === slotId);
-                    if (!slotRule?.characterId && matched.id) {
+                    let charId = slotRule?.characterId;
+                    let matched = charId ? chars.find((c) => c.id === charId) : undefined;
+                    if (!matched && slotRule?.name) {
+                        matched = chars.find((c) => c.name && c.name === slotRule.name);
+                    }
+                    if (!matched) continue;
+                    if (!charId && matched.id) {
                         const g = slotId.startsWith('Man') ? 'male' : 'female';
                         try { await updateCharacter(g, slotId, { characterId: matched.id }); } catch (e) { /* noop */ }
                     }
                     await applyCharacterToMasterProfile(slotId, matched);
-                }
-                if (missingCastings.length > 0) {
-                    showToast(`3면도 연결 실패 슬롯: ${missingCastings.join(', ')}. 캐릭터 관리에서 해당 슬롯의 캐릭터를 선택해야 합니다.`, 'warning');
                 }
             } catch (castingError) {
                 console.warn('[V4 STEP2] 3D casting load failed:', castingError);
@@ -6044,7 +5988,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             console.log('[AI Master] Outfit map:', outfitMap);
 
             setMasterCharacterProfiles(profiles);
-            setShowMasterProfilePanel(true);
             setMasterOutfitMap(outfitMap);
             if (llmData._folderName) {
                 setAppStorageValue(getMasterProfilesStorageKey(llmData._folderName), profiles);
@@ -6131,8 +6074,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                   useRandomOutfits,
                   allowedOutfitCategories: getAllowedOutfitCategoriesForGenre(aiGenre),
                   imagePromptLanguage: settings.imagePromptLanguage,
-                  lockBackgroundToFirst: false,
-                  enableWinterAccessories
+                  lockBackgroundToFirst: false
               });
 
               setBenchmarkAnalysis(packageResult.analysis);
@@ -6497,63 +6439,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         return canvas.toDataURL('image/png');
     }, []);
 
-        const normalizeCharacterLookupId = (value?: string) => String(value || '').replace(/^aistudio-/, '').trim();
-        const hasCharacterReferenceImage = (char: CharacterItem) => Boolean(
-            char.turnaroundImageIds?.front ||
-            char.turnaroundImageIds?.angle45 ||
-            char.turnaroundImageIds?.back ||
-            char.generatedImageId ||
-            char.threeviewUrl ||
-            char.sourceUrl
-        );
-
-        async function resolveStoredCharacterForSlot(slotId: string): Promise<CharacterItem | undefined> {
-            const rules = getCharacterRules();
-            const allSlotRules = [...(rules?.females || []), ...(rules?.males || [])];
-            const slotRule = allSlotRules.find((r) => r.id === slotId);
-            const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
-            const linkedCharacterId = slotRule?.characterId || profile?.characterId || '';
-            const chars = savedCharacters.length > 0 ? savedCharacters : await loadSavedCharacters();
-            const byId = (id?: string) => {
-                const normalized = normalizeCharacterLookupId(id);
-                if (!normalized) return undefined;
-                return chars.find((char) => normalizeCharacterLookupId(char.id) === normalized && hasCharacterReferenceImage(char));
-            };
-
-            const linked = byId(linkedCharacterId) || byId(slotId);
-            if (linked) return linked;
-
-            const slotName = String(slotRule?.name || profile?.name || '').trim();
-            if (!slotName) return undefined;
-            const exactNameMatches = chars.filter((char) =>
-                char.name?.trim() === slotName &&
-                (slotId.startsWith('Woman') ? char.gender === 'female' : slotId.startsWith('Man') ? char.gender === 'male' : true) &&
-                hasCharacterReferenceImage(char)
-            );
-            return exactNameMatches.length === 1 ? exactNameMatches[0] : undefined;
-        }
-
-        async function buildCharacterCastingFromItem(char: CharacterItem): Promise<CharacterCasting | null> {
-            const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
-            const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
-            const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
-            const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
-            const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl || char.threeviewUrl || char.sourceUrl || '';
-            if (!referenceImageUrl) return null;
-            return {
-                characterId: char.id,
-                referenceImageUrl,
-                referenceImageUrls: {
-                    front: frontUrl || undefined,
-                    angle45: angle45Url || undefined,
-                    back: backUrl || undefined,
-                },
-                referenceViewPreference: char.referencePreference?.defaultView || 'front',
-                identitySummary: buildCastingIdentitySummary(char),
-                name: char.name,
-            };
-        }
-
 	    async function applyCharacterToMasterProfile(slotId: string, char: CharacterItem) {
 	        await shortsLabCharacterRulesManager.importCharacter(char, slotId);
 	        setSavedCharacters((prev) => {
@@ -6564,11 +6449,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 	        });
 
 	        try {
-	            const casting = await buildCharacterCastingFromItem(char);
-	            const frontUrl = casting?.referenceImageUrls?.front || '';
-	            const angle45Url = casting?.referenceImageUrls?.angle45 || '';
-	            const backUrl = casting?.referenceImageUrls?.back || '';
-	            const referenceImageUrl = casting?.referenceImageUrl || '';
+            const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
+            const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
+            const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
+            const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
+            const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl;
             console.log('=== APPLY CHARACTER IMAGE DEBUG ===');
             console.log('slotId:', slotId);
             console.log('char id:', char.id);
@@ -6589,13 +6474,24 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             });
 
 
-	            if (casting?.referenceImageUrl) {
-	                setCharacterCastings((prev) => {
-	                    const newMap = new Map(prev);
-	                    newMap.set(slotId, casting);
-	                    return newMap;
-	                });
-	            }
+            if (referenceImageUrl) {
+                setCharacterCastings((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(slotId, {
+                        characterId: char.id,
+                        referenceImageUrl,
+                        referenceImageUrls: {
+                            front: frontUrl || undefined,
+                            angle45: angle45Url || undefined,
+                            back: backUrl || undefined,
+                        },
+                        referenceViewPreference: char.referencePreference?.defaultView || 'front',
+                        identitySummary: buildCastingIdentitySummary(char),
+                        name: char.name,
+                    });
+                    return newMap;
+                });
+            }
         } catch (imageError) {
             console.warn('Failed to attach character reference image to master profile:', imageError);
         }
@@ -6983,21 +6879,12 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 if (!useRawLlmParsing) {
                     mergedPrompt = applyCleanupPatterns(mergedPrompt, cleanupPatterns);
                 }
-                if (!enableWinterAccessories) {
-                    mergedPrompt = sanitizeWinterVisualContent(mergedPrompt, 'bright sunlit golf course with fresh green fairway, clear daylight');
-                }
 
                 const narrationText = typeof scene.narration === 'string'
                     ? scene.narration
                     : scene.narration?.text || '';
                 const lipSyncLine = scene.lipSync?.line || scene.dialogue || '';
                 const voiceType = scene.voiceType || (lipSyncLine ? 'both' : narrationText ? 'narration' : 'none');
-                const safeSummary = !enableWinterAccessories
-                    ? sanitizeWinterVisualContent(scene.summary || sceneText, sceneText)
-                    : (scene.summary || sceneText);
-                const safeCamera = !enableWinterAccessories
-                    ? sanitizeWinterVisualContent(scene.camera || scene.background || '', '')
-                    : (scene.camera || '');
 
                 return {
                     number: sceneNumber,
@@ -7006,8 +6893,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                     imageUrl: undefined,
                     shortPromptKo: scene.shortPromptKo || '',
                     longPromptKo: scene.longPromptKo || '',
-                    summary: safeSummary,
-                    camera: safeCamera,
+                    summary: scene.summary || sceneText,
+                    camera: scene.camera || '',
                     shotType,
                     age: scene.age || '',
                     outfit: scene.outfit || '',
@@ -7100,15 +6987,12 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                 const lockedCharacters: MasterLockedCharacter[] = (pass1Parsed.lockedCharacters || []).map((ch: any) => {
                     const slotId = normalizeSlotId(String(ch.slotId || ch.id || '').trim()) || ch.slotId;
-                    const outfit = ch.outfit || '';
                     return {
                         slotId,
                         identity: ch.identity || '',
                         hair: hairMap[slotId] || ch.hair || '',
                         body: bodyMap[slotId] || ch.body || '',
-                        outfit: enableWinterAccessories
-                            ? outfit
-                            : sanitizeWinterVisualContent(outfit, 'elegant warm-season golf outfit'),
+                        outfit: ch.outfit || '',
                         role: ch.role || ''
                     };
                 });
@@ -7116,24 +7000,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 const lockedLocations: MasterLockedLocation[] = (pass1Parsed.lockedLocations || []).map((loc: any) => ({
                     id: loc.id || 'LOC_1',
                     name: loc.name || '',
-                    englishDescription: enableWinterAccessories
-                        ? (loc.englishDescription || loc.description || '')
-                        : sanitizeWinterVisualContent(
-                            loc.englishDescription || loc.description || '',
-                            'bright sunlit golf course with fresh green fairway, clear daylight'
-                        )
+                    englishDescription: loc.englishDescription || loc.description || ''
                 }));
 
                 const visualStyleDNA: MasterVisualStyleDNA = {
-                    lighting: enableWinterAccessories
-                        ? (pass1Parsed.visualStyleDNA?.lighting || 'natural daylight')
-                        : sanitizeWinterVisualContent(pass1Parsed.visualStyleDNA?.lighting || 'natural daylight', 'natural daylight'),
-                    colorPalette: enableWinterAccessories
-                        ? (pass1Parsed.visualStyleDNA?.colorPalette || 'warm earth tones')
-                        : sanitizeWinterVisualContent(pass1Parsed.visualStyleDNA?.colorPalette || 'warm earth tones', 'warm natural tones'),
-                    atmosphere: enableWinterAccessories
-                        ? (pass1Parsed.visualStyleDNA?.atmosphere || 'casual relaxed')
-                        : sanitizeWinterVisualContent(pass1Parsed.visualStyleDNA?.atmosphere || 'casual relaxed', 'casual relaxed'),
+                    lighting: pass1Parsed.visualStyleDNA?.lighting || 'natural daylight',
+                    colorPalette: pass1Parsed.visualStyleDNA?.colorPalette || 'warm earth tones',
+                    atmosphere: pass1Parsed.visualStyleDNA?.atmosphere || 'casual relaxed',
                     timeOfDay: pass1Parsed.visualStyleDNA?.timeOfDay || 'afternoon'
                 };
 
@@ -7295,8 +7168,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 gender: settings.koreanGender,
                 targetAge: aiTargetAge,
                 genreGuideOverride,
-                characterSlotMode: scriptCharacterMode,
-                enableWinterAccessories
+                characterSlotMode: scriptCharacterMode
             });
 
             showToast(`[2/2] ${selectedService} AI로 씬을 분해하고 있습니다...`, 'info');
@@ -7399,22 +7271,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
             // Pass 2 씬에 background 보강 (locationId → 실제 배경 묘사)
             pass2Scenes = pass2Scenes.map((scene: any) => {
-                const sanitizedScene = !enableWinterAccessories
-                    ? {
-                        ...scene,
-                        background: sanitizeWinterVisualContent(scene.background || '', 'bright sunlit golf course with fresh green fairway'),
-                        action: sanitizeWinterVisualContent(scene.action || '', 'standing naturally in clear daylight'),
-                        expression: sanitizeWinterVisualContent(scene.expression || '', ''),
-                        actionKo: sanitizeWinterVisualContent(scene.actionKo || '', ''),
-                    }
-                    : scene;
-                if (!sanitizedScene.background && sanitizedScene.locationId) {
-                    const locDesc = locationMap.get(sanitizedScene.locationId);
+                if (!scene.background && scene.locationId) {
+                    const locDesc = locationMap.get(scene.locationId);
                     if (locDesc) {
-                        return { ...sanitizedScene, background: locDesc };
+                        return { ...scene, background: locDesc };
                     }
                 }
-                return sanitizedScene;
+                return scene;
             });
 
             // slotMap 구성
@@ -7430,7 +7293,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             const lockedOutfitMap = buildOutfitMapFromLockedCharacters(pass1Result.lockedCharacters);
             const lockedProfiles = buildProfilesFromLockedCharacters(pass1Result.lockedCharacters, characterRules);
             setMasterCharacterProfiles(lockedProfiles);
-            setShowMasterProfilePanel(true);
             setMasterOutfitMap(lockedOutfitMap);
             if (pass1FolderName) {
                 setAppStorageValue(getMasterProfilesStorageKey(pass1FolderName), lockedProfiles);
@@ -7706,7 +7568,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             }
 
             await loadMasterDataForFolder(folderName);
-            setShowMasterProfilePanel(false);
             if (loadedScenes.length > 0) {
                 const derivedFolderOutfitMap = deriveOutfitMapFromScenePrompts(loadedScenes as Array<{ characterIds?: string[]; longPrompt?: string; prompt?: string }>);
                 
@@ -7860,10 +7721,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
     };
 
     const handleApplyWinterLook = (sceneNumber: number) => {
-        if (!enableWinterAccessories) {
-            showToast('겨울아이템 토글이 OFF라 겨울 룩을 적용할 수 없습니다.', 'warning');
-            return;
-        }
         setScenes(prev => prev.map(s => {
             if (s.number === sceneNumber) {
                 const gender = (s.lipSyncSpeaker?.toLowerCase().startsWith('man')) ? 'male' : 'female';
@@ -8891,25 +8748,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 {activeTab === 'preview' && (
                     <div className="space-y-4">
                         {/* [신규] 캐릭터 프로필 섹션 (AI 마스터 생성 후 표시) */}
-                        {masterCharacterProfiles.length > 0 && !showMasterProfilePanel && (
-                            <div className="flex items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
-                                <div>
-                                    <div className="text-sm font-semibold text-slate-200">현재 캐릭터/의상 설정</div>
-                                    <div className="text-[11px] text-slate-500 mt-1">
-                                        불러온 씬 위에 표시되는 전역 설정 패널입니다. 씬별 실제 적용 정보는 각 장면 프롬프트를 기준으로 확인합니다.
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowMasterProfilePanel(true)}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-500/40 bg-indigo-500/15 text-indigo-100 hover:bg-indigo-500/25"
-                                >
-                                    설정 보기
-                                </button>
-                            </div>
-                        )}
-
-                        {masterCharacterProfiles.length > 0 && showMasterProfilePanel && (
+                        {masterCharacterProfiles.length > 0 && (
                             <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 border border-indigo-700/50 rounded-xl p-4">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-2">
@@ -8917,22 +8756,13 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                                         <h3 className="font-semibold text-indigo-300">캐릭터 프로필</h3>
                                         <span className="text-xs bg-indigo-600/50 text-indigo-200 px-2 py-0.5 rounded-full">AI 마스터 생성</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowMasterProfilePanel(false)}
-                                            className="px-3 py-2 rounded-lg border border-slate-700 bg-slate-900/70 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800"
-                                        >
-                                            접기
-                                        </button>
-                                        <button
-                                            onClick={handleApplyCharacterInfo}
-                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-semibold transition-all"
-                                        >
-                                            <Zap className="w-4 h-4" />
-                                            캐릭터 정보 적용
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={handleApplyCharacterInfo}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-semibold transition-all"
+                                    >
+                                        <Zap className="w-4 h-4" />
+                                        캐릭터 정보 적용
+                                    </button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {masterCharacterProfiles.map(profile => {
@@ -9382,9 +9212,8 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 
                                                                     <button
                                                                         onClick={() => handleApplyWinterLook(scene.number)}
-                                                                        disabled={!enableWinterAccessories}
-                                                                        className={`flex items-center gap-1 px-1.5 py-0.5 border rounded text-[9px] transition-all ${enableWinterAccessories ? 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 text-blue-400' : 'bg-slate-800/40 border-slate-700 text-slate-600 cursor-not-allowed'}`}
-                                                                        title={enableWinterAccessories ? '지능형 겨울 룩 즉시 적용 (상의 긴팔 + 악세서리)' : '겨울아이템 토글이 OFF라 사용할 수 없습니다'}
+                                                                        className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded text-[9px] text-blue-400 transition-all"
+                                                                        title="지능형 겨울 룩 즉시 적용 (상의 긴팔 + 악세서리)"
                                                                     >
                                                                         <Sparkles className="w-2.5 h-2.5" />
                                                                         겨울 룩 적용
@@ -13828,4 +13657,17 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
+
+
+
+
+
+
+
+
+
+
+
+
+
 

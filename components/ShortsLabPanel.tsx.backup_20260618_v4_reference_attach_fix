@@ -3381,19 +3381,51 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
                 const preferredView = pickAiReferenceViewFromCamera(currentAiScene?.cameraAngle || currentAiScene?.camera || '');
 
                 if (!casting) {
-                    const matched = await resolveStoredCharacterForSlot(charId);
+                    const rules = getCharacterRules();
+                    const allSlotRules = [...(rules?.females || []), ...(rules?.males || [])];
+                    const slotRule = allSlotRules.find((r) => r.id === charId);
+                    const profile = masterCharacterProfiles.find((item) => item.slotId === charId);
+                    const linkedCharacterId = slotRule?.characterId || profile?.characterId || '';
+
+                    let chars = savedCharacters;
+                    if (!chars || chars.length === 0) {
+                        chars = await loadSavedCharacters();
+                    }
+
+                    const matched = linkedCharacterId
+                        ? chars.find((c) => c.id === linkedCharacterId)
+                        : chars.find((c) => c.id === charId);
 
                     if (!matched) {
                         console.warn('[ShortsLab] AI reference skipped: slot has no linked characterId or linked character is missing.', {
                             slotId: charId,
-                            characterCastings: Array.from(characterCastings.keys())
+                            linkedCharacterId,
+                            slotRule,
+                            profile
                         });
                     }
 
                     if (matched) {
-                        casting = await buildCharacterCastingFromItem(matched);
+                        const frontUrl = await blobToDataUrl(matched.turnaroundImageIds?.front || matched.generatedImageId);
+                        const angle45Url = await blobToDataUrl(matched.turnaroundImageIds?.angle45);
+                        const backUrl = await blobToDataUrl(matched.turnaroundImageIds?.back);
+                        const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
+                        const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl;
 
-                        if (casting?.referenceImageUrl) {
+                        if (referenceImageUrl) {
+                            casting = {
+                                characterId: matched.id,
+                                referenceImageUrl,
+                                referenceImageUrls: {
+                                    front: frontUrl || undefined,
+                                    angle45: angle45Url || undefined,
+                                    back: backUrl || undefined,
+                                },
+                                referenceViewPreference: matched.referencePreference?.defaultView || 'front',
+                                identitySummary: buildCastingIdentitySummary(matched),
+                                name: matched.name,
+                            };
+
                             setCharacterCastings((prev) => {
                                 const next = new Map(prev);
                                 next.set(charId, casting!);
@@ -5563,8 +5595,7 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
                 useRawLlmParsing,
                 allowedOutfitCategories: getAllowedOutfitCategoriesForGenre(aiGenre),
                 imagePromptLanguage: settings.imagePromptLanguage,
-                lockBackgroundToFirst: false,
-                enableWinterAccessories
+                lockBackgroundToFirst: false
             });
 
             setScriptInput(result.scriptBody);
@@ -5577,22 +5608,20 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             try {
                 const rulesForCasting = getCharacterRules();
                 const allSlotRules = [...(rulesForCasting.females || []), ...(rulesForCasting.males || [])];
-                const missingCastings: string[] = [];
+                const chars = savedCharacters.length > 0 ? savedCharacters : await loadSavedCharacters();
                 for (const slotId of (result.slotIds || [])) {
-                    const matched = await resolveStoredCharacterForSlot(slotId);
-                    if (!matched) {
-                        missingCastings.push(slotId);
-                        continue;
-                    }
                     const slotRule = allSlotRules.find((r) => r.id === slotId);
-                    if (!slotRule?.characterId && matched.id) {
+                    let charId = slotRule?.characterId;
+                    let matched = charId ? chars.find((c) => c.id === charId) : undefined;
+                    if (!matched && slotRule?.name) {
+                        matched = chars.find((c) => c.name && c.name === slotRule.name);
+                    }
+                    if (!matched) continue;
+                    if (!charId && matched.id) {
                         const g = slotId.startsWith('Man') ? 'male' : 'female';
                         try { await updateCharacter(g, slotId, { characterId: matched.id }); } catch (e) { /* noop */ }
                     }
                     await applyCharacterToMasterProfile(slotId, matched);
-                }
-                if (missingCastings.length > 0) {
-                    showToast(`3면도 연결 실패 슬롯: ${missingCastings.join(', ')}. 캐릭터 관리에서 해당 슬롯의 캐릭터를 선택해야 합니다.`, 'warning');
                 }
             } catch (castingError) {
                 console.warn('[V4 STEP2] 3D casting load failed:', castingError);
@@ -6497,63 +6526,6 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
         return canvas.toDataURL('image/png');
     }, []);
 
-        const normalizeCharacterLookupId = (value?: string) => String(value || '').replace(/^aistudio-/, '').trim();
-        const hasCharacterReferenceImage = (char: CharacterItem) => Boolean(
-            char.turnaroundImageIds?.front ||
-            char.turnaroundImageIds?.angle45 ||
-            char.turnaroundImageIds?.back ||
-            char.generatedImageId ||
-            char.threeviewUrl ||
-            char.sourceUrl
-        );
-
-        async function resolveStoredCharacterForSlot(slotId: string): Promise<CharacterItem | undefined> {
-            const rules = getCharacterRules();
-            const allSlotRules = [...(rules?.females || []), ...(rules?.males || [])];
-            const slotRule = allSlotRules.find((r) => r.id === slotId);
-            const profile = masterCharacterProfiles.find((item) => item.slotId === slotId);
-            const linkedCharacterId = slotRule?.characterId || profile?.characterId || '';
-            const chars = savedCharacters.length > 0 ? savedCharacters : await loadSavedCharacters();
-            const byId = (id?: string) => {
-                const normalized = normalizeCharacterLookupId(id);
-                if (!normalized) return undefined;
-                return chars.find((char) => normalizeCharacterLookupId(char.id) === normalized && hasCharacterReferenceImage(char));
-            };
-
-            const linked = byId(linkedCharacterId) || byId(slotId);
-            if (linked) return linked;
-
-            const slotName = String(slotRule?.name || profile?.name || '').trim();
-            if (!slotName) return undefined;
-            const exactNameMatches = chars.filter((char) =>
-                char.name?.trim() === slotName &&
-                (slotId.startsWith('Woman') ? char.gender === 'female' : slotId.startsWith('Man') ? char.gender === 'male' : true) &&
-                hasCharacterReferenceImage(char)
-            );
-            return exactNameMatches.length === 1 ? exactNameMatches[0] : undefined;
-        }
-
-        async function buildCharacterCastingFromItem(char: CharacterItem): Promise<CharacterCasting | null> {
-            const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
-            const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
-            const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
-            const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
-            const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl || char.threeviewUrl || char.sourceUrl || '';
-            if (!referenceImageUrl) return null;
-            return {
-                characterId: char.id,
-                referenceImageUrl,
-                referenceImageUrls: {
-                    front: frontUrl || undefined,
-                    angle45: angle45Url || undefined,
-                    back: backUrl || undefined,
-                },
-                referenceViewPreference: char.referencePreference?.defaultView || 'front',
-                identitySummary: buildCastingIdentitySummary(char),
-                name: char.name,
-            };
-        }
-
 	    async function applyCharacterToMasterProfile(slotId: string, char: CharacterItem) {
 	        await shortsLabCharacterRulesManager.importCharacter(char, slotId);
 	        setSavedCharacters((prev) => {
@@ -6564,11 +6536,11 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
 	        });
 
 	        try {
-	            const casting = await buildCharacterCastingFromItem(char);
-	            const frontUrl = casting?.referenceImageUrls?.front || '';
-	            const angle45Url = casting?.referenceImageUrls?.angle45 || '';
-	            const backUrl = casting?.referenceImageUrls?.back || '';
-	            const referenceImageUrl = casting?.referenceImageUrl || '';
+            const frontUrl = await blobToDataUrl(char.turnaroundImageIds?.front || char.generatedImageId);
+            const angle45Url = await blobToDataUrl(char.turnaroundImageIds?.angle45);
+            const backUrl = await blobToDataUrl(char.turnaroundImageIds?.back);
+            const sheetUrl = await buildThreeViewSheetDataUrl(frontUrl, angle45Url, backUrl);
+            const referenceImageUrl = sheetUrl || frontUrl || angle45Url || backUrl;
             console.log('=== APPLY CHARACTER IMAGE DEBUG ===');
             console.log('slotId:', slotId);
             console.log('char id:', char.id);
@@ -6589,13 +6561,24 @@ ${scenes.map((s, i) => `${i+1}번 씬: ${s.text?.substring(0, 30)}...`).join('\n
             });
 
 
-	            if (casting?.referenceImageUrl) {
-	                setCharacterCastings((prev) => {
-	                    const newMap = new Map(prev);
-	                    newMap.set(slotId, casting);
-	                    return newMap;
-	                });
-	            }
+            if (referenceImageUrl) {
+                setCharacterCastings((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(slotId, {
+                        characterId: char.id,
+                        referenceImageUrl,
+                        referenceImageUrls: {
+                            front: frontUrl || undefined,
+                            angle45: angle45Url || undefined,
+                            back: backUrl || undefined,
+                        },
+                        referenceViewPreference: char.referencePreference?.defaultView || 'front',
+                        identitySummary: buildCastingIdentitySummary(char),
+                        name: char.name,
+                    });
+                    return newMap;
+                });
+            }
         } catch (imageError) {
             console.warn('Failed to attach character reference image to master profile:', imageError);
         }
@@ -13828,4 +13811,8 @@ ${genre.supportingCharacterTwistPatterns?.map(p => `  - ${p}`).join('\n') || '  
 };
 
 export default ShortsLabPanel;
+
+
+
+
 

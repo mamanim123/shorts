@@ -117,13 +117,7 @@ export const fetchCharacters = async (): Promise<CharacterItem[]> => {
     if (!response.ok) throw new Error('failed');
     const payload = (await response.json()) as { characters?: Array<Partial<CharacterItem> & { id: string }> };
     const rawCharacters = Array.isArray(payload.characters) ? payload.characters : [];
-    const characterMap = new Map<string, CharacterItem>();
-    normalizedAiStudioCharacters.forEach((character) => characterMap.set(character.id, character));
-    normalizeCharacters(rawCharacters).forEach((character) => {
-      const existing = characterMap.get(character.id);
-      characterMap.set(character.id, existing ? { ...existing, ...character } : character);
-    });
-    const characters = Array.from(characterMap.values());
+    const characters = [...normalizedAiStudioCharacters, ...normalizeCharacters(rawCharacters)];
     setCachedCharacters(characters);
     return characters;
   } catch {
@@ -178,14 +172,11 @@ export const saveCharacters = async (characters: CharacterItem[]): Promise<boole
 	        style: updateChar.style,
 	        outfitFit: updateChar.outfitFit,
 	        bodyTuning: updateChar.bodyTuning,
-	        identitySpec: updateChar.identitySpec,
-	        referencePreference: updateChar.referencePreference,
-	        wardrobeProfile: updateChar.wardrobeProfile,
-	        generatedImageId: updateChar.generatedImageId,
-	        turnaroundImageIds: updateChar.turnaroundImageIds,
-	        sourceReferenceImageId: updateChar.sourceReferenceImageId,
-	      };
-	    });
+        identitySpec: updateChar.identitySpec,
+        referencePreference: updateChar.referencePreference,
+        wardrobeProfile: updateChar.wardrobeProfile,
+      };
+    });
 
   await setAppStorageValue('characterCollection', updatedAiStudioCollections);
 

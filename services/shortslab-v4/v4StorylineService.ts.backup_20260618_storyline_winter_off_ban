@@ -14,8 +14,7 @@ export const buildV4ConditionedTopic = (input: Pick<V4FlowInput, 'topic' | 'genr
 export const generateV4Storylines = async (input: V4FlowInput): Promise<V4Storyline[]> => {
   const packageResult = await generateBenchmarkStorylinePackage(
     buildV4ConditionedTopic(input),
-    input.benchmarkSource?.trim() || undefined,
-    { enableWinterAccessories: input.enableWinterAccessories }
+    input.benchmarkSource?.trim() || undefined
   );
 
   return packageResult.storylines.map((story) => ({
@@ -29,8 +28,7 @@ export const generateV4Storylines = async (input: V4FlowInput): Promise<V4Storyl
 export const generateV4StorylinePackage = async (input: V4FlowInput) => {
   return generateBenchmarkStorylinePackage(
     buildV4ConditionedTopic(input),
-    input.benchmarkSource?.trim() || undefined,
-    { enableWinterAccessories: input.enableWinterAccessories }
+    input.benchmarkSource?.trim() || undefined
   );
 };
 

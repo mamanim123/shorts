@@ -29,9 +29,7 @@ import {
   getPromptConstants,
   distributeUniqueWinterItems,
   getSmartCameraPrompt,
-  isWinterTopic,
-  buildWinterOffBanRule,
-  sanitizeWinterVisualContent
+  isWinterTopic
 } from './labPromptBuilder';
 import { getCharacterRules } from './shortsLabCharacterRulesManager';
 
@@ -2366,7 +2364,6 @@ export const generateBenchmarkStorylinePackage = async (
     outputFormat?: string;
     targetDuration?: string;
     scriptStructure?: string;
-    enableWinterAccessories?: boolean;
   }
 ): Promise<BenchmarkStorylinePackage> => {
   const style = options?.style || '실사풍';
@@ -2374,7 +2371,6 @@ export const generateBenchmarkStorylinePackage = async (
   const outputFormat = options?.outputFormat || 'shorts';
   const targetDuration = options?.targetDuration || '30초';
   const scriptStructure = options?.scriptStructure || 'narration';
-  const winterOffBanRule = buildWinterOffBanRule(options?.enableWinterAccessories);
 
   const benchmarkSection = benchmarkSource?.trim()
     ? `
@@ -2397,11 +2393,9 @@ ${benchmarkSection}
 [스타일] ${style}
 [포맷] ${outputFormat === 'shorts' ? '쇼츠 (9:16)' : '롱폼 (16:9)'}
 [목표 길이] ${targetDuration}
-	[대본 구조] ${scriptStructure === 'narration' ? '내레이션만' : '내레이션 + 대화'}
+[대본 구조] ${scriptStructure === 'narration' ? '내레이션만' : '내레이션 + 대화'}
 
-${winterOffBanRule}
-
-	위 주제와 조건으로 **10개의 서로 다른 줄거리**를 생성하세요.
+위 주제와 조건으로 **10개의 서로 다른 줄거리**를 생성하세요.
 각 줄거리는 완전히 다른 각도와 접근 방식을 가져야 합니다.
 
 [줄거리 다양성 규칙]
@@ -2418,7 +2412,7 @@ ${winterOffBanRule}
     "narrativeStructure": "서사 구조 분석",
     "toneStyle": "톤앤매너 분석"
   },
-	  "storylines": [
+  "storylines": [
     {
       "title": "줄거리 제목 (흥미로운 것)",
       "content": "줄거리 상세 내용 (3-5문장, 서사 흐름 포함)",
@@ -2428,7 +2422,7 @@ ${winterOffBanRule}
   ]
 }
 
-	반드시 10개의 줄거리를 생성하세요. JSON 형식만 출력하세요.`;
+반드시 10개의 줄거리를 생성하세요. JSON 형식만 출력하세요.`;
 
   const API_BASE = 'http://localhost:3002';
 
@@ -2480,25 +2474,20 @@ ${winterOffBanRule}
       throw new Error('storylines 파싱 실패');
     }
 
-	    const sanitizeStorylineValue = (value: string, fallback = '') =>
-	      options?.enableWinterAccessories
-	        ? (value || '')
-	        : sanitizeWinterVisualContent(value || '', fallback);
-
-	    return {
-	      storylines: parsed.storylines.map((s: any) => ({
-	        title: sanitizeStorylineValue(s.title || '제목 없음', '제목 없음'),
-	        content: sanitizeStorylineValue(s.content || '', ''),
-	        hook: sanitizeStorylineValue(s.hook || '', ''),
-	        twist: sanitizeStorylineValue(s.twist || '', ''),
-	      })),
-	      analysis: {
-	        sourceSummary: sanitizeStorylineValue(parsed.analysis?.sourceSummary || '', ''),
-	        hookPattern: sanitizeStorylineValue(parsed.analysis?.hookPattern || '', ''),
-	        narrativeStructure: sanitizeStorylineValue(parsed.analysis?.narrativeStructure || '', ''),
-	        toneStyle: sanitizeStorylineValue(parsed.analysis?.toneStyle || '', ''),
-	      },
-	    };
+    return {
+      storylines: parsed.storylines.map((s: any) => ({
+        title: s.title || '제목 없음',
+        content: s.content || '',
+        hook: s.hook || '',
+        twist: s.twist || '',
+      })),
+      analysis: {
+        sourceSummary: parsed.analysis?.sourceSummary || '',
+        hookPattern: parsed.analysis?.hookPattern || '',
+        narrativeStructure: parsed.analysis?.narrativeStructure || '',
+        toneStyle: parsed.analysis?.toneStyle || '',
+      },
+    };
   } catch (error: any) {
     console.error('[generateBenchmarkStorylinePackage] Error:', error);
     throw new Error(`줄거리 생성 실패: ${error.message}`);

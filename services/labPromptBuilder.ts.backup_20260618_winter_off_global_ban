@@ -133,46 +133,6 @@ const WINTER_KEYWORDS = ['겨울', 'snow', 'winter', '스키', 'ski', '썰매', 
 export const isWinterTopic = (topic: string): boolean =>
   WINTER_KEYWORDS.some((keyword) => topic.toLowerCase().includes(keyword.toLowerCase()));
 
-const WINTER_VISUAL_PATTERN = /\b(snow|snowy|snowfall|winter|frost|frosty|ice|icy|blizzard|sleet|ski|sled|beanie|earmuffs|scarf|winter boots|insulated|puffer|padded|down jacket|fur|faux fur|cashmere scarf|wool scarf)\b|겨울|설원|눈밭|첫눈|폭설|함박눈|눈보라|스키|썰매|빙판|얼음|서리|방한|귀마개|목도리|비니|패딩|다운재킷|퍼|털장식|겨울\s*부츠/i;
-const NON_WINTER_BACKGROUND_FALLBACK = 'bright sunlit golf course with fresh green fairway, clear daylight, warm seasonal atmosphere';
-
-export const buildWinterOffBanRule = (enableWinterAccessories?: boolean): string => {
-  if (enableWinterAccessories) return '';
-  return `## 🚫 겨울아이템 OFF 절대 규칙
-- 겨울아이템 토글이 OFF입니다. 대본, 배경, lockedLocations, scenes, action, summary, 이미지 프롬프트에 겨울 관련 요소를 절대 넣지 마세요.
-- 금지어/금지 요소: winter, snow, snowy, snowfall, frost, ice, icy, blizzard, ski, sled, insulated, puffer, padded, down jacket, fur, faux fur, beanie, earmuffs, scarf, winter boots, 겨울, 설원, 눈밭, 첫눈, 폭설, 함박눈, 눈보라, 스키, 썰매, 빙판, 얼음, 서리, 방한용품, 패딩, 다운재킷, 퍼, 털장식, 귀마개, 목도리, 비니, 겨울 부츠.
-- 주제나 예시에 겨울 표현이 보이더라도 토글이 OFF이면 맑은 낮, 초록 잔디, 따뜻한 계절감, 실내/클럽하우스 같은 비겨울 배경으로 바꾸세요.`;
-};
-
-export const containsWinterVisualTerm = (value: string = ''): boolean => WINTER_VISUAL_PATTERN.test(value);
-
-export const sanitizeWinterVisualContent = (
-  value: string = '',
-  fallback: string = NON_WINTER_BACKGROUND_FALLBACK
-): string => {
-  const raw = String(value || '').trim();
-  if (!raw) return raw;
-  if (!containsWinterVisualTerm(raw)) return raw;
-  const cleaned = raw
-    .replace(/\bsnowy\b/gi, 'sunlit')
-    .replace(/\bsnowfall\b|\bsnow\b/gi, 'fresh greenery')
-    .replace(/\bwinter\s+boots\b/gi, 'polished shoes')
-    .replace(/\bwinter\b/gi, 'warm-season')
-    .replace(/\binsulated\b|\bpuffer\b|\bpadded\b|\bdown jacket\b/gi, 'lightweight')
-    .replace(/\bfaux fur\b|\bfur\b|\bcashmere scarf\b|\bwool scarf\b/gi, 'sleek fabric')
-    .replace(/\bfrosty?\b/gi, 'morning-dew')
-    .replace(/\bicy\b|\bice\b|\bblizzard\b|\bsleet\b/gi, 'clear daylight')
-    .replace(/\bski(?:ing)?\b|\bsled(?:ding)?\b/gi, 'golf')
-    .replace(/\bbeanie\b|\bearmuffs\b|\bscarf\b/gi, 'minimal accessories')
-    .replace(/겨울\s*부츠/g, '깔끔한 신발')
-    .replace(/겨울|설원|눈밭|첫눈|폭설|함박눈|눈보라|스키|썰매|빙판|얼음|서리|방한|패딩|다운재킷|퍼|털장식|귀마개|목도리|비니/g, '맑은 계절감')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/,\s*,/g, ',')
-    .replace(/^\s*,\s*|\s*,\s*$/g, '')
-    .trim();
-  return cleaned || fallback;
-};
-
 export const splitOutfitTop = (outfit: string) => {
   const separators = [' + ', ' with ', ' and '];
   for (const separator of separators) {
@@ -743,7 +703,6 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
   const narratorName = slotNames[narratorSlot] || (gender === 'female' ? '지영' : '준호');
   const emotionFlow = genreGuide?.emotionCurve || '';
   const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode, topic);
-  const winterOffBanRule = buildWinterOffBanRule(options.enableWinterAccessories);
 
   const step2Rules = getShortsLabStep2PromptRules();
   const customPrompt = fillStep2PromptTemplate(step2Rules.scriptPrompt, {
@@ -756,7 +715,7 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
     REQUEST_ID: JSON.stringify(seed)
   });
   if (customPrompt.trim()) {
-    return [customPrompt, slotInstruction, winterOffBanRule].filter(Boolean).join('\n\n');
+    return slotInstruction ? `${customPrompt}\n\n${slotInstruction}` : customPrompt;
   }
 
   const slotBlock = slotInstruction ? `${slotInstruction}\n\n` : '';
@@ -770,7 +729,7 @@ export const buildLabScriptOnlyPrompt = (options: LabScriptOptions): string => {
 장르: ${genreGuide?.name || genre}
 타겟 연령: ${targetAge}
 
-  ${slotBlock}${winterOffBanRule ? `${winterOffBanRule}\n\n` : ''}출력은 반드시 아래 JSON 형식 하나만:
+${slotBlock}출력은 반드시 아래 JSON 형식 하나만:
 {
   "title": "제목",
   "titleOptions": ["옵션1", "옵션2", "옵션3"],
@@ -2189,7 +2148,7 @@ ${allCharacters.map(char => `
 2. 예시: beanie, earmuffs, scarf, gloves, winter boots 중 1~2개를 자연스럽게 배치한다.
 3. 악세서리는 shortPrompt/longPrompt 모두에 반영한다.
 4. 의상 명칭은 절대 변형하지 말고 악세서리만 추가한다.`
-    : buildWinterOffBanRule(false);
+    : '';
   const slotInstruction = buildCharacterSlotInstruction(options.characterSlotMode);
   const legacyGenreBlock = buildLegacyGenreBlock(options.legacyGenrePrompt);
   const scriptRules = getShortsLabScriptRules();
@@ -2354,17 +2313,17 @@ ${imagePromptRulesExtra ? `\n${imagePromptRulesExtra}\n` : ''}
 
 ✅ **원샷 예시** (1명):
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 30s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress], smiling at camera, sunlit golf course with fresh green fairway, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 30s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress], smiling at camera, snowy golf course, ...
 \`\`\`
 
 ✅ **투샷 예시** (2명) - [Person 1], [Person 2] 필수:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, sunlit golf course with fresh green fairway, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] walking together, snowy golf course, ...
 \`\`\`
 
 ✅ **쓰리샷 예시** (3명) - [Person 1], [Person 2], [Person 3] 필수:
 \`\`\`
-unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 50s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, sunlit golf course with fresh green fairway, ...
+unfiltered raw photograph..., [Person 1: A stunning Korean woman in her 20s, long soft-wave hairstyle, slim hourglass figure..., wearing Navy Dress] [Person 2: A stunning Korean woman in her 50s, short chic bob cut, slim hourglass figure..., wearing Teal Dress] [Person 3: A handsome Korean man in his 30s, short neat hairstyle, fit athletic build..., wearing Charcoal Knit] standing together laughing, snowy golf course, ...
 \`\`\`
 
 ✅ **남성 2명 투샷 예시** - [Person 1], [Person 2] 필수:
@@ -2851,7 +2810,6 @@ export interface MasterPass2Options {
   targetAge: string;
   genreGuideOverride?: LabGenreGuideline;
   characterSlotMode?: 'slot-only' | 'slot+name';
-  enableWinterAccessories?: boolean;
 }
 
 export interface ProfileConsistencyResult {
@@ -3032,7 +2990,6 @@ ${allCharacters.map((char: any) => `- ${char.id} body: ${char.body || 'N/A'}`).j
   const promptSections = promptRules.promptSections || {};
   const rawCharacterSection = promptSections.characterSection?.trim() || defaultCharacterSection;
   const characterSection = applySlotNameOverrides(rawCharacterSection, slotNames);
-  const winterOffBanRule = buildWinterOffBanRule(options.enableWinterAccessories);
 
   const golfCaddyNote = isGolf ? '\n- WomanD(캐디)는 골프 관련 장면에 자연스럽게 포함시킬 것.' : '';
   const masterOutfitSection = useRandomOutfits
@@ -3052,7 +3009,7 @@ ${allCharacters.map((char: any) => `- ${char.id} body: ${char.body || 'N/A'}`).j
 - Mini skirt, skort, fitted knit, slim-fit polo, tailored cardigan, body-skimming dress 등은 허용하되, cheap, vulgar, tacky, overly revealing, deep cleavage, lingerie-like 스타일은 피하세요.
 - 나이 들어 보이는 보수적 의상으로 숨기지 말고, 관리가 잘 된 건강미와 고급스러운 여성미가 드러나는 코디를 선택하세요.
 - refined, elegant, polished, luxurious, feminine, tastefully fitted, flattering silhouette, graceful proportions를 우선하세요.
-- 배경이 골프장/봄꽃/실내/클럽하우스 등 무엇인지에 맞춰 소재, 색감, 핏을 자연스럽게 설계하세요.
+- 배경이 골프장/봄꽃/눈/실내/클럽하우스 등 무엇인지에 맞춰 소재, 색감, 핏을 자연스럽게 설계하세요.
 - 캐릭터별 의상은 서로 중복되지 않게 하세요.
 - 한번 정한 outfit은 미리보기와 이미지 프롬프트에서 절대 바뀌면 안 되는 잠금값입니다.
 - 대본(scriptBody)에는 의상명을 쓰지 말고, lockedCharacters[].outfit에만 저장하세요.`;
@@ -3101,8 +3058,6 @@ ${genreGuide?.forbiddenPatterns.map(p => `• ${applySlotNameOverrides(p, slotNa
 
 ${legacyGenreBlock ? `\n${legacyGenreBlock}` : ''}
 
-${winterOffBanRule}
-
 ${characterSection}
 
 ${masterOutfitSection}
@@ -3146,7 +3101,7 @@ ${additionalContext ? `8. 추가 요청: ${additionalContext}` : ''}
     {
       "id": "LOC_1",
       "name": "메인 배경",
-      "englishDescription": "주제에 맞는 구체적인 영문 배경 묘사 (예: luxurious golf course clubhouse with panoramic mountain views, bright green fairway under clear daylight)"
+      "englishDescription": "주제에 맞는 구체적인 영문 배경 묘사 (예: luxurious golf course clubhouse with panoramic mountain views)"
     }
   ],
   "visualStyleDNA": {
@@ -3161,7 +3116,7 @@ ${additionalContext ? `8. 추가 요청: ${additionalContext}` : ''}
 1. scriptBody 8~12문장?
 2. lockedCharacters에서 hair/body는 위의 고정값 100% 복사?
 3. outfit은 ${useRandomOutfits ? '사전 선택 의상 명칭 100% 그대로' : 'LLM이 직접 디자인한 실제 의상명이며 플레이스홀더가 아님'}?
-4. lockedLocations 2~4개 (주제에 맞는 다양한 배경, 겨울아이템 OFF이면 겨울/눈/얼음 요소 0개)?
+4. lockedLocations 2~4개 (주제에 맞는 다양한 배경)?
 5. visualStyleDNA 모든 필드 채움?
 6. identity에 얼굴 특징(face, jawline, features 등) 포함?${golfCaddyNote}
 `;
@@ -3183,7 +3138,6 @@ export const buildMasterPass2Prompt = (options: MasterPass2Options): string => {
   const slotNames = getSlotNameMap();
   const slotInstruction = buildCharacterSlotInstruction(characterSlotMode, topic);
   const narratorSlotId = gender === 'female' ? 'WomanA' : 'ManA';
-  const winterOffBanRule = buildWinterOffBanRule(options.enableWinterAccessories);
 
   const characterRefSheet = lockedCharacters.map(ch => {
     return `  - ${ch.slotId}: identity="${ch.identity}", hair="${ch.hair}", body="${ch.body}", outfit="${ch.outfit}", role="${ch.role || ''}"`;
@@ -3215,10 +3169,8 @@ ${scriptLines.map((line, i) => `${i + 1}. ${line.trim()}`).join('\n')}
 ## 🔒 캐릭터 참조 시트 (절대 변경 금지)
 ${characterRefSheet}
 
-  ## 🏞️ 배경 참조 시트
-  ${locationRefSheet}
-
-${winterOffBanRule}
+## 🏞️ 배경 참조 시트
+${locationRefSheet}
 
 ## 🎨 비주얼 스타일 DNA
 - 조명: ${visualStyleDNA.lighting}
@@ -3290,7 +3242,6 @@ ${winterOffBanRule}
 7. Scene 1만 eye contact, 나머지는 looking away?
 8. action/expression이 영어로 구체적?
 9. POV 샷에서 시점 주인공 characterIds에서 제외?
-10. 겨울아이템 OFF이면 background/action/expression/narration/lipSync에 겨울/눈/얼음/방한용품 요소가 0개인가?
 `;
 
   return applySlotNameOverrides(rawPrompt, slotNames);
@@ -3451,7 +3402,7 @@ ${lockedOutfitExample}
 - Mini skirt, skort, fitted knit, slim-fit polo, tailored cardigan, body-skimming dress 등은 허용하되, cheap, vulgar, tacky, overly revealing, deep cleavage, lingerie-like 스타일은 피하세요.
 - 나이 들어 보이는 보수적 의상으로 숨기지 말고, 관리가 잘 된 건강미와 고급스러운 여성미가 드러나는 코디를 선택하세요.
 - refined, elegant, polished, luxurious, feminine, tastefully fitted, flattering silhouette, graceful proportions를 우선하세요.
-- 배경이 골프장/봄꽃/실내/클럽하우스 등 무엇인지에 맞춰 소재, 색감, 핏을 자연스럽게 설계하세요.
+- 배경이 골프장/봄꽃/눈/실내/클럽하우스 등 무엇인지에 맞춰 소재, 색감, 핏을 자연스럽게 설계하세요.
 - 캐릭터별 의상은 서로 중복되지 않게 하세요.
 - 한번 정한 lockedOutfits 의상명은 미리보기와 이미지 프롬프트에서 절대 바뀌면 안 되는 잠금값입니다.
 - 대본(scriptBody)에는 의상명을 쓰지 말고, lockedOutfits에만 저장하세요.`;
@@ -4069,17 +4020,10 @@ export const applyCharacterInfoToScenes = (params: {
       processedAction = buildCandidGroupAction(processedAction, filteredCharacterIds.length, sceneIndex);
     }
 
-    if (!forceWinterBackground) {
-      processedAction = sanitizeWinterVisualContent(processedAction, 'standing naturally');
-    }
-
     // ========================================
     // 5. 배경 처리 (장소 전환 지원)
     // ========================================
-    const rawEffectiveBackground = background || scene1Background;
-    const effectiveBackground = forceWinterBackground
-      ? rawEffectiveBackground
-      : sanitizeWinterVisualContent(rawEffectiveBackground, NON_WINTER_BACKGROUND_FALLBACK);
+    const effectiveBackground = background || scene1Background;
     const backgroundWithWinter = forceWinterBackground && !hasWinterKeyword(effectiveBackground)
       ? (effectiveBackground ? `${effectiveBackground}, ${winterHint}` : winterHint)
       : effectiveBackground;
@@ -4124,10 +4068,7 @@ export const applyCharacterInfoToScenes = (params: {
       ? extractActionFromScriptLine(scriptLine)
       : '';
 
-    const safeSummary = forceWinterBackground
-      ? summary
-      : sanitizeWinterVisualContent(summary, '');
-    const sceneContext = safeSummary ? `scene context: ${safeSummary}` : '';
+    const sceneContext = summary ? `scene context: ${summary}` : '';
 
     const promptParts = [
       expressionHint,
@@ -4147,9 +4088,7 @@ export const applyCharacterInfoToScenes = (params: {
       'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16'
     ].filter(Boolean);
 
-    const finalPrompt = forceWinterBackground
-      ? promptParts.join(', ')
-      : sanitizeWinterVisualContent(promptParts.join(', '), NON_WINTER_BACKGROUND_FALLBACK);
+    const finalPrompt = promptParts.join(', ');
 
     return {
       ...scene,

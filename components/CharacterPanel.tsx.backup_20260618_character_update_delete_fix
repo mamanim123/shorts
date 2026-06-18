@@ -292,10 +292,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     setActiveTab('manage');
   }, []);
 
-  const isLocalAiStudioCharacterId = useCallback((id?: string | null) => (
-    typeof id === 'string' && id.startsWith('aistudio-')
-  ), []);
-
   React.useEffect(() => {
     const preview = buildBodyFromTuning(bodyTuning, newCharacter.gender);
     setBodyTuningPreview(preview);
@@ -1110,20 +1106,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     if (!target) return;
     if (!window.confirm(`"${target.name}" 캐릭터를 삭제할까요?`)) return;
 
-    if (isLocalAiStudioCharacterId(id)) {
-      try { await deleteCharacterFolder(id); } catch (e) { /* 서버 폴더가 없을 수 있음 */ }
-      const updated = characters.filter((char) => char.id !== id);
-      setCharacters(updated);
-      await saveCharactersToBE(updated);
-      onCharacterDeleted?.(target);
-      if (selectedCharacterId === id) {
-        setSelectedCharacterId(null);
-        onCharacterSelect?.(null, effectiveSelectedSlot);
-      }
-      showToast('캐릭터가 삭제되었습니다.', 'success');
-      return;
-    }
-
     // [3단계] 폴더 기반 캐릭터(서버 폴더 = 단일 진실)는 폴더를 지워야 실제 삭제됨
     const isFolderCharacter = (target as any).sourceType === 'ai-studio'
       || /^\d{4}-\d{2}-\d{2}T/.test(String(id));
@@ -1164,9 +1146,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 	    if (selectedCharacterId === id) {
       setSelectedCharacterId(null);
       onCharacterSelect?.(null, effectiveSelectedSlot);
-	    }
-	    showToast('캐릭터가 삭제되었습니다.', 'success');
-	  }, [characters, effectiveSelectedSlot, isLocalAiStudioCharacterId, onCharacterDeleted, onCharacterSelect, onCharactersSaved, saveCharactersToBE, selectedCharacterId]);
+    }
+    showToast('캐릭터가 삭제되었습니다.', 'success');
+	  }, [characters, effectiveSelectedSlot, onCharacterDeleted, onCharacterSelect, onCharactersSaved, saveCharactersToBE, selectedCharacterId]);
 
   // [3-2단계] 캐릭터관리 탭에서 직접 3면도 생성 (Puppeteer 방식, API 키 불필요)
   const TURNAROUND_VIEWS: Array<{ key: 'front' | 'angle45' | 'back'; label: string; instruction: string }> = [
@@ -1245,12 +1227,11 @@ Output one single image for this viewpoint only.`;
       const saveRes = await fetch('http://localhost:3002/api/save-character-turnaround', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-	        body: JSON.stringify({
-	          characterName: newCharacter.name.trim(),
-	          characterId: selectedCharacterId || undefined,
-	          sourceImageData: turnaroundSource.dataUrl,
-	          turnaroundImages,
-	          metadata: {
+        body: JSON.stringify({
+          characterName: newCharacter.name.trim(),
+          sourceImageData: turnaroundSource.dataUrl,
+          turnaroundImages,
+          metadata: {
             age: newCharacter.age,
             gender: newCharacter.gender,
             face: newCharacter.face,
@@ -1273,17 +1254,15 @@ Output one single image for this viewpoint only.`;
 	      const savedCharacter = savePayload.folderName
 	        ? refreshed.find((char) => char.id === savePayload.folderName)
 	        : refreshed.find((char) => char.name === newCharacter.name.trim());
-		      if (savedCharacter) {
-		        setSelectedCharacterId(savedCharacter.id);
-		        if (!selectedCharacterId) {
-		          onCharacterAdded?.(savedCharacter);
-		        }
-		        onCharacterSelect?.(savedCharacter, effectiveSelectedSlot);
-		      }
-		      setTurnaroundSource(null);
-		      setTurnaroundProgress('');
-		      showToast(`${newCharacter.name} 3면도가 ${selectedCharacterId ? '수정되어 저장' : '생성되어 저장'}되었습니다.`, 'success');
-		      setActiveTab('select');
+	      if (savedCharacter) {
+	        setSelectedCharacterId(savedCharacter.id);
+	        onCharacterAdded?.(savedCharacter);
+	        onCharacterSelect?.(savedCharacter, effectiveSelectedSlot);
+	      }
+	      setTurnaroundSource(null);
+	      setTurnaroundProgress('');
+	      showToast(`${newCharacter.name} 3면도가 생성되어 저장되었습니다.`, 'success');
+	      setActiveTab('select');
     } catch (err) {
       console.error('3면도 생성 실패:', err);
       showToast(err instanceof Error ? err.message : '3면도 생성에 실패했습니다.', 'error');
@@ -1291,7 +1270,7 @@ Output one single image for this viewpoint only.`;
       setIsGeneratingTurnaround(false);
       setTurnaroundProgress('');
     }
-	  }, [turnaroundSource, newCharacter, selectedCharacterId, effectiveSelectedSlot, onCharacterAdded, onCharacterSelect, onCharactersSaved]);
+	  }, [turnaroundSource, newCharacter, effectiveSelectedSlot, onCharacterAdded, onCharacterSelect, onCharactersSaved]);
 
   // ---------------------------------------------------------
   // 프롬프트 복사 핸들러
@@ -3123,7 +3102,7 @@ Output one single image for this viewpoint only.`;
                 className="w-full py-2.5 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 text-white text-xs font-bold rounded-lg shadow transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
               >
                 {isGeneratingTurnaround ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-	                {isGeneratingTurnaround ? '3면도 생성 중...' : (selectedCharacterId ? '3면도 수정 후 저장' : '3면도 생성 후 저장')}
+                {isGeneratingTurnaround ? '3면도 생성 중...' : '3면도 생성 후 저장'}
               </button>
               <div className="text-[9px] text-slate-500 text-center">
                 이름을 입력하고 기준 사진을 올린 뒤 생성하세요. 캐릭터 폴더에 자동 저장됩니다.

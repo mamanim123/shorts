@@ -1,4 +1,4 @@
-import { assignOutfitsToCharacters, buildWinterOffBanRule, sanitizeWinterVisualContent } from '../labPromptBuilder';
+import { assignOutfitsToCharacters } from '../labPromptBuilder';
 import { parseJsonFromText } from '../jsonParse';
 import { callV4GenerateRaw, fetchV4Outfits } from './v4ApiClient';
 import type { V4FlowInput, V4OutfitEntry, V4SceneSlot } from './v4Types';
@@ -18,27 +18,12 @@ const normalizeOutfitMap = (value: unknown, allowedSlotIds: string[]): Map<strin
   return result;
 };
 
-const sanitizeOutfitMapForWinterToggle = (
-  outfitMap: Map<string, V4OutfitEntry>,
-  enableWinterAccessories?: boolean
-): Map<string, V4OutfitEntry> => {
-  if (enableWinterAccessories) return outfitMap;
-  const result = new Map<string, V4OutfitEntry>();
-  outfitMap.forEach((outfit, slotId) => {
-    const name = sanitizeWinterVisualContent(outfit.name || '', 'elegant warm-season golf outfit');
-    const prompt = sanitizeWinterVisualContent(outfit.prompt || outfit.name || '', name);
-    result.set(slotId, { name, prompt });
-  });
-  return result;
-};
-
 const buildV4LlmOutfitPrompt = (params: {
   topic: string;
   genre: string;
   targetAge: string;
   scriptBody: string;
   slots: V4SceneSlot[];
-  enableWinterAccessories?: boolean;
 }): string => {
   const slotBlock = params.slots
     .map((slot) => `- ${slot.slotId}: ${slot.name}${slot.role ? ` (${slot.role})` : ''}, ${slot.gender}`)
@@ -58,8 +43,6 @@ ${slotBlock}
 
 대본:
 ${params.scriptBody}
-
-${buildWinterOffBanRule(params.enableWinterAccessories)}
 
 규칙:
 1. 위 슬롯 목록에 없는 캐릭터를 만들지 마세요.
@@ -90,13 +73,12 @@ export const resolveV4Outfits = async (params: {
 
   if (input.useRandomOutfits) {
     const outfitsData = input.outfitsData || await fetchV4Outfits();
-    const outfitMap = assignOutfitsToCharacters({
+    return assignOutfitsToCharacters({
       characterIds: used,
       genre: input.genre,
       outfitsData,
       topic: input.topic
     });
-    return sanitizeOutfitMapForWinterToggle(outfitMap, input.enableWinterAccessories);
   }
 
   const usedSlots = slots.filter((slot) => used.includes(slot.slotId));
@@ -105,8 +87,7 @@ export const resolveV4Outfits = async (params: {
     genre: input.genre,
     targetAge: input.targetAge,
     scriptBody,
-    slots: usedSlots,
-    enableWinterAccessories: input.enableWinterAccessories
+    slots: usedSlots
   });
 
   const rawText = await callV4GenerateRaw({
@@ -124,10 +105,7 @@ export const resolveV4Outfits = async (params: {
 
   console.log('[V4 OUTFIT DEBUG] parsed:', parsed);
   console.log('[V4 OUTFIT DEBUG] parsed.lockedOutfits:', parsed?.lockedOutfits);
-  const outfitMap = sanitizeOutfitMapForWinterToggle(
-    normalizeOutfitMap(parsed?.lockedOutfits || parsed, used),
-    input.enableWinterAccessories
-  );
+  const outfitMap = normalizeOutfitMap(parsed?.lockedOutfits || parsed, used);
 
   if (outfitMap.size === 0) {
     throw new Error('V4 LLM 의상 선택 실패: lockedOutfits가 비어 있습니다.');

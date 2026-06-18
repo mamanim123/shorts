@@ -2454,30 +2454,7 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
     const downloadMeta = await scriptPage.evaluate(({ expectedCount, serviceName }) => {
         return new Promise((resolve) => {
             let checkCount = 0;
-            let resolving = false;
-            const buildFallbackSrc = async (validImage) => {
-                try {
-                    if (!validImage) return null;
-                    if (validImage instanceof HTMLCanvasElement) {
-                        return validImage.toDataURL('image/png');
-                    }
-                    const src = validImage.getAttribute?.('src') || validImage.src || '';
-                    if (!src) return null;
-                    if (src.startsWith('data:')) return src;
-                    const response = await fetch(src);
-                    const blob = await response.blob();
-                    return await new Promise((resolveDataUrl) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolveDataUrl(String(reader.result || ''));
-                        reader.onerror = () => resolveDataUrl(src);
-                        reader.readAsDataURL(blob);
-                    });
-                } catch (e) {
-                    return validImage?.src || null;
-                }
-            };
-            const checkInterval = setInterval(async () => {
-                if (resolving) return;
+            const checkInterval = setInterval(() => {
                 checkCount++;
                 const responses = serviceName === 'GEMINI' 
                     ? Array.from(document.querySelectorAll('model-response'))
@@ -2605,17 +2582,13 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
                     }
 
                     if (downloadBtn) {
-                        resolving = true;
-                        const fallbackSrc = await buildFallbackSrc(validImage);
                         downloadBtn.click();
                         clearInterval(checkInterval);
-                        resolve({ clicked: true, fallbackSrc });
-                    } else {
-                        // 다운로드 버튼 탐지가 실패해도 화면에 생성된 이미지를 직접 회수한다.
-                        resolving = true;
-                        const fallbackSrc = await buildFallbackSrc(validImage);
+                        resolve({ clicked: true });
+                    } else if (serviceName === 'GENSPARK') {
+                        // Genspark에서 버튼이 없는 경우 이미지 소스 추출 시도 (서버에서 별도 처리)
                         clearInterval(checkInterval);
-                        resolve({ clicked: false, fallbackSrc });
+                        resolve({ clicked: false, fallbackSrc: validImage.src || (validImage.toDataURL ? validImage.toDataURL() : null) });
                     }
                 }
             }, 1000);
@@ -2650,8 +2623,7 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
             }
             await new Promise(r => setTimeout(r, 1000));
         }
-    }
-    if (!downloadedFile && downloadMeta.fallbackSrc) {
+    } else if (downloadMeta.fallbackSrc) {
         // base64 또는 URL 직접 저장
         downloadedFile = screenshotPath;
         const data = downloadMeta.fallbackSrc.startsWith('data:') 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ShortsLabPanel.tsx
  * 쇼츠 영상 제작을 위한 테스트 패널 V2
  * 
@@ -3367,9 +3367,8 @@ export const ShortsLabPanel: React.FC<ShortsLabPanelProps> = ({ targetService })
 
             if (inferred.length > 0) return Array.from(new Set(inferred));
 
-            const keys = Array.from(characterCastings.keys());
-            if (keys.length === 1) return keys;
-
+            // 이름 추론 실패 시 엉뚱한 캐릭터를 강제 첨부하지 않는다.
+            // 참조 이미지 없이 텍스트 프롬프트만으로 생성되도록 빈 배열 반환.
             return [];
         };
 
@@ -11326,6 +11325,8 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
           characterName: charName.trim(),
           sourceImageData: source,
           turnaroundImages,
+          // [수정=덮어쓰기] 슬롯ID(WomanA 등)가 아니라 실제 캐릭터 폴더 id일 때만 전달해 기존 폴더에 덮어쓴다.
+          characterId: /^(Woman|Man)[A-Z]$/.test(String(charId)) ? undefined : charId,
           metadata: { slotId: charId, source: 'outfit-rule' },
         }),
       });
@@ -11335,7 +11336,7 @@ const GenreManagementModal: React.FC<GenreManagementModalProps> = ({
       showToast(`${charName} 3면도 생성/저장 완료`, 'success');
       setTurnaroundProgressMap(prev => ({ ...prev, [charId]: '' }));
       setTurnaroundSourceMap(prev => { const n = { ...prev }; delete n[charId]; return n; });
-      await loadSavedCharacters(); // [미리보기] 생성 직후 폴더 목록 새로고침
+      try { await loadSavedCharacters(); } catch (e) { console.warn('[outfit-rule] 목록 새로고침 생략:', e); } // [미리보기] 생성 직후 폴더 목록 새로고침
     } catch (err) {
       console.error('3면도 생성 실패:', err);
       showToast(err instanceof Error ? err.message : '3면도 생성 실패', 'error');

@@ -1206,11 +1206,12 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
         const view = TURNAROUND_VIEWS[i];
         setTurnaroundProgress(`${view.label} 생성 중... (${i + 1}/${TURNAROUND_VIEWS.length})`);
         const prompt = `${view.instruction}
-Preserve the exact same face, body shape, proportions, height impression, hairstyle, hair volume, and overall identity from the reference image.
-Keep the character alone, centered, standing in a neutral pose, with arms relaxed naturally.
-Use a clean studio background, full-body framing, photorealistic fashion turnaround sheet style.
-Use a plain fitted base outfit so the body silhouette remains visible.
-Do not add text, split panels, extra people, props, accessories, or scenery.
+Preserve the EXACT same face, body shape, proportions, height impression, hairstyle, hair volume, and overall identity from the reference image. This must look like the identical person.
+CRITICAL: The clothing, hairstyle, hair color, skin tone, lighting (same direction, intensity and softness), and expression MUST be IDENTICAL across every view. Only the camera angle changes.
+Keep the character alone, centered, in a relaxed A-pose, arms relaxed naturally.
+Use the SAME clean neutral plain studio background and the SAME even frontal lighting in every view.
+Use a simple plain fitted base outfit (the same exact outfit in all views) so the body silhouette stays visible.
+Do not add text, labels, split panels, extra people, props, accessories, or scenery.
 Output one single image for this viewpoint only.`;
 
         const res = await fetch('http://localhost:3002/api/image/ai-generate', {

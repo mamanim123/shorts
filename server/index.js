@@ -1928,7 +1928,20 @@ app.post('/api/save-character-turnaround', async (req, res) => {
             && !requestedId.includes('\\');
         const safeName = sanitizeFolderName(characterName) || 'character';
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const folderName = canUseRequestedId ? requestedId : `${timestamp}_${safeName}`;
+        // [이름=캐릭터] 요청 id가 없으면 같은 이름(character.json.name)의 기존 폴더를 찾아 덮어쓴다 (중복 방지)
+        let existingByName = '';
+        if (!canUseRequestedId) {
+            try {
+                const dirs = fs.existsSync(CHARACTER_TURNAROUND_DIR) ? fs.readdirSync(CHARACTER_TURNAROUND_DIR, { withFileTypes: true }).filter(d => d.isDirectory()) : [];
+                for (const d of dirs) {
+                    try {
+                        const mj = JSON.parse(fs.readFileSync(path.join(CHARACTER_TURNAROUND_DIR, d.name, 'character.json'), 'utf8'));
+                        if (mj && String(mj.name || '').trim() === characterName.trim()) { existingByName = d.name; break; }
+                    } catch (e) {}
+                }
+            } catch (e) {}
+        }
+        const folderName = canUseRequestedId ? requestedId : (existingByName || `${timestamp}_${safeName}`);
         const targetDir = path.join(CHARACTER_TURNAROUND_DIR, folderName);
         const metaPath = path.join(targetDir, 'character.json');
         let previousMeta = {};
@@ -1956,9 +1969,9 @@ app.post('/api/save-character-turnaround', async (req, res) => {
             const parts = [turnaroundImages.front, turnaroundImages.angle45, turnaroundImages.back]
                 .map(decode).filter(Boolean);
             if (parts.length > 0) {
-                const CELL_W = 512, CELL_H = 768;
+                const CELL_W = 432, CELL_H = 768; // 9:16 (쇼츠 비율)
                 const resized = await Promise.all(parts.map(buf =>
-                    sharp(buf).resize(CELL_W, CELL_H, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toBuffer()
+                    sharp(buf).resize(CELL_W, CELL_H, { fit: 'cover', position: 'top' }).png().toBuffer()
                 ));
                 const canvas = sharp({
                     create: { width: CELL_W * resized.length, height: CELL_H, channels: 3, background: { r: 255, g: 255, b: 255 } }

@@ -671,6 +671,30 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     setExtractedBody(prev => (prev ? { ...prev, en: prompt } : prev));
   }, [bodyTuning, buildBodyFromTuning, newCharacter.gender]);
 
+  // [한글→영어 변환] 입력칸의 한글을 /api/translate-to-english 로 변환해 같은 칸에 채운다
+  const [translatingField, setTranslatingField] = useState<string>('');
+  const translateField = useCallback(async (field: 'identity' | 'body' | 'style', type: 'face' | 'body' | 'outfit' | 'hair') => {
+    const current = String((newCharacter as any)[field] || '').trim();
+    if (!current) { showToast('변환할 내용을 먼저 입력해주세요.', 'warning'); return; }
+    setTranslatingField(field);
+    try {
+      const res = await fetch('http://localhost:3002/api/translate-to-english', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: current, type })
+      });
+      const data = await res.json();
+      if (!data?.success || !data?.translated) throw new Error(data?.error || '변환 실패');
+      setNewCharacter(prev => ({ ...prev, [field]: data.translated }));
+      showToast('영어로 변환되었습니다.', 'success');
+    } catch (e) {
+      console.error('번역 실패:', e);
+      showToast((e && e.message) || '변환에 실패했습니다.', 'error');
+    } finally {
+      setTranslatingField('');
+    }
+  }, [newCharacter]);
+
   const clampAngle = (value: number) => Math.max(0, Math.min(180, value));
 
   const syncViewFromAngle = useCallback((angle: number) => {
@@ -2860,7 +2884,10 @@ Output one single image for this viewpoint only.`;
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Identity</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300">Identity</label>
+                  <button type="button" onClick={() => translateField('identity', 'face')} disabled={translatingField === 'identity'} className="text-[10px] px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 disabled:opacity-50 transition-all">{translatingField === 'identity' ? '변환 중...' : '🔄 영어로 변환'}</button>
+                </div>
                 <p className="text-[10px] text-slate-500 mb-1.5">캐릭터의 핵심 정체성, 역할, 분위기입니다. 대본과 이미지 프롬프트의 기준 문구로 사용됩니다.</p>
                 <input
                   type="text"
@@ -2927,7 +2954,10 @@ Output one single image for this viewpoint only.`;
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Body</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300">Body</label>
+                  <button type="button" onClick={() => translateField('body', 'body')} disabled={translatingField === 'body'} className="text-[10px] px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 disabled:opacity-50 transition-all">{translatingField === 'body' ? '변환 중...' : '🔄 영어로 변환'}</button>
+                </div>
                 <p className="text-[10px] text-slate-500 mb-1.5">체형, 키, 실루엣, 자세 등 이미지 생성 때 유지할 신체 특징입니다.</p>
                 <textarea
                   placeholder="예: slim athletic body, graceful posture"
@@ -2938,7 +2968,10 @@ Output one single image for this viewpoint only.`;
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Style</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300">Style</label>
+                  <button type="button" onClick={() => translateField('style', 'face')} disabled={translatingField === 'style'} className="text-[10px] px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 disabled:opacity-50 transition-all">{translatingField === 'style' ? '변환 중...' : '🔄 영어로 변환'}</button>
+                </div>
                 <p className="text-[10px] text-slate-500 mb-1.5">전체 분위기, 성격 톤, 이미지 톤처럼 캐릭터를 설명하는 보조 문구입니다.</p>
                 <textarea
                   placeholder="예: composed and calm observer demeanor, elegant presence"

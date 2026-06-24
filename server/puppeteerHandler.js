@@ -2484,17 +2484,52 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
                     : Array.from(document.querySelectorAll('.markdown-body, .message-content, div[class*="answer"], div[class*="response"]'));
                 const noResponses = responses.length === 0;
 
-                if (!noResponses && responses.length <= expectedCount && checkCount < 60) return;
+                // [진단] 매초 상태 출력: 응답개수 / 기대값 / model-response 안 이미지 존재여부
+                {
+                    const _last = responses[responses.length - 1];
+                    const _imgs = _last ? Array.from(_last.querySelectorAll('img, canvas')).filter(im => {
+                        const r = im.getBoundingClientRect(); return r.width > 100 && r.height > 100;
+                    }) : [];
+                    const _txt = (_last && _last.innerText || '').toLowerCase();
+                    const _gen = _txt.includes('creating your image') || _txt.includes('generating') || _txt.includes('생성 중');
+                    console.log('[진단] c=' + checkCount + ' resp=' + responses.length + ' exp=' + expectedCount + ' bigImgs=' + _imgs.length + ' gen=' + _gen + ' 통과막힘=' + (!noResponses && responses.length <= expectedCount && checkCount < 60));
+                }
+                // [핵심] 화면에 이미 충분히 큰 실제 이미지가 떠 있는지 먼저 확인 -> 떠 있으면 즉시 진행
+                const _scanEl = noResponses ? document.body : responses[responses.length - 1];
+                const _imgReady = _scanEl && Array.from(_scanEl.querySelectorAll('img, canvas')).some(im => {
+                    const r = im.getBoundingClientRect();
+                    if (r.width <= 150 || r.height <= 150) return false;
+                    if (im.tagName === 'CANVAS') return true;
+                    const s = im.getAttribute('src') || im.src || '';
+                    return s.startsWith('data:') || s.startsWith('blob:') || s.includes('googleusercontent') || /\.(png|jpe?g|webp)(\?|$)/i.test(s);
+                });
+                if (checkCount % 5 === 0) console.log('[진단] c=' + checkCount + ' resp=' + responses.length + ' exp=' + expectedCount + ' imgReady=' + _imgReady);
+                // 이미지가 아직 안 떴고, 응답 개수도 안 늘었으면 계속 대기 (단 최소 3초는 봐줌)
+                if (!_imgReady && !noResponses && responses.length <= expectedCount && checkCount < 170) return;
 
-                const targetEl = (noResponses && serviceName === 'GENSPARK')
+                const targetEl = noResponses
                     ? document.body
                     : responses[responses.length - 1];
                 if (!targetEl) return;
 
+                if (checkCount % 5 === 0) {
+                    console.log('[Puppeteer] ⏳ ' + checkCount + 's 경과 (이미지 탐지 대기중)');
+                }
+
                 const images = Array.from(targetEl.querySelectorAll('img, canvas, [role="img"]'));
                 let validImage = images.find(img => {
                     const rect = img.getBoundingClientRect();
-                    return rect.width > 100 && rect.height > 100;
+                    if (rect.width <= 100 || rect.height <= 100) return false;
+                    // canvas 는 그대로 허용
+                    if (img.tagName === 'CANVAS') return true;
+                    // 실제 생성 이미지 src 를 가진 것만 인정 (회색 placeholder 제외)
+                    const s = img.getAttribute('src') || img.src || '';
+                    if (!s) return false;
+                    return s.startsWith('data:')
+                        || s.startsWith('blob:')
+                        || s.includes('googleusercontent')
+                        || s.includes('genspark')
+                        || /\.(png|jpe?g|webp)(\?|$)/i.test(s);
                 });
 
                 if (validImage) {
@@ -2619,7 +2654,7 @@ export async function submitPromptAndCaptureImage(serviceName, prompt, screensho
                     }
                 }
             }, 1000);
-            setTimeout(() => { clearInterval(checkInterval); resolve({ clicked: false, reason: 'timeout' }); }, 120000);
+            setTimeout(() => { clearInterval(checkInterval); resolve({ clicked: false, reason: 'timeout' }); }, 180000);
         });
     }, { expectedCount: initialResponseCount, serviceName });
 

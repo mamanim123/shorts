@@ -2499,7 +2499,7 @@ export const buildLabImagePrompt = (options: LabImagePromptOptions): string => {
   parts.push(sceneText);
   if (style) parts.push(style);
   if (includeQualityTags) parts.push(promptConstants.END);
-  if (includeAspectRatio && !parts.some(p => p.includes('--ar'))) parts.push('--ar 9:16');
+  if (includeAspectRatio && !parts.some(p => /vertical 9:16|portrait orientation/.test(p))) parts.push('vertical 9:16 aspect ratio, portrait orientation, tall vertical composition, full height vertical frame');
   return parts.filter(Boolean).join(', ');
 };
 
@@ -3938,7 +3938,7 @@ export const applyCharacterInfoToScenes = (params: {
       identitySeparationHint,
       antiSwapHint,
       'no text, no letters, no typography',
-      'photorealistic, 8k resolution, cinematic lighting, masterpiece --ar 9:16'
+      'photorealistic, 8k resolution, cinematic lighting, masterpiece, vertical 9:16 aspect ratio, portrait orientation, tall vertical composition, full height vertical frame'
     ].filter(Boolean);
 
     const finalPrompt = promptParts.join(', ');

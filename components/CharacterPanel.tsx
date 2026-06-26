@@ -105,7 +105,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   selectedSlot = 'woman-a'
 }) => {
   // 탭 상태
-  const [activeTab, setActiveTab] = useState<'select' | 'manage' | 'outfit'>('select');
+  const [activeTab, setActiveTab] = useState<'select' | 'manage' | 'outfit'>('outfit');
   // [3-2단계] 3면도 생성용 소스 이미지 + 진행 상태
   const [turnaroundSource, setTurnaroundSource] = useState<{ dataUrl: string; mime: string } | null>(null);
   const [isGeneratingTurnaround, setIsGeneratingTurnaround] = useState(false);
@@ -2715,6 +2715,8 @@ Output one single image for this viewpoint only.`;
     <div className="flex flex-col h-full bg-slate-900 rounded-xl border border-slate-700 shadow-xl overflow-hidden relative">
       {/* 탭 헤더 */}
       <div className="flex bg-slate-800/50 border-b border-slate-700">
+        {/* [숨김] 캐릭터선택 탭 - 의상규칙(캐릭터관리)으로 일원화하여 혼란 제거 */}
+        {false && (
         <button
           onClick={() => setActiveTab('select')}
           className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'select'
@@ -2725,6 +2727,9 @@ Output one single image for this viewpoint only.`;
           <Users size={14} />
           캐릭터선택
         </button>
+        )}
+        {/* [숨김] 캐릭터관리 탭 - 캐릭터 편집은 장르매니저 의상규칙에서 일원화 */}
+        {false && (
         <button
           onClick={() => setActiveTab('manage')}
           className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'manage'
@@ -2735,6 +2740,7 @@ Output one single image for this viewpoint only.`;
           <User size={14} />
           캐릭터관리
         </button>
+        )}
         <button
           onClick={() => setActiveTab('outfit')}
           className={`flex-1 px-3 py-3 text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'outfit'

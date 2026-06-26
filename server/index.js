@@ -3721,7 +3721,19 @@ app.post('/api/image/ai-generate', async (req, res) => {
                     // 원본 이미지가 너무 크기 때문에 sharp를 사용해 최적화 진행
                     // 1. 해상도를 너무 크지 않게 제한 (예: 최대 width 1080)
                     // 2. 색상 팔레트 최적화 및 압축률 최대화 적용
-                    const withMetadata = await sharp(targetPath)
+                    // [9:16 강제] 원본 비율과 무관하게 세로 9:16(1080x1920)로 커버 크롭
+                    const TARGET_W = 1080, TARGET_H = 1920;
+                    const _m0 = await sharp(targetPath).metadata();
+                    const _ratio = (_m0.width || 1) / (_m0.height || 1);
+                    const _targetRatio = TARGET_W / TARGET_H;
+                    let _pipe = sharp(targetPath);
+                    if (Math.abs(_ratio - _targetRatio) > 0.02) {
+                        _pipe = _pipe.resize(TARGET_W, TARGET_H, { fit: 'cover', position: 'attention' });
+                        console.log('[ImageAI] 📐 9:16 강제 크롭 (원본 ' + _m0.width + 'x' + _m0.height + ')');
+                    } else {
+                        _pipe = _pipe.resize(TARGET_W, TARGET_H, { fit: 'fill' });
+                    }
+                    const withMetadata = await _pipe
                         .png({ compressionLevel: 6, force: true })
                         .withMetadata({
                             exif: {
